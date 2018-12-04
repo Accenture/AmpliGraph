@@ -1,5 +1,5 @@
 
-from ampligraph.datasets import load_wn18, load_wn11, load_fb13, load_fb15k, load_fb15k_237
+from ampligraph.datasets import load_wn18, load_wn11, load_fb13, load_fb15k, load_fb15k_237, load_yago3_10
 
 
 def test_load_wn18():
@@ -44,3 +44,9 @@ def test_load_fb15k_237():
     assert len(fb15k_237['train']) == 272115
     assert len(fb15k_237['valid']) == 17535
     assert len(fb15k_237['test']) == 20466
+
+def test_yago_3_10():
+    yago_3_10 = load_yago3_10()
+    assert len(yago_3_10['train']) == 1079040
+    assert len(yago_3_10['test']) == 5000
+    assert len(yago_3_10['valid']) == 5000
