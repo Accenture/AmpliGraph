@@ -224,12 +224,19 @@ class EmbeddingModel(abc.ABC):
                                        initializer=self.initializer,
                                        regularizer=self.regularizer)
 
-        # training input placeholders
+        # training input placeholder
         x_pos_tf = tf.placeholder(tf.int32, shape=[None, 3])
-        x_neg_tf = tf.placeholder(tf.int32, shape=[None, 3])
+        
 
+
+        all_ent_tf = tf.squeeze(tf.constant(list(self.ent_to_idx.values()), dtype=tf.int32))
+        #generate negatives
+        x_neg_tf = generate_corruptions_for_fit(x_pos_tf, all_ent_tf, self.eta, rnd=self.seed)
+
+        x_pos = tf.cast(tf.keras.backend.repeat(x_pos_tf, self.eta), tf.int32)
+        x_pos = tf.reshape(x_pos, [-1, 3])
         # look up embeddings from input training triples
-        e_s_pos, e_p_pos, e_o_pos = self._lookup_embeddings(x_pos_tf)
+        e_s_pos, e_p_pos, e_o_pos = self._lookup_embeddings(x_pos)
         e_s_neg, e_p_neg, e_o_neg = self._lookup_embeddings(x_neg_tf)
 
         scores_neg = self._fn(e_s_neg, e_p_neg, e_o_neg)
@@ -258,13 +265,11 @@ class EmbeddingModel(abc.ABC):
         losses = []
         for epoch in tqdm(range(self.epochs), disable=(not self.verbose), unit='epoch'):
             for j in range(self.batches_count):
-                X_pos_b = np.repeat(X_batches[j], self.eta, axis=0)
-                # X_neg_b = X_negs[j]
-                X_neg_b = generate_corruptions_for_fit(X_batches[j], eta=self.eta, rnd=self.rnd, ent_to_idx=self.ent_to_idx)
-                _, loss_batch = self.sess_train.run([train, loss], {x_pos_tf: X_pos_b, x_neg_tf: X_neg_b})
+                X_pos_b = X_batches[j]
+                _, loss_batch = self.sess_train.run([train, loss], {x_pos_tf: X_pos_b})
                 self.sess_train.run(normalize_ent_emb_op)
                 if self.verbose:
-                    mean_loss = loss_batch / len(X_pos_b)
+                    mean_loss = loss_batch / (len(X_pos_b)*self.eta)
                     losses.append(mean_loss)
                     tqdm.write('epoch: %d, batch %d: mean loss: %.10f' % (epoch, j, mean_loss))
             # TODO TEC-1529: add early stopping criteria

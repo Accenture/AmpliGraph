@@ -4,6 +4,7 @@ from ..evaluation import rank_score, mrr_score
 import os
 from joblib import Parallel, delayed
 import itertools
+import tensorflow as tf
 
 
 def train_test_split_no_unseen(X, test_size=5000, seed=0):
@@ -185,8 +186,7 @@ def generate_corruptions_for_eval(x, idx_entities=None, filter=None, side='s+o')
         return np.setdiff1d(raw_rows, filter_rows, assume_unique=True).view(raw.dtype).reshape(-1, raw.shape[1])
 
 
-def generate_corruptions_for_fit(X, ent_to_idx=None, eta=1, rnd=None):
-    # TODO: TEC-1568 vectorize this
+def generate_corruptions_for_fit(X, all_entities, eta=1, rnd=None):
     """Generate corruptions for training.
 
         Creates corrupted triples for each statement in an array of statements.
@@ -194,13 +194,14 @@ def generate_corruptions_for_fit(X, ent_to_idx=None, eta=1, rnd=None):
         Strategy as per ::cite:`trouillon2016complex`.
 
         .. note::
-            Collisions are not checked. Too computationally expensive (see ::cite:`trouillon2016complex`).
+            Collisions are not checked. 
+            Too computationally expensive (see ::cite:`trouillon2016complex`).
 
     Parameters
     ----------
-    X : ndarray, shape [n, 3]
+    X : Tensor, shape [n, 3]
         An array of positive triples that will be used to create corruptions.
-    ent_to_idx : dict
+    all_entities : dict
         The entity-tointernal-IDs mappings
     eta : int
         The number of corruptions per triple that must be generated.
@@ -210,7 +211,7 @@ def generate_corruptions_for_fit(X, ent_to_idx=None, eta=1, rnd=None):
     Returns
     -------
 
-    x_corr : ndarray, shape [n, 3]
+    out : Tensor, shape [n * eta, 3]
         An array of corruptions for a list of positive triples x.
 
     """
@@ -219,52 +220,87 @@ def generate_corruptions_for_fit(X, ent_to_idx=None, eta=1, rnd=None):
     # random position for 3 (s or o)
     # [1,0,3] = [1, 0, 2] * [1, 1, 0] + [0, 0, 3]
     # random entities with condition of s must different from o in X corr
-    X_corr_len = eta * X.shape[0]
-    X_corr = np.repeat(X, eta, axis=0)
 
-    all_entities = list(ent_to_idx.values())
+    #Generate mask to replace subject entities in corruptions:
+    #Uniformly decide where to replace subj entities in the batch of corruptions
+    replace_subj = tf.greater(tf.random.uniform([ tf.shape(X)[0], eta, 1], 
+                                                    seed=rnd), 0.5)
+    #If not subject, replace object
+    replace_obj = tf.logical_not(replace_subj)
+    
+    #Sample entity indices uniformly with which the subject must be replaced
+    uniform_idx = tf.random.uniform([eta * tf.shape(X)[0]], 
+                                        minval=0, 
+                                        maxval = tf.shape(all_entities)[0],
+                                        dtype=tf.int32, 
+                                        seed=rnd)
 
-    s_excl = X_corr[:,0]
-    o_excl = X_corr[:,2]
+    uniform_idx = tf.expand_dims(uniform_idx, 1)
+    #Get the actual entitity
+    random_sampled = tf.gather_nd(all_entities, uniform_idx)
     
-    max_entity = len(all_entities) - 1
+    #Generate eta replacements for each subject 
+    #(but replace only the ones where mask == True)
+    #First repeat and create eta subject copies for each subject
+    repeated_subjs = tf.keras.backend.repeat(
+                                                tf.slice(X,
+                                                    [0, 0], #subj
+                                                    [tf.shape(X)[0],1])
+                                            , eta)
     
-    ## first let's random the entities
-    rand_entities = rnd.randint(0, max_entity, size=(X_corr_len), dtype=np.int32)
+    #based on the generated mask replace subject
+    repeated_subjs = tf.where(replace_subj, 
+                                tf.reshape(random_sampled,
+                                            [ tf.shape(X)[0], eta, 1]), 
+                                repeated_subjs)
 
-    min_s_o = np.minimum(s_excl, o_excl)
-    max_s_o = np.maximum(s_excl, o_excl)
+    repeated_subjs = tf.squeeze(repeated_subjs, 2)
+    
+    #Sample entity indices uniformly with which the object must be replaced
+    uniform_idx = tf.random.uniform([eta * tf.shape(X)[0]], 
+                                    minval=0, 
+                                    maxval = tf.shape(all_entities)[0], 
+                                    seed=rnd, 
+                                    dtype=tf.int32)
 
-    ## retrieve random positions not qualified
-    mask = np.where(np.logical_or(rand_entities == s_excl, rand_entities == o_excl))
+    uniform_idx = tf.expand_dims(uniform_idx, 1)
+    #Get the actual entitity
+    random_sampled = tf.gather_nd(all_entities, uniform_idx)
     
-    ##assign new value
-    rand_entities[mask] = min_s_o[mask] - 1
-    
-    ## make sure new values in range, if not change again
-    mask = np.where(rand_entities < 0)
-    rand_entities[mask] = max_s_o[mask] + 1
-    mask = np.where(rand_entities > max_entity - 1)
-    
-    # if mask is not empty, the min max pair falls into (0, max_entity-1), so just choose value different from these
-    rand_entities[mask] = max_s_o[mask] - 1
-    rand_entities = np.reshape(rand_entities, (-1, 1))
-    # done generation for rand_entities
+    #Generate eta replacements for each objects 
+    #(but replace only the ones where mask == True)
+    #First repeat and create eta object copies for each object
+    repeated_objs = tf.keras.backend.repeat(
+                                                tf.slice(X,
+                                                        [0, 2], #Obj
+                                                        [tf.shape(X)[0], 1])
+                                            , eta)
 
-    # random the position
-    rand_pos_s = rnd.choice([0,1], size=(X_corr_len, 1))
-    rand_entity_s = np.multiply(rand_pos_s, rand_entities)
+    #based on the generated mask replace object
+    repeated_objs = tf.where(replace_obj, 
+                                tf.reshape(random_sampled,
+                                                [ tf.shape(X)[0], eta, 1]), 
+                                repeated_objs)
+
+    repeated_objs = tf.squeeze(repeated_objs, 2)
     
-    pos_p = np.zeros((X_corr_len, 1), dtype=np.int32)
+    #Relations dont change while generating corruptions. 
+    #So just repeat them eta times
+    repeated_relns = tf.keras.backend.repeat(
+                                                tf.slice(X,
+                                                        [0, 1], #reln
+                                                        [tf.shape(X)[0], 1])
+                                            , eta)
+
+    repeated_relns = tf.squeeze(repeated_relns, 2)
     
-    rand_pos_o = np.subtract(1, rand_pos_s)
-    rand_entity_o = np.multiply(rand_pos_o, rand_entities)
-    
-    rand_entities = np.hstack((rand_entity_s, pos_p, rand_entity_o))
-    opp_mask = np.subtract(1, np.hstack((rand_pos_s, pos_p, rand_pos_o)))
-    
-    X_corr = np.add(np.multiply(X_corr, opp_mask), rand_entities)
-    return X_corr
+    #Stack the subject, relation, object
+    out = tf.transpose(tf.stack([repeated_subjs, repeated_relns, repeated_objs] 
+                                , 1),
+                        [0, 2, 1])
+
+    out = tf.reshape(out, [-1, tf.shape(X)[1]])
+    return out           
 
 
 def to_idx(X, ent_to_idx=None, rel_to_idx=None):
