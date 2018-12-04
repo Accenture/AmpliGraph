@@ -117,3 +117,4 @@ model
 .pytest_cache
 output.txt
 unittest_save_and_restore_models
+playground

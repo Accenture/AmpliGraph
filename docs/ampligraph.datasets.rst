@@ -13,6 +13,7 @@ KG Loaders
     load_fb15k_237
     load_wn11
     load_fb13
+    load_yago3_10
 
 
 

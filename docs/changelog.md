@@ -5,7 +5,7 @@
 - RotatE
 - Tensorflow-based negatives generation
 - Adversarial negatives generation strategy
-
+- Yago3-10 loader
 
 ## 0.2 
 ### [1 Aug 2018]

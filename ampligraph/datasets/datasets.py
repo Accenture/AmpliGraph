@@ -460,3 +460,27 @@ def load_ICEWS_reduced( ):
     return {'train': train,  'test': test}
 
 
+def load_yago3_10():
+    """ Loads the YAGO3-10 dataset
+    
+    The dataset is described in :cite:`DettmersMSR17`. It is divided in three splits:
+
+        - ``train``
+        - ``valid``        
+        - ``test``
+
+    Returns
+    -------
+
+    splits : dict
+        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
+    """
+
+    train=load_from_csv("yago_3_10", "train.txt", sep="\t")
+    test=load_from_csv("yago_3_10", "test.txt", sep="\t")
+    valid=load_from_csv("yago_3_10", "valid.txt", sep="\t")
+    
+    return {"train": train,  "test": test, "valid": valid}
+
+
+
