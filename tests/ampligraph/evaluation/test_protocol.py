@@ -4,7 +4,7 @@ from ampligraph.latent_features import TransE, DistMult, ComplEx
 from ampligraph.evaluation import evaluate_performance, generate_corruptions_for_eval, \
     generate_corruptions_for_fit, to_idx, create_mappings, mrr_score, hits_at_n_score, select_best_model_ranking
 from ampligraph.datasets import load_wn18
-
+import tensorflow as tf
 
 @pytest.mark.skip(reason="Speeding up jenkins")
 def test_select_best_model_ranking():
@@ -135,25 +135,23 @@ def test_generate_corruptions_for_fit():
     X = np.array([['a', 'x', 'b'],
                   ['c', 'x', 'd'],
                   ['e', 'x', 'f'],
-                  ['g', 'x', 'h'],
-                  ['i', 'x', 'l']])
+                  ['b', 'y', 'h'],
+                  ['a', 'y', 'l']])
     rel_to_idx, ent_to_idx = create_mappings(X)
     X = to_idx(X, ent_to_idx=ent_to_idx, rel_to_idx=rel_to_idx)
+    eta=1
+    with tf.Session() as sess:
 
-    rnd = np.random.RandomState(seed=0)
-    X_corr = generate_corruptions_for_fit(X, ent_to_idx=ent_to_idx, rnd=rnd)
+      all_ent = tf.squeeze(tf.constant(list(ent_to_idx.values()), dtype=tf.int32))
+      dataset = tf.constant(X, dtype=tf.int32)
+      X_corr = sess.run(generate_corruptions_for_fit(dataset, all_ent, eta, rnd=0))
 
     # these values occur when seed=0
-    # X_corr_exp = [[8, 0, 1],
-    #               [4, 0, 3],
-    #               [4, 0, 1],
-    #               [6, 0, 0],
-    #               [8, 0, 8]]
 
-    X_corr_exp = [[5, 0, 1],
-                  [0, 0, 3],
-                  [3, 0, 5],
-                  [6, 0, 3],
-                  [8, 0, 7]]
+    X_corr_exp =  [[0, 0, 1],
+                   [5, 0, 3],
+                   [6, 0, 5],
+                   [1, 1, 5],
+                   [0, 1, 1]]
 
     np.testing.assert_array_equal(X_corr, X_corr_exp)
