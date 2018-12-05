@@ -319,7 +319,6 @@ def to_idx(X, ent_to_idx=None, rel_to_idx=None):
     X : ndarray, shape [n, 3]
         The ndarray of converted statements.
     """
-
     x_idx_s = np.vectorize(ent_to_idx.get)(X[:, 0])
     x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
     x_idx_o = np.vectorize(ent_to_idx.get)(X[:, 2])
@@ -405,7 +404,6 @@ def evaluate_performance(X, model, filter_triples=None, splits=10, side='s+o', c
     >>> hits_at_n_score(ranks, n=10)
     0.8
     """
-
     X = to_idx(X, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
 
     if filter_triples is not None:

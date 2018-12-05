@@ -109,6 +109,11 @@ def load_wn11():
 
     Examples
     --------
+    >>> from ampligraph.datasets import load_wn11
+    >>> X = load_wn11()
+    >>> print("X[valid'][0]: ", X['valid'][0])
+    X[valid'][0]:  ['__genus_xylomelum_1' '_type_of' '__dicot_genus_1' '1']
+
 
     """
     train = load_from_csv('wordnet11', 'train.txt')
@@ -137,6 +142,11 @@ def load_fb13():
 
     Examples
     --------
+    >>> from ampligraph.datasets import load_fb13
+    >>> X = load_fb13()
+    >>> print("X['valid'][0]: ", X['valid'][0])
+    X['valid'][0]:  ['cornelie_van_zanten' 'gender' 'female' '1']
+
 
     """
     train = load_from_csv('freebase13', 'train.txt')
@@ -474,6 +484,16 @@ def load_yago3_10():
 
     splits : dict
         The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
+    
+    Examples
+    -------
+    >>> from ampligraph.datasets import load_yago3_10
+    >>> X = load_yago3_10()
+    >>> X["valid"][0]
+    array(['Mikheil_Khutsishvili', 'playsFor', 'FC_Merani_Tbilisi'], dtype=object)    
+
+
+
     """
 
     train=load_from_csv("yago_3_10", "train.txt", sep="\t")
@@ -482,5 +502,36 @@ def load_yago3_10():
     
     return {"train": train,  "test": test, "valid": valid}
 
+def load_wn18rr():
+    """ Loads the WN18RR dataset
+    
+    The dataset is described in :cite:`DettmersMSR17`. It is divided in three splits:
 
+        - ``train``
+        - ``valid``        
+        - ``test``
+
+    Returns
+    -------
+
+    splits : dict
+        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
+
+    Examples
+    -------
+
+    >>> from ampligraph.datasets import load_wn18rr
+    >>> X = load_wn18rr()
+    >>> X["valid"][0]
+    array(['02174461', '_hypernym', '02176268'], dtype=object)
+
+
+
+    """
+
+    train=load_from_csv("wn18rr", "train.txt", sep="\t")
+    test=load_from_csv("wn18rr", "test.txt", sep="\t")
+    valid=load_from_csv("wn18rr", "valid.txt", sep="\t")
+    
+    return {"train": train,  "test": test, "valid": valid}    
 

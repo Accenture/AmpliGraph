@@ -14,8 +14,7 @@ KG Loaders
     load_wn11
     load_fb13
     load_yago3_10
-
-
+    load_wn18rr
 
 Loaders
 ^^^^^^^
