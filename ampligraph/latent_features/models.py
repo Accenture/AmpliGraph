@@ -6,7 +6,7 @@ import abc
 from tqdm import tqdm
 from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings
 from .loss_functions import negative_log_likelihood_loss, pairwise_loss, absolute_margin_loss
-
+from .regularizers import l1_regularizer, l2_regularizer
 
 DEFAULT_PAIRWISE_MARGIN = 1
 
@@ -88,7 +88,9 @@ class EmbeddingModel(abc.ABC):
             raise ValueError('Unsupported optimizer: %s' % optimizer)
 
         if regularizer == 'L2':
-            self.regularizer = tf.contrib.layers.l2_regularizer(scale=lambda_reg)
+            self.regularizer = l2_regularizer
+        elif regularizer == 'L1':
+            self.regularizer = l1_regularizer
         elif regularizer is None:
             self.regularizer = None
         else:
@@ -218,11 +220,9 @@ class EmbeddingModel(abc.ABC):
         # init tf graph/dataflow for training
         # init variables (model parameters to be learned - i.e. the embeddings)
         self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k],
-                                       initializer=self.initializer,
-                                       regularizer=self.regularizer)
+                                       initializer=self.initializer)
         self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
-                                       initializer=self.initializer,
-                                       regularizer=self.regularizer)
+                                       initializer=self.initializer)
 
         # training input placeholder
         x_pos_tf = tf.placeholder(tf.int32, shape=[None, 3])
@@ -243,6 +243,9 @@ class EmbeddingModel(abc.ABC):
         scores_pos = self._fn(e_s_pos, e_p_pos, e_o_pos)
 
         loss = self.loss(scores_pos, scores_neg, **self.loss_params)
+        
+        if self.regularizer is not None:
+            loss += self.regularizer([self.ent_emb, self.rel_emb], self.lambda_reg)
 
         train = self.optimizer.minimize(loss, var_list=[self.ent_emb, self.rel_emb])
 
