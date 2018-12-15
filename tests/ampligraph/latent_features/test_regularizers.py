@@ -1,0 +1,32 @@
+import numpy as np
+import tensorflow as tf
+from ampligraph.latent_features import l1_regularizer, l2_regularizer
+
+def test_l1_regularizer():
+    p1 = tf.constant([1,-1,1], dtype=tf.float32)
+    p2 = tf.constant([2,-2,2], dtype=tf.float32)
+    params = [p1, p2]
+    lambda_1 = 1.0
+    lambda_2 = [2.0, 3.0]
+    
+    with tf.Session() as sess:
+        
+        out = sess.run(l1_regularizer(params, lambda_1))
+        np.testing.assert_array_equal(out, 9.0)
+        out = sess.run(l1_regularizer(params, lambda_2))
+        np.testing.assert_array_equal(out, 24.0)
+    
+
+def test_l2_regularizer():
+    p1 = tf.constant([1,-1,1], dtype=tf.float32)
+    p2 = tf.constant([2,-2,2], dtype=tf.float32)
+    params = [p1, p2]
+    lambda_1 = 1.0
+    lambda_2 = [2.0, 3.0]
+    
+    with tf.Session() as sess:
+        
+        out = sess.run(l2_regularizer(params, lambda_1))
+        np.testing.assert_array_equal(out, 15.0)
+        out = sess.run(l2_regularizer(params, lambda_2))
+        np.testing.assert_array_equal(out, 42.0)
