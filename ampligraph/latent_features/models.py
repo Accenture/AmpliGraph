@@ -5,7 +5,7 @@ from functools import partial
 import abc
 from tqdm import tqdm
 from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings
-from .loss_functions import negative_log_likelihood_loss, pairwise_loss, absolute_margin_loss
+from .loss_functions import AbsoluteMarginLoss, NLLLoss, PairwiseLoss
 from .regularizers import l1_regularizer, l2_regularizer
 
 DEFAULT_PAIRWISE_MARGIN = 1
@@ -14,9 +14,11 @@ DEFAULT_PAIRWISE_MARGIN = 1
 class EmbeddingModel(abc.ABC):
     """Abstract class for a neural knowledge graph embedding model.
     """
-
-    def __init__(self, k=100, lr=.1, eta=2, epochs=100, batches_count=100, seed=0,
-                 loss='pairwise', optimizer="adagrad", regularizer=None, lambda_reg=0.1,
+    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
+                 embedding_model_params = {},
+                 optimizer="adagrad", optimizer_params={}, 
+                 loss='nll', loss_params = {}, 
+                 regularizer=None, regularizer_params = {},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
         """Initialize an EmbeddingModel
 
@@ -26,8 +28,6 @@ class EmbeddingModel(abc.ABC):
         ----------
         k : int
             Embedding space dimensionality
-        lr : float
-            Initial learning rate for the optimizer
         eta : int
             The number of negatives that must be generated at runtime during training for each positive.
         epochs : int
@@ -36,54 +36,85 @@ class EmbeddingModel(abc.ABC):
             The number of batches in which the training set must be split during the training loop.
         seed : int
             The seed used by the internal random numbers generator.
-        loss : string
-            The type of loss function to use during training. If ``pairwise``, the pairwise margin-based loss function
-            is chosen. If ``nll``, the model will use negative loss likelihood.
+        embedding_model_params : dict
+            Parameter values of embedding model specific hyperparams
         optimizer : string
             The optimizer used to minimize the loss function. Choose between ``sgd``,
             ``adagrad``, ``adam``, ``momentum``.
+        optimizer_params : dict    
+            Parameters values specific to the optimizer. (lr, momentum, etc)
+        loss : string
+            The type of loss function to use during training. If ``pairwise``, the pairwise margin-based loss function
+            is chosen. If ``nll``, the model will use negative loss likelihood.
+        loss_params : dict
+            Parameters values specific to the loss.
         regularizer : string
-            The regularization strategy to use with the loss function. ``L2`` or None.
-        lambda_reg : float
-            The L2 regularization weight (ignored if `regularizer` is None.)
+            The regularization strategy to use with the loss function. ``L2`` or ``L1`` or None.
+        regularizer_params : dict
+            Parameters values specific to the regularizer.
+        model_checkpoint_path: string
+            Path to save the model.
         verbose : bool
             Verbose mode
         kwargs : dict
-            Additional, model-specific hyperparameters (e.g.: pairwise_margin (float):
-            The margin used by the pairwise margin-based loss function to discriminate positives form negatives).
+            Additional inputs, if any
         """
+        #Store for restoring later.
+        self.all_params = \
+        {
+            'k':k,
+            'eta': eta,
+            'epochs':epochs,
+            'batches_count':batches_count,
+            'seed': seed,
+            'embedding_model_params':embedding_model_params,
+            'optimizer':optimizer,
+            'optimizer_params':optimizer_params,
+            'loss':loss,
+            'loss_params':loss_params,
+            'regularizer':regularizer,
+            'regularizer_params':regularizer_params,
+            'model_checkpoint_path':model_checkpoint_path,
+            'verbose':verbose
+            
+            
+            
+        }
         tf.reset_default_graph()
-
+        
+        self.loss_params = loss_params
+        self.loss_params['eta'] = eta
+        
+        self.embedding_model_params = embedding_model_params
+        
         self.k = k
-        self.lr = lr
         self.seed = seed
         self.epochs = epochs
         self.eta = eta
-        self.lambda_reg = lambda_reg
+        self.regularizer_params = regularizer_params
         self.batches_count = batches_count
         if batches_count == 1:
             print('WARN: when batches_count=1 all triples will be processed in the same batch. '
                   'This may introduce memory issues.')
-
-        self.loss_params = {}
         if loss == 'pairwise':
-            self.loss = pairwise_loss
-            self.loss_params['margin'] = kwargs.get('pairwise_margin', DEFAULT_PAIRWISE_MARGIN)
+            self.loss = PairwiseLoss(self.loss_params)
         elif loss == 'nll':
-            self.loss = negative_log_likelihood_loss
+            self.loss = NLLLoss(self.loss_params)
         elif loss == 'absolute_margin':
-            self.loss = absolute_margin_loss
+            self.loss = AbsoluteMarginLoss(self.loss_params)
         else:
             raise ValueError('Unsupported loss function: %s' % loss)
-
+        
+        self.optimizer_params = optimizer_params
         if optimizer == "adagrad":
-            self.optimizer = tf.train.AdagradOptimizer(learning_rate=self.lr)
+            self.optimizer = tf.train.AdagradOptimizer(learning_rate=self.optimizer_params.get('lr', 0.1))
         elif optimizer == "adam":
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.optimizer_params.get('lr', 0.1))
         elif optimizer == "momentum":
-            self.optimizer = tf.train.MomentumOptimizer(self.lr, kwargs.get('momentum', 0.1))
+            self.optimizer = tf.train.MomentumOptimizer(self.optimizer_params.get('lr', 0.1), 
+                                                        self.optimizer_params.get('momentum',0.1))
         elif optimizer == "sgd":
-            self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.lr)
+            self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.optimizer_params.get('lr', 0.1))
         else:
             raise ValueError('Unsupported optimizer: %s' % optimizer)
 
@@ -187,6 +218,14 @@ class EmbeddingModel(abc.ABC):
         e_p = tf.nn.embedding_lookup(self.rel_emb, x[:, 1], name='embedding_lookup_predicate')
         e_o = tf.nn.embedding_lookup(self.ent_emb, x[:, 2], name='embedding_lookup_object')
         return e_s, e_p, e_o
+    
+    def _initialize_embeddings(self):
+        """ Initialize the embeddings
+        """
+        self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k],
+                                       initializer=self.initializer)
+        self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
+                                       initializer=self.initializer)
 
     def fit(self, X):
         """Train an EmbeddingModel.
@@ -219,10 +258,7 @@ class EmbeddingModel(abc.ABC):
 
         # init tf graph/dataflow for training
         # init variables (model parameters to be learned - i.e. the embeddings)
-        self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k],
-                                       initializer=self.initializer)
-        self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
-                                       initializer=self.initializer)
+        self._initialize_embeddings()
 
         # training input placeholder
         x_pos_tf = tf.placeholder(tf.int32, shape=[None, 3])
@@ -232,9 +268,11 @@ class EmbeddingModel(abc.ABC):
         all_ent_tf = tf.squeeze(tf.constant(list(self.ent_to_idx.values()), dtype=tf.int32))
         #generate negatives
         x_neg_tf = generate_corruptions_for_fit(x_pos_tf, all_ent_tf, self.eta, rnd=self.seed)
-
-        x_pos = tf.cast(tf.keras.backend.repeat(x_pos_tf, self.eta), tf.int32)
-        x_pos = tf.reshape(x_pos, [-1, 3])
+        if self.loss.get_state('require_same_size_pos_neg'):
+            x_pos = tf.cast(tf.keras.backend.repeat(x_pos_tf, self.eta), tf.int32)
+            x_pos = tf.reshape(x_pos, [-1, 3])
+        else:
+            x_pos = x_pos_tf
         # look up embeddings from input training triples
         e_s_pos, e_p_pos, e_o_pos = self._lookup_embeddings(x_pos)
         e_s_neg, e_p_neg, e_o_neg = self._lookup_embeddings(x_neg_tf)
@@ -242,10 +280,10 @@ class EmbeddingModel(abc.ABC):
         scores_neg = self._fn(e_s_neg, e_p_neg, e_o_neg)
         scores_pos = self._fn(e_s_pos, e_p_pos, e_o_pos)
 
-        loss = self.loss(scores_pos, scores_neg, **self.loss_params)
+        loss = self.loss.apply(scores_pos, scores_neg)
         
         if self.regularizer is not None:
-            loss += self.regularizer([self.ent_emb, self.rel_emb], self.lambda_reg)
+            loss += self.regularizer([self.ent_emb, self.rel_emb], self.regularizer_params)
 
         train = self.optimizer.minimize(loss, var_list=[self.ent_emb, self.rel_emb])
 
@@ -408,7 +446,7 @@ class TransE(EmbeddingModel):
         --------
         >>> import numpy as np
         >>> from ampligraph.latent_features import TransE
-        >>> model = TransE(batches_count=1, seed=555, epochs=20, k=10)
+        >>> TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin':5})
         >>> X = np.array([['a', 'y', 'b'],
         >>>               ['b', 'y', 'a'],
         >>>               ['a', 'y', 'c'],
@@ -419,28 +457,23 @@ class TransE(EmbeddingModel):
         >>>               ['f', 'y', 'e']])
         >>> model.fit(X)
         >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-        array([-2.2089951 , -4.65821838], dtype=float32)
+        array([-1.0393388, -2.1970382], dtype=float32)
 
     """
 
-    def __init__(self, k=100, lr=.1, norm=1, eta=2, epochs=100, batches_count=100, seed=0,
-                 loss='pairwise', pairwise_margin=5, optimizer="adagrad", verbose=False):
-        self.hyperparams = {
-            'k': k,
-            'lr': lr,
-            'norm': norm,
-            'eta': eta,
-            'epochs': epochs,
-            'batches_count': batches_count,
-            'seed': seed,
-            'loss': loss,
-            'pairwise_margin': pairwise_margin,            
-            'optimizer': optimizer,
-            'verbose': verbose
-        }
-        self.norm = norm
-        super().__init__(k=k, lr=lr, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
-                         loss=loss, optimizer=optimizer, pairwise_margin=pairwise_margin, verbose=verbose)
+    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0, 
+                 embedding_model_params = {}, 
+                 optimizer="adagrad", optimizer_params={}, 
+                 loss='nll', loss_params = {}, 
+                 regularizer=None, regularizer_params = {},
+                 model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+        
+        super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
+                         embedding_model_params = embedding_model_params,
+                         optimizer=optimizer, optimizer_params=optimizer_params,
+                         loss=loss, loss_params=loss_params,
+                         regularizer=regularizer, regularizer_params =regularizer_params,
+                         model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
 
     def _fn(self, e_s, e_p, e_o):
         """The TransE scoring function.
@@ -465,7 +498,7 @@ class TransE(EmbeddingModel):
 
         """
 
-        return tf.negative(tf.norm(e_s + e_p - e_o, ord=self.norm, axis=1))
+        return tf.negative(tf.norm(e_s + e_p - e_o, ord=self.embedding_model_params.get('norm', 1), axis=1))
 
     def fit(self, X):
         """Train an Translating Embeddings model.
@@ -515,7 +548,7 @@ class DistMult(EmbeddingModel):
         --------
         >>> import numpy as np
         >>> from ampligraph.latent_features import DistMult
-        >>> model = DistMult(batches_count=1, seed=555, epochs=20, k=10)
+        >>> DistMult(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin':5})
         >>> X = np.array([['a', 'y', 'b'],
         >>>               ['b', 'y', 'a'],
         >>>               ['a', 'y', 'c'],
@@ -526,26 +559,23 @@ class DistMult(EmbeddingModel):
         >>>               ['f', 'y', 'e']])
         >>> model.fit(X)
         >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-        array([ 0.86894906, -0.57398415], dtype=float32)
+        array([ 0.9718404, -0.3637435], dtype=float32)
 
     """
 
-    def __init__(self, k=100, lr=.1, pairwise_margin=5, eta=2, epochs=100, batches_count=100, seed=0,
-                 loss='pairwise', optimizer="adagrad", verbose=False):
-        self.hyperparams = {
-            'k': k,
-            'lr': lr,
-            'pairwise_margin': pairwise_margin,
-            'eta': eta,
-            'epochs': epochs,
-            'batches_count': batches_count,
-            'seed': seed,
-            'loss': loss,
-            'optimizer': optimizer,
-            'verbose': verbose
-        }
-        super().__init__(k=k, lr=lr, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
-                         loss=loss, pairwise_margin=pairwise_margin, optimizer=optimizer, verbose=verbose)
+    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0, 
+                 embedding_model_params = {}, 
+                 optimizer="adagrad", optimizer_params={}, 
+                 loss='nll', loss_params = {}, 
+                 regularizer=None, regularizer_params = {},
+                 model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+        
+        super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
+                         embedding_model_params = embedding_model_params,
+                         optimizer=optimizer, optimizer_params=optimizer_params,
+                         loss=loss, loss_params=loss_params,
+                         regularizer=regularizer, regularizer_params =regularizer_params,
+                         model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
 
     def _fn(self, e_s, e_p, e_o):
         """The DistMult scoring function.
@@ -621,7 +651,10 @@ class ComplEx(EmbeddingModel):
         --------
         >>> import numpy as np
         >>> from ampligraph.latent_features import ComplEx
-        >>> model = ComplEx(batches_count=1, seed=555, epochs=20, k=10)
+        >>> model = ComplEx(batches_count=1, seed=555, epochs=20, k=10, 
+        >>>             loss='pairwise', loss_params={'margin':1}, 
+        >>>             regularizer='L2', regularizer_params={'lambda':0.1})
+
         >>> X = np.array([['a', 'y', 'b'],
         >>>               ['b', 'y', 'a'],
         >>>               ['a', 'y', 'c'],
@@ -632,35 +665,29 @@ class ComplEx(EmbeddingModel):
         >>>               ['f', 'y', 'e']])
         >>> model.fit(X)
         >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-        array([ 1.23718071, -0.67018294], dtype=float32)
+        array([ 1.0089628 , -0.51218843], dtype=float32)
         >>> model.get_embeddings(['f','e'], type='entity')
-        array([[-0.30896732, -0.31423435,  0.56920165, -0.05230011,  0.06782568,
-                -0.59959912,  0.03503535, -0.02522233,  0.22599372,  0.24902618],
-               [-0.65675682,  0.00590804, -0.26364127,  0.08479995, -0.0316195 ,
-                -0.37855583, -0.23295116,  0.03035271,  0.38755456, -0.37715697]], dtype=float32)
+        array([[-0.43793657, -0.4387298 ,  0.38817367, -0.0461139 , -0.11901201,
+            -0.65326005,  0.12317057,  0.05477504,  0.06185133,  0.00359724],
+           [-0.6584873 , -0.24720612, -0.04071414,  0.03415959, -0.08960017,
+            -0.20853978, -0.27599704, -0.5155798 ,  0.12172926,  0.27685398]],
+          dtype=float32)
 
     """
 
-    def __init__(self, k=100, lr=.1, pairwise_margin=1, eta=2, epochs=100, batches_count=100, seed=0,
-                 lambda_reg=0.1, loss='pairwise', optimizer="adagrad", regularizer='L2', verbose=False):
-        self.hyperparams = {
-            'k': k,
-            'lr': lr,
-            'pairwise_margin': pairwise_margin,
-            'eta': eta,
-            'epochs': epochs,
-            'batches_count': batches_count,
-            'seed': seed,
-            'lambda_reg': lambda_reg,
-            'loss': loss,
-            'optimizer': optimizer,
-            'regularizer': regularizer,
-            'verbose': verbose
-        }
-
-        super().__init__(k=k, lr=lr, pairwise_margin=pairwise_margin, eta=eta, epochs=epochs,
-                         batches_count=batches_count, seed=seed, loss=loss, optimizer=optimizer,
-                         lambda_reg=lambda_reg, regularizer=regularizer, verbose=verbose)
+    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0, 
+                 embedding_model_params = {}, 
+                 optimizer="adagrad", optimizer_params={}, 
+                 loss='nll', loss_params = {}, 
+                 regularizer=None, regularizer_params = {},
+                 model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+        
+        super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
+                         embedding_model_params = embedding_model_params,
+                         optimizer=optimizer, optimizer_params=optimizer_params,
+                         loss=loss, loss_params=loss_params,
+                         regularizer=regularizer, regularizer_params =regularizer_params,
+                         model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
 
     def _fn(self, e_s, e_p, e_o):
         """The ComplEx scoring function.
@@ -733,3 +760,4 @@ class ComplEx(EmbeddingModel):
 
         """
         return super().predict(X, from_idx=from_idx)
+    

@@ -23,7 +23,7 @@ def save_model(model, loc):
 
     obj = {
         'class_name': model.__class__.__name__,
-        'hyperparams': model.hyperparams,
+        'hyperparams': model.all_params,
         'is_fitted': model.is_fitted,
         'ent_emb_const': model.ent_emb_const,
         'ent_to_idx': model.ent_to_idx,
