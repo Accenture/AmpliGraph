@@ -11,9 +11,9 @@ def test_l1_regularizer():
     
     with tf.Session() as sess:
         
-        out = sess.run(l1_regularizer(params, lambda_1))
+        out = sess.run(l1_regularizer(params, {'lambda' : lambda_1}))
         np.testing.assert_array_equal(out, 9.0)
-        out = sess.run(l1_regularizer(params, lambda_2))
+        out = sess.run(l1_regularizer(params, {'lambda' : lambda_2}))
         np.testing.assert_array_equal(out, 24.0)
     
 
@@ -26,7 +26,7 @@ def test_l2_regularizer():
     
     with tf.Session() as sess:
         
-        out = sess.run(l2_regularizer(params, lambda_1))
+        out = sess.run(l2_regularizer(params, {'lambda' : lambda_1}))
         np.testing.assert_array_equal(out, 15.0)
-        out = sess.run(l2_regularizer(params, lambda_2))
+        out = sess.run(l2_regularizer(params, {'lambda' : lambda_2}))
         np.testing.assert_array_equal(out, 42.0)

@@ -13,7 +13,7 @@ import shutil
 
 def test_fit_predict_transE():
 
-    model = TransE(batches_count=1, seed=555, epochs=20, k=10)
+    model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin':5})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -45,7 +45,7 @@ def test_generate_approximate_embeddings():
     OOKG_e = 'h'
 
     k = 10
-    model = TransE(batches_count=1, seed=555, epochs=20, k=k)
+    model = TransE(batches_count=1, seed=555, epochs=20, k=k, loss='pairwise', loss_params={'margin':5})
 
     model.fit(X)
 
@@ -61,7 +61,7 @@ def test_generate_approximate_embeddings():
 
 
 def test_fit_predict_DistMult():
-    model = DistMult(batches_count=2, seed=555, epochs=20, k=10)
+    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin':5})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -77,7 +77,8 @@ def test_fit_predict_DistMult():
 
 
 def test_fit_predict_CompleEx():
-    model = ComplEx(batches_count=1, seed=555, epochs=20, k=10)
+    model = ComplEx(batches_count=1, seed=555, epochs=20, k=10, 
+                    loss='pairwise', loss_params={'margin':1}, regularizer='L2', regularizer_params={'lambda':0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -93,7 +94,8 @@ def test_fit_predict_CompleEx():
 
 
 def test_retrain():
-    model = ComplEx(batches_count=1, seed=555, epochs=20, k=10)
+    model = ComplEx(batches_count=1, seed=555, epochs=20, k=10, 
+                    loss='pairwise', loss_params={'margin':1}, regularizer='L2', regularizer_params={'lambda':0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -111,7 +113,7 @@ def test_retrain():
 def test_fit_predict_wn18_TransE():
 
     X = load_wn18()
-    model = TransE(batches_count=1, seed=555, epochs=5, k=100, norm=1, pairwise_margin=5, verbose=True)
+    model = TransE(batches_count=1, seed=555, epochs=5, k=100, norm=1, loss='pairwise', loss_params={'margin':5}, verbose=True)
     model.fit(X['train'])
     y = model.predict(X['test'][:1])
 
@@ -121,14 +123,15 @@ def test_fit_predict_wn18_TransE():
 def test_fit_predict_wn18_ComplEx():
 
     X = load_wn18()
-    model = ComplEx(batches_count=1, seed=555, epochs=5, k=100, pairwise_margin=5)
+    model = ComplEx(batches_count=1, seed=555, epochs=5, k=100,  
+                    loss='pairwise', loss_params={'margin':1}, regularizer='L2', regularizer_params={'lambda':0.1})
     model.fit(X['train'])
     y = model.predict(X['test'][:1])
     print(y)
 
 
 def test_lookup_embeddings():
-    model = DistMult(batches_count=2, seed=555, epochs=20, k=10)
+    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin':5})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -168,7 +171,7 @@ def test_save_and_restore_model():
         loaded_model = restore_model(EXAMPLE_LOC)
 
         assert loaded_model != None
-        assert loaded_model.hyperparams == model.hyperparams
+        assert loaded_model.all_params == model.all_params
         assert loaded_model.is_fitted == model.is_fitted
         assert loaded_model.ent_to_idx == model.ent_to_idx
         assert loaded_model.rel_to_idx == model.rel_to_idx
