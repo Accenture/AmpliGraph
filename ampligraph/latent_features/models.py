@@ -5,7 +5,7 @@ from functools import partial
 import abc
 from tqdm import tqdm
 from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings
-from .loss_functions import AbsoluteMarginLoss, NLLLoss, PairwiseLoss
+from .loss_functions import AbsoluteMarginLoss, NLLLoss, PairwiseLoss, SelfAdverserialLoss
 from .regularizers import l1_regularizer, l2_regularizer
 
 DEFAULT_PAIRWISE_MARGIN = 1
@@ -102,6 +102,8 @@ class EmbeddingModel(abc.ABC):
             self.loss = NLLLoss(self.loss_params)
         elif loss == 'absolute_margin':
             self.loss = AbsoluteMarginLoss(self.loss_params)
+        elif loss == 'self_adverserial':
+            self.loss = SelfAdverserialLoss(self.loss_params)
         else:
             raise ValueError('Unsupported loss function: %s' % loss)
         
