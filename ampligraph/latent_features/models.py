@@ -4,9 +4,10 @@ from sklearn.utils import check_random_state
 from functools import partial
 import abc
 from tqdm import tqdm
-from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings
+from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval
 from .loss_functions import AbsoluteMarginLoss, NLLLoss, PairwiseLoss, SelfAdverserialLoss
 from .regularizers import l1_regularizer, l2_regularizer
+import os
 
 DEFAULT_PAIRWISE_MARGIN = 1
 
@@ -82,6 +83,7 @@ class EmbeddingModel(abc.ABC):
         }
         tf.reset_default_graph()
         
+        self.is_filtered = False
         self.loss_params = loss_params
         self.loss_params['eta'] = eta
         
@@ -252,6 +254,13 @@ class EmbeddingModel(abc.ABC):
         #  convert training set into internal IDs
         X = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
 
+        self.all_entities_np = np.int64(np.array(list(self.ent_to_idx.values())))
+        self.entity_size = self.all_entities_np.shape[0]
+        
+        self.all_reln_np = np.int64(np.array(list(self.rel_to_idx.values())))
+        self.reln_size = self.all_reln_np.shape[0]
+        
+        
         # This is useful when we re-fit the same model (e.g. retraining in model selection)
         if self.is_fitted:
             tf.reset_default_graph()
@@ -306,6 +315,7 @@ class EmbeddingModel(abc.ABC):
         #                                                     for X_batch in X_batches)
 
         losses = []
+        
         for epoch in tqdm(range(self.epochs), disable=(not self.verbose), unit='epoch'):
             for j in range(self.batches_count):
                 X_pos_b = X_batches[j]
@@ -315,15 +325,69 @@ class EmbeddingModel(abc.ABC):
                     mean_loss = loss_batch / (len(X_pos_b)*self.eta)
                     losses.append(mean_loss)
                     tqdm.write('epoch: %d, batch %d: mean loss: %.10f' % (epoch, j, mean_loss))
+            
             # TODO TEC-1529: add early stopping criteria
-
+            
         # Move embeddings to constants for predict()
         self.ent_emb_const = self.sess_train.run(self.ent_emb)
         self.rel_emb_const = self.sess_train.run(self.rel_emb)
+            
         self.sess_train.close()
 
         self.is_fitted = True
+        
+    def set_filter_for_eval(self, x_filter):
+        """Set the filter to be used during evaluation (filtered_corruption = corruptions - filter)
+        
+        We would be using a prime number based assignment and product for do the filtering.
+        We associate a unique prime number for subject entities, object entities and to relations.
+        Product of three prime numbers is divisible only by those three prime numbers. 
+        So we generate this profuct for the filter triples and store it in a hash map.
+        When corruptions are generated for a triple during evaluation, we follow a similar approach 
+        and look up the product of corruption in the above hash table. If the corrupted triple is 
+        present in the hashmap, it means that it was present in the filter list.
 
+        Parameters
+        ----------
+        x_filter : ndarray, shape [n, 3]
+            The filter triples
+
+        """
+        
+        self.x_filter = x_filter
+        
+        first_million_primes_list = []
+        curr_dir, _ = os.path.split(__file__)
+        with open(os.path.join(curr_dir, "prime_number_list.txt"), "r") as f:
+            line = f.readline()
+            i=0
+            for line in f:
+                p_nums_line = line.split(' ')
+                first_million_primes_list.extend([np.int64(x) for x in p_nums_line if x !='' and x!='\n'])
+                if len(first_million_primes_list)>(2*self.entity_size+self.reln_size):
+                    break
+        
+        
+        #subject
+        self.entity_primes_left = first_million_primes_list[:self.entity_size]
+        #obj
+        self.entity_primes_right = first_million_primes_list[self.entity_size:2*self.entity_size]
+        #reln
+        self.relation_primes = first_million_primes_list[2*self.entity_size:(2*self.entity_size+self.reln_size)]
+
+        self.filter_keys = []
+        #subject
+        self.filter_keys = [ self.entity_primes_left[x_filter[i,0]] for i in range(x_filter.shape[0]) ]
+        #obj
+        self.filter_keys = [self.filter_keys[i] * self.entity_primes_right[x_filter[i,2]]
+                       for i in range(x_filter.shape[0]) ] 
+        #reln
+        self.filter_keys = [self.filter_keys[i] * self.relation_primes[x_filter[i,1]] 
+                       for i in range(x_filter.shape[0]) ] 
+        
+        self.is_filtered = True
+        
+        
     def predict(self, X, from_idx=False):
         """Predict the score of triples using a trained embedding model.
 
@@ -339,16 +403,16 @@ class EmbeddingModel(abc.ABC):
 
         Returns
         -------
-        y_pred : ndarray, shape [n]
+        scores_predict : ndarray, shape [n]
             The predicted scores for input triples X.
+            
+        rank : ndarray, shape [n]
+            Rank of the triple
 
         """
 
         if type(X) != np.ndarray:
             raise ValueError('Invalid type for input X. Expected ndarray, got %s' % (type(X)))
-
-        if (np.shape(X)[1]) != 3:
-            raise ValueError('Invalid size for input X. Expected number of column 3, got %s' % (np.shape(X)[1]))
 
         if not self.is_fitted:
             raise RuntimeError('Model has not been fitted.')
@@ -360,14 +424,58 @@ class EmbeddingModel(abc.ABC):
         if self.sess_predict is None:
             self.ent_emb = tf.constant(self.ent_emb_const)
             self.rel_emb = tf.constant(self.rel_emb_const)
-            self.X_test_tf = tf.placeholder(tf.int32, shape=[None, 3])
-            e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
+            self.X_test_tf = tf.placeholder(tf.int64, shape=[1, 3])
+            
+            self.table_entity_lookup_left = None
+            self.table_entity_lookup_right = None
+            self.table_reln_lookup = None
+            
+            if self.is_filtered:
+                self.table_entity_lookup_left = tf.contrib.lookup.HashTable(
+                                tf.contrib.lookup.KeyValueTensorInitializer(self.all_entities_np, 
+                                                                            np.array(self.entity_primes_left, dtype=np.int64))
+                                , 0) 
+                self.table_entity_lookup_right = tf.contrib.lookup.HashTable(
+                                tf.contrib.lookup.KeyValueTensorInitializer(self.all_entities_np, 
+                                                                            np.array(self.entity_primes_right, dtype=np.int64))
+                                , 0)                                   
+                self.table_reln_lookup = tf.contrib.lookup.HashTable(
+                                tf.contrib.lookup.KeyValueTensorInitializer(self.all_reln_np, 
+                                                                            np.array(self.relation_primes, dtype=np.int64))
+                                , 0)       
+
+                #Create table to store train+test+valid triplet prime values(product)
+                self.table_filter_lookup = tf.contrib.lookup.HashTable(
+                                tf.contrib.lookup.KeyValueTensorInitializer(np.array(self.filter_keys, dtype=np.int64), np.zeros(len(self.filter_keys), dtype=np.int64))
+                                , 1)
+
+            self.all_entities=tf.constant(self.all_entities_np)
+             
+            self.out_corr, self.out_corr_prime = generate_corruptions_for_eval(self.X_test_tf, self.all_entities,
+                                                             self.table_entity_lookup_left, 
+                                                             self.table_entity_lookup_right,  
+                                                             self.table_reln_lookup)
+            
+            
+            if self.is_filtered:
+                #check if corruption prime product is present in dataset prime product            
+                self.presense_mask = self.table_filter_lookup.lookup(self.out_corr_prime)
+                self.filtered_corruptions = tf.boolean_mask(self.out_corr, self.presense_mask)
+            else:
+                self.filtered_corruptions = self.out_corr
+
+            self.concatinated_set = tf.concat([self.X_test_tf, self.filtered_corruptions], 0)
+    
+            e_s, e_p, e_o = self._lookup_embeddings(self.concatinated_set)
             self.scores_predict = self._fn(e_s, e_p, e_o)
+            self.score_positive = tf.gather(self.scores_predict, 0)
+            self.rank = tf.reduce_sum(tf.cast(self.scores_predict > self.score_positive, tf.int32)) + 1
             sess = tf.Session()
+            sess.run(tf.tables_initializer())
             sess.run(tf.global_variables_initializer())
             self.sess_predict = sess
 
-        return self.sess_predict.run(self.scores_predict, feed_dict={self.X_test_tf: X}) #TODO TEC-1567 performance: check feed_dict
+        return self.sess_predict.run([self.scores_predict, self.rank], feed_dict={self.X_test_tf: [X]}) #TODO TEC-1567 performance: check feed_dict
 
     def generate_approximate_embeddings(self, e, neighbouring_triples, pool='avg', schema_aware=False):
         """Generate approximate embeddings for entity, given neighbouring triples
