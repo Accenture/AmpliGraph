@@ -23,7 +23,7 @@ def test_fit_predict_transE():
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
     model.fit(X)
-    y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
     print(y_pred)
     assert y_pred[0] > y_pred[1]
 
@@ -71,7 +71,7 @@ def test_fit_predict_DistMult():
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
     model.fit(X)
-    y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
     print(y_pred)
     assert y_pred[0] > y_pred[1]
 
@@ -88,7 +88,7 @@ def test_fit_predict_CompleEx():
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
     model.fit(X)
-    y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
     print(y_pred)
     assert y_pred[0] > y_pred[1]
 
@@ -105,9 +105,9 @@ def test_retrain():
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
     model.fit(X)
-    y_pred_1st = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+    y_pred_1st, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
     model.fit(X)
-    y_pred_2nd = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+    y_pred_2nd, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
     np.testing.assert_array_equal(y_pred_1st, y_pred_2nd)
 
 def test_fit_predict_wn18_TransE():
@@ -115,7 +115,7 @@ def test_fit_predict_wn18_TransE():
     X = load_wn18()
     model = TransE(batches_count=1, seed=555, epochs=5, k=100, norm=1, loss='pairwise', loss_params={'margin':5}, verbose=True)
     model.fit(X['train'])
-    y = model.predict(X['test'][:1])
+    y, _ = model.predict(X['test'][:1])
 
     print(y)
 
@@ -179,8 +179,8 @@ def test_save_and_restore_model():
         npt.assert_array_equal(loaded_model.ent_emb_const, model.ent_emb_const)
         npt.assert_array_equal(loaded_model.rel_emb_const, model.rel_emb_const)
 
-        y_pred_before = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-        y_pred_after = loaded_model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+        y_pred_before, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+        y_pred_after, _ = loaded_model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
         npt.assert_array_equal(y_pred_after, y_pred_before)
 
         npt.assert_array_equal(loaded_model.get_embeddings(['a', 'b'], type='entity'), model.get_embeddings(['a', 'b'], type='entity'))

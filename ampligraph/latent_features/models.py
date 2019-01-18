@@ -449,7 +449,7 @@ class EmbeddingModel(abc.ABC):
                                 tf.contrib.lookup.KeyValueTensorInitializer(np.array(self.filter_keys, dtype=np.int64), np.zeros(len(self.filter_keys), dtype=np.int64))
                                 , 1)
 
-            self.all_entities=tf.constant(self.all_entities_np)
+            self.all_entities=tf.constant(np.int64(np.array(list(self.ent_to_idx.values()))))
              
             self.out_corr, self.out_corr_prime = generate_corruptions_for_eval(self.X_test_tf, self.all_entities,
                                                              self.table_entity_lookup_left, 
@@ -475,7 +475,18 @@ class EmbeddingModel(abc.ABC):
             sess.run(tf.global_variables_initializer())
             self.sess_predict = sess
 
-        return self.sess_predict.run([self.scores_predict, self.rank], feed_dict={self.X_test_tf: [X]}) #TODO TEC-1567 performance: check feed_dict
+        scores = []
+        ranks = []
+        if X.ndim>1:
+            for x in X:
+                all_scores, rank = self.sess_predict.run([self.scores_predict, self.rank], feed_dict={self.X_test_tf: [x]})
+                scores.append(all_scores[0])
+                ranks.append(rank)
+        else:
+            all_scores, ranks = self.sess_predict.run([self.scores_predict, self.rank], feed_dict={self.X_test_tf: [X]})
+            scores = all_scores[0]
+        
+        return [scores, ranks]
 
     def generate_approximate_embeddings(self, e, neighbouring_triples, pool='avg', schema_aware=False):
         """Generate approximate embeddings for entity, given neighbouring triples
