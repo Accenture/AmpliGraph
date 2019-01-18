@@ -207,7 +207,7 @@ def generate_corruptions_for_eval(X, all_entities, table_entity_lookup_left=None
     stacked_out = tf.concat([tf.stack([repeated_subjs, repeated_relns, rep_ent], 1),
                         tf.stack([rep_ent, repeated_relns, repeated_objs], 1)],0)
     out = tf.reshape(tf.transpose(stacked_out , [0, 2, 1]),(-1,3))
-    out_prime = None
+    out_prime = tf.constant([])
     
     if table_entity_lookup_left!= None and table_entity_lookup_right!=None and table_reln_lookup != None:
         prime_subj = tf.squeeze(table_entity_lookup_left.lookup(repeated_subjs))
