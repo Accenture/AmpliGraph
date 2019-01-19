@@ -444,6 +444,9 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False):
     for i in range(X_test.shape[0]):
         y_pred, rank = model.predict(X_test[i], from_idx=True)
         ranks.append(rank)
+    
+    model.end_evaluation()
+    
 
     return ranks
 
