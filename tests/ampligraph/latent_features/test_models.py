@@ -176,8 +176,9 @@ def test_save_and_restore_model():
         assert loaded_model.ent_to_idx == model.ent_to_idx
         assert loaded_model.rel_to_idx == model.rel_to_idx
 
-        npt.assert_array_equal(loaded_model.ent_emb_const, model.ent_emb_const)
-        npt.assert_array_equal(loaded_model.rel_emb_const, model.rel_emb_const)
+        for i in range(len(loaded_model.trained_model_params)):
+            npt.assert_array_equal(loaded_model.trained_model_params[i], model.trained_model_params[i])
+        
 
         y_pred_before, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
         y_pred_after, _ = loaded_model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
@@ -186,3 +187,4 @@ def test_save_and_restore_model():
         npt.assert_array_equal(loaded_model.get_embeddings(['a', 'b'], type='entity'), model.get_embeddings(['a', 'b'], type='entity'))
 
         shutil.rmtree(EXAMPLE_LOC)
+        

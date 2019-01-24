@@ -1,30 +1,35 @@
 import tensorflow as tf
 import abc
 
+LOSS_REGISTRY = {}
+
+
+def register_loss(name, external_params=[], class_params= {'require_same_size_pos_neg' : True,}):
+    def insert_in_registry(class_handle):
+        LOSS_REGISTRY[name] = class_handle
+        class_handle.name = name
+        LOSS_REGISTRY[name].external_params = external_params
+        LOSS_REGISTRY[name].class_params = class_params
+        return class_handle
+        
+    return insert_in_registry
+
+
 class Loss(abc.ABC):
     """Abstract class for loss function.
     """
-    #Internal params defined as key-value - Algorithm knows the values - external world uses it to change inputs
-    #Child class can change the internal states after copying it
-    #Child class must extend as : 
-    #                  class_param_dict = Loss.class_param_dict.copy()
-    #                  class_param_dict.update({CHILD internal params dict})
-    class_param_dict = {
-                        'require_same_size_pos_neg' : True, 
-                       }
     
-    #External params names defined as list - Algorithm needs to get values from external world
-    #It is upto the respective class to read required_params and store the values in _loss_parameters in _init_hyperparams function
-    #Child class must extend as : 
-    #                 required_param = Loss.required_param + [new params list]
-    required_param = ['eta']
+    name = ""
+    external_params = []
+    class_params = {}
     
-    
-    def __init__(self, hyperparam_dict):
+    def __init__(self, eta, hyperparam_dict):
         """Initialize Loss
 
         Parameters
         ----------
+        eta: int
+            number of negatives
         hyperparam_dict : dict
             dictionary of hyperparams for the loss
         """
@@ -33,8 +38,14 @@ class Loss(abc.ABC):
         
         #perform check to see if all the required external hyperparams are passed
         try:
-            self._loss_parameters['eta'] = hyperparam_dict.get('eta')
+            self._loss_parameters['eta'] = eta
             self._init_hyperparams(hyperparam_dict)
+            print('------ Loss-----')
+            print('Name:', self.name)
+            print('Parameters:')
+            for key in self._loss_parameters.keys():
+                print("  ", key, ": ", self._loss_parameters[key])
+            
         except KeyError:
             raise Exception('Some of the hyperparams for loss were not passed to the loss function')
             
@@ -51,7 +62,7 @@ class Loss(abc.ABC):
             the value of the corresponding state
         """
         try:
-            param_value = self.class_param_dict.get(param_name)
+            param_value = LOSS_REGISTRY[self.name].class_params.get(param_name)
             return param_value
         except KeyError:
              raise Exception('Invald Key')
@@ -77,7 +88,7 @@ class Loss(abc.ABC):
             A tensor of scores assigned to negative statements.
         """
         self._dependencies = []
-        if self.class_param_dict['require_same_size_pos_neg'] and self._loss_parameters['eta']!=1:
+        if LOSS_REGISTRY[self.name].class_params['require_same_size_pos_neg'] and self._loss_parameters['eta']!=1:
              self._dependencies.append(tf.Assert(tf.equal(tf.shape(scores_pos)[0] ,tf.shape(scores_neg)[0]), [tf.shape(scores_pos)[0], tf.shape(scores_neg)[0]]))
         
 
@@ -117,7 +128,8 @@ class Loss(abc.ABC):
         with tf.control_dependencies(self._dependencies):
             loss = self._apply(scores_pos, scores_neg)
         return loss
-        
+
+@register_loss("pairwise", ['margin'])
 class PairwiseLoss(Loss):
     """Pairwise, max-margin loss.
 
@@ -132,10 +144,8 @@ class PairwiseLoss(Loss):
 
     """
     
-    required_param = Loss.required_param + ['margin'] 
-    
-    def __init__(self, hyperparam_dict):
-        super().__init__(hyperparam_dict)
+    def __init__(self, eta, hyperparam_dict):
+        super().__init__(eta,  hyperparam_dict)
         
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparams needed by the algorithm
@@ -154,7 +164,7 @@ class PairwiseLoss(Loss):
         return loss
     
 
-        
+@register_loss("nll")        
 class NLLLoss(Loss):
     """Negative log-likelihood loss.
 
@@ -168,8 +178,8 @@ class NLLLoss(Loss):
     :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
     """
-    def __init__(self, hyperparam_dict):
-        super().__init__(hyperparam_dict)
+    def __init__(self, eta, hyperparam_dict):
+        super().__init__(eta, hyperparam_dict)
         
     
     def _init_hyperparams(self, hyperparam_dict):
@@ -201,7 +211,7 @@ class NLLLoss(Loss):
         return tf.reduce_sum(tf.log(1 + tf.exp(scores)))
 
     
-    
+@register_loss("absolute_margin", ['margin'] )      
 class AbsoluteMarginLoss(Loss):
     """Absolute margin , max-margin loss.
 
@@ -215,11 +225,8 @@ class AbsoluteMarginLoss(Loss):
        :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
     """
     
-    
-    required_param = Loss.required_param + ['margin'] 
-    
-    def __init__(self, hyperparam_dict):
-        super().__init__(hyperparam_dict)
+    def __init__(self, eta, hyperparam_dict):
+        super().__init__(eta, hyperparam_dict)
         
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparams needed by the algorithm
@@ -252,7 +259,7 @@ class AbsoluteMarginLoss(Loss):
         return loss
     
 
-    
+@register_loss("self_adverserial", ['margin', 'alpha'], {'require_same_size_pos_neg':False})      
 class SelfAdverserialLoss(Loss):
     """Self adverserial sampling loss
 
@@ -264,12 +271,8 @@ class SelfAdverserialLoss(Loss):
 
        where :math:`\gamma` is the margin, and p(h_{i}^{'} ,r,t_{i}^{'} ) is the sampling proportion
     """
-    required_param = Loss.required_param + ['margin', 'alpha'] 
-    class_param_dict = Loss.class_param_dict.copy()
-    class_param_dict['require_same_size_pos_neg'] = False
-    
-    def __init__(self, hyperparam_dict):
-        super().__init__(hyperparam_dict)
+    def __init__(self, eta, hyperparam_dict):
+        super().__init__(eta, hyperparam_dict)
     
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparams needed by the algorithm
