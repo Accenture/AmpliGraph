@@ -4,13 +4,29 @@ from sklearn.utils import check_random_state
 from functools import partial
 import abc
 from tqdm import tqdm
+
+
+
+MODEL_REGISTRY = {}
+
+
+from .loss_functions import LOSS_REGISTRY
+from .regularizers import REGULARIZER_REGISTRY
 from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, hits_at_n_score, mrr_score
-from .loss_functions import AbsoluteMarginLoss, NLLLoss, PairwiseLoss, SelfAdverserialLoss
-from .regularizers import l1_regularizer, l2_regularizer
 import os
 
 DEFAULT_PAIRWISE_MARGIN = 1
 
+
+
+def register_model(name, external_params=[], class_params= {}):
+    def insert_in_registry(class_handle):
+        MODEL_REGISTRY[name] = class_handle
+        class_handle.name = name
+        MODEL_REGISTRY[name].external_params = external_params
+        MODEL_REGISTRY[name].class_params = class_params
+        return class_handle
+    return insert_in_registry
 
 class EmbeddingModel(abc.ABC):
     """Abstract class for a neural knowledge graph embedding model.
@@ -19,7 +35,7 @@ class EmbeddingModel(abc.ABC):
                  embedding_model_params = {},
                  optimizer="adagrad", optimizer_params={}, 
                  loss='nll', loss_params = {}, 
-                 regularizer=None, regularizer_params = {},
+                 regularizer="None", regularizer_params = {},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
         """Initialize an EmbeddingModel
 
@@ -41,9 +57,9 @@ class EmbeddingModel(abc.ABC):
             Parameter values of embedding model specific hyperparams
         optimizer : string
             The optimizer used to minimize the loss function. Choose between ``sgd``,
-            ``adagrad``, ``adam``, ``momentum``.
+            ``adagrad``, ``adam``.
         optimizer_params : dict    
-            Parameters values specific to the optimizer. (lr, momentum, etc)
+            Parameters values specific to the optimizer. (lr, etc)
         loss : string
             The type of loss function to use during training. If ``pairwise``, the pairwise margin-based loss function
             is chosen. If ``nll``, the model will use negative loss likelihood.
@@ -85,7 +101,6 @@ class EmbeddingModel(abc.ABC):
         
         self.is_filtered = False
         self.loss_params = loss_params
-        self.loss_params['eta'] = eta
         
         self.embedding_model_params = embedding_model_params
         
@@ -98,38 +113,27 @@ class EmbeddingModel(abc.ABC):
         if batches_count == 1:
             print('WARN: when batches_count=1 all triples will be processed in the same batch. '
                   'This may introduce memory issues.')
-        if loss == 'pairwise':
-            self.loss = PairwiseLoss(self.loss_params)
-        elif loss == 'nll':
-            self.loss = NLLLoss(self.loss_params)
-        elif loss == 'absolute_margin':
-            self.loss = AbsoluteMarginLoss(self.loss_params)
-        elif loss == 'self_adverserial':
-            self.loss = SelfAdverserialLoss(self.loss_params)
-        else:
+            
+        try:
+            self.loss = LOSS_REGISTRY[loss](self.eta, self.loss_params)
+        except KeyError:
             raise ValueError('Unsupported loss function: %s' % loss)
+            
+        try:
+            self.regularizer = REGULARIZER_REGISTRY[regularizer](self.regularizer_params)
+        except KeyError:
+            raise ValueError('Unsupported regularizer: %s' % regularizer)
+            
         
         self.optimizer_params = optimizer_params
         if optimizer == "adagrad":
             self.optimizer = tf.train.AdagradOptimizer(learning_rate=self.optimizer_params.get('lr', 0.1))
         elif optimizer == "adam":
             self.optimizer = tf.train.AdamOptimizer(learning_rate=self.optimizer_params.get('lr', 0.1))
-        elif optimizer == "momentum":
-            self.optimizer = tf.train.MomentumOptimizer(self.optimizer_params.get('lr', 0.1), 
-                                                        self.optimizer_params.get('momentum',0.1))
         elif optimizer == "sgd":
             self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.optimizer_params.get('lr', 0.1))
         else:
             raise ValueError('Unsupported optimizer: %s' % optimizer)
-
-        if regularizer == 'L2':
-            self.regularizer = l2_regularizer
-        elif regularizer == 'L1':
-            self.regularizer = l1_regularizer
-        elif regularizer is None:
-            self.regularizer = None
-        else:
-            raise ValueError('Unsupported regularizer: %s' % regularizer)
 
         self.verbose = verbose
 
@@ -140,7 +144,7 @@ class EmbeddingModel(abc.ABC):
         self.tf_config.gpu_options.allow_growth = True
         self.sess_train = None
         self.sess_predict = None
-
+        self.trained_model_params = []
         self.is_fitted = False
         self.model_checkpoint_path = model_checkpoint_path
 
@@ -168,6 +172,40 @@ class EmbeddingModel(abc.ABC):
         """
         NotImplementedError("This function is a placeholder in an abstract class")
 
+    def get_embedding_model_params(self, output_dict):
+        """save the model parameters in the dictionary.
+        Parameters
+        ----------
+        output_dict : dictionary
+            Dictionary of saved params. 
+            It's the duty of the model to save all the variables correctly, so that it can be used for loading later.
+        """
+        output_dict['model_params'] = self.trained_model_params
+        
+    def restore_model_params(self, in_dict):
+        """Load the model parameters from the input dictionary.
+        
+        Parameters
+        ----------
+        in_dict : dictionary
+            Dictionary of saved params. It's the duty of the model to load the variables correctly
+        """
+        
+        self.trained_model_params = in_dict['model_params']
+        
+    def _save_trained_params(self):
+        """Save all the trained parameters that would be required for restoring. 
+        """
+        self.trained_model_params = self.sess_train.run([self.ent_emb, self.rel_emb])
+        
+    def _load_model_from_trained_params(self):
+        """Load the model from trained params. 
+            While restoring make sure that the order of loaded parameters match the saved order.
+            It's the duty of the model to load the variables correctly
+        """
+        self.ent_emb = tf.constant(self.trained_model_params[0])
+        self.rel_emb = tf.constant(self.trained_model_params[1])
+        
     def get_embeddings(self, entities, type='entity'):
         """Get the embeddings of entities or relations
 
@@ -190,10 +228,10 @@ class EmbeddingModel(abc.ABC):
             raise RuntimeError('Model has not been fitted.')
 
         if type is 'entity':
-            emb_list = self.ent_emb_const
+            emb_list = self.trained_model_params[0]
             lookup_dict = self.ent_to_idx
         elif type is 'relation':
-            emb_list = self.rel_emb_const
+            emb_list = self.trained_model_params[1]
             lookup_dict = self.rel_to_idx
         else:
             raise ValueError('Invalid entity type: %s' % type)
@@ -284,8 +322,7 @@ class EmbeddingModel(abc.ABC):
 
         loss = self.loss.apply(scores_pos, scores_neg)
         
-        if self.regularizer is not None:
-            loss += self.regularizer([self.ent_emb, self.rel_emb], self.regularizer_params)
+        loss += self.regularizer.apply([self.ent_emb, self.rel_emb])
 
         train = self.optimizer.minimize(loss, var_list=[self.ent_emb, self.rel_emb])
 
@@ -331,10 +368,11 @@ class EmbeddingModel(abc.ABC):
         self.sess_train.run(tf.global_variables_initializer())
         
         X_batches = np.array_split(X, self.batches_count)
-        losses = []
+        
             
         
         for epoch in tqdm(range(self.epochs), disable=(not self.verbose), unit='epoch'):
+            losses = []
             for j in range(self.batches_count):
                 X_pos_b = X_batches[j]
                 _, loss_batch = self.sess_train.run([train, loss], {x_pos_tf: X_pos_b})
@@ -342,7 +380,7 @@ class EmbeddingModel(abc.ABC):
                 if self.verbose:
                     mean_loss = loss_batch / (len(X_pos_b)*self.eta)
                     losses.append(mean_loss)
-                    tqdm.write('epoch: %d, batch %d: mean loss: %.10f' % (epoch, j, mean_loss))
+                    tqdm.write('epoch: %d, batch %d: mean loss: %.10f' % (epoch, j, np.mean(np.array(losses))))
             
             # TODO TEC-1529: add early stopping criteria
             if early_stopping and epoch >= early_stopping_params.get('burn_in', 5)  \
@@ -382,16 +420,17 @@ class EmbeddingModel(abc.ABC):
                     print('Found Better')
                     early_stopping_best_value = current_test_value
                     early_stopping_stop_counter = 0
-                    self.ent_emb_const = self.sess_train.run(self.ent_emb)
-                    self.rel_emb_const = self.sess_train.run(self.rel_emb)
+                    self._save_trained_params()
         
         
-        self.ent_emb_const = self.sess_train.run(self.ent_emb)
-        self.rel_emb_const = self.sess_train.run(self.rel_emb)
+        self._save_trained_params()
         self.sess_train.close()
         self.is_fitted = True
                     
-        
+    
+    def _get_loss(self, scores_pos, scores_neg):
+        return self.loss.apply(scores_pos, scores_neg)
+    
     def set_filter_for_eval(self, x_filter):
         """Set the filter to be used during evaluation (filtered_corruption = corruptions - filter)
         
@@ -496,7 +535,7 @@ class EmbeddingModel(abc.ABC):
         e_s, e_p, e_o = self._lookup_embeddings(self.concatinated_set)
         self.scores_predict = self._fn(e_s, e_p, e_o)
         self.score_positive = tf.gather(self.scores_predict, 0)
-        self.rank = tf.reduce_sum(tf.cast(self.scores_predict > self.score_positive, tf.int32)) + 1
+        self.rank = tf.reduce_sum(tf.cast(self.scores_predict >= self.score_positive, tf.int32)) + 1
         
     def end_evaluation(self):
         self.sess_predict.close()
@@ -538,8 +577,7 @@ class EmbeddingModel(abc.ABC):
 
         # build tf graph for predictions
         if self.sess_predict is None:
-            self.ent_emb = tf.constant(self.ent_emb_const)
-            self.rel_emb = tf.constant(self.rel_emb_const)
+            self._load_model_from_trained_params()
             
             self._initialize_eval_graph()
             
@@ -606,7 +644,7 @@ class EmbeddingModel(abc.ABC):
         new_emb_idx = int(self.ent_emb.shape[0])
 
         # Add e and approximate embedding to self.ent_emb
-        self.ent_emb_const = np.concatenate([self.ent_emb_const, np.expand_dims(approximate_embedding, 0)], axis=0)
+        self.trained_model_params[0] = np.concatenate([self.trained_model_params[0], np.expand_dims(approximate_embedding, 0)], axis=0)
         self.ent_emb = tf.concat([self.ent_emb, new_emb], axis=0)
         self.ent_to_idx[e] = new_emb_idx
 
@@ -626,7 +664,7 @@ class RandomBaseline():
     def predict(self, X, from_idx=False):
         return self.rnd.uniform(low=0, high=1, size=len(X))
 
-
+@register_model("TransE", ["norm"])
 class TransE(EmbeddingModel):
     """The Translating Embedding model (TransE)
 
@@ -659,7 +697,7 @@ class TransE(EmbeddingModel):
                  embedding_model_params = {}, 
                  optimizer="adagrad", optimizer_params={}, 
                  loss='nll', loss_params = {}, 
-                 regularizer=None, regularizer_params = {},
+                 regularizer="None", regularizer_params = {},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
         
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
@@ -729,6 +767,7 @@ class TransE(EmbeddingModel):
         """
         return super().predict(X, from_idx=from_idx)
 
+@register_model("DistMult")
 class DistMult(EmbeddingModel):
     """The DistMult model.
 
@@ -761,7 +800,7 @@ class DistMult(EmbeddingModel):
                  embedding_model_params = {}, 
                  optimizer="adagrad", optimizer_params={}, 
                  loss='nll', loss_params = {}, 
-                 regularizer=None, regularizer_params = {},
+                 regularizer="None", regularizer_params = {},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
         
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
@@ -831,7 +870,8 @@ class DistMult(EmbeddingModel):
 
         """
         return super().predict(X, from_idx=from_idx)
-    
+
+@register_model("ComplEx")
 class ComplEx(EmbeddingModel):
     """ Complex Embeddings model.
 
@@ -873,7 +913,7 @@ class ComplEx(EmbeddingModel):
                  embedding_model_params = {}, 
                  optimizer="adagrad", optimizer_params={}, 
                  loss='nll', loss_params = {}, 
-                 regularizer=None, regularizer_params = {},
+                 regularizer="None", regularizer_params = {},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
         
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
@@ -954,4 +994,7 @@ class ComplEx(EmbeddingModel):
 
         """
         return super().predict(X, from_idx=from_idx)
+    
+
+
     

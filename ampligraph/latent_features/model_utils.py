@@ -25,12 +25,10 @@ def save_model(model, loc):
         'class_name': model.__class__.__name__,
         'hyperparams': model.all_params,
         'is_fitted': model.is_fitted,
-        'ent_emb_const': model.ent_emb_const,
         'ent_to_idx': model.ent_to_idx,
-        'rel_emb_const': model.rel_emb_const,
         'rel_to_idx': model.rel_to_idx,
     }
-
+    model.get_embedding_model_params(obj)
     with open(hyperParamPath, 'wb') as fw:
         pickle.dump(obj, fw)
 
@@ -57,9 +55,9 @@ def restore_model(loc):
         class_ = getattr(module, restored_obj['class_name'])
         model = class_(**restored_obj['hyperparams'])
         model.is_fitted = restored_obj['is_fitted']
-        model.ent_emb_const = restored_obj['ent_emb_const']
         model.ent_to_idx = restored_obj['ent_to_idx']
-        model.rel_emb_const = restored_obj['rel_emb_const']
         model.rel_to_idx = restored_obj['rel_to_idx']
+        model.restore_model_params(restored_obj)
         return model
     return None
+

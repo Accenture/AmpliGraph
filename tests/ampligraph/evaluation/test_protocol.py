@@ -10,14 +10,26 @@ import tensorflow as tf
 def test_select_best_model_ranking():
     X = load_wn18()
     model_class = ComplEx
-    param_grid = {'batches_count': [10],
-                  'seed': [0],
-                  'epochs': [1],
-                  'k': [50, 150],
-                  'pairwise_margin': [1],
-                  'lr': [.1],
-                  'eta': [2],
-                  'loss': ['pairwise']}
+    param_grid = in_dict = {
+        "batches_count": [500],
+        "seed": 0,
+        "epochs": [2000],
+        "k": [10, 150],
+        "eta": [10],
+        "loss": ["nll"],
+        "loss_params": {
+                        },
+        "embedding_model_params": {
+                        },
+        "regularizer": ["None"],
+
+        "regularizer_params": {
+        },
+        "optimizer": ["adagrad"],
+        "optimizer_params":{
+            "lr": [0.1, 0.01, 0.001]
+        }
+    }
     best_model, best_params, best_mrr_train, ranks_test, mrr_test = select_best_model_ranking(model_class, X,
                                                                                               param_grid,
                                                                                               filter_retrain=True,
@@ -29,8 +41,8 @@ def test_select_best_model_ranking():
 @pytest.mark.skip(reason="Speeding up jenkins")
 def test_evaluate_performance():
     X = load_wn18()
-    model = ComplEx(batches_count=10, seed=0, epochs=10, k=150, lr=.1, eta=10, loss='pairwise', lambda_reg=0.01,
-                    pairwise_margin=5, regularizer=None, optimizer='adagrad', verbose=True)
+    model = ComplEx(batches_count=10, seed=0, epochs=10, k=150, eta=10, loss='pairwise', loss_params = {'margin': 5},
+                    regularizer='None', optimizer='adagrad', optimizer_params= {'lr':0.1}, verbose=True)
     model.fit(np.concatenate((X['train'], X['valid'])))
 
     filter = np.concatenate((X['train'], X['valid'], X['test']))
@@ -48,8 +60,8 @@ def test_evaluate_performance():
 @pytest.mark.skip(reason="Speeding up jenkins")
 def test_evaluate_performance_nll_complex():
     X = load_wn18()
-    model = ComplEx(batches_count=10, seed=0, epochs=10, k=150, lr=.1, eta=10, loss='nll', lambda_reg=0.01,
-                    regularizer=None, optimizer='adagrad', verbose=True)
+    model = ComplEx(batches_count=10, seed=0, epochs=10, k=150, optimizer_params= {'lr':0.1}, eta=10, loss='nll',
+                    optimizer='adagrad', verbose=True)
     model.fit(np.concatenate((X['train'], X['valid'])))
 
     filter = np.concatenate((X['train'], X['valid'], X['test']))
@@ -65,8 +77,8 @@ def test_evaluate_performance_nll_complex():
 @pytest.mark.skip(reason="Speeding up jenkins")
 def test_evaluate_performance_TransE():
     X = load_wn18()
-    model = TransE(batches_count=10, seed=0, epochs=100, k=100, lr=.1, eta=5,
-                   pairwise_margin=5, loss='pairwise', optimizer='adagrad')
+    model = TransE(batches_count=10, seed=0, epochs=100, k=100, eta=5, optimizer_params= {'lr':0.1},
+                   loss='pairwise', loss_params = {'margin': 5}, optimizer='adagrad')
     model.fit(np.concatenate((X['train'], X['valid'])))
 
     filter = np.concatenate((X['train'], X['valid'], X['test']))
@@ -114,7 +126,7 @@ def test_generate_corruptions_for_eval():
                                  [7, 0, 1]])
     np.testing.assert_array_equal(x_n_actual, x_n_expected)
 
-@pytest.mark.skip(reason="Needs to change to account for prime-product wvaluation strategy")
+@pytest.mark.skip(reason="Needs to change to account for prime-product evaluation strategy")
 def test_generate_corruptions_for_eval_filtered():
     x = np.array([0, 0, 1])
     idx_entities = np.array([0, 1, 2, 3])
@@ -127,7 +139,7 @@ def test_generate_corruptions_for_eval_filtered():
                              [0, 0, 3]])
     np.testing.assert_array_equal(np.sort(x_n_actual, axis=0), np.sort(x_n_expected, axis=0))
 
-@pytest.mark.skip(reason="Needs to change to account for prime-product wvaluation strategy")
+@pytest.mark.skip(reason="Needs to change to account for prime-product evaluation strategy")
 def test_generate_corruptions_for_eval_filtered_object():
     x = np.array([0, 0, 1])
     idx_entities = np.array([0, 1, 2, 3])

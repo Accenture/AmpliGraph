@@ -1,10 +1,13 @@
 import numpy as np
 from tqdm import tqdm
+
+
 from ..evaluation import rank_score, mrr_score
 import os
 from joblib import Parallel, delayed
 import itertools
 import tensorflow as tf
+
 
 
 def train_test_split_no_unseen(X, test_size=5000, seed=0):
@@ -450,6 +453,88 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False):
 
     return ranks
 
+def yield_all_permutations(registry, category_type, category_type_params):
+    """Yields all the permutation of category type with their respective hyperparams
+    
+    Parameters
+    ----------
+    registry: registry of the category type
+    category_type: category type values
+    category_type_params: category type hyperparams
+
+    Returns:
+    name: specific name of the category
+    present_params: names of hyperparameters of the category
+    val: values of the respective hyperparams
+    """
+    for name in category_type:
+        present_params = []
+        present_params_vals = []
+        for param in registry[name].external_params:
+            try:
+                present_params_vals.append(category_type_params[param])
+                present_params.append(param)
+            except KeyError:
+                pass
+        for val in itertools.product(*present_params_vals):
+            yield name, present_params, val
+
+def gridsearch_next_hyperparam(model_name, in_dict, seed=-1):
+    """Performs grid search on hyperparams
+    
+    Parameters
+    ----------
+    model_name: name of the embedding model
+    in_dict: dictionary of all the parameters and the list of values to be searched
+    seed: seed(>=0) to be used if any for reproducibility. By default, uses no seed
+
+    Returns:
+    out_dict: dictionary containing an instance of model hypermeters
+    """
+    from ..latent_features import LOSS_REGISTRY, REGULARIZER_REGISTRY, MODEL_REGISTRY
+    for batch_count in in_dict["batches_count"]:
+        for epochs in in_dict["epochs"]:
+            for k in in_dict["k"]:
+                for eta in in_dict["eta"]:
+                    for reg_type, reg_params, reg_param_values in \
+                        yield_all_permutations(REGULARIZER_REGISTRY, in_dict["regularizer"], in_dict["regularizer_params"]):
+                        for optimizer_type in in_dict["optimizer"]:
+                            for optimizer_lr in in_dict["optimizer_params"]["lr"]:
+                                for loss_type, loss_params, loss_param_values in \
+                                    yield_all_permutations(LOSS_REGISTRY, in_dict["loss"], in_dict["loss_params"]):
+                                    for model_type, model_params, model_param_values in \
+                                        yield_all_permutations(MODEL_REGISTRY, [model_name], in_dict["embedding_model_params"]):
+                            
+                                        out_dict = {
+                                            "batches_count": batch_count,
+                                            "epochs": epochs,
+                                            "k": k,
+                                            "eta": eta,
+                                            "loss": loss_type,
+                                            "loss_params": {},
+                                            "embedding_model_params": {},
+                                            "regularizer": reg_type,
+                                            "regularizer_params": {},
+                                            "optimizer": optimizer_type,
+                                            "optimizer_params":{
+                                                "lr": optimizer_lr
+                                                }
+                                            }
+                                
+                                        if seed >= 0:
+                                            out_dict["seed"] = seed
+                                            
+                                        for idx in range(len(loss_params)):
+                                            out_dict["loss_params"][loss_params[idx]] = loss_param_values[idx]
+                                        for idx in range(len(reg_params)):
+                                            out_dict["regularizer_params"][reg_params[idx]] = reg_param_values[idx]
+                                        for idx in range(len(model_params)):
+                                            out_dict["embedding_model_params"][model_params[idx]] = model_param_values[idx] 
+                                            
+                                        yield (out_dict)
+                                        
+
+
 
 def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, eval_splits=10,
                               corruption_entities=None, verbose=False):
@@ -524,13 +609,28 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
     >>>                           eval_splits=50, verbose=True)
 
     """
-
-    model_params_combinations = (dict(zip(param_grid, x)) for x in itertools.product(*param_grid.values()))
-
+    hyperparams_list_keys = ["batches_count", "epochs", "k", "eta", "loss", "regularizer", "optimizer"]
+    hyperparams_dict_keys = ["loss_params", "embedding_model_params",  "regularizer_params",  "optimizer_params"]
+    
+    for key in hyperparams_list_keys:
+        if key not in param_grid.keys() or param_grid[key]==[]:
+            raise ValueError('Please pass values for key ' + key)
+            
+    for key in hyperparams_dict_keys:
+        if key not in param_grid.keys():
+            param_grid[key] = {}
+    
+    #this would be extended later to take multiple params for optimizers(currently only lr supported)
+    try:
+        lr = param_grid["optimizer_params"]["lr"]
+    except KeyError:
+        raise ValueError('Please pass values for optimizer parameter - lr')
+    
+    model_params_combinations = gridsearch_next_hyperparam(model_class.name, param_grid)
+    
     best_mrr_train = 0
     best_model = None
     best_params = None
-
     for model_params in model_params_combinations:
         model = model_class(**model_params)
         model.fit(X['train'])
@@ -541,7 +641,6 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
             best_mrr_train = curr_mrr
             best_model = model
             best_params = model_params
-
     # Retraining
 
     if filter_retrain:
