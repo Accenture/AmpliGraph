@@ -479,14 +479,13 @@ def yield_all_permutations(registry, category_type, category_type_params):
         for val in itertools.product(*present_params_vals):
             yield name, present_params, val
 
-def gridsearch_next_hyperparam(model_name, in_dict, seed=-1):
+def gridsearch_next_hyperparam(model_name, in_dict):
     """Performs grid search on hyperparams
     
     Parameters
     ----------
     model_name: name of the embedding model
     in_dict: dictionary of all the parameters and the list of values to be searched
-    seed: seed(>=0) to be used if any for reproducibility. By default, uses no seed
 
     Returns:
     out_dict: dictionary containing an instance of model hypermeters
@@ -504,7 +503,17 @@ def gridsearch_next_hyperparam(model_name, in_dict, seed=-1):
                                     yield_all_permutations(LOSS_REGISTRY, in_dict["loss"], in_dict["loss_params"]):
                                     for model_type, model_params, model_param_values in \
                                         yield_all_permutations(MODEL_REGISTRY, [model_name], in_dict["embedding_model_params"]):
-                            
+                                        
+                                        try:
+                                            verbose = in_dict["verbose"]
+                                        except KeyError:
+                                            verbose = False
+                                            
+                                        try:
+                                            seed = in_dict["seed"]
+                                        except KeyError:
+                                            seed = -1
+                                            
                                         out_dict = {
                                             "batches_count": batch_count,
                                             "epochs": epochs,
@@ -518,7 +527,8 @@ def gridsearch_next_hyperparam(model_name, in_dict, seed=-1):
                                             "optimizer": optimizer_type,
                                             "optimizer_params":{
                                                 "lr": optimizer_lr
-                                                }
+                                                },
+                                            "verbose": verbose
                                             }
                                 
                                         if seed >= 0:
