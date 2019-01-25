@@ -385,7 +385,7 @@ class EmbeddingModel(abc.ABC):
             # TODO TEC-1529: add early stopping criteria
             if early_stopping and epoch >= early_stopping_params.get('burn_in', 5)  \
                                 and epoch%early_stopping_params.get('check_interval',3)==0:
-                print('Early Stopping test epoch:', epoch)
+                #print('Early Stopping test epoch:', epoch)
                 #compute and store test_loss
                 ranks = []
                 if x_valid.ndim>1:
@@ -395,7 +395,7 @@ class EmbeddingModel(abc.ABC):
                 else:
                     ranks = self.sess_train.run([self.rank], feed_dict={self.X_test_tf: [x_test_triple]})
                 
-                print('Early Stopping Best ' + early_stopping_criteria +' :', early_stopping_best_value)
+                #print('Early Stopping Best ' + early_stopping_criteria +' :', early_stopping_best_value)
                 if early_stopping_criteria == 'hits10':
                     current_test_value = hits_at_n_score(ranks,10)
                 elif early_stopping_criteria == 'hits3':
@@ -404,12 +404,12 @@ class EmbeddingModel(abc.ABC):
                     current_test_value = hits_at_n_score(ranks,1)
                 elif early_stopping_criteria == 'mrr':
                     current_test_value = mrr_score(ranks)
-                print('Early Stopping Current ' + early_stopping_criteria +' :', current_test_value)
+                #print('Early Stopping Current ' + early_stopping_criteria +' :', current_test_value)
                 
                 
                 if early_stopping_best_value >= current_test_value:
                     early_stopping_stop_counter += 1
-                    print('Found Worse', early_stopping_stop_counter)
+                    #print('Found Worse', early_stopping_stop_counter)
                     if early_stopping_stop_counter == early_stopping_params.get('stop_interval', 3):
                         print('Early stopping with best model ' + early_stopping_criteria +' :', early_stopping_best_value)
                         self.is_filtered = False
@@ -417,7 +417,7 @@ class EmbeddingModel(abc.ABC):
                         self.is_fitted = True
                         return
                 else:
-                    print('Found Better')
+                    #print('Found Better')
                     early_stopping_best_value = current_test_value
                     early_stopping_stop_counter = 0
                     self._save_trained_params()
@@ -535,7 +535,7 @@ class EmbeddingModel(abc.ABC):
         e_s, e_p, e_o = self._lookup_embeddings(self.concatinated_set)
         self.scores_predict = self._fn(e_s, e_p, e_o)
         self.score_positive = tf.gather(self.scores_predict, 0)
-        self.rank = tf.reduce_sum(tf.cast(self.scores_predict >= self.score_positive, tf.int32)) + 1
+        self.rank = tf.reduce_sum(tf.cast(self.scores_predict >= self.score_positive, tf.int32))
         
     def end_evaluation(self):
         self.sess_predict.close()

@@ -2,7 +2,7 @@ import numpy as np
 from tqdm import tqdm
 
 
-from ..evaluation import rank_score, mrr_score
+from ..evaluation import rank_score, mrr_score, hits_at_n_score, mar_score
 import os
 from joblib import Parallel, delayed
 import itertools
@@ -575,6 +575,12 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
         model.fit(X['train'])
         ranks = evaluate_performance(X['valid'], model=model, filter_triples=None, verbose=verbose)
         curr_mrr = mrr_score(ranks)
+        mr = mar_score(ranks)
+        hits_1 = hits_at_n_score(ranks, n=1)
+        hits_3 = hits_at_n_score(ranks, n=3)
+        hits_10 = hits_at_n_score(ranks, n=10)
+        if verbose:
+            print("mr:{0} mrr: {1} hits 1: {2} hits 3: {3} hits 10: {4}, model: {5}, params: {6}".format(mr, curr_mrr, hits_1, hits_3, hits_10, type(model).__name__, model_params))
 
         if curr_mrr > best_mrr_train:
             best_mrr_train = curr_mrr
