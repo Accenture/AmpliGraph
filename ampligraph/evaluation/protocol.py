@@ -256,91 +256,20 @@ def generate_corruptions_for_fit(X, all_entities, eta=1, rnd=None):
         An array of corruptions for a list of positive triples x.
 
     """
-    # idea: to make [1, 0, 2] becomes [1, 0, 3]
-    # first random value 3
-    # random position for 3 (s or o)
-    # [1,0,3] = [1, 0, 2] * [1, 1, 0] + [0, 0, 3]
-    # random entities with condition of s must different from o in X corr
+	dataset =  tf.reshape(tf.tile(tf.reshape(X,[-1]),[eta]),[tf.shape(X)[0]*eta,3])
+	keep_subj_mask = tf.tile(tf.cast(tf.random_uniform([tf.shape(X)[0]], 0, 2, dtype=tf.int32, seed=rnd),tf.bool),[eta])
+	keep_obj_mask = tf.logical_not(keep_subj_mask)
+	keep_subj_mask = tf.cast(keep_subj_mask,tf.int32)
+	keep_obj_mask = tf.cast(keep_obj_mask,tf.int32)
 
-    #Generate mask to replace subject entities in corruptions:
-    #Uniformly decide where to replace subj entities in the batch of corruptions
-    replace_subj = tf.greater(tf.random.uniform([ tf.shape(X)[0], eta, 1], 
-                                                    seed=rnd), 0.5)
-    #If not subject, replace object
-    replace_obj = tf.logical_not(replace_subj)
-    
-    #Sample entity indices uniformly with which the subject must be replaced
-    uniform_idx = tf.random.uniform([eta * tf.shape(X)[0]], 
-                                        minval=0, 
-                                        maxval = tf.shape(all_entities)[0],
-                                        dtype=tf.int32, 
-                                        seed=rnd)
+	replacements = tf.random_uniform([tf.shape(dataset)[0]],0,tf.shape(all_entities)[0], dtype=tf.int32, seed=rnd)
 
-    uniform_idx = tf.expand_dims(uniform_idx, 1)
-    #Get the actual entitity
-    random_sampled = tf.gather_nd(all_entities, uniform_idx)
-    
-    #Generate eta replacements for each subject 
-    #(but replace only the ones where mask == True)
-    #First repeat and create eta subject copies for each subject
-    repeated_subjs = tf.keras.backend.repeat(
-                                                tf.slice(X,
-                                                    [0, 0], #subj
-                                                    [tf.shape(X)[0],1])
-                                            , eta)
-    
-    #based on the generated mask replace subject
-    repeated_subjs = tf.where(replace_subj, 
-                                tf.reshape(random_sampled,
-                                            [ tf.shape(X)[0], eta, 1]), 
-                                repeated_subjs)
-
-    repeated_subjs = tf.squeeze(repeated_subjs, 2)
-    
-    #Sample entity indices uniformly with which the object must be replaced
-    uniform_idx = tf.random.uniform([eta * tf.shape(X)[0]], 
-                                    minval=0, 
-                                    maxval = tf.shape(all_entities)[0], 
-                                    seed=rnd, 
-                                    dtype=tf.int32)
-
-    uniform_idx = tf.expand_dims(uniform_idx, 1)
-    #Get the actual entitity
-    random_sampled = tf.gather_nd(all_entities, uniform_idx)
-    
-    #Generate eta replacements for each objects 
-    #(but replace only the ones where mask == True)
-    #First repeat and create eta object copies for each object
-    repeated_objs = tf.keras.backend.repeat(
-                                                tf.slice(X,
-                                                        [0, 2], #Obj
-                                                        [tf.shape(X)[0], 1])
-                                            , eta)
-
-    #based on the generated mask replace object
-    repeated_objs = tf.where(replace_obj, 
-                                tf.reshape(random_sampled,
-                                                [ tf.shape(X)[0], eta, 1]), 
-                                repeated_objs)
-
-    repeated_objs = tf.squeeze(repeated_objs, 2)
-    
-    #Relations dont change while generating corruptions. 
-    #So just repeat them eta times
-    repeated_relns = tf.keras.backend.repeat(
-                                                tf.slice(X,
-                                                        [0, 1], #reln
-                                                        [tf.shape(X)[0], 1])
-                                            , eta)
-
-    repeated_relns = tf.squeeze(repeated_relns, 2)
-    
-    #Stack the subject, relation, object
-    out = tf.transpose(tf.stack([repeated_subjs, repeated_relns, repeated_objs] 
-                                , 1),
-                        [0, 2, 1])
-
-    out = tf.reshape(out, [-1, tf.shape(X)[1]])
+	subjects = tf.math.add(tf.math.multiply(keep_subj_mask,dataset[:,0]),tf.math.multiply(keep_obj_mask,replacements))
+	relationships = dataset[:,1]
+	objects = tf.math.add(tf.math.multiply(keep_obj_mask,dataset[:,2]),tf.math.multiply(keep_subj_mask,replacements))
+	
+	out = tf.transpose(tf.stack([subjects,relationships,objects]))
+	
     return out           
 
 
