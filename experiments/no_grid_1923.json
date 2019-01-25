@@ -1,0 +1,12 @@
+{
+    "batches_count": 100,
+    "seed": 0,
+    "epochs": 1000,
+    "k": 150,
+    "pairwise_margin": 2,
+    "lr": 0.1,
+    "eta": 5,
+    "loss": "pairwise",
+    "norm": 1
+}
+    

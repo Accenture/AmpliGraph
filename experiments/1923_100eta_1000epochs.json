@@ -1,0 +1,10 @@
+{
+    "batches_count": 250,
+    "seed": 0,
+    "epochs": 2000,
+    "eta": 100,
+    "k": 150,
+    "lr": 0.01,
+    "loss": "nll",
+    "optimizer":"adagrad"
+}

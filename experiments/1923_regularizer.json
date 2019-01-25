@@ -1,0 +1,20 @@
+{
+    "batches_count": 100,
+    "seed": 0,
+    "epochs": 1000,
+    "k": 150,
+    "lr": 0.1,
+    "eta": 5,
+    "loss": "pairwise",
+    "loss_params": {
+        "margin": 2
+    },
+    "embedding_model_params": {
+        "norm": 1
+    },
+    "regularizer": "L2", 
+    "regularizer_params": {
+        "lambda": 1e-4
+    }
+}
+    
