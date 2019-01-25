@@ -1,0 +1,30 @@
+{
+    "batches_count": [50],
+    "seed": 0,
+    "epochs": [2000],
+    "k": [150, 200],
+    "eta": [5, 15],
+   
+    "loss": ["nll", "pairwise"],
+   
+    "loss_params": {
+        "margin": [0.5, 2, 5]
+    },
+   
+    "embedding_model_params": {
+        "norm": [1]
+    },
+   
+    "regularizer": ["None", "L2"],
+   
+    "regularizer_params": {
+        "lambda": [1e-4, 1e-2]
+    },
+   
+    "optimizer": ["adagrad"],
+   
+    "optimizer_params":{
+        "lr": [0.01, 0.1]
+    },
+    "verbose": false
+}

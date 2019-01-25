@@ -1,0 +1,17 @@
+{
+    "batches_count": 100,
+    "seed": 0,
+    "epochs": 1000,
+    "k": 150,
+    "lr": 0.1,
+    "eta": 5,
+    "loss": "self_adverserial",
+    "loss_params": {
+        "margin": 3,
+        "alpha": 0.5
+    },
+    "embedding_model_params": {
+        "norm": 1
+    }
+}
+    
