@@ -256,20 +256,20 @@ def generate_corruptions_for_fit(X, all_entities, eta=1, rnd=None):
         An array of corruptions for a list of positive triples x.
 
     """
-	dataset =  tf.reshape(tf.tile(tf.reshape(X,[-1]),[eta]),[tf.shape(X)[0]*eta,3])
-	keep_subj_mask = tf.tile(tf.cast(tf.random_uniform([tf.shape(X)[0]], 0, 2, dtype=tf.int32, seed=rnd),tf.bool),[eta])
-	keep_obj_mask = tf.logical_not(keep_subj_mask)
-	keep_subj_mask = tf.cast(keep_subj_mask,tf.int32)
-	keep_obj_mask = tf.cast(keep_obj_mask,tf.int32)
+    dataset =  tf.reshape(tf.tile(tf.reshape(X,[-1]),[eta]),[tf.shape(X)[0]*eta,3])
+    keep_subj_mask = tf.tile(tf.cast(tf.random_uniform([tf.shape(X)[0]], 0, 2, dtype=tf.int32, seed=rnd),tf.bool),[eta])
+    keep_obj_mask = tf.logical_not(keep_subj_mask)
+    keep_subj_mask = tf.cast(keep_subj_mask,tf.int32)
+    keep_obj_mask = tf.cast(keep_obj_mask,tf.int32)
 
-	replacements = tf.random_uniform([tf.shape(dataset)[0]],0,tf.shape(all_entities)[0], dtype=tf.int32, seed=rnd)
+    replacements = tf.random_uniform([tf.shape(dataset)[0]],0,tf.shape(all_entities)[0], dtype=tf.int32, seed=rnd)
 
-	subjects = tf.math.add(tf.math.multiply(keep_subj_mask,dataset[:,0]),tf.math.multiply(keep_obj_mask,replacements))
-	relationships = dataset[:,1]
-	objects = tf.math.add(tf.math.multiply(keep_obj_mask,dataset[:,2]),tf.math.multiply(keep_subj_mask,replacements))
-	
-	out = tf.transpose(tf.stack([subjects,relationships,objects]))
-	
+    subjects = tf.math.add(tf.math.multiply(keep_subj_mask,dataset[:,0]),tf.math.multiply(keep_obj_mask,replacements))
+    relationships = dataset[:,1]
+    objects = tf.math.add(tf.math.multiply(keep_obj_mask,dataset[:,2]),tf.math.multiply(keep_subj_mask,replacements))
+
+    out = tf.transpose(tf.stack([subjects,relationships,objects]))
+
     return out           
 
 
