@@ -253,7 +253,8 @@ def generate_corruptions_for_fit(X, all_entities, eta=1, rnd=None):
     -------
 
     out : Tensor, shape [n * eta, 3]
-        An array of corruptions for a list of positive triples x.
+        An array of corruptions for a list of positive triples x. For each row in X the corresponding corruption
+        indexes can be found at [index+i*n for i in range(eta)]
 
     """
     dataset =  tf.reshape(tf.tile(tf.reshape(X,[-1]),[eta]),[tf.shape(X)[0]*eta,3])
