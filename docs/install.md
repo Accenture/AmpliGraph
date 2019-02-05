@@ -89,9 +89,11 @@ export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
 sudo add-apt-repository ppa:jonathonf/gcc-7.3
 sudo apt-get update
 sudo apt-get install gcc-7
-sugo apt-get install g++-7
+sudo apt-get install g++-7
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 10
+sudo update-alternatives --install /usr/bin/g++-7 g++ /usr/bin/g++-7 10
 sudo update-alternatives --config gcc
+sudo update-alternatives --config g++
 ```
 
 **CentOS**
