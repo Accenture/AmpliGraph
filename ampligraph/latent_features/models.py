@@ -303,17 +303,12 @@ class EmbeddingModel(abc.ABC):
         self._initialize_embeddings()
 
         # training input placeholder
-        x_pos_tf = tf.placeholder(tf.int32, shape=[None, 3])
-        
+        x_pos_tf = tf.placeholder(tf.int32, shape=[None, 3]) 
         all_ent_tf = tf.squeeze(tf.constant(list(self.ent_to_idx.values()), dtype=tf.int32))
         #generate negatives
-        #TODO - update this is generate negative with new negative matrix
-		x_neg_tf = generate_corruptions_for_fit(x_pos_tf, all_ent_tf, self.eta, rnd=self.seed)
+        x_neg_tf = generate_corruptions_for_fit(x_pos_tf, all_ent_tf, self.eta, rnd=self.seed)
         if self.loss.get_state('require_same_size_pos_neg'):
-            #TODO - replace repeat with tile to create positive matrix
             x_pos =  tf.reshape(tf.tile(tf.reshape(x_pos_tf,[-1]),[self.eta]),[tf.shape(x_pos_tf)[0]*self.eta,3])
-			#x_pos = tf.cast(tf.keras.backend.repeat(x_pos_tf, self.eta), tf.int32)
-            #x_pos = tf.reshape(x_pos, [-1, 3])
         else:
             x_pos = x_pos_tf
         # look up embeddings from input training triples
