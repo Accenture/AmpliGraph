@@ -1,0 +1,17 @@
+API
+===
+
+AmpliGraph include the following submodules:
+
+
+.. toctree::
+    :maxdepth: 1
+
+    ampligraph.datasets
+    ampligraph.latent_features
+    ampligraph.evaluation
+
+
+.. image:: img/arch.png
+   :scale: 60%
+   :align: center

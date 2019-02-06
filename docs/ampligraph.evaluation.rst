@@ -1,0 +1,59 @@
+Evaluation
+==========
+.. currentmodule:: ampligraph.evaluation
+
+.. automodule:: ampligraph.evaluation
+
+Metrics
+-------
+
+Learning-to-rank metrics to evaluate the performance of neural graph embedding models.
+
+.. autosummary::
+    :toctree: generated
+    :template: function.rst
+
+    mrr_score
+    mar_score
+    hits_at_n_score
+    rank_score
+    quality_loss_mse
+
+
+Negatives Generation
+--------------------
+
+Negatives generation routines. These are corruption strategies based on the Local Closed-World Assumption (LCWA).
+
+.. autosummary::
+    :toctree: generated
+    :template: function.rst
+
+    generate_corruptions_for_eval
+    generate_corruptions_for_fit
+
+
+Evaluation & Model Selection
+-----------------------------
+
+Functions to evaluate the predictive power of knowledge graph embedding models, and routines for model selection.
+
+.. autosummary::
+    :toctree: generated
+    :template: function.rst
+
+    evaluate_performance
+    select_best_model_ranking
+
+
+Misc
+-----
+
+Utilities and support functions for evaluation procedures.
+
+.. autosummary::
+    :toctree: generated
+    :template: function.rst
+
+    create_mappings
+    to_idx
