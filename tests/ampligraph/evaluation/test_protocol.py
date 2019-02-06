@@ -180,7 +180,7 @@ def test_generate_corruptions_for_fit():
     # these values occur when seed=0
 
     X_corr_exp =  [[0, 0, 1],
-                   [5, 0, 3],
+                   [2, 0, 5],
                    [6, 0, 5],
                    [1, 1, 5],
                    [0, 1, 1]]
