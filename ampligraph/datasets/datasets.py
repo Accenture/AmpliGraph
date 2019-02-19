@@ -1,7 +1,6 @@
 import pandas as pd
 import os
 import numpy as np
-from hdt import HDTDocument
 
 AMPLIGRAPH_DATA_HOME = os.environ['AMPLIGRAPH_DATA_HOME']
 
@@ -177,7 +176,7 @@ def load_from_rdf(folder_name, file_name, format='nt'):
             the actual triples of the file.
     """
 
-    from rdflib import Graph
+
     g = Graph()
     g.parse(os.path.join(AMPLIGRAPH_DATA_HOME, folder_name, file_name), format=format, publicID='http://test#')
     return np.array(g)
@@ -352,57 +351,6 @@ def load_fb15k_237():
     valid = load_from_csv('fb15k-237', 'valid.txt')
     test = load_from_csv('fb15k-237', 'test.txt')
     return {'train': train, 'valid': valid, 'test': test}
-
-def load_from_hdt(folder_name, file_name):
-    """ Loads a knowledge graph serialized in the HDT format
-
-    Parameters
-    ----------
-    folder_name: str
-        base folder within AMPLIGRAPH_DATA_HOME where the file is stored.
-    file_name : str
-        file name
-   
-    Returns
-    -------
-        triples : ndarray , shape [n, 3]
-            the actual triples of the file.
-
-    Examples
-    --------
-    >>> from ampligraph.datasets import load_from_hdt
-    >>> X = load_from_hdt('wdf', 'swdf-2012-11-28.hdt')
-    >>> X[:3]
-    array([['_:b1', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1',
-        'http://data.semanticweb.org/person/barry-norton'],
-       ['_:b1', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_2',
-        'http://data.semanticweb.org/person/reto-krummenacher'],
-       ['_:b1', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
-        'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq']], dtype=object)
-
-
-
-    """
-
-    f = os.path.join(AMPLIGRAPH_DATA_HOME,folder_name, file_name)
-
-    document = HDTDocument(f)
- 
-    (triples, cardinivity) = document.search_triples("", "", "")
-
-    arr = np.empty((cardinivity, 3), dtype='object')
-
-    tmp = []
-
-    for triple in triples:
-        tmp.append(list(triple))
-    arr[::] = tmp[::]
-    
-    return arr
-
-def load_wdf():
-    arr = load_from_hdt('wdf', 'swdf-2012-11-28.hdt')
-    return {'shape': arr.shape}
 
 
 def aux_load_ICEWS(foldername, filename):
