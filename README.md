@@ -1,16 +1,48 @@
-# Knowledge Graph Embedding Models
+# AmpliGraph
 
+**Open source Python library that predicts links between concepts in a knowledge graph.**
 
-## About
-
-Explainable Link Prediction (`ampligraph`) is a machine learning library for Relational Learning, a branch of machine learning
+AmpliGraph is a suite of neural machine learning models for relational Learning, a branch of machine learning
 that deals with supervised learning on knowledge graphs.
 
-The library includes Relational Learning models, i.e. supervised learning models designed to predict
-links in knowledge graphs.
+![](docs/img/kg_lp.png)
 
-The tool also includes the required evaluation protocol, metrics, knowledge graph preprocessing,
-and negative statements generator strategies.
+
+**Use AmpliGraph if you need to**:
+
+* Discover new knowledge from an existing knowledge graph.
+* Complete large knowledge graphs with missing statements.
+* Generate stand-alone knowledge graph embeddings.
+* Develop and evaluate a new relational model.
+
+
+AmpliGraph's machine learning models generate **knowledge graph embeddings**, vector representations of concepts in a metric space:
+
+![](docs/img/kg_lp_step1.png)
+
+It then combines embeddings with model-specific scoring functions to predict unseen and novel links:
+
+![](docs/img/kg_lp_step2.png)
+
+
+## Key Features
+
+
+* **Intuitive APIs**: AmpliGraph APIs are designed to reduce the code amount required to learn models that predict links in knowledge graphs.
+* **GPU-Ready**: AmpliGraph is based on TensorFlow, and it is designed to run seamlessly on CPU and GPU devices - to speed-up training.
+* **Extensible**: Roll your own knowledge graph embeddings model by extending AmpliGraph base estimators.
+
+
+## System Architecture
+
+![](docs/img/arch.png)
+
+AmpliGraph includes the following submodules:
+
+* **KG Loaders**: Helper functions to load datasets (knowledge graphs).
+* **Latent Feature Models**: knowledge graph embedding models. AmpliGraph contains: TransE, DistMult, ComplEx, ConvE, and RotatE.
+* **Evaluation**: Metrics and evaluation protocols to assess the predictive power of the models.
+
 
 
 # Installation
@@ -56,7 +88,7 @@ conda install tensorflow-gpu
 ## Install the library
 
 
-You can install the latest stable release of `ampligraph` with pip, using the latest wheel (0.3.0) published by Dublin Labs:
+You can install the latest stable release of AmpliGraph with `pip`, using the latest wheel (0.3.0) published by Dublin Labs:
 *Note this work only from within the Dublin Labs network*
 
 ```
@@ -73,7 +105,6 @@ cd ampligraph
 pip install -e .
 
 ```
-
 
 ## Download the Datasets
 
