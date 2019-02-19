@@ -79,35 +79,3 @@ export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
 >> ampligraph.__version__
 '0.3-dev'
 ```
-
-## Installing with HDT Support
-[HDT](http://www.rdfhdt.org/) is a compressed type of RDF graph data. By default, the installed AmpliGraph library does not support loading this data type. To enable it, you must have **`gcc` with C++11 support** installed in your Linux box.
-
-**Ubuntu**
-
-```
-sudo add-apt-repository ppa:jonathonf/gcc-7.3
-sudo apt-get update
-sudo apt-get install gcc-7
-sudo apt-get install g++-7
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 10
-sudo update-alternatives --install /usr/bin/g++-7 g++ /usr/bin/g++-7 10
-sudo update-alternatives --config gcc
-sudo update-alternatives --config g++
-```
-
-**CentOS**
-
-Below are commands we used to install gcc 7.3.1 on CentOS 7.5:
-
-```
-sudo yum install centos-release-scl
-sudo yum install devtoolset-7-gcc*
-scl enable devtoolset-7 bash
-```
-
-Once finished installing gcc, you can install AmpliGraph with hdt support by:
-
-```
-pip install .[hdt]
-```

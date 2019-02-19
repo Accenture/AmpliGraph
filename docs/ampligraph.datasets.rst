@@ -26,4 +26,3 @@ Loaders
     load_from_csv
     load_from_ntriples
     load_from_rdf
-    load_from_hdt
