@@ -370,7 +370,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False):
         model.set_filter_for_eval(filter_triples)
     
     ranks = []
-    for i in tqdm(range(X_test.shape[0])):
+    for i in tqdm(range(X_test.shape[0]), disable=(not verbose)):
         y_pred, rank = model.predict(X_test[i], from_idx=True)
         ranks.append(rank)
     
@@ -567,7 +567,7 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
     best_mrr_train = 0
     best_model = None
     best_params = None
-    for model_params in tqdm(model_params_combinations):
+    for model_params in tqdm(model_params_combinations, disable=(not verbose)):
         model = model_class(**model_params)
         model.fit(X['train'])
         ranks = evaluate_performance(X['valid'], model=model, filter_triples=None, verbose=verbose)

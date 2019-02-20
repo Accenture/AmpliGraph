@@ -201,13 +201,13 @@ class EmbeddingModel(abc.ABC):
     def _load_model_from_trained_params(self):
         """Load the model from trained params. 
             While restoring make sure that the order of loaded parameters match the saved order.
-            It's the duty of the model to load the variables correctly
+            It's the duty of the model to load the variables correctly.
         """
         self.ent_emb = tf.constant(self.trained_model_params[0])
         self.rel_emb = tf.constant(self.trained_model_params[1])
         
     def get_embeddings(self, entities, type='entity'):
-        """Get the embeddings of entities or relations
+        """Get the embeddings of entities or relations.
 
         Parameters
         ----------
@@ -240,7 +240,7 @@ class EmbeddingModel(abc.ABC):
         return emb_list[idxs]
 
     def _lookup_embeddings(self, x):
-        """Get the embeddings for subjects, predicates, and objects of a a list of statements used to train the model.
+        """Get the embeddings for subjects, predicates, and objects of a list of statements used to train the model.
 
         Parameters
         ----------
@@ -262,7 +262,7 @@ class EmbeddingModel(abc.ABC):
         return e_s, e_p, e_o
     
     def _initialize_embeddings(self):
-        """ Initialize the embeddings
+        """ Initialize the embeddings.
         """
         self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k],
                                        initializer=self.initializer)
