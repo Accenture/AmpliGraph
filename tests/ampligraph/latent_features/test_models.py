@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.testing as npt
 
-from ampligraph.latent_features import TransE, DistMult, ComplEx
+from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE
 from ampligraph.datasets import load_wn18
 from ampligraph.latent_features.misc import get_entity_triples
 from ampligraph.latent_features import save_model, restore_model
