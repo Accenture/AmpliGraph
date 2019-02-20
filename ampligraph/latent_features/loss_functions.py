@@ -23,7 +23,7 @@ class Loss(abc.ABC):
     external_params = []
     class_params = {}
     
-   def __init__(self, eta, hyperparam_dict, verbose=False):
+    def __init__(self, eta, hyperparam_dict, verbose=False):
         """Initialize Loss
 
         Parameters
@@ -145,7 +145,7 @@ class PairwiseLoss(Loss):
 
     """
     
-   def __init__(self, eta, hyperparam_dict, verbose=False):
+    def __init__(self, eta, hyperparam_dict, verbose=False):
         super().__init__(eta,  hyperparam_dict, verbose)
         
     def _init_hyperparams(self, hyperparam_dict):
@@ -179,7 +179,7 @@ class NLLLoss(Loss):
     :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
     """
-   def __init__(self, eta, hyperparam_dict, verbose=False):
+    def __init__(self, eta, hyperparam_dict, verbose=False):
         super().__init__(eta, hyperparam_dict, verbose)
     
     def _init_hyperparams(self, hyperparam_dict):
@@ -225,7 +225,7 @@ class AbsoluteMarginLoss(Loss):
        :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
     """
     
-   def __init__(self, eta, hyperparam_dict, verbose=False):
+    def __init__(self, eta, hyperparam_dict, verbose=False):
         super().__init__(eta, hyperparam_dict, verbose)
         
     def _init_hyperparams(self, hyperparam_dict):
@@ -271,7 +271,7 @@ class SelfAdverserialLoss(Loss):
 
        where :math:`\gamma` is the margin, and p(h_{i}^{'} ,r,t_{i}^{'} ) is the sampling proportion
     """
-   def __init__(self, eta, hyperparam_dict, verbose=False):
+    def __init__(self, eta, hyperparam_dict, verbose=False):
         super().__init__(eta, hyperparam_dict, verbose)
     
     def _init_hyperparams(self, hyperparam_dict):

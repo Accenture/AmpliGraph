@@ -192,7 +192,7 @@ def generate_corruptions_for_eval(X, all_entities, table_entity_lookup_left=None
                                                         [tf.shape(X)[0], 1])
                                             , tf.shape(all_entities)[0])
 
-   repeated_relns = tf.keras.backend.repeat(
+    repeated_relns = tf.keras.backend.repeat(
                                                 tf.slice(X,
                                                         [0, 1], #reln
                                                         [tf.shape(X)[0], 1])
