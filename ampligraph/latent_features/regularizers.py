@@ -23,7 +23,7 @@ class Regularizer(abc.ABC):
     external_params = []
     class_params = {}
     
-    def __init__(self, hyperparam_dict):
+    def __init__(self, hyperparam_dict, verbose=False):
         """Initialize the regularizer
 
         Parameters
@@ -36,11 +36,12 @@ class Regularizer(abc.ABC):
         #perform check to see if all the required external hyperparams are passed
         try:
             self._init_hyperparams(hyperparam_dict)
-            print('------ Regularizer-----')
-            print('Name:', self.name)
-            print('Parameters:')
-            for key in self._regularizer_parameters.keys():
-                print("  ", key, ": ", self._regularizer_parameters[key])
+            if verbose:
+                print('------ Regularizer-----')
+                print('Name:', self.name)
+                print('Parameters:')
+                for key in self._regularizer_parameters.keys():
+                    print("  ", key, ": ", self._regularizer_parameters[key])
             
         except KeyError:
             raise Exception('Some of the hyperparams for regularizer were not passed')
@@ -122,8 +123,8 @@ class NoRegularizer(Regularizer):
     """No regularization
     """
     
-    def __init__(self, hyperparam_dict):
-        super().__init__(hyperparam_dict)
+    def __init__(self, hyperparam_dict, verbose=False):
+        super().__init__(hyperparam_dict, verbose)
         
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparams needed by the algorithm
@@ -167,8 +168,8 @@ class L1Regularizer(Regularizer):
     """L1 regularization
     """
     
-    def __init__(self, hyperparam_dict):
-        super().__init__(hyperparam_dict)
+    def __init__(self, hyperparam_dict, verbose=False):
+        super().__init__(hyperparam_dict, verbose)
         
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparams needed by the algorithm
@@ -222,9 +223,9 @@ class L1Regularizer(Regularizer):
 class L2Regularizer(Regularizer):
     """L2 regularization
     """
-    
-    def __init__(self, hyperparam_dict):
-        super().__init__(hyperparam_dict)
+
+    def __init__(self, hyperparam_dict, verbose=False):
+        super().__init__(hyperparam_dict, verbose)
         
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparams needed by the algorithm

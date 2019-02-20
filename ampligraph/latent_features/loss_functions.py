@@ -23,7 +23,7 @@ class Loss(abc.ABC):
     external_params = []
     class_params = {}
     
-    def __init__(self, eta, hyperparam_dict):
+   def __init__(self, eta, hyperparam_dict, verbose=False):
         """Initialize Loss
 
         Parameters
@@ -40,11 +40,12 @@ class Loss(abc.ABC):
         try:
             self._loss_parameters['eta'] = eta
             self._init_hyperparams(hyperparam_dict)
-            print('------ Loss-----')
-            print('Name:', self.name)
-            print('Parameters:')
-            for key in self._loss_parameters.keys():
-                print("  ", key, ": ", self._loss_parameters[key])
+            if verbose:
+                print('------ Loss-----')
+                print('Name:', self.name)
+                print('Parameters:')
+                for key in self._loss_parameters.keys():
+                    print("  ", key, ": ", self._loss_parameters[key])
             
         except KeyError:
             raise Exception('Some of the hyperparams for loss were not passed to the loss function')
@@ -144,8 +145,8 @@ class PairwiseLoss(Loss):
 
     """
     
-    def __init__(self, eta, hyperparam_dict):
-        super().__init__(eta,  hyperparam_dict)
+   def __init__(self, eta, hyperparam_dict, verbose=False):
+        super().__init__(eta,  hyperparam_dict, verbose)
         
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparams needed by the algorithm
@@ -178,9 +179,8 @@ class NLLLoss(Loss):
     :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
     """
-    def __init__(self, eta, hyperparam_dict):
-        super().__init__(eta, hyperparam_dict)
-        
+   def __init__(self, eta, hyperparam_dict, verbose=False):
+        super().__init__(eta, hyperparam_dict, verbose)
     
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparams needed by the algorithm
@@ -225,8 +225,8 @@ class AbsoluteMarginLoss(Loss):
        :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
     """
     
-    def __init__(self, eta, hyperparam_dict):
-        super().__init__(eta, hyperparam_dict)
+   def __init__(self, eta, hyperparam_dict, verbose=False):
+        super().__init__(eta, hyperparam_dict, verbose)
         
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparams needed by the algorithm
@@ -271,8 +271,8 @@ class SelfAdverserialLoss(Loss):
 
        where :math:`\gamma` is the margin, and p(h_{i}^{'} ,r,t_{i}^{'} ) is the sampling proportion
     """
-    def __init__(self, eta, hyperparam_dict):
-        super().__init__(eta, hyperparam_dict)
+   def __init__(self, eta, hyperparam_dict, verbose=False):
+        super().__init__(eta, hyperparam_dict, verbose)
     
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparams needed by the algorithm
@@ -308,7 +308,6 @@ class SelfAdverserialLoss(Loss):
         #Compute p(neg_samples) based on eq 4
         scores_neg_reshaped = tf.reshape(scores_neg, [self._loss_parameters['eta'], tf.shape(scores_pos)[0]])
         p_neg = tf.nn.softmax(alpha * scores_neg_reshaped, axis = 0)
-
         #Compute Loss based on eg 5
         loss = tf.reduce_sum(-tf.log( tf.nn.sigmoid(margin -  tf.negative(scores_pos)) )) - \
                                 tf.reduce_sum(tf.multiply(p_neg, \

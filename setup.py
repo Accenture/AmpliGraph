@@ -12,6 +12,7 @@ setup_params = dict(name='ampligraph',
       author_email='luca.costabello@accenture.com',
       license='',
       packages=find_packages(exclude=('tests', 'docs')),
+      include_package_data=True,
       zip_safe=False,
       install_requires=[
           'numpy',
@@ -30,7 +31,6 @@ setup_params = dict(name='ampligraph',
       extras_require={
           'cpu': ['tensorflow'],
           'gpu': ['tensorflow-gpu'],
-          'hdt': ['pybind11==2.2.1','hdt']
       }
     )
 if __name__ == '__main__':

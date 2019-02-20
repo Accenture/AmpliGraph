@@ -1,16 +1,45 @@
-# Knowledge Graph Embedding Models
+# AmpliGraph
 
+**Open source Python library that predicts links between concepts in a knowledge graph.**
 
-## About
-
-Explainable Link Prediction (`ampligraph`) is a machine learning library for Relational Learning, a branch of machine learning
+AmpliGraph is a suite of neural machine learning models for relational Learning, a branch of machine learning
 that deals with supervised learning on knowledge graphs.
 
-The library includes Relational Learning models, i.e. supervised learning models designed to predict
-links in knowledge graphs.
 
-The tool also includes the required evaluation protocol, metrics, knowledge graph preprocessing,
-and negative statements generator strategies.
+**Use AmpliGraph if you need to**:
+
+* Discover new knowledge from an existing knowledge graph.
+* Complete large knowledge graphs with missing statements.
+* Generate stand-alone knowledge graph embeddings.
+* Develop and evaluate a new relational model.
+
+
+AmpliGraph's machine learning models generate **knowledge graph embeddings**, vector representations of concepts in a metric space:
+
+![](docs/img/kg_lp_step1.png)
+
+It then combines embeddings with model-specific scoring functions to predict unseen and novel links:
+
+![](docs/img/kg_lp_step2.png)
+
+
+## Key Features
+
+
+* **Intuitive APIs**: AmpliGraph APIs are designed to reduce the code amount required to learn models that predict links in knowledge graphs.
+* **GPU-Ready**: AmpliGraph is based on TensorFlow, and it is designed to run seamlessly on CPU and GPU devices - to speed-up training.
+* **Extensible**: Roll your own knowledge graph embeddings model by extending AmpliGraph base estimators.
+
+
+## System Architecture
+
+
+AmpliGraph includes the following submodules:
+
+* **KG Loaders**: Helper functions to load datasets (knowledge graphs).
+* **Latent Feature Models**: knowledge graph embedding models. AmpliGraph contains: TransE, DistMult, ComplEx, ConvE, and RotatE.
+* **Evaluation**: Metrics and evaluation protocols to assess the predictive power of the models.
+
 
 
 # Installation
@@ -56,7 +85,7 @@ conda install tensorflow-gpu
 ## Install the library
 
 
-You can install the latest stable release of `ampligraph` with pip, using the latest wheel (0.3.0) published by Dublin Labs:
+You can install the latest stable release of AmpliGraph with `pip`, using the latest wheel (0.3.0) published by Dublin Labs:
 *Note this work only from within the Dublin Labs network*
 
 ```
@@ -73,7 +102,6 @@ cd ampligraph
 pip install -e .
 
 ```
-
 
 ## Download the Datasets
 
@@ -92,38 +120,6 @@ export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
 >> import ampligraph
 >> ampligraph.__version__
 '0.3-dev'
-```
-
-## Installing with HDT Support
-[HDT](http://www.rdfhdt.org/) is a compressed type of RDF graph data. By default, the installed ampligraph library does not support loading this data type. To enable it, you must have **`gcc` with C++11 support** installed in your Linux box.
-
-**Ubuntu**
-
-```
-sudo add-apt-repository ppa:jonathonf/gcc-7.3
-sudo apt-get update
-sudo apt-get install gcc-7
-sudo apt-get install g++-7
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 10
-sudo update-alternatives --install /usr/bin/g++-7 g++ /usr/bin/g++-7 10
-sudo update-alternatives --config gcc
-sudo update-alternatives --config g++
-````
-
-**CentOS**
-
-Below are commands we used to install gcc 7.3.1 on CentOS 7.5:
-
-```
-sudo yum install centos-release-scl
-sudo yum install devtoolset-7-gcc*
-scl enable devtoolset-7 bash
-```
-
-Once finished installing gcc, you can install the ampligraph library with hdt support by:
-
-```
-pip install .[hdt]
 ```
 
 ##  Documentation
