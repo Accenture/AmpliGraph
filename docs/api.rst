@@ -1,7 +1,7 @@
 API
 ===
 
-AmpliGraph include the following submodules:
+AmpliGraph includes the following submodules:
 
 
 .. toctree::

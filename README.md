@@ -110,8 +110,14 @@ Once downloaded, decompress the archives.
 
 **You must also set the following environment variable:**
 
+OSX/Linux:
 ```
 export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
+```
+
+Windows:
+```
+setx AMPLIGRAPH_DATA_HOME /YOUR/PATH/TO/datasets
 ```
 
 ## Sanity Check
