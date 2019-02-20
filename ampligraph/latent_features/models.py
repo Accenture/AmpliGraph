@@ -39,7 +39,7 @@ class EmbeddingModel(abc.ABC):
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
         """Initialize an EmbeddingModel
 
-            Also creates a news tf Session for training.
+            Also creates a new Tensorflow session for training.
 
         Parameters
         ----------
