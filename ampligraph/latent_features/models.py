@@ -115,12 +115,12 @@ class EmbeddingModel(abc.ABC):
                   'This may introduce memory issues.')
             
         try:
-            self.loss = LOSS_REGISTRY[loss](self.eta, self.loss_params)
+            self.loss = LOSS_REGISTRY[loss](self.eta, self.loss_params, verbose=verbose)
         except KeyError:
             raise ValueError('Unsupported loss function: %s' % loss)
             
         try:
-            self.regularizer = REGULARIZER_REGISTRY[regularizer](self.regularizer_params)
+            self.regularizer = REGULARIZER_REGISTRY[regularizer](self.regularizer_params, verbose=verbose)
         except KeyError:
             raise ValueError('Unsupported regularizer: %s' % regularizer)
             
@@ -298,12 +298,15 @@ class EmbeddingModel(abc.ABC):
 
         self.sess_train = tf.Session(config=self.tf_config)
 
+        batch_size = X.shape[0]//self.batches_count
+        dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(2)
+        dataset_iter = dataset.make_one_shot_iterator()
         # init tf graph/dataflow for training
         # init variables (model parameters to be learned - i.e. the embeddings)
         self._initialize_embeddings()
 
         # training input placeholder
-        x_pos_tf = tf.placeholder(tf.int32, shape=[None, 3]) 
+        x_pos_tf = tf.cast(dataset_iter.get_next(), tf.int32)
         all_ent_tf = tf.squeeze(tf.constant(list(self.ent_to_idx.values()), dtype=tf.int32))
         #generate negatives
         x_neg_tf = generate_corruptions_for_fit(x_pos_tf, all_ent_tf, self.eta, rnd=self.seed)
@@ -329,7 +332,6 @@ class EmbeddingModel(abc.ABC):
         
         #early stopping 
         if early_stopping:
-            print('Enabled Early Stopping')
             try:
                 x_valid = early_stopping_params['x_valid']
                 if type(x_valid) != np.ndarray:
@@ -347,43 +349,41 @@ class EmbeddingModel(abc.ABC):
             if early_stopping_criteria not in ['hits10','hits1', 'hits3', 'mrr']:
                 raise ValueError('Unsupported early stopping criteria')
             
-            self._initialize_eval_graph()                     
+                             
             early_stopping_best_value = 0
             early_stopping_stop_counter = 0
             try:
                 x_filter = early_stopping_params['x_filter']
                 x_filter = to_idx(x_filter, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
-
-                print('Setting filter for early stopping')
                 self.set_filter_for_eval(x_filter)
             except KeyError:
-                print('No filter for early stopping')
                 pass
             
+            self._initialize_eval_graph()    
             
         
         self.sess_train.run(tf.tables_initializer())
         self.sess_train.run(tf.global_variables_initializer())
         
-        X_batches = np.array_split(X, self.batches_count)
+        #X_batches = np.array_split(X, self.batches_count)
         
             
         
         for epoch in tqdm(range(self.epochs), disable=(not self.verbose), unit='epoch'):
             losses = []
-            for j in range(self.batches_count):
-                X_pos_b = X_batches[j]
-                _, loss_batch = self.sess_train.run([train, loss], {x_pos_tf: X_pos_b})
-                self.sess_train.run(normalize_ent_emb_op)
-                if self.verbose:
-                    mean_loss = loss_batch / (len(X_pos_b)*self.eta)
-                    losses.append(mean_loss)
-                    tqdm.write('epoch: %d, batch %d: mean loss: %.10f' % (epoch, j, np.mean(np.array(losses))))
+            for batch in range(self.batches_count):
+                loss_batch, _ = self.sess_train.run([ loss, train])#, {x_pos_tf: X_pos_b})
+                if self.embedding_model_params.get('normalize_entity_embd', False):
+                    self.sess_train.run(normalize_ent_emb_op)
+
+                mean_loss = loss_batch/self.eta
+                losses.append(mean_loss)
+             
+            tqdm.write('epoch: %d: mean loss: %.10f' % (epoch, np.mean(np.array(losses))/ (batch_size)))
             
             # TODO TEC-1529: add early stopping criteria
-            if early_stopping and epoch >= early_stopping_params.get('burn_in', 5)  \
-                                and epoch%early_stopping_params.get('check_interval',3)==0:
-                #print('Early Stopping test epoch:', epoch)
+            if early_stopping and epoch >= early_stopping_params.get('burn_in', 100)  \
+                                and epoch%early_stopping_params.get('check_interval',10)==0:
                 #compute and store test_loss
                 ranks = []
                 if x_valid.ndim>1:
@@ -393,7 +393,6 @@ class EmbeddingModel(abc.ABC):
                 else:
                     ranks = self.sess_train.run([self.rank], feed_dict={self.X_test_tf: [x_test_triple]})
                 
-                #print('Early Stopping Best ' + early_stopping_criteria +' :', early_stopping_best_value)
                 if early_stopping_criteria == 'hits10':
                     current_test_value = hits_at_n_score(ranks,10)
                 elif early_stopping_criteria == 'hits3':
@@ -402,20 +401,16 @@ class EmbeddingModel(abc.ABC):
                     current_test_value = hits_at_n_score(ranks,1)
                 elif early_stopping_criteria == 'mrr':
                     current_test_value = mrr_score(ranks)
-                #print('Early Stopping Current ' + early_stopping_criteria +' :', current_test_value)
                 
                 
                 if early_stopping_best_value >= current_test_value:
                     early_stopping_stop_counter += 1
-                    #print('Found Worse', early_stopping_stop_counter)
                     if early_stopping_stop_counter == early_stopping_params.get('stop_interval', 3):
-                        print('Early stopping with best model ' + early_stopping_criteria +' :', early_stopping_best_value)
                         self.is_filtered = False
                         self.sess_train.close()
                         self.is_fitted = True
                         return
                 else:
-                    #print('Found Better')
                     early_stopping_best_value = current_test_value
                     early_stopping_stop_counter = 0
                     self._save_trained_params()
@@ -662,7 +657,7 @@ class RandomBaseline():
     def predict(self, X, from_idx=False):
         return self.rnd.uniform(low=0, high=1, size=len(X))
 
-@register_model("TransE", ["norm"])
+@register_model("TransE", ["norm", "normalize_entity_embd"])
 class TransE(EmbeddingModel):
     """The Translating Embedding model (TransE)
 
@@ -765,7 +760,7 @@ class TransE(EmbeddingModel):
         """
         return super().predict(X, from_idx=from_idx)
 
-@register_model("DistMult")
+@register_model("DistMult", ["normalize_entity_embd"])
 class DistMult(EmbeddingModel):
     """The DistMult model.
 
@@ -921,6 +916,15 @@ class ComplEx(EmbeddingModel):
                          regularizer=regularizer, regularizer_params =regularizer_params,
                          model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
 
+    def _initialize_embeddings(self):
+        """ Initialize the embeddings
+        """
+        self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k*2],
+                                        initializer=self.initializer)
+        self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k*2],
+                                        initializer=self.initializer)
+        
+        
     def _fn(self, e_s, e_p, e_o):
         """The ComplEx scoring function.
 

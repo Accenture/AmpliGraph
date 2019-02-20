@@ -290,6 +290,8 @@ def to_idx(X, ent_to_idx=None, rel_to_idx=None):
     X : ndarray, shape [n, 3]
         The ndarray of converted statements.
     """
+    if X.ndim==1:
+        X = X[np.newaxis,:]
     x_idx_s = np.vectorize(ent_to_idx.get)(X[:, 0])
     x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
     x_idx_o = np.vectorize(ent_to_idx.get)(X[:, 2])
@@ -421,58 +423,62 @@ def gridsearch_next_hyperparam(model_name, in_dict):
     out_dict: dictionary containing an instance of model hypermeters
     """
     from ..latent_features import LOSS_REGISTRY, REGULARIZER_REGISTRY, MODEL_REGISTRY
-    for batch_count in in_dict["batches_count"]:
-        for epochs in in_dict["epochs"]:
-            for k in in_dict["k"]:
-                for eta in in_dict["eta"]:
-                    for reg_type, reg_params, reg_param_values in \
-                        yield_all_permutations(REGULARIZER_REGISTRY, in_dict["regularizer"], in_dict["regularizer_params"]):
-                        for optimizer_type in in_dict["optimizer"]:
-                            for optimizer_lr in in_dict["optimizer_params"]["lr"]:
-                                for loss_type, loss_params, loss_param_values in \
-                                    yield_all_permutations(LOSS_REGISTRY, in_dict["loss"], in_dict["loss_params"]):
-                                    for model_type, model_params, model_param_values in \
-                                        yield_all_permutations(MODEL_REGISTRY, [model_name], in_dict["embedding_model_params"]):
-                                        
-                                        try:
-                                            verbose = in_dict["verbose"]
-                                        except KeyError:
-                                            verbose = False
-                                            
-                                        try:
-                                            seed = in_dict["seed"]
-                                        except KeyError:
-                                            seed = -1
-                                            
-                                        out_dict = {
-                                            "batches_count": batch_count,
-                                            "epochs": epochs,
-                                            "k": k,
-                                            "eta": eta,
-                                            "loss": loss_type,
-                                            "loss_params": {},
-                                            "embedding_model_params": {},
-                                            "regularizer": reg_type,
-                                            "regularizer_params": {},
-                                            "optimizer": optimizer_type,
-                                            "optimizer_params":{
-                                                "lr": optimizer_lr
-                                                },
-                                            "verbose": verbose
-                                            }
-                                
-                                        if seed >= 0:
-                                            out_dict["seed"] = seed
-                                            
-                                        for idx in range(len(loss_params)):
-                                            out_dict["loss_params"][loss_params[idx]] = loss_param_values[idx]
-                                        for idx in range(len(reg_params)):
-                                            out_dict["regularizer_params"][reg_params[idx]] = reg_param_values[idx]
-                                        for idx in range(len(model_params)):
-                                            out_dict["embedding_model_params"][model_params[idx]] = model_param_values[idx] 
-                                            
-                                        yield (out_dict)
-                                        
+    try:
+        for batch_count in in_dict["batches_count"]:
+            for epochs in in_dict["epochs"]:
+                for k in in_dict["k"]:
+                    for eta in in_dict["eta"]:
+                        for reg_type, reg_params, reg_param_values in \
+                            yield_all_permutations(REGULARIZER_REGISTRY, in_dict["regularizer"], in_dict["regularizer_params"]):
+                            for optimizer_type in in_dict["optimizer"]:
+                                for optimizer_lr in in_dict["optimizer_params"]["lr"]:
+                                    for loss_type, loss_params, loss_param_values in \
+                                        yield_all_permutations(LOSS_REGISTRY, in_dict["loss"], in_dict["loss_params"]):
+                                        for model_type, model_params, model_param_values in \
+                                            yield_all_permutations(MODEL_REGISTRY, [model_name], in_dict["embedding_model_params"]):
+
+                                            try:
+                                                verbose = in_dict["verbose"]
+                                            except KeyError:
+                                                verbose = False
+
+                                            try:
+                                                seed = in_dict["seed"]
+                                            except KeyError:
+                                                seed = -1
+
+                                            out_dict = {
+                                                "batches_count": batch_count,
+                                                "epochs": epochs,
+                                                "k": k,
+                                                "eta": eta,
+                                                "loss": loss_type,
+                                                "loss_params": {},
+                                                "embedding_model_params": {},
+                                                "regularizer": reg_type,
+                                                "regularizer_params": {},
+                                                "optimizer": optimizer_type,
+                                                "optimizer_params":{
+                                                    "lr": optimizer_lr
+                                                    },
+                                                "verbose": verbose
+                                                }
+
+                                            if seed >= 0:
+                                                out_dict["seed"] = seed
+
+                                            for idx in range(len(loss_params)):
+                                                out_dict["loss_params"][loss_params[idx]] = loss_param_values[idx]
+                                            for idx in range(len(reg_params)):
+                                                out_dict["regularizer_params"][reg_params[idx]] = reg_param_values[idx]
+                                            for idx in range(len(model_params)):
+                                                out_dict["embedding_model_params"][model_params[idx]] = model_param_values[idx] 
+
+                                            yield (out_dict)
+    except KeyError as e:
+        print('One or more of the hyperparameters was not passed:')
+        print(str(e))
+
 
 
 
