@@ -88,6 +88,7 @@ def create_mappings(X):
     ent_to_idx = dict(zip(unique_ent, range(ent_count)))
     return rel_to_idx, ent_to_idx
 
+
 def create_mappings_entity_with_schema(X, S):
     """Create string-IDs mappings for entities and relations.
 
@@ -115,6 +116,7 @@ def create_mappings_entity_with_schema(X, S):
     rel_to_idx = dict(zip(unique_rel, range(rel_count)))
     ent_to_idx = dict(zip(unique_ent, range(ent_count)))
     return rel_to_idx, ent_to_idx
+
 
 def create_mappings_schema(S):
     """Create string-IDs mappings for classes and relations of the schema.
@@ -221,6 +223,7 @@ def generate_corruptions_for_eval(X, all_entities, table_entity_lookup_left=None
 
     return out, out_prime
 
+
 def generate_corruptions_for_fit(X, all_entities, eta=1, rnd=None):
     """Generate corruptions for training.
 
@@ -292,6 +295,7 @@ def to_idx(X, ent_to_idx=None, rel_to_idx=None):
 
     return np.dstack([x_idx_s, x_idx_p, x_idx_o]).reshape((-1, 3))
 
+
 def to_idx_schema(S, ent_to_idx=None, schema_class_to_idx=None, schema_rel_to_idx=None):
     """Convert schema statements (triples) into integer IDs.
 
@@ -316,7 +320,7 @@ def to_idx_schema(S, ent_to_idx=None, schema_class_to_idx=None, schema_rel_to_id
     return np.dstack([x_idx_ent, x_idx_rel, x_idx_class]).reshape((-1, 3))
 
 
-def evaluate_performance(X, model, filter_triples=None, verbose=False):
+def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=True):
     """Evaluate the performance of an embedding model.
 
         Run the relational learning evaluation protocol defined in Bordes TransE paper.
@@ -334,6 +338,9 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False):
         The triples used to filter negatives.
     verbose : bool
         Verbose mode
+    strict : bool
+        Strict mode. If True then any unseen entity will cause a RuntimeError.
+        If False then triples containing unseen entities will be filtered out.
 
     Returns
     -------
@@ -363,7 +370,11 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False):
     >>> hits_at_n_score(ranks, n=10)
     0.8
     """
-    X_test = to_idx(X, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
+
+    #
+    X_test = filter_unseen_entities(X, model, verbose=verbose, strict=True)
+
+    X_test = to_idx(X_test, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
 
     if filter_triples is not None:
         filter_triples = to_idx(filter_triples, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
@@ -375,9 +386,52 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False):
         ranks.append(rank)
     
     model.end_evaluation()
-    
 
     return ranks
+
+
+def filter_unseen_entities(X, model, verbose=False, strict=True):
+    """Filter unseen entities in the test set.
+
+    Parameters
+    ----------
+    X : ndarray, shape [n, 3]
+        An array of test triples.
+    model : ampligraph.latent_features.EmbeddingModel
+        A knowledge graph embedding model
+    verbose : bool
+        Verbose mode
+    strict : bool
+        Strict mode. If True then any unseen entity will cause a RuntimeError.
+        If False then triples containing unseen entities will be filtered out.
+
+    Returns
+    -------
+    filtered X : ndarray, shape [n, 3]
+        An array of test triples containing no unseen entities.
+    """
+
+    # Find entities in test set that are not previously seen by model
+    ent_seen = np.unique(list(model.ent_to_idx.keys()))
+    ent_test = np.unique(X[:, [0, 2]].ravel())
+    ent_unseen = np.setdiff1d(ent_test, ent_seen, assume_unique=True)
+
+    if ent_unseen.size == 0:
+        return X
+    else:
+        if strict:
+            raise RuntimeError('Unseen entities found in test set, please remove or run '
+                               'evaluate_performance() with strict=False.')
+        else:
+            # Get row-wise mask of triples containing unseen entities
+            mask_unseen = np.isin(X, ent_unseen).any(axis=1)
+
+            if verbose:
+                print('Removed %d triples containing unseen entities. ' % np.sum(mask_unseen))
+
+            return X[~mask_unseen]
+
+
 def yield_all_permutations(registry, category_type, category_type_params):
     """Yields all the permutation of category type with their respective hyperparams
     
@@ -387,10 +441,14 @@ def yield_all_permutations(registry, category_type, category_type_params):
     category_type: category type values
     category_type_params: category type hyperparams
 
-    Returns:
-    name: specific name of the category
-    present_params: names of hyperparameters of the category
-    val: values of the respective hyperparams
+    Returns
+    -------
+    name: str
+        Specific name of the category
+    present_params: list
+        Names of hyperparameters of the category
+    val: list
+        Values of the respective hyperparams
     """
     for name in category_type:
         present_params = []
@@ -404,6 +462,7 @@ def yield_all_permutations(registry, category_type, category_type_params):
         for val in itertools.product(*present_params_vals):
             yield name, present_params, val
 
+
 def gridsearch_next_hyperparam(model_name, in_dict):
     """Performs grid search on hyperparams
     
@@ -413,8 +472,10 @@ def gridsearch_next_hyperparam(model_name, in_dict):
     in_dict: dictionary of all the parameters and the list of values to be searched
 
     Returns:
-    out_dict: dictionary containing an instance of model hypermeters
+    out_dict: dict
+        Dictionary containing an instance of model hyperparameters.
     """
+
     from ..latent_features import LOSS_REGISTRY, REGULARIZER_REGISTRY, MODEL_REGISTRY
     try:
         for batch_count in in_dict["batches_count"]:
@@ -471,6 +532,7 @@ def gridsearch_next_hyperparam(model_name, in_dict):
     except KeyError as e:
         print('One or more of the hyperparameters was not passed:')
         print(str(e))
+
 
 def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, eval_splits=10,
                               corruption_entities=None, verbose=False):
@@ -595,3 +657,4 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
     mrr_test = mrr_score(ranks_test)
 
     return best_model, best_params, best_mrr_train, ranks_test, mrr_test
+
