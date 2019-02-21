@@ -14,7 +14,8 @@ def register_regularizer(name, external_params=[], class_params= {}):
         return class_handle
     return insert_in_registry
 
-#@register_regularizer("None")  
+
+# @register_regularizer("None")
 class Regularizer(abc.ABC):
     """Abstract class for loss function.
     """
@@ -24,7 +25,7 @@ class Regularizer(abc.ABC):
     class_params = {}
     
     def __init__(self, hyperparam_dict, verbose=False):
-        """Initialize the regularizer
+        """Initialize the regularizer.
 
         Parameters
         ----------
@@ -47,7 +48,7 @@ class Regularizer(abc.ABC):
             raise Exception('Some of the hyperparams for regularizer were not passed')
             
     def get_state(self, param_name):
-        """Get the state value
+        """Get the state value.
 
         Parameters
         ----------
@@ -65,18 +66,18 @@ class Regularizer(abc.ABC):
              raise Exception('Invald Key')
 
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparams needed by the algorithm
+        """ Verifies and stores the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
         hyperparam_dict : dictionary
-            Consists of key value pairs. The regulairzer will check the keys to get the corresponding params
+            Consists of key value pairs. The regularizer will check the keys to get the corresponding params
         """
         NotImplementedError("This function is a placeholder in an abstract class")
-        
-        
+
     def _apply(self, trainable_params):
-        """ Apply the regularization function. Every inherited class must implement this function. (All the TF code must go in this function.)
+        """ Apply the regularization function. Every inherited class must implement this function.
+        (All the TF code must go in this function.)
         
         Parameters
         ----------
@@ -89,10 +90,9 @@ class Regularizer(abc.ABC):
             Regularization Loss
         """
         NotImplementedError("This function is a placeholder in an abstract class")
-        
-        
+
     def _inputs_check(self, trainable_params):
-        """ Creates any dependencies that need to be checked before performing regularization 
+        """ Creates any dependencies that need to be checked before performing regularization.
         
         Parameters
         ----------
@@ -102,7 +102,9 @@ class Regularizer(abc.ABC):
         pass
         
     def apply(self, trainable_params):
-        """ Interface to external world. This function does the input checks, preprocesses input and finally applies loss fn.
+        """ Interface to external world. This function performs input checks, input pre-processing, and
+        and applies the loss function.
+
         Parameters
         ----------
         trainable_params : list, shape [n]
@@ -120,14 +122,14 @@ class Regularizer(abc.ABC):
     
 @register_regularizer("None" )      
 class NoRegularizer(Regularizer):
-    """No regularization
+    """ Class for performing no regularization.
     """
     
     def __init__(self, hyperparam_dict, verbose=False):
         super().__init__(hyperparam_dict, verbose)
         
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparams needed by the algorithm
+        """ Verifies and stores the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -138,7 +140,7 @@ class NoRegularizer(Regularizer):
         
         
     def _inputs_check(self, trainable_params):
-        """ Creates any dependencies that need to be checked before performing regularization 
+        """ Creates any dependencies that need to be checked before performing regularization .
         
         Parameters
         ----------
@@ -148,7 +150,8 @@ class NoRegularizer(Regularizer):
         pass
         
     def _apply(self, trainable_params):
-        """ Apply the loss function
+        """ Apply the loss function.
+
         Parameters
         ----------
         trainable_params : list, shape [n]
@@ -165,14 +168,14 @@ class NoRegularizer(Regularizer):
     
 @register_regularizer("L1", ['lambda'] )      
 class L1Regularizer(Regularizer):
-    """L1 regularization
+    """Class for performing L1 regularization.
     """
     
     def __init__(self, hyperparam_dict, verbose=False):
         super().__init__(hyperparam_dict, verbose)
         
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparams needed by the algorithm
+        """ Verifies and stores the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -183,7 +186,7 @@ class L1Regularizer(Regularizer):
         
         
     def _inputs_check(self, trainable_params):
-        """ Creates any dependencies that need to be checked before performing regularization 
+        """ Creates any dependencies that need to be checked before performing regularization.
         
         Parameters
         ----------
@@ -199,7 +202,8 @@ class L1Regularizer(Regularizer):
 
         
     def _apply(self, trainable_params):
-        """ Apply the loss function
+        """ Apply the loss function.
+
         Parameters
         ----------
         trainable_params : list, shape [n]
@@ -218,17 +222,16 @@ class L1Regularizer(Regularizer):
         return loss_reg 
     
 
-
-@register_regularizer("L2", ['lambda'] )      
+@register_regularizer("L2", ['lambda'])
 class L2Regularizer(Regularizer):
-    """L2 regularization
+    """Class for performing L1 regularization
     """
 
     def __init__(self, hyperparam_dict, verbose=False):
         super().__init__(hyperparam_dict, verbose)
         
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparams needed by the algorithm
+        """ Verifies and stores the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -239,7 +242,7 @@ class L2Regularizer(Regularizer):
         
         
     def _inputs_check(self, trainable_params):
-        """ Creates any dependencies that need to be checked before performing regularization 
+        """ Creates any dependencies that need to be checked before performing regularization.
         
         Parameters
         ----------
@@ -255,7 +258,8 @@ class L2Regularizer(Regularizer):
 
         
     def _apply(self, trainable_params):
-        """ Apply the loss function
+        """ Apply the loss function.
+
         Parameters
         ----------
         trainable_params : list, shape [n]

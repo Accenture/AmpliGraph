@@ -24,7 +24,7 @@ class Loss(abc.ABC):
     class_params = {}
     
     def __init__(self, eta, hyperparam_dict, verbose=False):
-        """Initialize Loss
+        """Initialize Loss.
 
         Parameters
         ----------
@@ -51,7 +51,7 @@ class Loss(abc.ABC):
             raise Exception('Some of the hyperparams for loss were not passed to the loss function')
             
     def get_state(self, param_name):
-        """Get the state value
+        """Get the state value.
 
         Parameters
         ----------
@@ -69,7 +69,7 @@ class Loss(abc.ABC):
              raise Exception('Invald Key')
 
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparams needed by the algorithm
+        """ Verifies and stores the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -95,7 +95,8 @@ class Loss(abc.ABC):
 
         
     def _apply(self, scores_pos, scores_neg):
-        """ Apply the loss function. Every inherited class must implement this function. (All the TF code must go in this function.)
+        """ Apply the loss function. Every inherited class must implement this function.
+        (All the TF code must go in this function.)
         
         Parameters
         ----------
@@ -149,7 +150,7 @@ class PairwiseLoss(Loss):
         super().__init__(eta,  hyperparam_dict, verbose)
         
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparams needed by the algorithm
+        """ Verifies and stores the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -183,7 +184,7 @@ class NLLLoss(Loss):
         super().__init__(eta, hyperparam_dict, verbose)
     
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparams needed by the algorithm
+        """ Verifies and stores the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -193,7 +194,7 @@ class NLLLoss(Loss):
         return
         
     def _apply(self, scores_pos, scores_neg):
-        """ Apply the loss function
+        """ Apply the loss function.
         Parameters
         ----------
         scores_pos : tf.Tensor, shape [n, 1]
@@ -229,7 +230,7 @@ class AbsoluteMarginLoss(Loss):
         super().__init__(eta, hyperparam_dict, verbose)
         
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparams needed by the algorithm
+        """ Verifies and stores the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -240,7 +241,8 @@ class AbsoluteMarginLoss(Loss):
         
     
     def _apply(self, scores_pos, scores_neg):
-        """ Apply the loss function
+        """ Apply the loss function.
+
         Parameters
         ----------
         scores_pos : tf.Tensor, shape [n, 1]
@@ -261,7 +263,7 @@ class AbsoluteMarginLoss(Loss):
 
 @register_loss("self_adverserial", ['margin', 'alpha'], {'require_same_size_pos_neg':False})      
 class SelfAdverserialLoss(Loss):
-    """Self adverserial sampling loss
+    """ Self adversarial sampling loss.
 
         Introduced in :cite:`rotatE`.
 
@@ -275,7 +277,7 @@ class SelfAdverserialLoss(Loss):
         super().__init__(eta, hyperparam_dict, verbose)
     
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparams needed by the algorithm
+        """ Verifies and stores the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -288,7 +290,8 @@ class SelfAdverserialLoss(Loss):
     
     
     def _apply(self, scores_pos, scores_neg):
-        """ Apply the loss function
+        """ Apply the loss function.
+
        Parameters
        ----------
        scores_pos : tf.Tensor, shape [n, 1]
@@ -305,10 +308,11 @@ class SelfAdverserialLoss(Loss):
         margin = tf.constant(self._loss_parameters['margin'], dtype=tf.float32, name='margin')
         alpha = tf.constant(self._loss_parameters['alpha'], dtype=tf.float32, name='alpha')
     
-        #Compute p(neg_samples) based on eq 4
+        # Compute p(neg_samples) based on eq 4
         scores_neg_reshaped = tf.reshape(scores_neg, [self._loss_parameters['eta'], tf.shape(scores_pos)[0]])
         p_neg = tf.nn.softmax(alpha * scores_neg_reshaped, axis = 0)
-        #Compute Loss based on eg 5
+
+        # Compute Loss based on eg 5
         loss = tf.reduce_sum(-tf.log( tf.nn.sigmoid(margin -  tf.negative(scores_pos)) )) - \
                                 tf.reduce_sum(tf.multiply(p_neg, \
                                                           tf.log( tf.nn.sigmoid( tf.negative(scores_neg_reshaped) - margin)) ))
