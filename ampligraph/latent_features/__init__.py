@@ -3,14 +3,14 @@
 from .loss_functions import LOSS_REGISTRY
 from .regularizers import REGULARIZER_REGISTRY
 from .models import MODEL_REGISTRY
-from .models import EmbeddingModel, TransE, DistMult, ComplEx, RandomBaseline
+from .models import EmbeddingModel, TransE, DistMult, ComplEx, HolE, RandomBaseline
 
 from .misc import get_entity_triples
 from .model_utils import save_model, restore_model
 
 
 __all__ = ['LOSS_REGISTRY', 'REGULARIZER_REGISTRY', 'MODEL_REGISTRY', 
-           'EmbeddingModel', 'TransE', 'DistMult', 'ComplEx', 'RandomBaseline',
+           'EmbeddingModel', 'TransE', 'DistMult', 'ComplEx', 'HolE', 'RandomBaseline',
             'get_entity_triples','save_model', 'restore_model']
 
 

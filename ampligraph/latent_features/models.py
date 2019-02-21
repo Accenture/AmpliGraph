@@ -312,6 +312,7 @@ class EmbeddingModel(abc.ABC):
         x_neg_tf = generate_corruptions_for_fit(x_pos_tf, all_ent_tf, self.eta, rnd=self.seed)
         if self.loss.get_state('require_same_size_pos_neg'):
             x_pos =  tf.reshape(tf.tile(tf.reshape(x_pos_tf,[-1]),[self.eta]),[tf.shape(x_pos_tf)[0]*self.eta,3])
+            batch_size = batch_size * self.eta
         else:
             x_pos = x_pos_tf
         # look up embeddings from input training triples
@@ -349,6 +350,7 @@ class EmbeddingModel(abc.ABC):
             if early_stopping_criteria not in ['hits10','hits1', 'hits3', 'mrr']:
                 raise ValueError('Unsupported early stopping criteria')
             
+                             
             early_stopping_best_value = 0
             early_stopping_stop_counter = 0
             try:
@@ -365,6 +367,7 @@ class EmbeddingModel(abc.ABC):
         self.sess_train.run(tf.global_variables_initializer())
         
         #X_batches = np.array_split(X, self.batches_count)
+        
             
         
         for epoch in tqdm(range(self.epochs), disable=(not self.verbose), unit='epoch'):
@@ -374,10 +377,9 @@ class EmbeddingModel(abc.ABC):
                 if self.embedding_model_params.get('normalize_entity_embd', False):
                     self.sess_train.run(normalize_ent_emb_op)
 
-                mean_loss = loss_batch/self.eta
-                losses.append(mean_loss)
-             
-            tqdm.write('epoch: %d: mean loss: %.10f' % (epoch, np.mean(np.array(losses))/ (batch_size)))
+                losses.append(loss_batch)
+            if self.verbose:  
+                tqdm.write('epoch: %d: mean loss: %.10f' % (epoch, sum(losses)/ (batch_size*self.batches_count)))
             
             # TODO TEC-1529: add early stopping criteria
             if early_stopping and epoch >= early_stopping_params.get('burn_in', 100)  \
@@ -403,7 +405,6 @@ class EmbeddingModel(abc.ABC):
                 
                 if early_stopping_best_value >= current_test_value:
                     early_stopping_stop_counter += 1
-
                     if early_stopping_stop_counter == early_stopping_params.get('stop_interval', 3):
                         self.is_filtered = False
                         self.sess_train.close()
@@ -753,8 +754,11 @@ class TransE(EmbeddingModel):
 
         Returns
         -------
-        y_pred : ndarray, shape [n]
-            The probability estimates predicted for input triples X.
+        scores_predict : ndarray, shape [n]
+            The predicted scores for input triples X.
+            
+        rank : ndarray, shape [n]
+            Rank of the triple
 
         """
         return super().predict(X, from_idx=from_idx)
@@ -857,8 +861,11 @@ class DistMult(EmbeddingModel):
 
         Returns
         -------
-        y_pred : ndarray, shape [n]
-            The probability estimates predicted for input triples X.
+        scores_predict : ndarray, shape [n]
+            The predicted scores for input triples X.
+            
+        rank : ndarray, shape [n]
+            Rank of the triple
 
         """
         return super().predict(X, from_idx=from_idx)
@@ -990,8 +997,135 @@ class ComplEx(EmbeddingModel):
 
         Returns
         -------
-        y_pred : ndarray, shape [n]
-            The probability estimates predicted for input triples X.
+        scores_predict : ndarray, shape [n]
+            The predicted scores for input triples X.
+            
+        rank : ndarray, shape [n]
+            Rank of the triple
 
         """
         return super().predict(X, from_idx=from_idx)
+    
+
+
+@register_model("HolE")
+class HolE(ComplEx):
+    """ Holographic Embeddings model.
+
+        The model as described in :cite:`NickelRP15` and cite:`HayashiS17`.
+
+        .. math::
+
+            f_{HolE}= 2 / n * f_{ComplEx}
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from ampligraph.latent_features import HolE
+        >>> model = HolE(batches_count=1, seed=555, epochs=20, k=10, 
+        >>>             loss='pairwise', loss_params={'margin':1}, 
+        >>>             regularizer='L2', regularizer_params={'lambda':0.1})
+
+        >>> X = np.array([['a', 'y', 'b'],
+        >>>               ['b', 'y', 'a'],
+        >>>               ['a', 'y', 'c'],
+        >>>               ['c', 'y', 'a'],
+        >>>               ['a', 'y', 'd'],
+        >>>               ['c', 'y', 'd'],
+        >>>               ['b', 'y', 'c'],
+        >>>               ['f', 'y', 'e']])
+        >>> model.fit(X)
+        >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+        [[0.3046168, -0.0379385], [3, 9]]
+        >>> model.get_embeddings(['f','e'], type='entity')
+        array([[-0.2704807 , -0.05434025,  0.13363852,  0.04879733,  0.00184516,
+        -0.1149573 , -0.1177371 , -0.20798951,  0.01935115,  0.13033926,
+        -0.81528974,  0.22864424,  0.2045117 ,  0.1145515 ,  0.248952  ,
+         0.03513691, -0.08550065, -0.06037813,  0.23231442, -0.39326245],
+       [ 0.204738  ,  0.10758886, -0.11931524,  0.14881928,  0.0929039 ,
+         0.25577265,  0.05722341,  0.2549932 , -0.16462566,  0.43789816,
+        -0.91011846,  0.3533137 ,  0.1144442 ,  0.00359709, -0.09599967,
+        -0.03151475,  0.14198618,  0.16138661,  0.07511608, -0.2465882 ]],
+      dtype=float32)
+
+    """
+
+    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0, 
+                 embedding_model_params = {}, 
+                 optimizer="adagrad", optimizer_params={}, 
+                 loss='nll', loss_params = {}, 
+                 regularizer="None", regularizer_params = {},
+                 model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+        
+        super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
+                         embedding_model_params = embedding_model_params,
+                         optimizer=optimizer, optimizer_params=optimizer_params,
+                         loss=loss, loss_params=loss_params,
+                         regularizer=regularizer, regularizer_params =regularizer_params,
+                         model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
+
+        
+        
+    def _fn(self, e_s, e_p, e_o):
+        """The Hole scoring function.
+
+            .. math::
+
+                f_{HolE}= 2 / n * f_{ComplEx}
+
+            Additional details for equivalence of the models available in :cite:`HayashiS17`.
+
+        Parameters
+        ----------
+        e_s : Tensor, shape [n]
+            The embeddings of a list of subjects.
+        e_p : Tensor, shape [n]
+            The embeddings of a list of predicates.
+        e_o : Tensor, shape [n]
+            The embeddings of a list of objects.
+
+        Returns
+        -------
+        score : TensorFlow operation
+            The operation corresponding to the HolE scoring function.
+
+        """
+        return (2/self.k) * (super()._fn(e_s, e_p, e_o))
+
+    def fit(self, X, early_stopping=False, early_stopping_params={}):
+        """Train a HolE model.
+
+            The model is trained on a training set X using the training protocol
+            described in :cite:`NickelRP15`.
+
+        Parameters
+        ----------
+        x : ndarray, shape [n, 3]
+            The training triples
+
+        """
+        super().fit(X, early_stopping, early_stopping_params)
+
+    def predict(self, X, from_idx=False):
+        """Predict the score of triples using a trained embedding model.
+
+            The function returns raw scores generated by the model.
+            To obtain probability estimates, use a logistic sigmoid.
+
+        Parameters
+        ----------
+        X : ndarray, shape [n, 3]
+            The triples to score.
+        from_idx : bool
+            If True, will skip conversion to internal IDs. (default: False).
+
+        Returns
+        -------
+        scores_predict : ndarray, shape [n]
+            The predicted scores for input triples X.
+            
+        rank : ndarray, shape [n]
+            Rank of the triple
+
+        """
+        return super().predict(X, from_idx=from_idx) 

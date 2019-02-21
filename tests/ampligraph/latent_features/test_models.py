@@ -92,7 +92,22 @@ def test_fit_predict_CompleEx():
     print(y_pred)
     assert y_pred[0] > y_pred[1]
 
-
+def test_fit_predict_HolE():
+    model = HolE(batches_count=1, seed=555, epochs=20, k=10, 
+                    loss='pairwise', loss_params={'margin':1}, regularizer='L2', regularizer_params={'lambda':0.1})
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'y', 'a'],
+                  ['a', 'y', 'd'],
+                  ['c', 'y', 'd'],
+                  ['b', 'y', 'c'],
+                  ['f', 'y', 'e']])
+    model.fit(X)
+    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+    print(y_pred)
+    assert y_pred[0] > y_pred[1]
+    
 def test_retrain():
     model = ComplEx(batches_count=1, seed=555, epochs=20, k=10, 
                     loss='pairwise', loss_params={'margin':1}, regularizer='L2', regularizer_params={'lambda':0.1})
