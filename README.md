@@ -97,15 +97,14 @@ and install from source (this will pull the latest commit on `develop` branch).
 The code snippet below will install the library in editable mode (`-e`):
 
 ```
-git clone ssh://git@innersource.accenture.com/dl/ampligraph.git
-cd ampligraph
+git clone https://github.com/Accenture/AmpliGraph.git
+cd AmpliGraph
 pip install -e .
-
 ```
 
 ## Download the Datasets
 
-Datasets can be downloaded from [SharePoint](https://ts.accenture.com/sites/TechLabs-Dublin/_layouts/15/guestaccess.aspx?guestaccesstoken=Uz28P2m4hWp2TEgbvFrD%2b4BiURBHVTAw0NbPBRLzWWA%3d&folderid=2_012fd581718e74e4a9305c845a1224ee1&rev=1).
+Datasets can be downloaded from [Google Drive](https://drive.google.com/drive/folders/16GBu89NCVyyYetry91tMntzpV_mSQ-gK?usp=sharing).
 Once downloaded, decompress the archives.
 
 **You must also set the following environment variable:**
