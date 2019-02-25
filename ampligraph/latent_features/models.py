@@ -429,11 +429,18 @@ class EmbeddingModel(abc.ABC):
         
         We would be using a prime number based assignment and product for do the filtering.
         We associate a unique prime number for subject entities, object entities and to relations.
-        Product of three prime numbers is divisible only by those three prime numbers. 
+        Product of three prime numbers is divisible only by those three prime numbers.
         So we generate this product for the filter triples and store it in a hash map.
         When corruptions are generated for a triple during evaluation, we follow a similar approach 
         and look up the product of corruption in the above hash table. If the corrupted triple is 
         present in the hashmap, it means that it was present in the filter list.
+
+
+       .. math::
+
+           \mathcal{L} = -log \sigma(\gamma - d_r (h,t)) - \sum_{i=1}^{n} p(h_{i}^{'} ,r,t_{i}^{'} ) log \sigma(d_r (h_{i}^{'},t_{i}^{'}) - \gamma)
+
+       where :math:`\gamma` is the margin, and p(h_{i}^{'} ,r,t_{i}^{'} ) is the sampling proportion
 
         Parameters
         ----------

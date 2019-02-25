@@ -4,7 +4,7 @@ import importlib
 
 SAVED_MODEL_FILE_NAME = 'model.pickle'
 
-"""This module contains utility functions for neural knowledge graph embedding model.
+"""This module contains utility functions for neural knowledge graph embedding models.
 """
 
 
