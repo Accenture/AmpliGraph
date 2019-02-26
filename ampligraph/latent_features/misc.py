@@ -1,0 +1,38 @@
+import numpy as np
+
+SUBJECT = 0
+PREDICATE = 1
+OBJECT = 2
+DEBUG = True
+
+def get_entity_triples(entity, graph):
+    """
+    Given an entity label e included in the graph G, returns an list of all triples where e appears either as subject or object.
+    
+        Parameters
+        ----------
+        entity : str, shape [n, 1]
+            An entity label.
+        graph : np.ndarray, shape [n, 3]
+            An ndarray of triples.
+
+        Returns
+        -------
+        neighbours : np.ndarray, shape [n, 3]
+            An ndarray of triples where e is either the subject or the object.
+    """
+
+    # NOTE: The current implementation is slightly faster (~15%) than the more readable one-liner:
+    #           rows, _ = np.where((entity == graph[:,[SUBJECT,OBJECT]]))
+
+    # Get rows and cols where entity is found in graph
+    rows, cols = np.where((entity == graph))
+
+    # In the unlikely event that entity is found in the relation column (index 1)
+    rows = rows[np.where(cols != PREDICATE)]
+
+    # Subset graph to neighbourhood of entity
+    neighbours = graph[rows, :]
+
+    return neighbours
+
