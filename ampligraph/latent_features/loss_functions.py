@@ -144,7 +144,8 @@ class PairwiseLoss(Loss):
     where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives,
     :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
-    Hyperarameters:
+    Hyperparameters:
+    
     'margin' - Margin to be used in pairwise loss computation(default:1)
     """
     
@@ -158,6 +159,7 @@ class PairwiseLoss(Loss):
         ----------
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
+            
             'margin' - Margin to be used in pairwise loss computation(default:1)
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', 1)
@@ -228,7 +230,8 @@ class AbsoluteMarginLoss(Loss):
        where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives,
        :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
        
-       Hyperarameters:
+       Hyperparameters:
+       
        'margin' - Margin to be used in pairwise loss computation(default:1)
     """
     
@@ -240,9 +243,13 @@ class AbsoluteMarginLoss(Loss):
         
         Parameters
         ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The Loss will check the keys to get the corresponding params('margin')
-            'margin' - Margin to be used in pairwise loss computation(default:1)
+        hyperparam_dict : dict
+           Consists of key value pairs. The Loss will check the keys to get the corresponding params.
+            
+           'margin' - Margin to be used in pairwise loss computation(default:1)
+           
+        Returns
+        -------    
         """
         self._loss_parameters['margin'] =hyperparam_dict.get('margin', 1)
         
@@ -280,8 +287,10 @@ class SelfAdverserialLoss(Loss):
 
        where :math:`\gamma` is the margin, and p(h_{i}^{'} ,r,t_{i}^{'} ) is the sampling proportion
        
-        Hyperarameters:
+        Hyperparameters:
+        
         'margin' - Margin to be used in adverserial loss computation(default:3)
+        
         'alpha' - Temperature of sampling(default:0.5)
     """
     def __init__(self, eta, hyperparam_dict, verbose=False):
@@ -294,7 +303,9 @@ class SelfAdverserialLoss(Loss):
         ----------
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
+            
             'margin' - Margin to be used in adverserial loss computation(default:3)
+            
             'alpha' - Temperature of sampling(default:0.5)
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', 3)

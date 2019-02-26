@@ -55,26 +55,34 @@ class EmbeddingModel(abc.ABC):
             The seed used by the internal random numbers generator.
         embedding_model_params : dict
             Parameter values of embedding model specific hyperparams 
+            
             (Refer documentation of specific embedding models for more details)
         optimizer : string
             The optimizer used to minimize the loss function. Choose between ``sgd``,
             ``adagrad``, ``adam``.
         optimizer_params : dict    
             Parameters values specific to the optimizer.
-            Currently supported only "lr" - learning rate
+            
+            Currently supported "lr" - learning rate
         loss : string
             The type of loss function to use during training. 
+            
             ``pairwise``  the model will use pairwise margin-based loss function.
+            
             ``nll`` the model will use negative loss likelihood.
+            
             ``absolute_margin`` the model will use absolute margin likelihood.
+            
             ``self_adverserial`` the model will use adverserial sampling loss function.
         loss_params : dict
             Parameters dictionary specific to the loss. 
+            
             (Refer documentation of loss_functions for more details)
         regularizer : string
             The regularization strategy to use with the loss function. ``L2`` or ``L1`` or ``None``.
         regularizer_params : dict
             Parameters dictionary specific to the regularizer. 
+            
             (Refer documentation of regularizer for more details)
         model_checkpoint_path: string
             Path to save the model.
@@ -377,13 +385,20 @@ class EmbeddingModel(abc.ABC):
             Flag to enable early stopping(default:False)
         early_stopping_params: dictionary
             Dictionary of parameters for early stopping. 
+            
             The following keys are supported: 
-                x_valid: ndarray, shape [n, 3] : Validation set to be used for early stopping
-                criteria: criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr``(default)
-                x_filter: ndarray, shape [n, 3] : Filter to be used(no filter by default)
-                burn_in: Number of epochs to pass before kicking in early stopping(default: 100)
-                check_interval: Early stopping interval after burn-in(default:10)
-                stop_interval: Stop if criteria is performing worse over n consecutive checks (default: 3)
+            
+                x_valid: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                
+                criteria: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
+                
+                x_filter: ndarray, shape [n, 3] : Filter to be used(no filter by default).
+                
+                burn_in: int : Number of epochs to pass before kicking in early stopping(default: 100).
+                
+                check_interval: int : Early stopping interval after burn-in(default:10).
+                
+                stop_interval: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
 
         """
         if type(X) != np.ndarray:
@@ -473,7 +488,7 @@ class EmbeddingModel(abc.ABC):
     
     def set_filter_for_eval(self, x_filter):
         """Set the filter to be used during evaluation (filtered_corruption = corruptions - filter).
-        
+       
         We would be using a prime number based assignment and product for do the filtering.
         We associate a unique prime number for subject entities, object entities and to relations.
         Product of three prime numbers is divisible only by those three prime numbers.
@@ -481,6 +496,7 @@ class EmbeddingModel(abc.ABC):
         When corruptions are generated for a triple during evaluation, we follow a similar approach 
         and look up the product of corruption in the above hash table. If the corrupted triple is 
         present in the hashmap, it means that it was present in the filter list.
+        
         Parameters
         ----------
         x_filter : ndarray, shape [n, 3]
@@ -525,6 +541,7 @@ class EmbeddingModel(abc.ABC):
     
     def _initialize_eval_graph(self):
         """Initialize the evaluation graph. 
+        
         Use prime number based filtering strategy (refer set_filter_for_eval()), if the filter is set
         """
         self.X_test_tf = tf.placeholder(tf.int64, shape=[1, 3])
@@ -643,9 +660,7 @@ class EmbeddingModel(abc.ABC):
         return scores, ranks
 
     def generate_approximate_embeddings(self, e, neighbouring_triples, pool='avg', schema_aware=False):
-        """Generate approximate embeddings for entity, given neighbouring triples
-            from auxiliary graph and a defined pooling function.
-            
+        """Generate approximate embeddings for entity, given neighbouring triples from auxiliary graph and a defined pooling function.
                     
         Parameters
         ----------
@@ -717,8 +732,10 @@ class TransE(EmbeddingModel):
 
             f_{TransE}=-||(\mathbf{e}_s + \mathbf{r}_p) - \mathbf{e}_o||_n
             
-        Hyperarameters:
+        Hyperparameters:
+        
             norm - type of norm to be used in scoring function(1 or 2 norm - default:1) 
+            
             normalize_ent_emb - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
 
         Examples
@@ -827,7 +844,8 @@ class DistMult(EmbeddingModel):
 
             f_{DistMult}=\langle \mathbf{r}_p, \mathbf{e}_s, \mathbf{e}_o \\rangle
             
-        Hyperarameters:
+        Hyperparameters:
+        
             normalize_ent_emb - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
 
         Examples
@@ -966,7 +984,6 @@ class ComplEx(EmbeddingModel):
         -0.5944237 ,  0.506474  ,  0.1255992 , -0.06021457, -0.26678884,
         -0.18713273,  0.36862013,  0.07165384, -0.00845572, -0.16494963]],
       dtype=float32)
-
     """
 
     def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0, 

@@ -17,6 +17,7 @@ Embedding Models
     TransE
     DistMult
     ComplEx
+    HolE
 
 
 Loss Functions
@@ -24,11 +25,25 @@ Loss Functions
 
 .. autosummary::
     :toctree: generated
-    :template: function.rst
+    :template: class.rst
 
-    pairwise_loss
-    negative_log_likelihood_loss
-    absolute_margin_loss
+    Loss
+    PairwiseLoss
+    NLLLoss
+    AbsoluteMarginLoss
+    SelfAdverserialLoss
+    
+Regularizers
+--------------
+
+.. autosummary::
+    :toctree: generated
+    :template: class.rst
+
+    Regularizer
+    NoRegularizer
+    L1Regularizer
+    L2Regularizer
 
 
 Utils Functions

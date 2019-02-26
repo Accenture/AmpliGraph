@@ -436,9 +436,12 @@ def yield_all_permutations(registry, category_type, category_type_params):
     
     Parameters
     ----------
-    registry: registry of the category type
-    category_type: category type values
-    category_type_params: category type hyperparams
+    registry: dictionary
+        registry of the category type
+    category_type: string
+        category type values
+    category_type_params: list
+        category type hyperparams
 
     Returns
     -------
@@ -467,8 +470,10 @@ def gridsearch_next_hyperparam(model_name, in_dict):
     
     Parameters
     ----------
-    model_name: name of the embedding model
-    in_dict: dictionary of all the parameters and the list of values to be searched
+    model_name: string
+        name of the embedding model
+    in_dict: dictionary 
+        dictionary of all the parameters and the list of values to be searched
 
     Returns:
     out_dict: dict
@@ -560,13 +565,20 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
     early_stopping: bool
         Flag to enable early stopping(default:False)
     early_stopping_params: dict
-        Dictionary of parameters for early stopping. 
+        Dictionary of parameters for early stopping.
+        
         The following keys are supported: 
-            x_valid: ndarray, shape [n, 3] : Validation set to be used for early stopping. Uses X['valid'] by default
-            criteria: criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default)
+        
+            x_valid: ndarray, shape [n, 3] : Validation set to be used for early stopping. Uses X['valid'] by default.
+            
+            criteria: criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr``. (default)
+            
             x_filter: ndarray, shape [n, 3] : Filter to be used(no filter by default)
+            
             burn_in: Number of epochs to pass before kicking in early stopping(default: 100)
+            
             check_interval: Early stopping interval after burn-in(default:10)
+            
             stop_interval: Stop if criteria is performing worse over n consecutive checks (default: 3)
             
     verbose : bool
