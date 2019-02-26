@@ -356,9 +356,8 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     >>> from ampligraph.evaluation import evaluate_performance
     >>>
     >>> X = load_wn18()
-    >>> model = ComplEx(batches_count=10, seed=0, epochs=1, k=150, lr=.1, eta=10,
-    >>>                 loss='pairwise', lambda_reg=0.01,
-    >>>                 regularizer=None, optimizer='adagrad')
+    >>> model = ComplEx(batches_count=10, seed=0, epochs=1, k=150, eta=10,
+    >>>                 loss='pairwise', optimizer='adagrad')
     >>> model.fit(np.concatenate((X['train'], X['valid'])))
     >>>
     >>> filter = np.concatenate((X['train'], X['valid'], X['test']))
@@ -534,8 +533,7 @@ def gridsearch_next_hyperparam(model_name, in_dict):
         print(str(e))
 
 
-def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, eval_splits=10,
-                              corruption_entities=None, verbose=False):
+def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, early_stopping=False, early_stopping_params={}, verbose=False):
     """Model selection routine for embedding models.
 
         .. note::
@@ -543,8 +541,7 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
 
         The function also retrains the best performing model on the concatenation of training and validation sets.
 
-        Final evaluation on the test set is carried out by splitting the test sets, to keep memory consumption
-        acceptable (note that we generate negatives at runtime according to the strategy described
+        (note that we generate negatives at runtime according to the strategy described
         in ::cite:`bordes2013translating`).
 
     Parameters
@@ -560,14 +557,20 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
     filter_retrain : bool
         If True, will use the entire input dataset X to compute filter MRR when retraining the model
         on the concatenation of training and validation sets.
-    corruption_entities : array-like of shape [m]
-        List of entities to use for corruptions. Useful to fit the evaluation protocol in memory when
-        working with large KGs that include many distinct entities.
-        If None, will generate corruptions using all distinct entities. Default is None.
-    eval_splits : int
-        The count of splits in which evaluate test data.
+    early_stopping: bool
+        Flag to enable early stopping(default:False)
+    early_stopping_params: dict
+        Dictionary of parameters for early stopping. 
+        The following keys are supported: 
+            x_valid: ndarray, shape [n, 3] : Validation set to be used for early stopping. Uses X['valid'] by default
+            criteria: criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default)
+            x_filter: ndarray, shape [n, 3] : Filter to be used(no filter by default)
+            burn_in: Number of epochs to pass before kicking in early stopping(default: 100)
+            check_interval: Early stopping interval after burn-in(default:10)
+            stop_interval: Stop if criteria is performing worse over n consecutive checks (default: 3)
+            
     verbose : bool
-        Verbose mode
+        Verbose mode during evaluation of trained model
 
     Returns
     -------
@@ -595,16 +598,30 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
     >>>
     >>> X = load_wn18()
     >>> model_class = ComplEx
-    >>> param_grid = {'batches_count': [10],
-    >>>               'seed': [0],
-    >>>               'epochs': [1],
-    >>>               'k': [50, 150],
-    >>>               'pairwise_margin': [1],
-    >>>               'lr': [.1],
-    >>>               'eta': [2],
-    >>>               'loss': ['pairwise']}
-    >>> select_best_model_ranking(model_class, X, param_grid, filter_retrain=True,
-    >>>                           eval_splits=50, verbose=True)
+    >>> param_grid = {
+    >>>                     "batches_count": [50],
+    >>>                     "seed": 0,
+    >>>                     "epochs": [4000],
+    >>>                     "k": [100, 200],
+    >>>                     "eta": [5,10,15],
+    >>>                     "loss": ["pairwise", "nll"],
+    >>>                     "loss_params": {
+    >>>                         "margin": [2]
+    >>>                     },
+    >>>                     "embedding_model_params": {
+    >>> 
+    >>>                     },
+    >>>                     "regularizer": ["L2", "None"],
+    >>>                     "regularizer_params": {
+    >>>                         "lambda": [1e-4, 1e-5]
+    >>>                     },
+    >>>                     "optimizer": ["adagrad", "adam"],
+    >>>                     "optimizer_params":{
+    >>>                         "lr": [0.01, 0.001, 0.0001]
+    >>>                     },
+    >>>                     "verbose": false
+    >>>                 }
+    >>> select_best_model_ranking(model_class, X, param_grid, filter_retrain=True, verbose=True, early_stopping=True)
 
     """
     hyperparams_list_keys = ["batches_count", "epochs", "k", "eta", "loss", "regularizer", "optimizer"]
@@ -629,9 +646,16 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
     best_mrr_train = 0
     best_model = None
     best_params = None
+    
+    if early_stopping:
+        try:
+            early_stopping_params['x_valid']
+        except KeyError:
+            early_stopping_params['x_valid'] = X['valid']
+        
     for model_params in tqdm(model_params_combinations, disable=(not verbose)):
         model = model_class(**model_params)
-        model.fit(X['train'])
+        model.fit(X['train'], early_stopping, early_stopping_params)
         ranks = evaluate_performance(X['valid'], model=model, filter_triples=None, verbose=verbose)
         curr_mrr = mrr_score(ranks)
         mr = mar_score(ranks)

@@ -144,6 +144,8 @@ class PairwiseLoss(Loss):
     where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives,
     :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
+    Hyperarameters:
+    'margin' - Margin to be used in pairwise loss computation(default:1)
     """
     
     def __init__(self, eta, hyperparam_dict, verbose=False):
@@ -155,7 +157,8 @@ class PairwiseLoss(Loss):
         Parameters
         ----------
         hyperparam_dict : dictionary
-            Consists of key value pairs. The Loss will check the keys to get the corresponding params('margin')
+            Consists of key value pairs. The Loss will check the keys to get the corresponding params
+            'margin' - Margin to be used in pairwise loss computation(default:1)
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', 1)
         
@@ -224,6 +227,9 @@ class AbsoluteMarginLoss(Loss):
 
        where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives,
        :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
+       
+       Hyperarameters:
+       'margin' - Margin to be used in pairwise loss computation(default:1)
     """
     
     def __init__(self, eta, hyperparam_dict, verbose=False):
@@ -236,6 +242,7 @@ class AbsoluteMarginLoss(Loss):
         ----------
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params('margin')
+            'margin' - Margin to be used in pairwise loss computation(default:1)
         """
         self._loss_parameters['margin'] =hyperparam_dict.get('margin', 1)
         
@@ -265,13 +272,17 @@ class AbsoluteMarginLoss(Loss):
 class SelfAdverserialLoss(Loss):
     """ Self adversarial sampling loss.
 
-        Introduced in :cite:`rotatE`.
+        Introduced in :cite:`sun2018rotate`.
 
        .. math::
 
            \mathcal{L} = -log \sigma(\gamma - d_r (h,t)) - \sum_{i=1}^{n} p(h_{i}^{'} ,r,t_{i}^{'} ) log \sigma(d_r (h_{i}^{'},t_{i}^{'}) - \gamma)
 
        where :math:`\gamma` is the margin, and p(h_{i}^{'} ,r,t_{i}^{'} ) is the sampling proportion
+       
+        Hyperarameters:
+        'margin' - Margin to be used in adverserial loss computation(default:3)
+        'alpha' - Temperature of sampling(default:0.5)
     """
     def __init__(self, eta, hyperparam_dict, verbose=False):
         super().__init__(eta, hyperparam_dict, verbose)
@@ -282,7 +293,9 @@ class SelfAdverserialLoss(Loss):
         Parameters
         ----------
         hyperparam_dict : dictionary
-            Consists of key value pairs. The Loss will check the keys to get the corresponding params('margin')
+            Consists of key value pairs. The Loss will check the keys to get the corresponding params
+            'margin' - Margin to be used in adverserial loss computation(default:3)
+            'alpha' - Temperature of sampling(default:0.5)
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', 3)
         self._loss_parameters['alpha'] = hyperparam_dict.get('alpha', 0.5)
