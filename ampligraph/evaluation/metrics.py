@@ -1,12 +1,13 @@
-"""Learning-to-rank metrics to evaluate the performance of neural graph embedding models."""
-
 import numpy as np
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import normalize
 from itertools import chain
 
+"""This module contains learning-to-rank metrics to evaluate the performance of neural graph embedding models."""
+
+
 def hits_at_n_score(ranks, n):
-    """Hits@n
+    """Hits@n metric.
 
     .. math::
 
@@ -42,7 +43,7 @@ def hits_at_n_score(ranks, n):
 
 
 def mrr_score(ranks):
-    """Mean Reciprocal Rank (MRR)
+    """Mean Reciprocal Rank (MRR).
 
     .. math::
 
@@ -76,10 +77,9 @@ def mrr_score(ranks):
 
 
 def rank_score(y_true, y_pred, pos_lab=1):
-    """Rank
+    """Rank score metric.
 
         The rank of a positive element against a list of negatives.
-
 
     .. math::
 
@@ -118,13 +118,12 @@ def rank_score(y_true, y_pred, pos_lab=1):
 
 
 def quality_loss_mse(original_model, subset_model, triple_list, norm=None):
-    """
-        Measure the quality loss between two EmbeddingModels.
+    """ Mean squared error metric to measure the quality loss between two EmbeddingModels.
         
         Parameters
         ----------
         original_model : EmbeddingModel
-            An embedding model trained on a agraph G
+            An embedding model trained on a graph G
         subset_model : EmbeddingModel
             An embedding model trained on a subset of G [triple_list]
         triple_list : np.ndarray, shape [n, 3]
@@ -155,8 +154,7 @@ def quality_loss_mse(original_model, subset_model, triple_list, norm=None):
 
 
 def mar_score(ranks):
-    """
-    Mean Average Rank
+    """ Mean Average Rank score.
 
         Examples
         --------

@@ -9,14 +9,14 @@ A dedicated [Microsoft Teams channel is available here](https://teams.microsoft.
 
 ## Contributors
 
++ [Luca Costabello](mailto:luca.costabello@accenture.com)
++ [Chan Le Van](mailto:chan.v.le.van@accenture.com)
++ [Rory McGrath](mailto:rory.m.mcgrath@accenture.com)
++ [Sumit Pai](mailto:sumit.pai@accenture.com)
++ [Nicholas McCarthy](mailto:nicholas.mccarthy@accenture.com)
 + [Rachit Agarwal](mailto:rachit.r.agarwal@accenture.com)
 + [Jules Bayet](mailto:jules.bayet@polytechnique.edu)
-+ [Luca Costabello](mailto:luca.costabello@accenture.com)
-+ [Freddy Lecue](mailto:freddy.lecuen@accenture.com)
-+ [Chan Le Van](mailto:chan.v.le.van@accenture.com)
-+ [Nicholas McCarthy](mailto:nicholas.mccarthy@accenture.com)
-+ [Rory McGrath](mailto:rory.m.mcgrath@accenture.com)
-+ [Sumit Pai](mailto:jadran.sirotkovic@accenture.com)
++ [Freddy Lecue](mailto:freddy.lecue@accenture.com)
 
 
 

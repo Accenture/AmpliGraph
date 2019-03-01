@@ -2,7 +2,9 @@ import numpy as np
 import pytest
 from ampligraph.latent_features import TransE, DistMult, ComplEx
 from ampligraph.evaluation import evaluate_performance, generate_corruptions_for_eval, \
-    generate_corruptions_for_fit, to_idx, create_mappings, mrr_score, hits_at_n_score, select_best_model_ranking
+    generate_corruptions_for_fit, to_idx, create_mappings, mrr_score, hits_at_n_score, select_best_model_ranking, \
+    filter_unseen_entities
+
 from ampligraph.datasets import load_wn18
 import tensorflow as tf
 
@@ -160,6 +162,40 @@ def test_to_idx():
     X_idx = to_idx(X, ent_to_idx=ent_to_idx, rel_to_idx=rel_to_idx)
 
     np.testing.assert_array_equal(X_idx, X_idx_expected)
+
+
+def test_filter_unseen_entities_with_strict_mode():
+
+    from collections import namedtuple
+    base_model = namedtuple('test_model', 'ent_to_idx')
+
+    X = np.array([['a', 'x', 'b'],
+                  ['c', 'y', 'd'],
+                  ['e', 'y', 'd']])
+
+    model = base_model({'a': 1, 'b': 2, 'c': 3, 'd': 4})
+
+    with pytest.raises(RuntimeError):
+        _ = filter_unseen_entities(X, model, strict=True)
+
+
+def test_filter_unseen_entities_without_strict_mode():
+
+    from collections import namedtuple
+    base_model = namedtuple('test_model', 'ent_to_idx')
+
+    X = np.array([['a', 'x', 'b'],
+                  ['c', 'y', 'd'],
+                  ['e', 'y', 'd']])
+
+    model = base_model({'a': 1, 'b': 2, 'c': 3, 'd': 4})
+
+    X_filtered = filter_unseen_entities(X, model, strict=False)
+
+    X_expected = np.array([['a', 'x', 'b'],
+                           ['c', 'y', 'd']])
+
+    np.testing.assert_array_equal(X_filtered, X_expected)
 
 
 # @pytest.mark.skip(reason="excluded to try out jenkins.")   # TODO: re-enable this

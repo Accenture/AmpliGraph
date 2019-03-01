@@ -12,6 +12,7 @@ setup_params = dict(name='ampligraph',
       author_email='luca.costabello@accenture.com',
       license='',
       packages=find_packages(exclude=('tests', 'docs')),
+      include_package_data=True,
       zip_safe=False,
       install_requires=[
           'numpy',
