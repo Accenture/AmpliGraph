@@ -10,11 +10,15 @@ import ampligraph.latent_features
 import argparse, os, json 
 
 import numpy as np
+import pandas as pd
+
+from utils import clean_data
 
 f_map = {
     "wn18": "load_wn18",
     "fb15k": "load_fb15k",
-    "fb15k_237": "load_fb15k_237"
+    "fb15k_237": "load_fb15k_237",
+    "wn18rr": "load_wn18rr"
 }
 
 def main():
@@ -24,7 +28,7 @@ def main():
     parser.add_argument("--model", type=str)
     parser.add_argument("--hyperparams", type=str)
     parser.add_argument("--gpu", type=int)
-
+    parser.add_argument("--clean_unseen", type=bool)
     args = parser.parse_args()
     
     print("Will use gpu number: ", args.gpu, "...")
@@ -34,7 +38,29 @@ def main():
 
     # load dataset
     load_func = getattr(ampligraph.datasets, f_map[args.dataset])
+  
     X = load_func()
+
+    # if args.clean_unseen:
+    #     X["valid"], X["test"] = clean_data(X["train"], X["valid"], X["test"], keep_valid=True)
+
+    if args.dataset == "fb15k_237":
+        print("Must load unseen...")
+        X["unseen"] = pd.read_csv("unseen_fb15k_237.csv",
+                     sep="\t",
+                     header=None,
+                     names=None,
+                     dtype=str).values
+        X['train'] = np.concatenate((X['train'], X['unseen']))
+    elif args.dataset == "wn18rr":
+        print("Must load unseen...")
+        X["unseen"] = pd.read_csv("unseen_wn18rr.csv",
+                     sep="\t",
+                     header=None,
+                     names=None,
+                     dtype=str).values   
+        X['train'] = np.concatenate((X['train'], X['unseen']))     
+
     print("loaded...{0}".format(args.dataset))
     
     # load model
@@ -47,20 +73,30 @@ def main():
 
     print("input hyperparameters: ", hyperparams)
 
-    model = model_class(**hyperparams, verbose=True)
+    model = model_class(**hyperparams)
     # Fit the model on training and validation set
-    # print("k: ", model.k, "loss: ", model.loss, "batch_count: ", model.batches_count, "seed: ", model.seed, "epochs: ", model.epochs)
-    print("Start fitting...")
-    model.fit(np.concatenate((X['train'], X['valid'])))
+
 
     # The entire dataset will be used to filter out false positives statements
     # created by the corruption procedure:
     filter = np.concatenate((X['train'], X['valid'], X['test']))
+    
+    print("Start fitting...with early stopping")
+    
+    model.fit(np.concatenate((X['train'], X['valid'])), True, 
+    {
+        'x_valid':X['test'][:1000], 
+        'criteria':'mrr', 'x_filter':filter,
+        'stop_interval': 2, 
+        'burn_in':0, 
+        'check_interval':100
+    })
+    # model.fit(np.concatenate((X['train'], X['valid'])))
 
     # Run the evaluation procedure on the test set. Will create filtered rankings.
     # To disable filtering: filter_triples=None
     ranks = evaluate_performance(X['test'], model=model, filter_triples=filter,
-                                verbose=True, splits=50)
+                                verbose=True)
 
     # compute and print metrics:
     mr = mar_score(ranks)
@@ -69,7 +105,7 @@ def main():
     hits_3 = hits_at_n_score(ranks, n=3)
     hits_10 = hits_at_n_score(ranks, n=10)
 
-    with open("result_{0}_{1}_{2}.txt".format(args.dataset, args.model, args.hyperparams), "w") as fo:
+    with open("result_{0}_{1}.txt".format(args.dataset, args.model), "w") as fo:
         fo.write("mr(test): {0} mrr(test): {1} hits 1: {2} hits 3: {3} hits 10: {4}".format(mr, mrr, hits_1, hits_3, hits_10))
 
 if __name__ == "__main__":

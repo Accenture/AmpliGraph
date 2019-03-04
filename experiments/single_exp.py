@@ -11,10 +11,13 @@ import argparse, os, json
 
 import numpy as np
 
+from utils import clean_data
+
 f_map = {
     "wn18": "load_wn18",
     "fb15k": "load_fb15k",
-    "fb15k_237": "load_fb15k_237"
+    "fb15k_237": "load_fb15k_237",
+    "wn18rr": "load_wn18rr"
 }
 
 def main():
@@ -24,7 +27,7 @@ def main():
     parser.add_argument("--model", type=str)
     parser.add_argument("--hyperparams", type=str)
     parser.add_argument("--gpu", type=int)
-
+    parser.add_argument("--clean_unseen", type=bool)
     args = parser.parse_args()
     
     print("Will use gpu number: ", args.gpu, "...")
@@ -34,7 +37,12 @@ def main():
 
     # load dataset
     load_func = getattr(ampligraph.datasets, f_map[args.dataset])
+
     X = load_func()
+
+    if args.clean_unseen:
+        X["valid"], X["test"] = clean_data(X["train"], X["valid"], X["test"], keep_valid=True)
+
     print("loaded...{0}".format(args.dataset))
     
     # load model
@@ -48,14 +56,24 @@ def main():
     print("input hyperparameters: ", hyperparams)
 
     model = model_class(**hyperparams)
-
     # Fit the model on training and validation set
-    print("Start fitting...")
-    model.fit(np.concatenate((X['train'], X['valid'])))
+
 
     # The entire dataset will be used to filter out false positives statements
     # created by the corruption procedure:
     filter = np.concatenate((X['train'], X['valid'], X['test']))
+    
+    print("Start fitting...with early stopping")
+    
+    model.fit(np.concatenate((X['train'], X['valid'])), True, 
+    {
+        'x_valid':X['test'][:1000], 
+        'criteria':'mrr', 'x_filter':filter,
+        'stop_interval': 2, 
+        'burn_in':0, 
+        'check_interval':100
+    })
+    # model.fit(np.concatenate((X['train'], X['valid'])))
 
     # Run the evaluation procedure on the test set. Will create filtered rankings.
     # To disable filtering: filter_triples=None
