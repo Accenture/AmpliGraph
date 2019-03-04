@@ -1,0 +1,25 @@
+{
+"batches_count": 1000, 
+"epochs": 4000, 
+"k": 1000, 
+"eta": 256, 
+"loss": "self_adverserial", 
+"loss_params": {
+"margin": 8,
+"alpha": 0.5
+}, 
+"embedding_model_params": {
+"norm": 1,
+"normalize_ent_emb":false
+}, 
+"regularizer": "L2", 
+"regularizer_params": {
+"lambda": 1e-6
+}, 
+"optimizer": "adam", 
+"optimizer_params": {
+"lr": 0.0005
+}, 
+"verbose": false, 
+"seed": 0
+}

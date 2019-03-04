@@ -8,11 +8,14 @@ import ampligraph.datasets
 import ampligraph.latent_features
 
 import argparse, os, json 
+from utils import clean_data
+
 
 f_map = {
     "wn18": "load_wn18",
     "fb15k": "load_fb15k",
-    "fb15k_237": "load_fb15k_237"
+    "fb15k_237": "load_fb15k_237",
+    "wn18rr": "load_wn18rr"
 }
 
 def main():
@@ -22,6 +25,7 @@ def main():
     parser.add_argument("--model", type=str)
     parser.add_argument("--hyperparams", type=str)
     parser.add_argument("--gpu", type=int)
+    parser.add_argument("--clean_unseen", type=bool)
 
     args = parser.parse_args()
     
@@ -34,6 +38,10 @@ def main():
 
     # load Wordnet18 dataset:
     X_dict = load_func()
+    if args.clean_unseen:
+        X_dict["valid"], X_dict["test"] = clean_data(X_dict["train"], X_dict["valid"], X_dict["test"])
+        print("Triggered clean unseen...")
+
     print("loaded...{0}".format(args.dataset))
 
     model_class = getattr(ampligraph.latent_features, args.model)
