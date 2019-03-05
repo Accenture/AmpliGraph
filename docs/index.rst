@@ -151,6 +151,7 @@ Apply dimensionality reduction and visualize the embeddings:
    api
    dev
    examples
+   experiments
    biblio
    changelog
    contacts
