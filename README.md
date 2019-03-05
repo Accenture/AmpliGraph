@@ -127,6 +127,19 @@ setx AMPLIGRAPH_DATA_HOME /YOUR/PATH/TO/datasets
 '0.3-dev'
 ```
 
+
+## Predictive Power Evaluation (MRR Filtered)
+
+|          | WN18 | FB15k | FB15k | WN18RR |
+|----------|------|-------|-------|--------|
+| TransE   | .??  | .??   | .??   | .??    |
+| DistMult | .??  | .??   | .??   | .??    |
+| ComplEx  | .??  | .??   | .??   | .??    |
+| HolE     | .??  | .??   | .??   | .??    |
+| RotatE   | .??  | .??   | .??   | .??    |
+
+
+
 ##  Documentation
 
 **[Latest documentation available here](http://10.106.43.211/docs/ampligraph/dev/index.html)**
