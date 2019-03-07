@@ -7,8 +7,11 @@ import os
 from joblib import Parallel, delayed
 import itertools
 import tensorflow as tf
+import logging
 
-
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',filename='protocol.log')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 def train_test_split_no_unseen(X, test_size=5000, seed=0):
     """Split into train and test sets.
@@ -33,8 +36,9 @@ def train_test_split_no_unseen(X, test_size=5000, seed=0):
         The test set
 
     """
-
+    logger.debug('Creating train test split.')
     if type(test_size) is float:
+        logger.debug('Test size is of type float. Converting to int.')
         test_size = int(len(X) * test_size)
 
     rnd = np.random.RandomState(seed)
@@ -47,6 +51,7 @@ def train_test_split_no_unseen(X, test_size=5000, seed=0):
     dict_rels = dict(zip(rels, rels_cnt))
 
     idx_test = []
+    logger.debug('Selecting test cases using random search.')
     while len(idx_test) < test_size:
         i = rnd.randint(len(X))
         if dict_subs[X[i, 0]] > 1 and dict_objs[X[i, 2]] > 1 and dict_rels[X[i, 1]] > 1:
@@ -54,11 +59,19 @@ def train_test_split_no_unseen(X, test_size=5000, seed=0):
             dict_objs[X[i, 2]] -= 1
             dict_rels[X[i, 1]] -= 1
             idx_test.append(i)
-
+    logger.debug('Completed random search.')
     idx = np.arange(len(X))
     idx_train = np.setdiff1d(idx, idx_test)
+    logger.debug('Train test split completed.')
     return X[idx_train, :], X[idx_test, :]
 
+
+def _create_unique_mappings(unique_obj,unique_rel):
+    obj_count = len(unique_obj)
+    rel_count = len(unique_rel)
+    rel_to_idx = dict(zip(unique_rel, range(rel_count)))
+    obj_to_idx = dict(zip(unique_obj, range(obj_count)))
+    return rel_to_idx, obj_to_idx 
 
 def create_mappings(X):
     """Create string-IDs mappings for entities and relations.
@@ -80,15 +93,11 @@ def create_mappings(X):
         The entity-to-internal-id associations.
 
     """
+    logger.debug('Creating mappings for entities and relations.')
     unique_ent = np.unique(np.concatenate((X[:, 0], X[:, 2])))
     unique_rel = np.unique(X[:, 1])
-    ent_count = len(unique_ent)
-    rel_count = len(unique_rel)
-    rel_to_idx = dict(zip(unique_rel, range(rel_count)))
-    ent_to_idx = dict(zip(unique_ent, range(ent_count)))
-    return rel_to_idx, ent_to_idx
-
-
+    return _create_unique_mappings(unique_ent,unique_rel)
+ 
 def create_mappings_entity_with_schema(X, S):
     """Create string-IDs mappings for entities and relations.
 
@@ -109,14 +118,10 @@ def create_mappings_entity_with_schema(X, S):
         The entity-to-internal-id associations.
 
     """
+    logger.debug('Creating mappings for entities and relations of a schema.')
     unique_ent = np.unique(np.concatenate((X[:, 0], X[:, 2], S[:, 0])))
     unique_rel = np.unique(X[:, 1])
-    ent_count = len(unique_ent)
-    rel_count = len(unique_rel)
-    rel_to_idx = dict(zip(unique_rel, range(rel_count)))
-    ent_to_idx = dict(zip(unique_ent, range(ent_count)))
-    return rel_to_idx, ent_to_idx
-
+    return _create_unique_mappings(unique_ent,unique_rel)
 
 def create_mappings_schema(S):
     """Create string-IDs mappings for classes and relations of the schema.
@@ -138,14 +143,10 @@ def create_mappings_schema(S):
         The entity-to-internal-id associations.
 
     """
+    logger.debug('Creating mappings for classes and relations of a schema.')
     unique_class = np.unique(S[:,2])
     unique_rel = np.unique(S[:,1])
-    class_count = len(unique_class)
-    rel_count = len(unique_rel)
-    rel_to_idx = dict(zip(unique_rel, range(rel_count)))
-    class_to_idx = dict(zip(unique_class, range(class_count)))
-    return rel_to_idx, class_to_idx
-
+    return _create_unique_mappings(unique_class,unique_rel)
 
 def generate_corruptions_for_eval(X, all_entities, table_entity_lookup_left=None, 
                                       table_entity_lookup_right=None, table_reln_lookup=None, rnd=None):
@@ -180,7 +181,9 @@ def generate_corruptions_for_eval(X, all_entities, table_entity_lookup_left=None
 
     """
     
-    #get the subject entities
+    logger.debug('Generating corruptions for evaluation.')
+
+    logger.debug('Getting repeating subjects.')
     repeated_subjs = tf.keras.backend.repeat(
                                                 tf.slice(X,
                                                     [0, 0], #subj
@@ -188,12 +191,14 @@ def generate_corruptions_for_eval(X, all_entities, table_entity_lookup_left=None
                                             , tf.shape(all_entities)[0])
 
 
+    logger.debug('Getting repeating object.')
     repeated_objs = tf.keras.backend.repeat(
                                                 tf.slice(X,
                                                         [0, 2], #Obj
                                                         [tf.shape(X)[0], 1])
                                             , tf.shape(all_entities)[0])
 
+    logger.debug('Getting repeating relationships.')
     repeated_relns = tf.keras.backend.repeat(
                                                 tf.slice(X,
                                                         [0, 1], #reln
@@ -212,6 +217,7 @@ def generate_corruptions_for_eval(X, all_entities, table_entity_lookup_left=None
     out = tf.reshape(tf.transpose(stacked_out , [0, 2, 1]),(-1,3))
     out_prime = tf.constant([])
     
+    logger.debug('Creating prime numbers associated with corruptions.')
     if table_entity_lookup_left!= None and table_entity_lookup_right!=None and table_reln_lookup != None:
         prime_subj = tf.squeeze(table_entity_lookup_left.lookup(repeated_subjs))
         prime_reln =tf.squeeze(table_reln_lookup.lookup(repeated_relns))
@@ -221,6 +227,7 @@ def generate_corruptions_for_eval(X, all_entities, table_entity_lookup_left=None
         out_prime = tf.concat([prime_subj * prime_reln * prime_ent_right, 
                                prime_ent_left * prime_reln * prime_obj],0)
 
+    logger.debug('Returning corruptions for evaluation.')
     return out, out_prime
 
 
@@ -254,24 +261,36 @@ def generate_corruptions_for_fit(X, all_entities, eta=1, rnd=None):
         indexes can be found at [index+i*n for i in range(eta)]
 
     """
+    logger.debug('Generating corruptions for fit.')
     dataset =  tf.reshape(tf.tile(tf.reshape(X,[-1]),[eta]),[tf.shape(X)[0]*eta,3])
     keep_subj_mask = tf.tile(tf.cast(tf.random_uniform([tf.shape(X)[0]], 0, 2, dtype=tf.int32, seed=rnd),tf.bool),[eta])
     keep_obj_mask = tf.logical_not(keep_subj_mask)
     keep_subj_mask = tf.cast(keep_subj_mask,tf.int32)
     keep_obj_mask = tf.cast(keep_obj_mask,tf.int32)
-
+    logger.debug('Created corruption masks.')
     replacements = tf.random_uniform([tf.shape(dataset)[0]],0,tf.shape(all_entities)[0], dtype=tf.int32, seed=rnd)
 
     subjects = tf.math.add(tf.math.multiply(keep_subj_mask,dataset[:,0]),tf.math.multiply(keep_obj_mask,replacements))
+    logger.debug('Created corrupted subjects.')
     relationships = dataset[:,1]
+    logger.debug('Retained relationships.')
     objects = tf.math.add(tf.math.multiply(keep_obj_mask,dataset[:,2]),tf.math.multiply(keep_subj_mask,replacements))
+    logger.debug('Created corrupted objects.')
 
     out = tf.transpose(tf.stack([subjects,relationships,objects]))
 
+    logger.debug('Returning corruptions for fit.')
     return out           
 
+def _convert_to_idx(X, ent_to_idx, rel_to_idx, obj_to_idx):
+    x_idx_s = np.vectorize(ent_to_idx.get)(X[:, 0])
+    x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
+    x_idx_o = np.vectorize(obj_to_idx.get)(X[:, 2])
+    logger.debug('Returning ids.')
+    return np.dstack([x_idx_s, x_idx_p, x_idx_o]).reshape((-1, 3))
 
-def to_idx(X, ent_to_idx=None, rel_to_idx=None):
+
+def to_idx(X, ent_to_idx, rel_to_idx):
     """Convert statements (triples) into integer IDs.
 
     Parameters
@@ -287,16 +306,13 @@ def to_idx(X, ent_to_idx=None, rel_to_idx=None):
     X : ndarray, shape [n, 3]
         The ndarray of converted statements.
     """
+    logger.debug('Converting statements to integer ids.')
     if X.ndim==1:
         X = X[np.newaxis,:]
-    x_idx_s = np.vectorize(ent_to_idx.get)(X[:, 0])
-    x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
-    x_idx_o = np.vectorize(ent_to_idx.get)(X[:, 2])
-
-    return np.dstack([x_idx_s, x_idx_p, x_idx_o]).reshape((-1, 3))
+    return _convert_to_idx(X, ent_to_idx, rel_to_idx, ent_to_idx) 
 
 
-def to_idx_schema(S, ent_to_idx=None, schema_class_to_idx=None, schema_rel_to_idx=None):
+def to_idx_schema(S, ent_to_idx, schema_class_to_idx, schema_rel_to_idx):
     """Convert schema statements (triples) into integer IDs.
 
     Parameters
@@ -313,11 +329,8 @@ def to_idx_schema(S, ent_to_idx=None, schema_class_to_idx=None, schema_rel_to_id
         The ndarray of converted schema statements.
     """
 
-    x_idx_ent = np.vectorize(ent_to_idx.get)(S[:, 0])
-    x_idx_rel = np.vectorize(schema_rel_to_idx.get)(S[:, 1])
-    x_idx_class = np.vectorize(schema_class_to_idx.get)(S[:, 2])
-
-    return np.dstack([x_idx_ent, x_idx_rel, x_idx_class]).reshape((-1, 3))
+    logger.debug('Converting schema statements to integer ids.')
+    return _convert_to_idx(S, ent_to_idx, schema_rel_to_idx, schema_class_to_idx) 
 
 
 def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=True):
@@ -370,22 +383,23 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     0.8
     """
 
-    #
+    logger.debug('Evaluating the performance of the embedding model.')
     X_test = filter_unseen_entities(X, model, verbose=verbose, strict=True)
 
     X_test = to_idx(X_test, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
 
     if filter_triples is not None:
+        logger.debug('Getting filtered triples.')
         filter_triples = to_idx(filter_triples, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
         model.set_filter_for_eval(filter_triples)
     
     ranks = []
+    logger.debug('Making predictions.')
     for i in tqdm(range(X_test.shape[0]), disable=(not verbose)):
         y_pred, rank = model.predict(X_test[i], from_idx=True)
         ranks.append(rank)
-    
     model.end_evaluation()
-
+    logger.debug('Returning ranks of positive test triples.')
     return ranks
 
 
@@ -410,14 +424,16 @@ def filter_unseen_entities(X, model, verbose=False, strict=True):
         An array of test triples containing no unseen entities.
     """
 
-    # Find entities in test set that are not previously seen by model
+    logger.debug('Finding entities in test set that are not previously seen by model')
     ent_seen = np.unique(list(model.ent_to_idx.keys()))
     ent_test = np.unique(X[:, [0, 2]].ravel())
     ent_unseen = np.setdiff1d(ent_test, ent_seen, assume_unique=True)
 
     if ent_unseen.size == 0:
+        logger.debug('No unseen entities found.')
         return X
     else:
+        logger.debug('Unseen entities found.')
         if strict:
             raise RuntimeError('Unseen entities found in test set, please remove or run '
                                'evaluate_performance() with strict=False.')
@@ -425,9 +441,11 @@ def filter_unseen_entities(X, model, verbose=False, strict=True):
             # Get row-wise mask of triples containing unseen entities
             mask_unseen = np.isin(X, ent_unseen).any(axis=1)
 
+            info = 'Removing {} triples containing unseen entities. '.format(np.sum(mask_unseen))
             if verbose:
-                print('Removed %d triples containing unseen entities. ' % np.sum(mask_unseen))
-
+                logger.info(info)
+                print(info)
+            logger.debug(info)
             return X[~mask_unseen]
 
 
@@ -459,7 +477,8 @@ def yield_all_permutations(registry, category_type, category_type_params):
             try:
                 present_params_vals.append(category_type_params[param])
                 present_params.append(param)
-            except KeyError:
+            except KeyErrori as e:
+                logger.debug('Key not found {}'.format(e))
                 pass
         for val in itertools.product(*present_params_vals):
             yield name, present_params, val
@@ -481,6 +500,19 @@ def gridsearch_next_hyperparam(model_name, in_dict):
     """
 
     from ..latent_features import LOSS_REGISTRY, REGULARIZER_REGISTRY, MODEL_REGISTRY
+    logger.debug('Starting gridsearch over hyperparameters. {}'.format(in_dict))
+    try:
+        verbose = in_dict["verbose"]
+    except KeyError:
+        logger.debug('Verbose key not found. Setting to False.')
+        verbose = False
+
+    try:
+        seed = in_dict["seed"]
+    except KeyError:
+        logger.debug('Seed key not found. Setting to -1.')
+        seed = -1 
+
     try:
         for batch_count in in_dict["batches_count"]:
             for epochs in in_dict["epochs"]:
@@ -494,17 +526,6 @@ def gridsearch_next_hyperparam(model_name, in_dict):
                                         yield_all_permutations(LOSS_REGISTRY, in_dict["loss"], in_dict["loss_params"]):
                                         for model_type, model_params, model_param_values in \
                                             yield_all_permutations(MODEL_REGISTRY, [model_name], in_dict["embedding_model_params"]):
-
-                                            try:
-                                                verbose = in_dict["verbose"]
-                                            except KeyError:
-                                                verbose = False
-
-                                            try:
-                                                seed = in_dict["seed"]
-                                            except KeyError:
-                                                seed = -1
-
                                             out_dict = {
                                                 "batches_count": batch_count,
                                                 "epochs": epochs,
@@ -524,7 +545,7 @@ def gridsearch_next_hyperparam(model_name, in_dict):
 
                                             if seed >= 0:
                                                 out_dict["seed"] = seed
-
+                                            #TODO - Revise this, use dict comprehension instead of for loops
                                             for idx in range(len(loss_params)):
                                                 out_dict["loss_params"][loss_params[idx]] = loss_param_values[idx]
                                             for idx in range(len(reg_params)):
@@ -534,6 +555,7 @@ def gridsearch_next_hyperparam(model_name, in_dict):
 
                                             yield (out_dict)
     except KeyError as e:
+        logger.debug('Hyperparameters are missing from the input dictionary: {}'.format(e))
         print('One or more of the hyperparameters was not passed:')
         print(str(e))
 
@@ -641,16 +663,19 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
     
     for key in hyperparams_list_keys:
         if key not in param_grid.keys() or param_grid[key]==[]:
-            raise ValueError('Please pass values for key ' + key)
+            logger.debug('Hyperparameter key {} is missing.'.format(key))
+            raise ValueError('Please pass values for key {}'.format(key))
             
     for key in hyperparams_dict_keys:
         if key not in param_grid.keys():
+            logger.debug('Hyperparameter key {} is missing, replacing with empty dictionary.'.format(key))
             param_grid[key] = {}
     
     #this would be extended later to take multiple params for optimizers(currently only lr supported)
     try:
         lr = param_grid["optimizer_params"]["lr"]
     except KeyError:
+        logger.debug('Hypermater key {} is missing'.format(key))
         raise ValueError('Please pass values for optimizer parameter - lr')
     
     model_params_combinations = gridsearch_next_hyperparam(model_class.name, param_grid)
@@ -663,6 +688,7 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
         try:
             early_stopping_params['x_valid']
         except KeyError:
+            logger.debug('Early stopping enable but no x_valid parameter set. Setting x_valid to {}'.format(X['valid']))
             early_stopping_params['x_valid'] = X['valid']
         
     for model_params in tqdm(model_params_combinations, disable=(not verbose)):
@@ -674,8 +700,10 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
         hits_1 = hits_at_n_score(ranks, n=1)
         hits_3 = hits_at_n_score(ranks, n=3)
         hits_10 = hits_at_n_score(ranks, n=10)
+        info = 'mr:{} mrr: {} hits 1: {} hits 3: {} hits 10: {}, model: {}, params: {}'.format(mr, curr_mrr, hits_1, hits_3, hits_10, type(model).__name__, model_params)
+        logger.debug(info)
         if verbose:
-            print("mr:{0} mrr: {1} hits 1: {2} hits 3: {3} hits 10: {4}, model: {5}, params: {6}".format(mr, curr_mrr, hits_1, hits_3, hits_10, type(model).__name__, model_params))
+            logger.info(info)
 
         if curr_mrr > best_mrr_train:
             best_mrr_train = curr_mrr
