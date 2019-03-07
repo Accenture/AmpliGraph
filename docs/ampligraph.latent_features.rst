@@ -31,7 +31,7 @@ Loss Functions
     PairwiseLoss
     NLLLoss
     AbsoluteMarginLoss
-    SelfAdverserialLoss
+    SelfAdversarialLoss
     
 Regularizers
 --------------

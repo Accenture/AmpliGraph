@@ -73,7 +73,7 @@ class EmbeddingModel(abc.ABC):
             
             ``absolute_margin`` the model will use absolute margin likelihood.
             
-            ``self_adverserial`` the model will use adverserial sampling loss function.
+            ``self_adversarial`` the model will use adversarial sampling loss function.
         loss_params : dict
             Parameters dictionary specific to the loss. 
             
@@ -147,6 +147,8 @@ class EmbeddingModel(abc.ABC):
             self.optimizer = tf.train.AdamOptimizer(learning_rate=self.optimizer_params.get('lr', 0.1))
         elif optimizer == "sgd":
             self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.optimizer_params.get('lr', 0.1))
+        elif optimizer=="momentum":
+            self.optimizer = tf.train.MomentumOptimizer(learning_rate=self.optimizer_params.get('lr', 0.1), momentum=self.optimizer_params.get('momentum', 0.9))
         else:
             raise ValueError('Unsupported optimizer: %s' % optimizer)
 
@@ -161,6 +163,7 @@ class EmbeddingModel(abc.ABC):
         self.sess_predict = None
         self.trained_model_params = []
         self.is_fitted = False
+        self.eval_config = {}
         self.model_checkpoint_path = model_checkpoint_path
 
     @abc.abstractmethod
@@ -355,18 +358,26 @@ class EmbeddingModel(abc.ABC):
                 current_test_value = hits_at_n_score(ranks,1)
             elif self.early_stopping_criteria == 'mrr':
                 current_test_value = mrr_score(ranks)
-
+            
 
             if self.early_stopping_best_value >= current_test_value:
                 self.early_stopping_stop_counter += 1
                 if self.early_stopping_stop_counter == self.early_stopping_params.get('stop_interval', 3):
                     #Reset this variable as it is reused during evaluation phase
                     self.is_filtered = False
+                    self.eval_config={}
+                    if self.verbose:
+                        print('Early stopping at epoch:', epoch)
+                        print('Best %s: %.10f' % (self.early_stopping_criteria, self.early_stopping_best_value))
                     return True
-            else:
+            else:   
                 self.early_stopping_best_value = current_test_value
                 self.early_stopping_stop_counter = 0
                 self._save_trained_params()
+                
+            if self.verbose:
+                print('Current best:', self.early_stopping_best_value)
+                print('Current:', current_test_value)
             
         return False
         
@@ -461,18 +472,27 @@ class EmbeddingModel(abc.ABC):
         
         #X_batches = np.array_split(X, self.batches_count)
         
-            
+        normalize_rel_emb_op = self.rel_emb.assign(tf.clip_by_norm(self.rel_emb, clip_norm=1, axes=1))    
         
+        if self.embedding_model_params.get('normalize_ent_emb', False):
+            self.sess_train.run(normalize_rel_emb_op)
+            self.sess_train.run(normalize_ent_emb_op)
+            
         for epoch in tqdm(range(1,self.epochs+1), disable=(not self.verbose), unit='epoch'):
             losses = []
             for batch in range(1,self.batches_count+1):
+              
                 loss_batch, _ = self.sess_train.run([ loss, train])
+                
+                if np.isnan(loss_batch) or np.isinf(loss_batch):
+                    raise ValueError('Loss is %f. Please change the hyperparameters!!!'%(loss_batch))
+                    
+                losses.append(loss_batch)
                 if self.embedding_model_params.get('normalize_ent_emb', False):
                     self.sess_train.run(normalize_ent_emb_op)
-
-                losses.append(loss_batch)
             if self.verbose:  
                 tqdm.write('epoch: %d: mean loss: %.10f' % (epoch, sum(losses)/ (batch_size*self.batches_count)))
+
             
 
             if early_stopping:
@@ -538,6 +558,9 @@ class EmbeddingModel(abc.ABC):
                        for i in range(self.x_filter.shape[0]) ] 
         
         self.is_filtered = True
+        
+    def configure_evaluation_protocol(self, config):
+        self.eval_config = config
     
     def _initialize_eval_graph(self):
         """Initialize the evaluation graph. 
@@ -551,8 +574,7 @@ class EmbeddingModel(abc.ABC):
         self.table_reln_lookup = None
 
         all_entities_np = np.int64(np.array(list(self.ent_to_idx.values())))
-        self.all_entities=tf.constant(all_entities_np)
-
+        
         if self.is_filtered:
             all_reln_np = np.int64(np.array(list(self.rel_to_idx.values())))
             self.table_entity_lookup_left = tf.contrib.lookup.HashTable(
@@ -572,13 +594,21 @@ class EmbeddingModel(abc.ABC):
             self.table_filter_lookup = tf.contrib.lookup.HashTable(
                             tf.contrib.lookup.KeyValueTensorInitializer(np.array(self.filter_keys, dtype=np.int64), np.zeros(len(self.filter_keys), dtype=np.int64))
                             , 1)
-
-
-
-        self.out_corr, self.out_corr_prime = generate_corruptions_for_eval(self.X_test_tf, self.all_entities,
-                                                         self.table_entity_lookup_left, 
-                                                         self.table_entity_lookup_right,  
-                                                         self.table_reln_lookup)
+        
+        corruption_entities = self.eval_config.get('corruption_entities', None)
+        
+        if corruption_entities is None:
+            corruption_entities = all_entities_np
+        
+            
+        self.corruption_entities_tf = tf.constant(corruption_entities, dtype=tf.int64)
+        
+        self.out_corr, self.out_corr_prime = generate_corruptions_for_eval(self.X_test_tf, 
+                                                                           self.corruption_entities_tf,
+                                                                           self.eval_config.get('corrupt_side','s+o'),
+                                                                           self.table_entity_lookup_left,
+                                                                           self.table_entity_lookup_right,
+                                                                           self.table_reln_lookup)
 
 
         if self.is_filtered:
@@ -601,6 +631,7 @@ class EmbeddingModel(abc.ABC):
         self.sess_predict.close()
         self.sess_predict=None
         self.is_filtered = False
+        self.eval_config = {}
         
         
     def predict(self, X, from_idx=False):
@@ -770,6 +801,7 @@ class TransE(EmbeddingModel):
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params =regularizer_params,
                          model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
+
 
     def _fn(self, e_s, e_p, e_o):
         """The TransE scoring function.
@@ -1207,3 +1239,5 @@ class HolE(ComplEx):
 
         """
         return super().predict(X, from_idx=from_idx) 
+
+    

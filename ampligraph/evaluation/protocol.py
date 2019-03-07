@@ -147,7 +147,7 @@ def create_mappings_schema(S):
     return rel_to_idx, class_to_idx
 
 
-def generate_corruptions_for_eval(X, all_entities, table_entity_lookup_left=None, 
+def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o', table_entity_lookup_left=None, 
                                       table_entity_lookup_right=None, table_reln_lookup=None, rnd=None):
     """Generate corruptions for evaluation.
 
@@ -157,8 +157,13 @@ def generate_corruptions_for_eval(X, all_entities, table_entity_lookup_left=None
     ----------
     X : Tensor, shape [1, 3]
         Currently, a single positive triples that will be used to create corruptions.
-    all_entities : Tensor
-        All the entity IDs
+    entities_for_corruption : Tensor
+        All the entity IDs which are to be used for generation of corruptions
+    corrupt_side: string
+        Specifies which side to corrupt the entities. 
+        ``s`` is to corrupt only subject.
+        ``o`` is to corrupt only object
+        ``s+o`` is to corrupt both subject and object
     table_entity_lookup_left : tf.HashTable
         Hash table of subject entities mapped to unique prime numbers
     table_entity_lookup_right : tf.HashTable
@@ -180,47 +185,75 @@ def generate_corruptions_for_eval(X, all_entities, table_entity_lookup_left=None
 
     """
     
-    #get the subject entities
-    repeated_subjs = tf.keras.backend.repeat(
-                                                tf.slice(X,
-                                                    [0, 0], #subj
-                                                    [tf.shape(X)[0],1])
-                                            , tf.shape(all_entities)[0])
+    if corrupt_side not in ['s+o', 's', 'o']:
+        raise ValueError('Invalid argument value for corruption side passed for evaluation')
+        
+    if corrupt_side in ['s+o', 'o']: #object is corrupted - so we need subjects as it is
+        repeated_subjs = tf.keras.backend.repeat(
+                                                    tf.slice(X,
+                                                        [0, 0], #subj
+                                                        [tf.shape(X)[0],1])
+                                                , tf.shape(entities_for_corruption)[0])
+        repeated_subjs = tf.squeeze(repeated_subjs, 2)
+        
+    
 
-
-    repeated_objs = tf.keras.backend.repeat(
-                                                tf.slice(X,
-                                                        [0, 2], #Obj
-                                                        [tf.shape(X)[0], 1])
-                                            , tf.shape(all_entities)[0])
+    if corrupt_side in ['s+o', 's']: #subject is corrupted - so we need objects as it is
+        repeated_objs = tf.keras.backend.repeat(
+                                                    tf.slice(X,
+                                                            [0, 2], #Obj
+                                                            [tf.shape(X)[0], 1])
+                                                , tf.shape(entities_for_corruption)[0])
+        repeated_objs = tf.squeeze(repeated_objs, 2)
+        
 
     repeated_relns = tf.keras.backend.repeat(
                                                 tf.slice(X,
                                                         [0, 1], #reln
                                                         [tf.shape(X)[0], 1])
-                                            , tf.shape(all_entities)[0])
-
-    rep_ent = tf.keras.backend.repeat(tf.expand_dims(all_entities,0), tf.shape(X)[0])
-
-
-    repeated_subjs = tf.squeeze(repeated_subjs, 2)
+                                            , tf.shape(entities_for_corruption)[0])
     repeated_relns = tf.squeeze(repeated_relns, 2)
-    repeated_objs = tf.squeeze(repeated_objs, 2)
+    
+
+    rep_ent = tf.keras.backend.repeat(tf.expand_dims(entities_for_corruption,0), tf.shape(X)[0])
     rep_ent = tf.squeeze(rep_ent, 0)
-    stacked_out = tf.concat([tf.stack([repeated_subjs, repeated_relns, rep_ent], 1),
+    
+    
+    if corrupt_side == 's+o':
+        stacked_out = tf.concat([tf.stack([repeated_subjs, repeated_relns, rep_ent], 1),
                         tf.stack([rep_ent, repeated_relns, repeated_objs], 1)],0)
+
+    elif corrupt_side == 'o':
+        stacked_out = tf.stack([repeated_subjs, repeated_relns, rep_ent], 1)
+        
+    else:
+        stacked_out = tf.stack([rep_ent, repeated_relns, repeated_objs], 1)
+    
     out = tf.reshape(tf.transpose(stacked_out , [0, 2, 1]),(-1,3))
     out_prime = tf.constant([])
     
     if table_entity_lookup_left!= None and table_entity_lookup_right!=None and table_reln_lookup != None:
-        prime_subj = tf.squeeze(table_entity_lookup_left.lookup(repeated_subjs))
+        
+        if corrupt_side in ['s+o', 'o']:
+            prime_subj = tf.squeeze(table_entity_lookup_left.lookup(repeated_subjs))
+            prime_ent_right = tf.squeeze(table_entity_lookup_right.lookup(rep_ent))
+        
+        if corrupt_side in ['s+o', 's']:
+            prime_obj = tf.squeeze(table_entity_lookup_right.lookup(repeated_objs))
+            prime_ent_left = tf.squeeze(table_entity_lookup_left.lookup(rep_ent))
+            
+            
         prime_reln =tf.squeeze(table_reln_lookup.lookup(repeated_relns))
-        prime_obj = tf.squeeze(table_entity_lookup_right.lookup(repeated_objs))
-        prime_ent_left = tf.squeeze(table_entity_lookup_left.lookup(rep_ent))
-        prime_ent_right = tf.squeeze(table_entity_lookup_right.lookup(rep_ent))
-        out_prime = tf.concat([prime_subj * prime_reln * prime_ent_right, 
+        
+        if corrupt_side == 's+o':
+            out_prime = tf.concat([prime_subj * prime_reln * prime_ent_right, 
                                prime_ent_left * prime_reln * prime_obj],0)
-
+        elif corrupt_side == 'o':
+            out_prime = prime_subj * prime_reln * prime_ent_right
+        else:
+            out_prime = prime_ent_left * prime_reln * prime_obj
+            
+            
     return out, out_prime
 
 
@@ -320,7 +353,7 @@ def to_idx_schema(S, ent_to_idx=None, schema_class_to_idx=None, schema_rel_to_id
     return np.dstack([x_idx_ent, x_idx_rel, x_idx_class]).reshape((-1, 3))
 
 
-def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=True):
+def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=True, rank_against_ent=None, corrupt_side='s+o'):
     """Evaluate the performance of an embedding model.
 
         Run the relational learning evaluation protocol defined in Bordes TransE paper.
@@ -341,7 +374,14 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     strict : bool
         Strict mode. If True then any unseen entity will cause a RuntimeError.
         If False then triples containing unseen entities will be filtered out.
-
+    rank_against_ent: array-like
+        List of entities to use for corruptions. If None, will generate corruptions
+        using all distinct entities. Default is None.
+    corrupt_side: string
+        Specifies which side to corrupt the entities. 
+        ``s`` is to corrupt only subject.
+        ``o`` is to corrupt only object
+        ``s+o`` is to corrupt both subject and object
     Returns
     -------
     ranks : ndarray, shape [n]
@@ -375,11 +415,24 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
     X_test = to_idx(X_test, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
 
+    ranks = []
+    
+    
     if filter_triples is not None:
         filter_triples = to_idx(filter_triples, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
         model.set_filter_for_eval(filter_triples)
     
-    ranks = []
+    eval_dict = {}
+    
+    if rank_against_ent is not None:
+        idx_entities = np.asarray([idx for uri, idx in model.ent_to_idx.items() if uri in rank_against_ent])
+        eval_dict['corruption_entities']= idx_entities
+        
+    eval_dict['corrupt_side'] = corrupt_side
+    
+    model.configure_evaluation_protocol(eval_dict)
+    
+    
     for i in tqdm(range(X_test.shape[0]), disable=(not verbose)):
         y_pred, rank = model.predict(X_test[i], from_idx=True)
         ranks.append(rank)
@@ -538,7 +591,7 @@ def gridsearch_next_hyperparam(model_name, in_dict):
         print(str(e))
 
 
-def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, early_stopping=False, early_stopping_params={}, verbose=False):
+def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, early_stopping=False, early_stopping_params={}, rank_against_ent=None, corrupt_side='s+o', verbose=False):
     """Model selection routine for embedding models.
 
         .. note::
@@ -581,6 +634,14 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
             
             stop_interval: Stop if criteria is performing worse over n consecutive checks (default: 3)
             
+    rank_against_ent: array-like
+        List of entities to use for corruptions. If None, will generate corruptions
+        using all distinct entities. Default is None.
+    corrupt_side: string
+        Specifies which side to corrupt the entities. 
+        ``s`` is to corrupt only subject.
+        ``o`` is to corrupt only object
+        ``s+o`` is to corrupt both subject and object
     verbose : bool
         Verbose mode during evaluation of trained model
 
@@ -668,7 +729,7 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
     for model_params in tqdm(model_params_combinations, disable=(not verbose)):
         model = model_class(**model_params)
         model.fit(X['train'], early_stopping, early_stopping_params)
-        ranks = evaluate_performance(X['valid'], model=model, filter_triples=None, verbose=verbose)
+        ranks = evaluate_performance(X['valid'], model=model, filter_triples=None, verbose=verbose, rank_against_ent=rank_against_ent, corrupt_side=corrupt_side)
         curr_mrr = mrr_score(ranks)
         mr = mar_score(ranks)
         hits_1 = hits_at_n_score(ranks, n=1)
@@ -689,7 +750,7 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
         X_filter = None
 
     best_model.fit(np.concatenate((X['train'], X['valid'])))
-    ranks_test = evaluate_performance(X['test'], model=best_model, filter_triples=X_filter, verbose=verbose)
+    ranks_test = evaluate_performance(X['test'], model=best_model, filter_triples=X_filter, verbose=verbose, rank_against_ent=rank_against_ent, corrupt_side=corrupt_side)
     mrr_test = mrr_score(ranks_test)
 
     return best_model, best_params, best_mrr_train, ranks_test, mrr_test

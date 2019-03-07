@@ -62,31 +62,6 @@ def load_from_csv(folder_name, file_name, sep='\t', header=None):
     df = df.drop_duplicates()
     return df.as_matrix()
 
-def load_fb15k_sample():
-    """Load sample of Freebase dataset (FB15k-237).
-    This is a reduced version of FB15k.
-
-        The dataset is divided in three splits:
-
-        - ``train``
-        - ``valid``
-        - ``test``
-
-    Returns
-    -------
-
-    splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-
-    Examples
-    --------
-
-    """
-    train = load_from_csv('fb15K-sample', 'train.txt')
-    valid = load_from_csv('fb15K-sample', 'valid.txt')
-    test = load_from_csv('fb15K-sample', 'test.txt')
-    return {'train': train, 'valid': valid, 'test': test}
-
 
 def load_wn11():
     """Load the Wordnet11 Dataset.
@@ -351,71 +326,6 @@ def load_fb15k_237():
     valid = load_from_csv('fb15k-237', 'valid.txt')
     test = load_from_csv('fb15k-237', 'test.txt')
     return {'train': train, 'valid': valid, 'test': test}
-
-
-def aux_load_ICEWS(foldername, filename):
-    df = pd.read_csv(os.path.join(AMPLIGRAPH_DATA_HOME, foldername, filename),
-                     sep='\t',
-                     header=None,
-                     dtype=float)
-
-    df = df.drop_duplicates()
-    df= df.drop(4, axis= 1)
-    df=delet_self_quote(df)
-    return df.as_matrix()
-
-def delet_self_quote(df):
-    n=df.shape[0]
-    m=df.as_matrix()
-    to_drop=[]
-    for i in range(n) : 
-        if m[i,0]==m[i,2]:
-            to_drop.append(i)
-    df=df.drop(to_drop, axis=0)
-    return df
-
-
-def load_ICEWS( ):
-    """ Loads the ICEWS dataset
-
-    Loads the ICEWS dataset described in :cite:`trivedi2017know`.
-
-    The dataset is divided in two splits:
-
-        - ``train``
-        - ``test``
-
-    Returns
-    -------
-
-    splits : dict
-        The dataset splits: {'train': train, 'test': test}. Each split is an ndarray of shape [n, 4].
-    """
-
-    train=aux_load_ICEWS("ICEWS", "train.txt")
-    test=aux_load_ICEWS("ICEWS", "test.txt")
-    return {'train': train,  'test': test}
-
-def load_ICEWS_reduced( ):
-    """ Loads the ICEWS-500 dataset
-
-    Loads the ICEWS-500 dataset described in :cite:`trivedi2017know`.
-
-    The dataset is divided in two splits:
-
-        - ``train``
-        - ``test``
-
-    Returns
-    -------
-
-    splits : dict
-        The dataset splits: {'train': train, 'test': test}. Each split is an ndarray of shape [n, 4].
-    """
-
-    train=aux_load_ICEWS("ICEWS_500", "train_500.txt")
-    test=aux_load_ICEWS("ICEWS_500", "test_500.txt")
-    return {'train': train,  'test': test}
 
 
 def load_yago3_10():
