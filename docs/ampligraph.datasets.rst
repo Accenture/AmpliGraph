@@ -4,6 +4,13 @@ KG Loaders
 
 .. automodule:: ampligraph.datasets
 
+
+Dataset-Specific Loaders
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Use these helpers functions to load datasets used in graph representation learning literature.
+
+
 .. autosummary::
     :toctree: generated
     :template: function.rst
@@ -16,8 +23,14 @@ KG Loaders
     load_yago3_10
     load_wn18rr
 
-Loaders
-^^^^^^^
+Generic Loaders
+^^^^^^^^^^^^^^^
+
+Functions to load custom knowledge graphs from disk.
+
+.. note:: The environment variable ``AMPLIGRAPH_DATA_HOME`` must be set
+    and the graphs must be stored at the path indicated.
+    
 
 .. autosummary::
     :toctree: generated

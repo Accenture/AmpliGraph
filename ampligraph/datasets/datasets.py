@@ -64,8 +64,8 @@ def load_from_csv(folder_name, file_name, sep='\t', header=None):
 
 
 def load_wn11():
-    """Load the Wordnet11 Dataset.
-
+    """Load the WN11 Dataset
+        
         The dataset is divided in three splits:
 
         - ``train``
@@ -97,7 +97,7 @@ def load_wn11():
 
 
 def load_fb13():
-    """Load the Freebase13 Dataset.
+    """Load the FB13 Dataset
 
         The dataset is divided in three splits:
 
@@ -158,10 +158,10 @@ def load_from_rdf(folder_name, file_name, format='nt'):
 
 
 def load_from_ntriples(folder_name, file_name):
-    """Load RDF ntriples
+    """Load RDF ntriples as csv statements
 
-        Loads an RDF knowledge graph serialized as ntriples
-        This function does not use rdflib APIs.
+        Loads an RDF knowledge graph serialized as ntriples, without building an RDF graph in mmeory.
+        This function is faster than ``load_from_rdf()``.
 
 
     Parameters
@@ -186,52 +186,8 @@ def load_from_ntriples(folder_name, file_name):
     return df.as_matrix()
 
 
-def load_dbpedia_1k_s():
-    """Load a sample of DBpedia (DBpedia-1k-S).
-
-        The dataset is split to evalaute a relational model with unseen entities.
-        Splits:
-
-        - ``train``
-        - ``valid``
-        - ``aux``
-        - ``test``
-
-    Returns
-    -------
-
-    splits : dict
-        The dataset splits {'train': train, 'valid': valid, 'aux': aux,'test': test}.
-        Each split is an ndarray of shape [n, 3].
-
-    Examples
-    --------
-    >>> from ampligraph.datasets import load_dbpedia_1k_s
-    >>> X = load_dbpedia_1k_s()
-    >>> X['test'][:3]
-    array([["<http://dbpedia.org/resource/Take_a_Chance_(Stockton's_Wing_album)>",
-            '<http://dbpedia.org/ontology/recordLabel>',
-            '<http://dbpedia.org/resource/Tara_Music_label>'],
-           ['<http://dbpedia.org/resource/Novel_Nature>',
-            '<http://dbpedia.org/ontology/hometown>',
-            '<http://dbpedia.org/resource/Washington_(state)>'],
-           ['<http://dbpedia.org/resource/Back_Home_Tour>',
-            '<http://dbpedia.org/ontology/recordLabel>',
-            '<http://dbpedia.org/resource/Sony_BMG>']], dtype=object)
-
-
-    """
-    train = load_from_ntriples('dbpedia_1k_s', 'training_1000.nt')
-    valid = load_from_ntriples('dbpedia_1k_s', 'validation_1000.nt')
-    aux = load_from_ntriples('dbpedia_1k_s', 'auxiliary_1000.nt')
-    test = load_from_ntriples('dbpedia_1k_s', 'test_1000.nt')
-
-    return {'train': train, 'valid': valid, 'aux': aux, 'test': test}
-
-
 def load_wn18():
-    """Load sample of Wordnet dataset (WN18).
-
+    """Load the WN18 dataset
 
         The dataset is divided in three splits:
 
@@ -263,7 +219,7 @@ def load_wn18():
 
 
 def load_fb15k():
-    """Load sample of Freebase dataset (FB15k).
+    """Load the FB15k dataset
 
     The dataset is divided in three splits:
 
@@ -301,8 +257,9 @@ def load_fb15k():
 
 
 def load_fb15k_237():
-    """Load sample of Freebase dataset (FB15k-237).
-    This is a reduced version of FB15k.
+    """Load the FB15k-237 dataset
+    
+    FB15k-237 is a reduced version of FB15k.
 
         The dataset is divided in three splits:
 
@@ -329,7 +286,7 @@ def load_fb15k_237():
 
 
 def load_yago3_10():
-    """ Loads the YAGO3-10 dataset
+    """ Load the YAGO3-10 dataset
     
     The dataset is described in :cite:`DettmersMSR17`. It is divided in three splits:
 
@@ -361,7 +318,7 @@ def load_yago3_10():
     return {"train": train,  "test": test, "valid": valid}
 
 def load_wn18rr():
-    """ Loads the WN18RR dataset
+    """ Load the WN18RR dataset
     
     The dataset is described in :cite:`DettmersMSR17`. It is divided in three splits:
 

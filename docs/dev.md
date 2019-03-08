@@ -1,19 +1,16 @@
-# Development
+# How to Contribute
 
-## Issue Tracking System
+## Git Repo and Issue Tracking 
 
-[Available on JIRA at this address](https://fleet.alm.accenture.com/thedockjira/issues/?jql=project%20%3D%20TEC%20AND%20component%20%3D%20%22KG%20embeddings%22).
-
-
-## Microsoft Teams Channel
-
-A dedicated [Microsoft Teams channel is available here](https://teams.microsoft.com/l/team/19%3ad909bb60a8254765a11c18b1645c27ed%40thread.skype/conversations?groupId=8caaa2f8-27a2-4a01-9bfa-07f60f0527ba&tenantId=e0793d39-0939-496d-b129-198edd916feb)
-(Join code: `vsprdag`).
+AmpliGraph [Git repository is available on GitHub](https://innersource.accenture.com/projects/DL/repos/xai-link-prediction/).
 
 
-## Git
+## How to Contribute
 
-[Git repository available on InnerSource](https://innersource.accenture.com/projects/DL/repos/xai-link-prediction/).
+
+## How to Roll Your Own Model
+
+TODO
 
 
 ## Unit Tests
@@ -27,16 +24,16 @@ $ pytest tests
 See [pytest documentation](https://docs.pytest.org/en/latest/) for additional arguments.
 
 
-## Build Documentation
+## Documentation
 
-The project documentation can be built with Sphinx:
+The project documentation is based on Sphinx and can be built as follows:
 
 ```
 cd docs
 make clean autogen html
 ```
 
-## Distribute
+## Build your Own Wheel
 
 ```
 pip wheel --wheel-dir dist --no-deps .
