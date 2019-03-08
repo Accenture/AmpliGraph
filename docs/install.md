@@ -1,11 +1,14 @@
 
 # Installation
 
-### Provision a Virtual Environment
+### Prerequisites
 
-**Installation using Anaconda is highly recommended.**
+* Linux Box
+* Python ≥ 3.6
 
-Create & activate Virtual Environment (conda)
+#### Provision a Virtual Environment
+
+Create and activate a virtual environment (conda)
 
 ```
 conda create --name ampligraph python=3.6
@@ -14,43 +17,40 @@ source activate ampligraph
 
 ### Install TensorFlow
 
-**CPU version**
+Install from pip or conda:
+
+**CPU-only**
 
 ```
 pip install tensorflow
-```
 
-or you could install the version packaged with conda:
+or 
 
-```
 conda install tensorflow
 ```
 
-**GPU version**
+**GPU support**
 
 ```
 pip install tensorflow-gpu
-```
 
-or you could install the version packaged with conda:
+or 
 
-```
 conda install tensorflow-gpu
 ```
 
 
-## Install the library
+## Install AmpliGraph
 
 
-You can install the latest stable release of `ampligraph` with pip, using the latest wheel (0.3.0) published by Dublin Labs:
-*Note this work only from within the Dublin Labs network*
+Install the latest stable release from pip:
 
 ```
-pip install http://dubaldeweb001.techlabs.accenture.com/wheels/ampligraph/ampligraph-0.3.dev0-py3-none-any.whl
+pip install ampligraph
 ```
 
 If instead you want the most recent development version, you can clone the repository
-and install from source (this will pull the latest commit on `develop` branch).
+and install from source (your local working copy will be on the latest commit on the `develop` branch).
 The code snippet below will install the library in editable mode (`-e`):
 
 ```

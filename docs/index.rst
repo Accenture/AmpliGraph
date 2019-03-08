@@ -69,25 +69,25 @@ Quick Start
 
 Import a dataset with helper functions:
 
-.. code:: ipython3
+.. code-block:: python
 
     X = load_wn18()
 
 Declare a knowledge graph embeddings model:
 
-.. code:: ipython3
+.. code-block:: python
     
     model = ComplEx()
 
 Fit the model on the training set
 
-.. code:: ipython3
+.. code-block:: python
 
     model.fit(X['train'])
 
 Predict scores for 5 unseen statements, and convert scores into probability estimates:
 
-.. code:: ipython3
+.. code-block:: python
 
     y_pred = model.predict(X['test'][:5,])
 
@@ -100,7 +100,7 @@ Predict scores for 5 unseen statements, and convert scores into probability esti
 
 Evaluate the performance of the model with the state-of-the-art evaluation protocol:
 
-.. code:: ipython3
+.. code-block:: python
 
  ranks = evaluate_performance(X['test'][:10], model=model)
  print(ranks)
@@ -111,7 +111,7 @@ Evaluate the performance of the model with the state-of-the-art evaluation proto
 
 Compute learning to rank metrics:
 
-.. code:: ipython3
+.. code-block:: python
 
     mrr = mrr_score(ranks)
     hits_10 = hits_at_n_score(ranks, n=10)
@@ -123,7 +123,7 @@ Compute learning to rank metrics:
 
 Apply dimensionality reduction and visualize the embeddings:
 
-.. code:: ipython3
+.. code-block:: python
 
    import matplotlib.pyplot as plt
    from sklearn.manifold import TSNE
@@ -139,7 +139,7 @@ Apply dimensionality reduction and visualize the embeddings:
    plt.show(fig)
 
 
-.. image:: img/concept_embeddings_wordnet3_1_v0_2.png
+.. image:: img/concept_embeddings.png
 
 
 
