@@ -1,7 +1,7 @@
 
 # Installation
 
-### Prerequisites
+## Prerequisites
 
 * Linux Box
 * Python ≥ 3.6
@@ -15,7 +15,7 @@ conda create --name ampligraph python=3.6
 source activate ampligraph
 ```
 
-### Install TensorFlow
+#### Install TensorFlow
 
 Install from pip or conda:
 
@@ -68,15 +68,10 @@ Once downloaded, decompress the archives.
 
 **You must also set the following environment variable:**
 
-OSX/Linux:
 ```
 export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
 ```
 
-Windows:
-```
-setx AMPLIGRAPH_DATA_HOME /YOUR/PATH/TO/datasets
-```
 
 ## Sanity Check
 
