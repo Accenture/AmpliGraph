@@ -740,17 +740,68 @@ class EmbeddingModel(abc.ABC):
         return approximate_embedding
 
 
-# TODO: missing docstring
 class RandomBaseline():
+    """Random baseline
+
+        A dummy model that assigns a pseud-random score included between 0 and 1,
+        and drawn from a uniform distribution.
+
+        A dummy random model is useful whenever you need to compare the performance of
+        another model on a custom knowledge graph, and no other baseline is available. 
+        
+        .. note:: Although the model still requires invoking the `fit()` method,
+            no training will be carried out.
+
+        Parameters
+        ----------
+        seed : int
+            The seed used by the internal random numbers generator.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from ampligraph.latent_features import RandomBaseline
+        >>> model = RandomBaseline()
+        >>> X = np.array([['a', 'y', 'b'],
+        >>>               ['b', 'y', 'a'],
+        >>>               ['a', 'y', 'c'],
+        >>>               ['c', 'y', 'a'],
+        >>>               ['a', 'y', 'd'],
+        >>>               ['c', 'y', 'd'],
+        >>>               ['b', 'y', 'c'],
+        >>>               ['f', 'y', 'e']])
+        >>> model.fit(X)
+        >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+    """
+
 
     def __init__(self, seed=0):
         self.seed = seed
         self.rnd = check_random_state(self.seed)
 
     def fit(self, X, early_stopping=False, early_stopping_params={}):
+        """Train the random model
+
+        Parameters
+        ----------
+        x : ndarray, shape [n, 3]
+            The training triples
+
+        """
         self.rel_to_idx, self.ent_to_idx = create_mappings(X)
 
     def predict(self, X, from_idx=False):
+        """Assign random scores to candidate triples
+
+        Parameters
+        ----------
+        X : ndarray, shape [n, 3]
+            The triples to score.
+        from_idx : bool
+            If True, will skip conversion to internal IDs. (default: False).
+
+
+        """
         return self.rnd.uniform(low=0, high=1, size=len(X))
 
 @register_model("TransE", ["norm", "normalize_ent_emb"])

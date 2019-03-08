@@ -29,7 +29,7 @@ Generic Loaders
 Functions to load custom knowledge graphs from disk.
 
 .. note:: The environment variable ``AMPLIGRAPH_DATA_HOME`` must be set
-    and the graphs must be stored at the path indicated.
+    and input graphs must be stored at the path indicated.
     
 
 .. autosummary::

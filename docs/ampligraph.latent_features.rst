@@ -14,6 +14,7 @@ Embedding Models
     :template: class.rst
 
     EmbeddingModel
+    RandomBaseline
     TransE
     DistMult
     ComplEx
