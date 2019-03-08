@@ -5,9 +5,7 @@ import pytest
 pytestmark = pytest.mark.skip("Skipping to avoid failures in latent feature model tests caused by tf.eager."
                                "Will use Autograph feature in KnowEvolve code in the future to get rid of eager.")
 
-# from ampligraph.temporal import KnowEvolve        # Moved inside every test to avoid runtime error, see TEC-1819
 import numpy as np
-from ampligraph.datasets import load_ICEWS
 from ampligraph.evaluation.metrics import mar_score
 import tensorflow as tf
 

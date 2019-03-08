@@ -1,0 +1,44 @@
+{
+    "CUDA_VISIBLE_DEVICES": "1",
+    "UNSEEN_DATASETS": ["WN18RR", "FB15K-237"],
+    "load_function_map": {
+        "WN18": "load_wn18",
+        "FB15K": "load_fb15k",
+        "FB15K-237": "load_fb15k_237",
+        "WN18RR": "load_wn18rr"
+    },
+    "model_name_map": {
+        "TRANSE": "TransE",
+        "COMPLEX": "ComplEx",
+        "DISTMULT": "DistMult",
+        "HOLE": "HolE"
+    },
+    
+    "hyperparams" : {
+        "FB15K":{
+            "TRANSE":  {"batches_count": 10, "epochs": 4000, "k": 150, "eta": 5, "loss": "pairwise", "loss_params": {"margin": 0.5}, "embedding_model_params": {"norm": 1}, "regularizer": "L2", "regularizer_params": {"lambda": 0.0001}, "optimizer": "adam", "optimizer_params": {"lr": 0.0001}, "verbose": false, "seed": 0},
+            "DISTMULT": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adverserial","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false},
+            "COMPLEX": {"batches_count":100,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adverserial","loss_params":{"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":true},
+            "HOLE": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adverserial","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false}        
+        },
+        "WN18":{
+            "TRANSE": null,
+            "DISTMULT": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "nll","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005}, "verbose": false},
+            "COMPLEX": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "nll","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false},
+            "HOLE": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adverserial","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false}
+        },
+        "WN18RR":{
+            "TRANSE": null,
+            "DISTMULT": {"batches_count":25,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adverserial","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false},
+            "COMPLEX": {"batches_count":10,"seed":0,"epochs":4000, "k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "nll","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005}, "verbose":false},
+            "HOLE": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adverserial","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false}        
+        },
+        "FB15K-237":{
+            "TRANSE": {"batches_count": 10, "epochs": 3000, "k": 150, "eta": 10, "loss": "nll", "embedding_model_params": {"normalize_ent_emb": true}, "regularizer": "None", "regularizer_params": {"lambda": 0.0001}, "optimizer": "adam", "optimizer_params": {"lr": 0.0005}, "verbose": false, "seed": 0},
+            "DISTMULT": null,
+            "COMPLEX": null,
+            "HOLE": null        
+        }
+    },
+    "no_early_stopping": ["FB15K_TRANSE"]
+}

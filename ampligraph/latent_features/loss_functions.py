@@ -216,6 +216,49 @@ class NLLLoss(Loss):
         scores = tf.concat([-scores_pos, scores_neg], 0)
         return tf.reduce_sum(tf.log(1 + tf.exp(scores)))
 
+
+@register_loss("nll-adversarial",['alpha'], {'require_same_size_pos_neg':False})        
+class NLLOriginalLoss(Loss):
+    """Negative log-likelihood loss with adversarial sampling.
+
+    """
+    def __init__(self, eta, hyperparam_dict, verbose=False):
+        super().__init__(eta, hyperparam_dict, verbose)
+    
+    def _init_hyperparams(self, hyperparam_dict):
+        """ Verifies and stores the hyperparameters needed by the algorithm.
+        
+        Parameters
+        ----------
+        hyperparam_dict : dictionary
+            Consists of key value pairs. The Loss will check the keys to get the corresponding params
+        """
+        self._loss_parameters['alpha'] = hyperparam_dict.get('alpha', 0.5)
+        
+    def _apply(self, scores_pos, scores_neg):
+        """ Apply the loss function.
+        Parameters
+        ----------
+        scores_pos : tf.Tensor, shape [n, 1]
+            A tensor of scores assigned to positive statements.
+        scores_neg : tf.Tensor, shape [n, 1]
+            A tensor of scores assigned to negative statements.
+
+        Returns
+        -------
+        loss : float
+            The loss value that must be minimized.
+
+        """
+        #scores = tf.concat([scores_pos, -scores_neg], 0)
+        alpha = tf.constant(self._loss_parameters['alpha'], dtype=tf.float32, name='alpha')
+        scores_neg_reshaped = tf.reshape(scores_neg, [self._loss_parameters['eta'], tf.shape(scores_pos)[0]])
+        p_neg = tf.nn.softmax(alpha * scores_neg_reshaped, axis = 0)
+        
+        return tf.reduce_sum(tf.negative(tf.log(tf.sigmoid(scores_pos)))) + tf.reduce_sum(p_neg * tf.negative(tf.log(tf.sigmoid(-scores_neg_reshaped))))
+    
+    
+    
     
 @register_loss("absolute_margin", ['margin'] )      
 class AbsoluteMarginLoss(Loss):
@@ -271,12 +314,12 @@ class AbsoluteMarginLoss(Loss):
 
         """
         margin =  tf.constant(self._loss_parameters['margin'], dtype=tf.float32, name='margin')
-        loss = tf.reduce_sum(scores_neg + tf.maximum(margin - scores_pos, 0))
+        loss = tf.reduce_sum(tf.maximum(margin + scores_neg, 0) - scores_pos)
         return loss
     
 
-@register_loss("self_adverserial", ['margin', 'alpha'], {'require_same_size_pos_neg':False})      
-class SelfAdverserialLoss(Loss):
+@register_loss("self_adversarial", ['margin', 'alpha'], {'require_same_size_pos_neg':False})      
+class SelfAdversarialLoss(Loss):
     """ Self adversarial sampling loss.
 
         Introduced in :cite:`sun2018rotate`.
@@ -289,7 +332,7 @@ class SelfAdverserialLoss(Loss):
        
         Hyperparameters:
         
-        'margin' - Margin to be used in adverserial loss computation(default:3)
+        'margin' - Margin to be used in adversarial loss computation(default:3)
         
         'alpha' - Temperature of sampling(default:0.5)
     """
@@ -304,7 +347,7 @@ class SelfAdverserialLoss(Loss):
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
             
-            'margin' - Margin to be used in adverserial loss computation(default:3)
+            'margin' - Margin to be used in adversarial loss computation(default:3)
             
             'alpha' - Temperature of sampling(default:0.5)
         """

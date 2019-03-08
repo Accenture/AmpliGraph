@@ -2,9 +2,12 @@ import numpy as np
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import normalize
 from itertools import chain
+import logging
 
 """This module contains learning-to-rank metrics to evaluate the performance of neural graph embedding models."""
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 def hits_at_n_score(ranks, n):
     """Hits@n metric.
@@ -35,8 +38,9 @@ def hits_at_n_score(ranks, n):
 
 
     """
-
+    logger.debug('Calculating Hits@n.')
     if isinstance(ranks, list):
+        logger.debug('Converting ranks to numpy array.')
         ranks = np.asarray(ranks)
 
     return np.sum(ranks <= n) / len(ranks)
@@ -70,7 +74,9 @@ def mrr_score(ranks):
     0.4375
 
     """
+    logger.debug('Calculating the Mean Reciprocal Rank.')
     if isinstance(ranks, list):
+        logger.debug('Converting ranks to numpy array.')
         ranks = np.asarray(ranks)
 
     return np.sum(1/ranks)/len(ranks)
@@ -111,6 +117,7 @@ def rank_score(y_true, y_pred, pos_lab=1):
 
     """
 
+    logger.debug('Calculating the Rank Score.')
     idx = np.argsort(y_pred)[::-1]
     y_ord = y_true[idx]
     rank = np.where(y_ord == pos_lab)[0][0] + 1
@@ -137,17 +144,19 @@ def quality_loss_mse(original_model, subset_model, triple_list, norm=None):
         mse : float
             The mean squared error between original_model and subset_model for embeddings of all entities and relations in triple list.
     """
+    logger.debug('Calculating the Mean Equared Error.')
     entities = list(chain.from_iterable([[triple[0], triple[2]] for triple in triple_list]))
     relations = [triple[1] for triple in triple_list]
     orig_embeds = np.vstack([original_model.get_embeddings(entities), original_model.get_embeddings(relations, type="relation")])
     subset_embeds = np.vstack([subset_model.get_embeddings(entities), subset_model.get_embeddings(relations, type="relation")])
 
-    # TEC-1838
     if norm == 'l2':
+        logger.debug('Using l2 normalization.')
         orig_embeds = normalize(orig_embeds, norm=norm)
         subset_embeds = normalize(subset_embeds, norm=norm)
     elif norm is not None and norm != 'l2':
-        raise ValueError('Normalization not supported: %s' % norm)
+        logger.debug('Only l2 normalization is supported. {} is not supported.'.format(norm))
+        raise ValueError('Normalization not supported: {}'.format(norm))
 
     mse = mean_squared_error(orig_embeds, subset_embeds)
     return(mse)
@@ -163,7 +172,8 @@ def mar_score(ranks):
         >>> mar_score(ranks)
         4.6
     """
-
+    logger.debug('Calculating the Mean Average Rank score.')
     if isinstance(ranks, list):
+        logger.debug('Converting ranks to numpy array.')
         ranks = np.asarray(ranks)
     return np.sum(ranks)/len(ranks)
