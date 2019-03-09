@@ -1,4 +1,8 @@
-"""This module includes neural graph embedding models and support functions (such as loss functions)."""
+"""This module includes neural graph embedding models and support functions.
+
+
+
+"""
 
 from .loss_functions import LOSS_REGISTRY
 from .regularizers import REGULARIZER_REGISTRY

@@ -288,7 +288,7 @@ def load_fb15k_237():
 def load_yago3_10():
     """ Load the YAGO3-10 dataset
     
-    The dataset is described in :cite:`DettmersMSR17`. It is divided in three splits:
+    The dataset is described in :cite:`DettmersMS018`. It is divided in three splits:
 
         - ``train``
         - ``valid``        
@@ -320,7 +320,7 @@ def load_yago3_10():
 def load_wn18rr():
     """ Load the WN18RR dataset
     
-    The dataset is described in :cite:`DettmersMSR17`. It is divided in three splits:
+    The dataset is described in :cite:`DettmersMS018`. It is divided in three splits:
 
         - ``train``
         - ``valid``        

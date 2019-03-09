@@ -1,5 +1,5 @@
-KG Loaders
-===========
+Input
+=====
 .. currentmodule:: ampligraph.datasets
 
 .. automodule:: ampligraph.datasets

@@ -148,6 +148,7 @@ Apply dimensionality reduction and visualize the embeddings:
    :caption: Contents:
 
    install
+   background
    api
    dev
    examples

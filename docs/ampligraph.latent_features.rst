@@ -1,13 +1,13 @@
-Latent Features Models
-======================
+Models
+======
 
 .. currentmodule:: ampligraph.latent_features
 
 .. automodule:: ampligraph.latent_features
 
 
-Embedding Models
-----------------
+Knowledge Graph Embedding Models
+--------------------------------
 
 .. autosummary::
     :toctree: generated
