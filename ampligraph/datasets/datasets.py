@@ -329,9 +329,9 @@ def load_yago3_10():
     """
 
     logger.debug('Loading YAGO3-10.')
-    train=load_from_csv("yago_3_10", "train.txt", sep="\t")
-    test=load_from_csv("yago_3_10", "test.txt", sep="\t")
-    valid=load_from_csv("yago_3_10", "valid.txt", sep="\t")
+    train=load_from_csv("YAGO3-10", "train.txt", sep="\t")
+    test=load_from_csv("YAGO3-10", "test.txt", sep="\t")
+    valid=load_from_csv("YAGO3-10", "valid.txt", sep="\t")
     
     return {"train": train,  "test": test, "valid": valid}
 
