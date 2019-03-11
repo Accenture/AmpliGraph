@@ -199,7 +199,7 @@ def test_filter_unseen_entities_without_strict_mode():
 
 
 # @pytest.mark.skip(reason="excluded to try out jenkins.")   # TODO: re-enable this
-def test_generate_corruptions_for_fit():
+def test_generate_corruptions_for_fit_corrupt_side_so():
     X = np.array([['a', 'x', 'b'],
                   ['c', 'x', 'd'],
                   ['e', 'x', 'f'],
@@ -211,7 +211,7 @@ def test_generate_corruptions_for_fit():
     with tf.Session() as sess:
         all_ent = tf.squeeze(tf.constant(list(ent_to_idx.values()), dtype=tf.int32))
         dataset = tf.constant(X, dtype=tf.int32)
-        X_corr = sess.run(generate_corruptions_for_fit(dataset, all_ent, eta, rnd=0))
+        X_corr = sess.run(generate_corruptions_for_fit(dataset, all_ent, eta, corrupt_side='s+o', rnd=0))
 
     # these values occur when seed=0
 
@@ -221,4 +221,52 @@ def test_generate_corruptions_for_fit():
                    [1, 1, 5],
                    [0, 1, 1]]
 
+    np.testing.assert_array_equal(X_corr, X_corr_exp)
+
+def test_generate_corruptions_for_fit_curropt_side_s():
+    X = np.array([['a', 'x', 'b'],
+                  ['c', 'x', 'd'],
+                  ['e', 'x', 'f'],
+                  ['b', 'y', 'h'],
+                  ['a', 'y', 'l']])
+    rel_to_idx, ent_to_idx = create_mappings(X)
+    X = to_idx(X, ent_to_idx=ent_to_idx, rel_to_idx=rel_to_idx)
+    eta=1
+    with tf.Session() as sess:
+        all_ent = tf.squeeze(tf.constant(list(ent_to_idx.values()), dtype=tf.int32))
+        dataset = tf.constant(X, dtype=tf.int32)
+        X_corr = sess.run(generate_corruptions_for_fit(dataset, all_ent, eta, corrupt_side='s', rnd=0))
+
+    # these values occur when seed=0
+
+    X_corr_exp =  [[1, 0, 1],
+                   [5, 0, 3],
+                   [6, 0, 5],
+                   [5, 1, 6],
+                   [1, 1, 7]]
+
+    np.testing.assert_array_equal(X_corr, X_corr_exp)
+
+
+def test_generate_corruptions_for_fit_curropt_side_o():
+    X = np.array([['a', 'x', 'b'],
+                  ['c', 'x', 'd'],
+                  ['e', 'x', 'f'],
+                  ['b', 'y', 'h'],
+                  ['a', 'y', 'l']])
+    rel_to_idx, ent_to_idx = create_mappings(X)
+    X = to_idx(X, ent_to_idx=ent_to_idx, rel_to_idx=rel_to_idx)
+    eta=1
+    with tf.Session() as sess:
+        all_ent = tf.squeeze(tf.constant(list(ent_to_idx.values()), dtype=tf.int32))
+        dataset = tf.constant(X, dtype=tf.int32)
+        X_corr = sess.run(generate_corruptions_for_fit(dataset, all_ent, eta, corrupt_side='o', rnd=0))
+
+    # these values occur when seed=0
+
+    X_corr_exp =  [[0, 0, 1],
+                   [2, 0, 5],
+                   [4, 0, 6],
+                   [1, 1, 5],
+                   [0, 1, 1]]
     np.testing.assert_array_equal(X_corr, X_corr_exp)
