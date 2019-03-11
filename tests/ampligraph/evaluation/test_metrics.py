@@ -29,7 +29,7 @@ def test_hits_at_n_score():
     hits_actual = hits_at_n_score(rankings, n=2)
     assert hits_actual == 0.5
 
-def test_mar_score():
+def test_mr_score():
     rank = np.array([.2, .4, .6, .8])
     mr = mr_score(rank)
     assert mr == 0.5

@@ -161,6 +161,7 @@ def load_from_rdf(folder_name, file_name, format='nt'):
     """
 
     logger.debug('Loading rdf data from {}.'.format(file_name))
+    from rdflib import Graph
     g = Graph()
     g.parse(os.path.join(AMPLIGRAPH_DATA_HOME, folder_name, file_name), format=format, publicID='http://test#')
     return np.array(g)
