@@ -6,117 +6,126 @@ from ampligraph.evaluation import select_best_model_ranking, hits_at_n_score, ma
 
 import argparse, os, json, sys 
 import numpy as np
+import logging
+logging.basicConfig(level=logging.INFO)
 
 from os import path
 from beautifultable import BeautifulTable
 from tqdm import tqdm
+import yaml
+import tensorflow as tf
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3" 
+import warnings
+warnings.simplefilter(action="ignore", category=Warning)
 
 def display_scores(scores):
     output_readme = {}
     output_rst = {}
 
     for obj in scores:
-        output_readme[obj["dataset"]] = []
         output_rst[obj["dataset"]] = BeautifulTable()
+        output_rst[obj["dataset"]].set_style(BeautifulTable.STYLE_RST)
         output_rst[obj["dataset"]].column_headers = ["Model", "MR", "MRR", "H@1", "H@3", "H@10", "Hyperparameters"]
     
     for obj in scores:
         try:
-            output_readme[obj["dataset"]].append("|{0}|{1:.2f}|{2:.2f}|{3:.2f}|{4:.2f}|{5:.2f}|{6}|".format(
-                obj["model"],
-                obj["mr"],
-                obj["mrr"],
-                obj["H@1"],
-                obj["H@3"],
-                obj["H@10"],
-                obj["hyperparams"]))
             output_rst[obj["dataset"]].append_row([obj["model"],  
                                                    "{0:.2f}".format(obj["mr"]),  
                                                    "{0:.2f}".format(obj["mrr"]),  
                                                    "{0:.2f}".format(obj["H@1"]),  
                                                    "{0:.2f}".format(obj["H@3"]),  
                                                    "{0:.2f}".format(obj["H@10"]),
-                                                   obj["hyperparams"]])
+                                                   yaml.dump(obj["hyperparams"],default_flow_style=False)])
         except:
-                output_readme[obj["dataset"]].append("|{0}|.??|.??|.??|.??|.??|.??|".format(obj["model"]))
-                output_rst[obj["dataset"]].append_row([obj["model"],  
+            output_rst[obj["dataset"]].append_row([obj["model"],  
                                                    ".??",  
                                                    ".??",  
                                                    ".??",  
                                                    ".??",  
                                                    ".??",
                                                    ".??"])  
-                
-    # for key, value in output_readme.items():
-    #     print("####",key)
-    #     print("|Model|MR|MRR|H@1|H@3|H@10|Hyperparameters|\n|-----|--|---|---|---|----|----|")
-    #     for elm in value:
-    #         print(elm)
-    
+   
     for key, value in output_rst.items():
         print(key)
         print(value)
 
 # clean datasets with unseen entities
-def clean_data(train, valid, test, keep_valid = False):
+def clean_data(train, valid, test, throw_valid = False):
     train_ent = set(train.flatten())
     valid_ent = set(valid.flatten())
     test_ent = set(test.flatten())
-    
-    if not keep_valid:
-        # filter valid
-        valid_diff_train_ent = valid_ent - train_ent
+
+    if not throw_valid:
+        # filter test 
+        train_valid_ent = set(train.flatten()) | set(valid.flatten())
+        ent_test_diff_train_valid = test_ent - train_valid_ent
+        
+        idxs_test = []
+
+        if len(ent_test_diff_train_valid) > 0:
+            count_test = 0
+            c_if=0
+            for row in test:
+                tmp = set(row)
+                if len(tmp & ent_test_diff_train_valid) != 0:
+                    idxs_test.append(count_test)
+                    c_if+=1
+                count_test = count_test + 1
+        filtered_test = np.delete(test, idxs_test, axis=0)
+        logging.debug("fit validation case: shape test: {0}  -  filtered test: {1}: {2} unseen entities cleaned".format(test.shape, filtered_test.shape, c_if))
+        return valid, filtered_test
+    else:
+        #filter valid
+        ent_valid_diff_train = valid_ent - train_ent
         idxs_valid = []
-        if len(valid_diff_train_ent) > 0:
+
+        if len(ent_valid_diff_train) > 0:
             count_valid = 0
-            c_if = 0
+            c_if=0
             for row in valid:
                 tmp = set(row)
-                if len(tmp & valid_diff_train_ent) != 0:
+                if len(tmp & ent_valid_diff_train) != 0:
                     idxs_valid.append(count_valid)
                     c_if+=1
                 count_valid = count_valid + 1
         filtered_valid = np.delete(valid, idxs_valid, axis=0)
-        # logging.debug("shape valid: {0} shape - filtered valid: {1}: {2}".format(valid.shape, filtered_valid.shape, c_if))
-        valid = filtered_valid
-       
-    # filter test 
-    train_valid_ent = set(train.flatten()) | set(valid.flatten())
-    ent_test_diff_train_valid = test_ent - train_valid_ent
-    
-    idxs_test = []
+        logging.debug("not fitting validation case: shape valid: {0}  -  filtered valid: {1}: {2} unseen entities cleaned".format(valid.shape, filtered_valid.shape, c_if))    
+        # filter test 
+        ent_test_diff_train = test_ent - train_ent
 
-    if len(ent_test_diff_train_valid) > 0:
-        count_test = 0
-        c_if=0
-        for row in test:
-            tmp = set(row)
-            if len(tmp & ent_test_diff_train_valid) != 0:
-                idxs_test.append(count_test)
-                c_if+=1
-            count_test = count_test + 1
-    filtered_test = np.delete(test, idxs_test, axis=0)
-    # print("shape test: {0}  -  filtered test: {1}: {2}".format(test.shape, filtered_test.shape, c_if))
+        
+        idxs_test = []
 
-    return valid, filtered_test
+        if len(ent_test_diff_train) > 0:
+            count_test = 0
+            c_if=0
+            for row in test:
+                tmp = set(row)
+                if len(tmp & ent_test_diff_train) != 0:
+                    idxs_test.append(count_test)
+                    c_if+=1
+                count_test = count_test + 1
+        filtered_test = np.delete(test, idxs_test, axis=0)
+        logging.debug("not fitting validation case: shape test: {0}  -  filtered test: {1}: {2} unseen entities cleaned".format(test.shape, filtered_test.shape, c_if))
+        return filtered_valid, filtered_test
 
 def run_single_exp(config, dataset, model):
     hyperparams = config["hyperparams"][dataset][model]
     if hyperparams is None:
-        print("dataset {0}...model {1} experiment is not conducted yet...".format(dataset, config["model_name_map"][model]))
+        logging.info("dataset {0}...model {1} experiment is not conducted yet...".format(dataset, config["model_name_map"][model]))
         return {
             "hyperparams": ".??"
         }
-    print("dataset {0}...model {1}...best hyperparameter:...{2}".format(dataset, config["model_name_map"][model], hyperparams))
+    logging.info("dataset {0}...model {1}...best hyperparameter:...{2}".format(dataset, config["model_name_map"][model], hyperparams))
     es_code = "{0}_{1}".format(dataset, model)
 
     load_func = getattr(ampligraph.datasets, config["load_function_map"][dataset])
     X = load_func()
     # print("Loaded...{0}...".format(dataset))
 
-    if dataset in config["UNSEEN_DATASETS"]:
-        print("{0} contains unseen entities in test dataset, we cleaned them...".format(dataset))
-        X["valid"], X["test"] = clean_data(X["train"], X["valid"], X["test"], keep_valid=True)
+    if dataset in config["DATASET_WITH_UNSEEN_ENTITIES"]:
+        logging.debug("{0} contains unseen entities in test dataset, we cleaned them...".format(dataset))
+        X["valid"], X["test"] = clean_data(X["train"], X["valid"], X["test"], throw_valid=True)
 
     # load model
     model_class = getattr(ampligraph.latent_features, config["model_name_map"][model])
@@ -127,13 +136,13 @@ def run_single_exp(config, dataset, model):
     filter = np.concatenate((X['train'], X['valid'], X['test']))
 
     if es_code in config["no_early_stopping"]:
-        # print("Fit without early stopping...")
-        model.fit(np.concatenate((X['train'], X['valid'])))
+        logging.debug("Fit without early stopping...")
+        model.fit(X["train"])
     else:
-        # print("Fit with early stopping...")
-        model.fit(np.concatenate((X['train'], X['valid'])), True, 
+        logging.debug("Fit with early stopping...")
+        model.fit(X["train"], True, 
         {
-            'x_valid':X['test'][:1000], 
+            'x_valid':X['valid'][::10], 
             'criteria':'mrr', 
             'x_filter':filter,
             'stop_interval': 2, 
@@ -143,8 +152,9 @@ def run_single_exp(config, dataset, model):
 
     # Run the evaluation procedure on the test set. Will create filtered rankings.
     # To disable filtering: filter_triples=None
-    ranks = evaluate_performance(X['test'], model=model, filter_triples=filter,
-                                verbose=True)
+    ranks = evaluate_performance(X['test'], model, filter, verbose=True, corrupt_side='s')
+    ranks2 = evaluate_performance(X['test'], model, filter, verbose=True, corrupt_side='o')
+    ranks.extend(ranks2)
 
     # compute and print metrics:
     mr = mar_score(ranks)
