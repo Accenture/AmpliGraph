@@ -2,7 +2,7 @@ import numpy as np
 from tqdm import tqdm
 
 
-from ..evaluation import rank_score, mrr_score, hits_at_n_score, mar_score
+from ..evaluation import rank_score, mrr_score, hits_at_n_score, mr_score
 import os
 from joblib import Parallel, delayed
 import itertools
@@ -725,7 +725,7 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
             ranks = evaluate_performance(selection_dataset, model=model, filter_triples=X_filter, verbose=verbose, rank_against_ent=rank_against_ent, corrupt_side=corrupt_side)
 
         curr_mrr = mrr_score(ranks)
-        mr = mar_score(ranks)
+        mr = mr_score(ranks)
         hits_1 = hits_at_n_score(ranks, n=1)
         hits_3 = hits_at_n_score(ranks, n=3)
         hits_10 = hits_at_n_score(ranks, n=10)

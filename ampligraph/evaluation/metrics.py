@@ -162,14 +162,14 @@ def quality_loss_mse(original_model, subset_model, triple_list, norm=None):
     return(mse)
 
 
-def mar_score(ranks):
+def mr_score(ranks):
     """ Mean Average Rank score.
 
         Examples
         --------
-        >>> from ampligraph.temporal.evaluation_function import mar_score
+        >>> from ampligraph.evaluation import mr_score
         >>> ranks= [5, 3, 4, 10, 1]
-        >>> mar_score(ranks)
+        >>> mr_score(ranks)
         4.6
     """
     logger.debug('Calculating the Mean Average Rank score.')

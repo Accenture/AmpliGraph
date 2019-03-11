@@ -2,7 +2,7 @@ import ampligraph.datasets
 import ampligraph.latent_features
 from ampligraph.datasets import load_wn18, load_fb15k, load_fb15k_237
 from ampligraph.latent_features import TransE, DistMult, ComplEx
-from ampligraph.evaluation import select_best_model_ranking, hits_at_n_score, mar_score, evaluate_performance, mrr_score
+from ampligraph.evaluation import select_best_model_ranking, hits_at_n_score, mr_score, evaluate_performance, mrr_score
 
 import argparse, os, json, sys 
 import numpy as np
@@ -157,7 +157,7 @@ def run_single_exp(config, dataset, model):
     ranks.extend(ranks2)
 
     # compute and print metrics:
-    mr = mar_score(ranks)
+    mr = mr_score(ranks)
     mrr = mrr_score(ranks)
     hits_1 = hits_at_n_score(ranks, n=1)
     hits_3 = hits_at_n_score(ranks, n=3)

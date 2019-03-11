@@ -6,7 +6,7 @@ pytestmark = pytest.mark.skip("Skipping to avoid failures in latent feature mode
                                "Will use Autograph feature in KnowEvolve code in the future to get rid of eager.")
 
 import numpy as np
-from ampligraph.evaluation.metrics import mar_score
+from ampligraph.evaluation.metrics import mr_score
 import tensorflow as tf
 
 X_bis = np.array([[2.0, 18.0, 0.0, 0.0],
@@ -208,7 +208,7 @@ def test_previous_table():
 
 def test_mar_ranks():
     ranks=[8,9,10,3,1,6]
-    assert(mar_score(ranks)==6+1/6)
+    assert(mr_score(ranks) == 6 + 1 / 6)
 
 
 
