@@ -259,8 +259,8 @@ ComplEx   606.17   0.27   0.18   0.29   0.45    batches_count: 100;
 ========= ======== ====== ====== ====== ====== ==========================
 
 Results in the table above can be reproduced by running the script below:
-``$ ./predictive_performance.py -d dataset -m model``
 
+`$ cd experiments && python predictive_performance.py -d dataset -m model`
 
 
 Runtime Performance
