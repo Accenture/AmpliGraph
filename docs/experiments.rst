@@ -7,67 +7,256 @@ Predictive Performance
 
 We report the filtered MR, MRR, Hit at 1, 3 and 10 on the most common datasets used in literature.
 
+
 FB15K
 -----
 
-+----------+--------+------+------+------+------+
-|  Model   |   MR   | MRR  | H @ 1| H @ 3|H @ 10|
-+----------+--------+------+------+------+------+
-|  TransE  | 159.02 | 0.47 | 0.35 | 0.55 | 0.72 |
-+----------+--------+------+------+------+------+
-| DistMult | 223.39 | 0.77 | 0.73 | 0.81 | 0.85 |
-+----------+--------+------+------+------+------+
-| ComplEx  | 221.21 | 0.79 | 0.76 | 0.82 | 0.85 |
-+----------+--------+------+------+------+------+
-|   HolE   | 245.28 | 0.78 | 0.72 | 0.82 | 0.86 |
-+----------+--------+------+------+------+------+
+========== ======== ====== ====== ====== ====== =========================
+  Model       MR     MRR   H @ 1  H @ 3  H @ 10       Hyperparameters
+========== ======== ====== ====== ====== ====== =========================
+  TransE    105.45   0.55   0.39   0.68   0.79   batches_count: 10;
+                                                 embedding_model_params:
+                                                 norm: 1;
+                                                 epochs: 4000;
+                                                 eta: 5;
+                                                 k: 150;
+                                                 loss: pairwise;
+                                                 loss_params:
+                                                 margin: 0.5;
+                                                 optimizer: adam;
+                                                 optimizer_params:
+                                                 lr: 0.0001;
+                                                 regularizer: L2;
+                                                 regularizer_params:
+                                                 lambda: 0.0001;
+                                                 seed: 0
+                                                 
+
+ DistMult   177.23   0.79   0.74   0.82   0.86   batches_count: 50;
+                                                 epochs: 4000;
+                                                 eta: 20;
+                                                 k: 200;
+                                                 loss: self_adversarial;
+                                                 loss_params:
+                                                 margin: 1;
+                                                 optimizer: adam;
+                                                 optimizer_params:
+                                                 lr: 0.0005;
+                                                 seed: 0
+                                                 
+
+ ComplEx    188.43   0.79   0.76   0.82   0.86   batches_count: 100;
+                                                 epochs: 4000;
+                                                 eta: 20;
+                                                 k: 200;
+                                                 loss: self_adversarial;
+                                                 loss_params:
+                                                 margin: 1;
+                                                 optimizer: adam;
+                                                 optimizer_params:
+                                                 lr: 0.0005;
+                                                 seed: 0
+                                                 
+
+   HolE     212.62   0.80    0.76   0.83   0.87  batches_count: 50;
+                                                 epochs: 4000;
+                                                 eta: 20;
+                                                 k: 200;
+                                                 loss: self_adversarial;
+                                                 loss_params:
+                                                 margin: 1;
+                                                 optimizer: adam;
+                                                 optimizer_params:
+                                                 lr: 0.0005;
+                                                 seed: 0
+========== ======== ====== ====== ====== ====== =========================
+
 
 WN18
 ----
 
-+----------+--------+------+------+------+------+
-|  Model   |   MR   | MRR  | H @ 1| H @ 3|H @ 10|
-+----------+--------+------+------+------+------+
-|  TransE  |  .??   | .??  | .??  | .??  | .??  |
-+----------+--------+------+------+------+------+
-| DistMult | 761.78 | 0.76 | 0.62 | 0.90 | 0.96 |
-+----------+--------+------+------+------+------+
-| ComplEx  | 656.88 | 0.96 | 0.96 | 0.97 | 0.97 |
-+----------+--------+------+------+------+------+
-|   HolE   | 587.58 | 0.96 | 0.95 | 0.97 | 0.97 |
-+----------+--------+------+------+------+------+
+========== ======== ====== ====== ====== ====== =========================
+  Model       MR     MRR   H @ 1  H @ 3  H @ 10      Hyperparameters
+========== ======== ====== ====== ====== ====== =========================
+ TransE    445.28    0.50   0.16   0.82   0.90   batches_count: 10;
+                                                 embedding_model_params:
+                                                 norm: 1;
+                                                 epochs: 4000;
+                                                 eta: 5;
+                                                 k: 150;
+                                                 loss: pairwise;
+                                                 loss_params:
+                                                 margin: 0.5;
+                                                 optimizer: adam;
+                                                 optimizer_params:
+                                                 lr: 0.0001;
+                                                 regularizer: L2;
+                                                 regularizer_params:
+                                                 lambda: 0.0001;
+                                                 seed: 0
+                                                
+
+ DistMult  746.44    0.83   0.73   0.92   0.95   batches_count: 50;
+                                                 epochs: 4000;
+                                                 eta: 20;
+                                                 k: 200;
+                                                 loss: nll;
+                                                 loss_params:
+                                                 margin: 1;
+                                                 optimizer: adam;
+                                                 optimizer_params:
+                                                 lr: 0.0005;
+                                                 seed: 0
+                                                
+ ComplEx   715.09    0.94   0.94   0.95   0.95   batches_count: 50;
+                                                 epochs: 4000;
+                                                 eta: 20;
+                                                 k: 200;
+                                                 loss: nll;
+                                                 loss_params:
+                                                 margin: 1;
+                                                 optimizer: adam;
+                                                 optimizer_params:
+                                                 lr: 0.0005;
+                                                 seed: 0
+
+   HolE    658.85    0.94   0.93   0.94   0.95   batches_count: 50;
+                                                 epochs: 4000;
+                                                 eta: 20;
+                                                 k: 200;
+                                                 loss: self_adversarial;
+                                                 loss_params:
+                                                 margin: 1;
+                                                 optimizer: adam;
+                                                 optimizer_params:
+                                                 lr: 0.0005;
+                                                 seed: 0
+========== ======== ====== ====== ====== ====== =========================
 
 WN18RR
 ------
-We removed 187 triples containing unseen entities on test dataset.
 
-+----------+----------+------+------+------+------+
-|  Model   |    MR    | MRR  | H @ 1| H @ 3|H @ 10|
-+----------+----------+------+------+------+------+
-|  TransE  |   .??    | .??  | .??  | .??  | .??  |
-+----------+----------+------+------+------+------+
-| DistMult | 13047.16 | 0.41 | 0.39 | 0.42 | 0.46 |
-+----------+----------+------+------+------+------+
-| ComplEx  | 15547.66 | 0.43 | 0.40 | 0.43 | 0.48 |
-+----------+----------+------+------+------+------+
-|   HolE   | 13364.4  | 0.43 | 0.41 | 0.44 | 0.48 |
-+----------+----------+------+------+------+------+
+========== ========= ====== ====== ====== ====== ========================
+  Model       MR      MRR   H @ 1  H @ 3  H @ 10      Hyperparameters
+========== ========= ====== ====== ====== ====== ========================
+TransE     1532.28   0.23   0.07   0.34   0.50    batches_count: 100;
+                                                  embedding_model_params:
+                                                  norm: 1;
+                                                  epochs: 4000;
+                                                  eta: 20;
+                                                  k: 200;
+                                                  loss: self_adversarial;
+                                                  loss_params:
+                                                  margin: 1;
+                                                  optimizer: adam;
+                                                  optimizer_params:
+                                                  lr: 0.0001;
+                                                  regularizer: L1;
+                                                  regularizer_params:
+                                                  lambda: 1.0e-05;
+                                                  seed: 0
+                                                 
+ DistMult   6853.22   0.44   0.42   0.45   0.50  batches_count: 25;
+                                                 epochs: 4000;
+                                                 eta: 20;
+                                                 k: 200;
+                                                 loss: self_adversarial;
+                                                 loss_params:
+                                                 margin: 1;
+                                                 optimizer: adam;
+                                                 optimizer_params:
+                                                 lr: 0.0005;
+                                                 seed: 0
+                                                 
+ ComplEx    8213.51   0.44   0.41   0.45   0.50  batches_count: 10;
+                                                 epochs: 4000;
+                                                 eta: 20;
+                                                 k: 200;
+                                                 loss: nll;
+                                                 loss_params:
+                                                 margin: 1;
+                                                 optimizer: adam;
+                                                 optimizer_params:
+                                                 lr: 0.0005;
+                                                 seed: 0
+                                                 
+   HolE     7304.87   0.47   0.43   0.48   0.53  batches_count: 50;
+                                                 epochs: 4000;
+                                                 eta: 20;
+                                                 k: 200;
+                                                 loss: self_adversarial;
+                                                 loss_params:
+                                                 margin: 1;
+                                                 optimizer: adam;
+                                                 optimizer_params:
+                                                 lr: 0.0005;
+                                                 seed: 0
+========== ========= ====== ====== ====== ====== ========================
 
-FB15K-237 
+
+FB15K-237
 ---------
-We removed 27 triples containing unseen entities on test dataset.
 
-+----------+-----+-----+-----+-----+------+
-|  Model   | MR  | MRR |H @ 1|H @ 3|H @ 10|
-+----------+-----+-----+-----+-----+------+
-|  TransE  | .?? | .?? | .?? | .?? | .??  |
-+----------+-----+-----+-----+-----+------+
-| DistMult | .?? | .?? | .?? | .?? | .??  |
-+----------+-----+-----+-----+-----+------+
-| ComplEx  | .?? | .?? | .?? | .?? | .??  |
-+----------+-----+-----+-----+-----+------+
-|   HolE   | .?? | .?? | .?? | .?? | .??  |
-+----------+-----+-----+-----+-----+------+
+========= ======== ====== ====== ====== ====== ==========================
+  Model      MR     MRR    H @ 1 H @ 3  H @ 10      Hyperparameters
+========= ======== ====== ====== ====== ====== ==========================
+TransE     373.63   0.27   0.18   0.30   0.44    batches_count: 10;
+                                                 embedding_model_params:
+                                                 norm: 1;
+                                                 epochs: 4000;
+                                                 eta: 5;
+                                                 k: 150;
+                                                 loss: pairwise;
+                                                 loss_params:
+                                                 margin: 0.5;
+                                                 optimizer: adam;
+                                                 optimizer_params:
+                                                 lr: 0.0001;
+                                                 regularizer: L2;
+                                                 regularizer_params:
+                                                 lambda: 0.0001;
+                                                 seed: 0
+                                                  
+DistMult   269.68   0.26   0.17   0.29   0.44    batches_count: 6;
+                                                 epochs: 4000;
+                                                 eta: 20;
+                                                 k: 200;
+                                                 loss: self_adversarial;
+                                                 loss_params:
+                                                 margin: 1;
+                                                 optimizer: adam;
+                                                 optimizer_params:
+                                                 lr: 0.0005;
+                                                 regularizer: L2;
+                                                 regularizer_params:
+                                                 lambda: 0.0001;
+                                                 seed: 0
+
+ComplEx   606.17   0.27   0.18   0.29   0.45    batches_count: 100;
+                                                epochs: 4000;
+                                                eta: 20;
+                                                k: 200;
+                                                loss: self_adversarial;
+                                                loss_params:
+                                                margin: 1;
+                                                optimizer: adam;
+                                                optimizer_params:
+                                                lr: 0.0005;
+                                                seed: 0
+
+ HolE      408.71   0.20  0.12   0.22   0.38    batches_count: 100;
+                                                epochs: 4000;
+                                                eta: 20;
+                                                k: 200;
+                                                loss: nll;
+                                                optimizer: adam;
+                                                optimizer_params:
+                                                lr: 0.0005;
+                                                regularizer: L2;
+                                                regularizer_params:
+                                                lambda: 1.0e-05;
+                                                seed: 0
+========= ======== ====== ====== ====== ====== ==========================
 
 Results in the table above can be reproduced by running the script below:
 ``$ ./predictive_performance.py -d dataset -m model``
@@ -78,4 +267,3 @@ Runtime Performance
 -------------------
 
 //TODO
-
