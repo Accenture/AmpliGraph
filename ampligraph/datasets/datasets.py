@@ -1,9 +1,12 @@
 import pandas as pd
 import os
 import numpy as np
+import logging
 
 AMPLIGRAPH_DATA_HOME = os.environ['AMPLIGRAPH_DATA_HOME']
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 def load_from_csv(folder_name, file_name, sep='\t', header=None):
     """Load a csv file
@@ -53,12 +56,14 @@ def load_from_csv(folder_name, file_name, sep='\t', header=None):
 
 
     """
+
+    logger.debug('Loading data from {}.'.format(file_name))
     df = pd.read_csv(os.path.join(AMPLIGRAPH_DATA_HOME, folder_name, file_name),
                      sep=sep,
                      header=header,
                      names=None,
                      dtype=str)
-
+    logger.debug('Dropping duplicates.')
     df = df.drop_duplicates()
     return df.as_matrix()
 
@@ -90,6 +95,8 @@ def load_wn11():
 
 
     """
+
+    logger.debug('Loading wn11 data.')
     train = load_from_csv('wordnet11', 'train.txt')
     valid = load_from_csv('wordnet11', 'dev.txt')
     test = load_from_csv('wordnet11', 'test.txt')
@@ -123,6 +130,8 @@ def load_fb13():
 
 
     """
+
+    logger.debug('Loading freebase13 data.')
     train = load_from_csv('freebase13', 'train.txt')
     valid = load_from_csv('freebase13', 'dev.txt')
     test = load_from_csv('freebase13', 'test.txt')
@@ -151,7 +160,7 @@ def load_from_rdf(folder_name, file_name, format='nt'):
             the actual triples of the file.
     """
 
-
+    logger.debug('Loading rdf data from {}.'.format(file_name))
     g = Graph()
     g.parse(os.path.join(AMPLIGRAPH_DATA_HOME, folder_name, file_name), format=format, publicID='http://test#')
     return np.array(g)
@@ -176,6 +185,8 @@ def load_from_ntriples(folder_name, file_name):
         triples : ndarray , shape [n, 3]
             the actual triples of the file.
     """
+
+    logger.debug('Loading rdf ntriples from {}.'.format(file_name))
     df = pd.read_csv(os.path.join(AMPLIGRAPH_DATA_HOME, folder_name, file_name),
                      sep=' ',
                      header=None,
@@ -184,7 +195,6 @@ def load_from_ntriples(folder_name, file_name):
                      usecols=[0, 1, 2])
     # df = df.drop_duplicates()
     return df.as_matrix()
-
 
 def load_wn18():
     """Load the WN18 dataset
@@ -211,6 +221,8 @@ def load_wn18():
            ['10217831', '_hyponym', '10682169']], dtype=object)
 
     """
+
+    logger.debug('Loading wordnet WN18')
     train = load_from_csv('wn18', 'train.txt')
     valid = load_from_csv('wn18', 'valid.txt')
     test = load_from_csv('wn18', 'test.txt')
@@ -249,6 +261,8 @@ def load_fb15k():
 
 
     """
+
+    logger.debug('Loading Freebase FB15k')
     train = load_from_csv('fb15k', 'train.txt')
     valid = load_from_csv('fb15k', 'valid.txt')
     test = load_from_csv('fb15k', 'test.txt')
@@ -279,6 +293,8 @@ def load_fb15k_237():
     >>> X = load_fb15k()
 
     """
+
+    logger.debug('Loading sample of Freebase FB15k-237')
     train = load_from_csv('fb15k-237', 'train.txt')
     valid = load_from_csv('fb15k-237', 'valid.txt')
     test = load_from_csv('fb15k-237', 'test.txt')
@@ -311,6 +327,7 @@ def load_yago3_10():
 
     """
 
+    logger.debug('Loading YAGO3-10.')
     train=load_from_csv("yago_3_10", "train.txt", sep="\t")
     test=load_from_csv("yago_3_10", "test.txt", sep="\t")
     valid=load_from_csv("yago_3_10", "valid.txt", sep="\t")
@@ -344,6 +361,7 @@ def load_wn18rr():
 
     """
 
+    logger.debug('Loading WN18RR.')
     train=load_from_csv("wn18rr", "train.txt", sep="\t")
     test=load_from_csv("wn18rr", "test.txt", sep="\t")
     valid=load_from_csv("wn18rr", "valid.txt", sep="\t")
