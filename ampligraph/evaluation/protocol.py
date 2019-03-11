@@ -265,7 +265,7 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
     return out, out_prime
 
 
-def generate_corruptions_for_fit(X, all_entities, eta=1, rnd=None):
+def generate_corruptions_for_fit(X, all_entities, eta=1, corrupt_side='s+o', rnd=None):
     """Generate corruptions for training.
 
         Creates corrupted triples for each statement in an array of statements.
@@ -296,11 +296,26 @@ def generate_corruptions_for_fit(X, all_entities, eta=1, rnd=None):
 
     """
     logger.debug('Generating corruptions for fit.')
+    if corrupt_side not in ['s+o', 's', 'o']:
+        msg = 'Invalid argument value {} for corruption side passed for evaluation.'.format(corrupt_side) 
+        logger.error(msg)
+        raise ValueError(msg)
+
     dataset =  tf.reshape(tf.tile(tf.reshape(X,[-1]),[eta]),[tf.shape(X)[0]*eta,3])
-    keep_subj_mask = tf.tile(tf.cast(tf.random_uniform([tf.shape(X)[0]], 0, 2, dtype=tf.int32, seed=rnd),tf.bool),[eta])
+    
+    if corrupt_side == 's+o':
+        keep_subj_mask = tf.tile(tf.cast(tf.random_uniform([tf.shape(X)[0]], 0, 2, dtype=tf.int32, seed=rnd),tf.bool),[eta])
+    else:
+        keep_subj_mask = tf.cast(tf.ones(tf.shape(X)[0]*eta,tf.int32),tf.bool)
+        if corrupt_side == 's':
+            keep_subj_mask = tf.logical_not(keep_subj_mask)
+
     keep_obj_mask = tf.logical_not(keep_subj_mask)
     keep_subj_mask = tf.cast(keep_subj_mask,tf.int32)
     keep_obj_mask = tf.cast(keep_obj_mask,tf.int32)
+    
+
+
     logger.debug('Created corruption masks.')
     replacements = tf.random_uniform([tf.shape(dataset)[0]],0,tf.shape(all_entities)[0], dtype=tf.int32, seed=rnd)
 
