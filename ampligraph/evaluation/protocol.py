@@ -12,6 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+
 def train_test_split_no_unseen(X, test_size=5000, seed=0):
     """Split into train and test sets.
 
@@ -72,6 +73,7 @@ def _create_unique_mappings(unique_obj,unique_rel):
     obj_to_idx = dict(zip(unique_obj, range(obj_count)))
     return rel_to_idx, obj_to_idx 
 
+
 def create_mappings(X):
     """Create string-IDs mappings for entities and relations.
 
@@ -96,56 +98,7 @@ def create_mappings(X):
     unique_ent = np.unique(np.concatenate((X[:, 0], X[:, 2])))
     unique_rel = np.unique(X[:, 1])
     return _create_unique_mappings(unique_ent,unique_rel)
- 
-def create_mappings_entity_with_schema(X, S):
-    """Create string-IDs mappings for entities and relations.
 
-        Entities and relations are assigned incremental, unique integer IDs.
-        Mappings are preserved in two distinct dictionaries,
-        and counters are separated for entities and relations mappings.
-
-    Parameters
-    ----------
-    X : ndarray, shape [n, 3]
-        The triples to extract mappings.
-
-    Returns
-    -------
-    rel_to_idx : dict
-        The relation-to-internal-id associations
-    ent_to_idx: dict
-        The entity-to-internal-id associations.
-
-    """
-    logger.debug('Creating mappings for entities and relations of a schema.')
-    unique_ent = np.unique(np.concatenate((X[:, 0], X[:, 2], S[:, 0])))
-    unique_rel = np.unique(X[:, 1])
-    return _create_unique_mappings(unique_ent,unique_rel)
-
-def create_mappings_schema(S):
-    """Create string-IDs mappings for classes and relations of the schema.
-
-        Entities and relations are assigned incremental, unique integer IDs.
-        Mappings are preserved in two distinct dictionaries,
-        and counters are separated for entities and relations mappings.
-
-    Parameters
-    ----------
-    X : ndarray, shape [n, 3]
-        The triples to extract mappings.
-
-    Returns
-    -------
-    rel_to_idx : dict
-        The relation-to-internal-id associations
-    ent_to_idx: dict
-        The entity-to-internal-id associations.
-
-    """
-    logger.debug('Creating mappings for classes and relations of a schema.')
-    unique_class = np.unique(S[:,2])
-    unique_rel = np.unique(S[:,1])
-    return _create_unique_mappings(unique_class,unique_rel)
 
 def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o', table_entity_lookup_left=None, 
                                       table_entity_lookup_right=None, table_reln_lookup=None, rnd=None):
@@ -359,27 +312,6 @@ def to_idx(X, ent_to_idx, rel_to_idx):
     if X.ndim==1:
         X = X[np.newaxis,:]
     return _convert_to_idx(X, ent_to_idx, rel_to_idx, ent_to_idx) 
-
-
-def to_idx_schema(S, ent_to_idx, schema_class_to_idx, schema_rel_to_idx):
-    """Convert schema statements (triples) into integer IDs.
-
-    Parameters
-    ----------
-    X : ndarray
-        The statements to be converted.
-    ent_to_idx : dict
-        The mappings between entity strings and internal IDs.
-    rel_to_idx : dict
-        The mappings between relation strings and internal IDs.
-    Returns
-    -------
-    X : ndarray, shape [n, 3]
-        The ndarray of converted schema statements.
-    """
-
-    logger.debug('Converting schema statements to integer ids.')
-    return _convert_to_idx(S, ent_to_idx, schema_rel_to_idx, schema_class_to_idx) 
 
 
 def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=True, rank_against_ent=None, corrupt_side='s+o'):

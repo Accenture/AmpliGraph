@@ -44,56 +44,56 @@ AmpliGraph includes the following submodules:
 
 # Installation
 
-### Provision a Virtual Environment
+## Prerequisites
 
-**Installation using Anaconda is highly recommended.**
+* Linux Box
+* Python ≥ 3.6
 
-Create & activate Virtual Environment (conda)
+#### Provision a Virtual Environment
+
+Create and activate a virtual environment (conda)
 
 ```
 conda create --name ampligraph python=3.6
 source activate ampligraph
 ```
 
-### Install TensorFlow
+#### Install TensorFlow
 
-**CPU version**
+Install from pip or conda:
+
+**CPU-only**
 
 ```
 pip install tensorflow
-```
 
-or you could install the version packaged with conda:
+or 
 
-```
 conda install tensorflow
 ```
 
-**GPU version**
+**GPU support**
 
 ```
 pip install tensorflow-gpu
-```
 
-or you could install the version packaged with conda:
+or 
 
-```
 conda install tensorflow-gpu
 ```
 
 
-## Install the library
+## Install AmpliGraph
 
 
-You can install the latest stable release of AmpliGraph with `pip`, using the latest wheel (0.3.0) published by Dublin Labs:
-*Note this work only from within the Dublin Labs network*
+Install the latest stable release from pip:
 
 ```
-pip install http://dubaldeweb001.techlabs.accenture.com/wheels/ampligraph/ampligraph-0.3.dev0-py3-none-any.whl
+pip install ampligraph
 ```
 
 If instead you want the most recent development version, you can clone the repository
-and install from source (this will pull the latest commit on `develop` branch).
+and install from source (your local working copy will be on the latest commit on the `develop` branch).
 The code snippet below will install the library in editable mode (`-e`):
 
 ```
@@ -102,30 +102,28 @@ cd AmpliGraph
 pip install -e .
 ```
 
+
 ## Download the Datasets
 
 Datasets can be downloaded from [Google Drive](https://drive.google.com/drive/folders/16GBu89NCVyyYetry91tMntzpV_mSQ-gK?usp=sharing).
+
 Once downloaded, decompress the archives.
 
 **You must also set the following environment variable:**
 
-OSX/Linux:
 ```
 export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
 ```
 
-Windows:
-```
-setx AMPLIGRAPH_DATA_HOME /YOUR/PATH/TO/datasets
-```
 
 ## Sanity Check
 
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'0.3-dev'
+'1.0-dev'
 ```
+
 
 ## Predictive Power Evaluation (MRR Filtered)
 

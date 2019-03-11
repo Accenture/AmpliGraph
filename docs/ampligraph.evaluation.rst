@@ -46,8 +46,8 @@ Functions to evaluate the predictive power of knowledge graph embedding models, 
     select_best_model_ranking
 
 
-Misc
------
+Helper Functions
+----------------
 
 Utilities and support functions for evaluation procedures.
 
@@ -55,5 +55,9 @@ Utilities and support functions for evaluation procedures.
     :toctree: generated
     :template: function.rst
 
+    train_test_split_no_unseen
     create_mappings
     to_idx
+
+    
+

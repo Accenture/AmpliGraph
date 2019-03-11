@@ -43,7 +43,7 @@ extensions = [
 ]
 
 
-autodoc_mock_imports = ["tensorflow"]
+autodoc_mock_imports = ["tensorflow", 'logging']
 
 
 # Add any paths that contain templates here, relative to this directory.

@@ -78,5 +78,5 @@ export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'0.3-dev'
+'1.0-dev'
 ```

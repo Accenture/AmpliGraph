@@ -192,11 +192,13 @@ class EmbeddingModel(abc.ABC):
 
     def get_embedding_model_params(self, output_dict):
         """save the model parameters in the dictionary.
+
         Parameters
         ----------
         output_dict : dictionary
             Dictionary of saved params. 
             It's the duty of the model to save all the variables correctly, so that it can be used for restoring later.
+        
         """
         output_dict['model_params'] = self.trained_model_params
         
@@ -1028,6 +1030,7 @@ class DistMult(EmbeddingModel):
         """
         return super().predict(X, from_idx=from_idx)
 
+
 @register_model("ComplEx")
 class ComplEx(EmbeddingModel):
     """ Complex Embeddings model.
@@ -1062,11 +1065,12 @@ class ComplEx(EmbeddingModel):
         -0.3068198 , -0.41022655, -0.23714773, -0.00084166,  0.22521858,
         -0.48155236,  0.29627186,  0.29841757,  0.16540456,  0.45836073,
          0.14025007, -0.03458257, -0.03813137,  0.35438442, -0.4733188 ],
-       [ 0.06088537,  0.13615245, -0.20476362,  0.20391239,  0.22199424,
+        [ 0.06088537,  0.13615245, -0.20476362,  0.20391239,  0.22199424,
          0.5762486 , -0.01087974,  0.39070424, -0.1372974 ,  0.39998057,
         -0.5944237 ,  0.506474  ,  0.1255992 , -0.06021457, -0.26678884,
         -0.18713273,  0.36862013,  0.07165384, -0.00845572, -0.16494963]],
-      dtype=float32)
+        dtype=float32)
+
     """
 
     def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0, 
