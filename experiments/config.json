@@ -1,6 +1,6 @@
 {
-    "CUDA_VISIBLE_DEVICES": "1",
-    "UNSEEN_DATASETS": ["WN18RR", "FB15K-237"],
+    "CUDA_VISIBLE_DEVICES": "0",
+    "DATASET_WITH_UNSEEN_ENTITIES": ["WN18RR", "FB15K-237"],
     "load_function_map": {
         "WN18": "load_wn18",
         "FB15K": "load_fb15k",
@@ -16,28 +16,28 @@
     
     "hyperparams" : {
         "FB15K":{
-            "TRANSE":  {"batches_count": 10, "epochs": 4000, "k": 150, "eta": 5, "loss": "pairwise", "loss_params": {"margin": 0.5}, "embedding_model_params": {"norm": 1}, "regularizer": "L2", "regularizer_params": {"lambda": 0.0001}, "optimizer": "adam", "optimizer_params": {"lr": 0.0001}, "verbose": false, "seed": 0},
-            "DISTMULT": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adverserial","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false},
-            "COMPLEX": {"batches_count":100,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adverserial","loss_params":{"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":true},
-            "HOLE": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adverserial","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false}        
+            "TRANSE": {"batches_count": 10, "epochs": 4000, "k": 150, "eta": 5, "loss": "pairwise", "loss_params": {"margin": 0.5}, "embedding_model_params": {"norm": 1}, "regularizer": "L2", "regularizer_params": {"lambda": 0.0001}, "optimizer": "adam", "optimizer_params": {"lr": 0.0001}, "verbose": false, "seed": 0},
+            "DISTMULT": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adversarial","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false},
+            "COMPLEX": {"batches_count":100,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adversarial","loss_params":{"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":true},
+            "HOLE": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adversarial","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false}        
         },
         "WN18":{
-            "TRANSE": null,
+            "TRANSE": {"batches_count": 10, "epochs": 4000, "k": 150, "eta": 5, "loss": "pairwise", "loss_params": {"margin": 0.5}, "embedding_model_params": {"norm": 1}, "regularizer": "L2", "regularizer_params": {"lambda": 0.0001}, "optimizer": "adam", "optimizer_params": {"lr": 0.0001}, "verbose": false, "seed": 0},
             "DISTMULT": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "nll","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005}, "verbose": false},
             "COMPLEX": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "nll","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false},
-            "HOLE": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adverserial","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false}
+            "HOLE": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adversarial","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false}
         },
         "WN18RR":{
-            "TRANSE": null,
-            "DISTMULT": {"batches_count":25,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adverserial","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false},
+            "TRANSE": {"batches_count": 100, "epochs": 4000, "k": 200, "eta": 20, "loss": "self_adversarial", "loss_params": {"margin": 1}, "embedding_model_params": {"norm": 1}, "regularizer": "L1", "regularizer_params": {"lambda": 0.00001}, "optimizer": "adam", "optimizer_params": {"lr": 0.0001}, "verbose": false, "seed": 0},
+            "DISTMULT": {"batches_count":25,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adversarial","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false},
             "COMPLEX": {"batches_count":10,"seed":0,"epochs":4000, "k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "nll","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005}, "verbose":false},
-            "HOLE": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adverserial","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false}        
+            "HOLE": {"batches_count":50,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"None","regularizer_params" : {},"loss": "self_adversarial","loss_params": {"margin":1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false}        
         },
         "FB15K-237":{
-            "TRANSE": {"batches_count": 10, "epochs": 3000, "k": 150, "eta": 10, "loss": "nll", "embedding_model_params": {"normalize_ent_emb": true}, "regularizer": "None", "regularizer_params": {"lambda": 0.0001}, "optimizer": "adam", "optimizer_params": {"lr": 0.0005}, "verbose": false, "seed": 0},
-            "DISTMULT": null,
-            "COMPLEX": null,
-            "HOLE": null        
+            "TRANSE": {"batches_count": 10, "epochs": 4000, "k": 150, "eta": 5, "loss": "pairwise", "loss_params": {"margin": 0.5}, "embedding_model_params": {"norm": 1}, "regularizer": "L2", "regularizer_params": {"lambda": 0.0001}, "optimizer": "adam", "optimizer_params": {"lr": 0.0001}, "verbose": false, "seed": 0},
+            "DISTMULT": {"batches_count":6,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"L2","regularizer_params": {"lambda": 0.0001},"loss": "self_adversarial", "loss_params": {"margin": 1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false},
+            "COMPLEX": {"batches_count":100,"seed":0,"epochs":4000,"k":200,"eta":50,"loss": "self_adversarial", "loss_params": {"margin": 1},"optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false},
+            "HOLE": {"batches_count":100,"seed":0,"epochs":4000,"k":200,"eta":20,"regularizer":"L2","regularizer_params": {"lambda": 0.00001},"loss": "nll", "optimizer":"adam","optimizer_params":{"lr":0.0005},"verbose":false}        
         }
     },
     "no_early_stopping": ["FB15K_TRANSE"]
