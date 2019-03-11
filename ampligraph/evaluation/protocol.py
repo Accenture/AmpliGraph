@@ -612,7 +612,7 @@ def gridsearch_next_hyperparam(model_name, in_dict):
         print(str(e))
 
 
-def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, early_stopping=False, early_stopping_params={}, rank_against_ent=None, corrupt_side='s+o', verbose=False):
+def select_best_model_ranking(model_class, X, param_grid, use_filter=False, early_stopping=False, early_stopping_params={}, use_test_for_selection=True, rank_against_ent=None, corrupt_side='s+o', use_default_protocol=False, verbose=False):
     """Model selection routine for embedding models.
 
         .. note::
@@ -633,9 +633,8 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
     param_grid : dict
         A grid of hyperparameters to use in model selection. The routine will train a model for each combination
         of these hyperparameters.
-    filter_retrain : bool
-        If True, will use the entire input dataset X to compute filter MRR when retraining the model
-        on the concatenation of training and validation sets.
+    use_filter : bool
+        If True, will use the entire input dataset X to compute filtered MRR
     early_stopping: bool
         Flag to enable early stopping(default:False)
     early_stopping_params: dict
@@ -654,7 +653,9 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
             check_interval: Early stopping interval after burn-in(default:10)
             
             stop_interval: Stop if criteria is performing worse over n consecutive checks (default: 3)
-            
+    
+    use_test_for_selection:bool
+        Use test set for model selection. If False, uses validation set. Default(True)        
     rank_against_ent: array-like
         List of entities to use for corruptions. If None, will generate corruptions
         using all distinct entities. Default is None.
@@ -663,6 +664,9 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
         ``s`` is to corrupt only subject.
         ``o`` is to corrupt only object
         ``s+o`` is to corrupt both subject and object
+    use_default_protocol: bool
+        Flag to indicate whether to evaluate head and tail corruptions separately(default:False).
+        If this is set to true, it will ignore corrupt_side argument and corrupt both head and tail separately and rank triplets.
     verbose : bool
         Verbose mode during evaluation of trained model
 
@@ -715,7 +719,7 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
     >>>                     },
     >>>                     "verbose": false
     >>>                 }
-    >>> select_best_model_ranking(model_class, X, param_grid, filter_retrain=True, verbose=True, early_stopping=True)
+    >>> select_best_model_ranking(model_class, X, param_grid, use_filter=True, verbose=True, early_stopping=True)
 
     """
     hyperparams_list_keys = ["batches_count", "epochs", "k", "eta", "loss", "regularizer", "optimizer"]
@@ -750,11 +754,29 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
         except KeyError:
             logger.debug('Early stopping enable but no x_valid parameter set. Setting x_valid to {}'.format(X['valid']))
             early_stopping_params['x_valid'] = X['valid']
+
+    if use_filter:
+        X_filter = np.concatenate((X['train'], X['valid'], X['test']))
+    else:
+        X_filter = None
+
+    if use_test_for_selection:
+        selection_dataset = X['test']
+    else:
+        selection_dataset = X['valid']
+
         
     for model_params in tqdm(model_params_combinations, disable=(not verbose)):
         model = model_class(**model_params)
         model.fit(X['train'], early_stopping, early_stopping_params)
-        ranks = evaluate_performance(X['valid'], model=model, filter_triples=None, verbose=verbose, rank_against_ent=rank_against_ent, corrupt_side=corrupt_side)
+
+        if use_default_protocol:
+            ranks = evaluate_performance(selection_dataset, model=model, filter_triples=X_filter, verbose=verbose, rank_against_ent=rank_against_ent, corrupt_side='s')
+            ranks_obj = evaluate_performance(selection_dataset, model=model, filter_triples=X_filter, verbose=verbose, rank_against_ent=rank_against_ent, corrupt_side='o')
+            ranks.extend(ranks_obj)
+        else:
+            ranks = evaluate_performance(selection_dataset, model=model, filter_triples=X_filter, verbose=verbose, rank_against_ent=rank_against_ent, corrupt_side=corrupt_side)
+
         curr_mrr = mrr_score(ranks)
         mr = mar_score(ranks)
         hits_1 = hits_at_n_score(ranks, n=1)
@@ -769,15 +791,18 @@ def select_best_model_ranking(model_class, X, param_grid, filter_retrain=False, 
             best_mrr_train = curr_mrr
             best_model = model
             best_params = model_params
+    
     # Retraining
-
-    if filter_retrain:
-        X_filter = np.concatenate((X['train'], X['valid'], X['test']))
-    else:
-        X_filter = None
-
     best_model.fit(np.concatenate((X['train'], X['valid'])))
-    ranks_test = evaluate_performance(X['test'], model=best_model, filter_triples=X_filter, verbose=verbose, rank_against_ent=rank_against_ent, corrupt_side=corrupt_side)
+    
+    if use_default_protocol:
+        ranks_test = evaluate_performance(X['test'], model=best_model, filter_triples=X_filter, verbose=verbose, rank_against_ent=rank_against_ent, corrupt_side='s')
+        ranks_test_obj = evaluate_performance(X['test'], model=best_model, filter_triples=X_filter, verbose=verbose, rank_against_ent=rank_against_ent, corrupt_side='o')
+        ranks_test.extend(ranks_test_obj)
+    else:
+        ranks_test = evaluate_performance(X['test'], model=best_model, filter_triples=X_filter, verbose=verbose, rank_against_ent=rank_against_ent, corrupt_side=corrupt_side)
+    
+
     mrr_test = mrr_score(ranks_test)
 
     return best_model, best_params, best_mrr_train, ranks_test, mrr_test

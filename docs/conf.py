@@ -61,7 +61,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'AmpliGraph'
-copyright = '2017-2018, Accenture Labs Dublin'
+copyright = 'AmpliGraph is licensed under the Apache 2.0 License'
 author = 'Accenture Labs Dublin'
 
 # The version info for the project you're documenting, acts as replacement for

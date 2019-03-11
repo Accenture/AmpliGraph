@@ -10,8 +10,3 @@ AmpliGraph includes the following submodules:
     ampligraph.datasets
     ampligraph.latent_features
     ampligraph.evaluation
-
-
-.. image:: img/arch.png
-   :scale: 60%
-   :align: center
