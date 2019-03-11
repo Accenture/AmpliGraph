@@ -985,22 +985,26 @@ class DistMult(EmbeddingModel):
 
 @register_model("ComplEx")
 class ComplEx(EmbeddingModel):
-    """ Complex Embeddings model.
+    """ The ComplEx model.
 
-        The model as described in :cite:`trouillon2016complex`.
+        The ComplEx model :cite:`trouillon2016complex` is an extension of the :class:`ampligraph.latent_features.DistMult` bilinear diagonal model
+        . ComplEx scoring function is based on the trilinear Hermitian dot product in :math:`\mathcal{C}`:
 
         .. math::
 
             f_{ComplEx}=Re(\langle \mathbf{r}_p, \mathbf{e}_s, \overline{\mathbf{e}_o}  \\rangle)
 
+        Note that because embeddings are in :math:`\mathcal{C}`, ComplEx uses twice as many parameters as its counterpart in :math:`\mathcal{R}` DistMult.
+
+
         Examples
         --------
         >>> import numpy as np
         >>> from ampligraph.latent_features import ComplEx
+        >>>
         >>> model = ComplEx(batches_count=1, seed=555, epochs=20, k=10, 
         >>>             loss='pairwise', loss_params={'margin':1}, 
         >>>             regularizer='L2', regularizer_params={'lambda':0.1})
-
         >>> X = np.array([['a', 'y', 'b'],
         >>>               ['b', 'y', 'a'],
         >>>               ['a', 'y', 'c'],
@@ -1012,16 +1016,6 @@ class ComplEx(EmbeddingModel):
         >>> model.fit(X)
         >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
         ([0.96325016, -0.17629346], [3, 8])
-        >>> model.get_embeddings(['f','e'], type='entity')
-        array([[-0.11257   , -0.09226837,  0.2829331 , -0.02094189,  0.02826234,
-        -0.3068198 , -0.41022655, -0.23714773, -0.00084166,  0.22521858,
-        -0.48155236,  0.29627186,  0.29841757,  0.16540456,  0.45836073,
-         0.14025007, -0.03458257, -0.03813137,  0.35438442, -0.4733188 ],
-        [ 0.06088537,  0.13615245, -0.20476362,  0.20391239,  0.22199424,
-         0.5762486 , -0.01087974,  0.39070424, -0.1372974 ,  0.39998057,
-        -0.5944237 ,  0.506474  ,  0.1255992 , -0.06021457, -0.26678884,
-        -0.18713273,  0.36862013,  0.07165384, -0.00845572, -0.16494963]],
-        dtype=float32)
 
     """
 
