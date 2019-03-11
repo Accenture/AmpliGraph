@@ -142,6 +142,10 @@ Apply dimensionality reduction and visualize the embeddings:
 .. image:: img/concept_embeddings.png
 
 
+## How to Cite
+
+TODO
+
 
 .. toctree::
    :maxdepth: 1

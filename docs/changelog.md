@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3-dev
+## 1.0-dev
 - ConvE
 - RotatE
 - Tensorflow-based negatives generation
