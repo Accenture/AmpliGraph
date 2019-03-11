@@ -1,2 +1,3 @@
 include ampligraph/latent_features/prime_number_list.txt
+include ampligraph/logger.conf
 
