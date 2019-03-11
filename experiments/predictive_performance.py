@@ -25,7 +25,7 @@ def display_scores(scores):
     for obj in scores:
         output_rst[obj["dataset"]] = BeautifulTable()
         output_rst[obj["dataset"]].set_style(BeautifulTable.STYLE_RST)
-        output_rst[obj["dataset"]].column_headers = ["Model", "MR", "MRR", "H@1", "H@3", "H@10", "Hyperparameters"]
+        output_rst[obj["dataset"]].column_headers = ["Model", "MR", "MRR", "H @ 1", "H @ 3", "H @ 10", "Hyperparameters"]
     
     for obj in scores:
         try:
@@ -152,8 +152,8 @@ def run_single_exp(config, dataset, model):
 
     # Run the evaluation procedure on the test set. Will create filtered rankings.
     # To disable filtering: filter_triples=None
-    ranks = evaluate_performance(X['test'], model, filter, verbose=True, corrupt_side='s')
-    ranks2 = evaluate_performance(X['test'], model, filter, verbose=True, corrupt_side='o')
+    ranks = evaluate_performance(X['test'], model, filter, verbose=False, corrupt_side='s')
+    ranks2 = evaluate_performance(X['test'], model, filter, verbose=False, corrupt_side='o')
     ranks.extend(ranks2)
 
     # compute and print metrics:
