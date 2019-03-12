@@ -9,6 +9,15 @@ def test_load_wn18():
     assert len(wn18['valid']) == 5000
     assert len(wn18['test']) == 5000
 
+    ent_train = np.union1d(np.unique(wn18["train"][:,0]), np.unique(wn18["train"][:,2]))
+    ent_valid = np.union1d(np.unique(wn18["valid"][:,0]), np.unique(wn18["valid"][:,2]))
+    ent_test = np.union1d(np.unique(wn18["test"][:,0]), np.unique(wn18["test"][:,2]))
+    distinct_ent = np.union1d(np.union1d(ent_train, ent_valid), ent_test)
+    distinct_rel = np.union1d(np.union1d(np.unique(wn18["train"][:,1]), np.unique(wn18["train"][:,1])), np.unique(wn18["train"][:,1]))
+
+    assert len(distinct_ent) == 40943  
+    assert len(distinct_rel) == 18  
+
 
 def test_load_wn11():
     wn11 = load_wn11()
@@ -19,6 +28,15 @@ def test_load_wn11():
     assert len(wn11['train']) == 110361
     assert len(wn11['valid']) == 5215
     assert len(wn11['test']) == 21035
+
+    # ent_train = np.union1d(np.unique(wn11["train"][:,0]), np.unique(wn11["train"][:,2]))
+    # ent_valid = np.union1d(np.unique(wn11["valid"][:,0]), np.unique(wn11["valid"][:,2]))
+    # ent_test = np.union1d(np.unique(wn11["test"][:,0]), np.unique(wn11["test"][:,2]))
+    # distinct_ent = np.union1d(np.union1d(ent_train, ent_valid), ent_test)
+    # distinct_rel = np.union1d(np.union1d(np.unique(wn11["train"][:,1]), np.unique(wn11["train"][:,1])), np.unique(wn11["train"][:,1]))
+
+    # assert len(distinct_ent) == 38588  
+    # assert len(distinct_rel) == 11  
 
 
 def test_load_fb13():
@@ -31,6 +49,14 @@ def test_load_fb13():
     assert len(fb13['valid']) == 11816
     assert len(fb13['test']) == 47464
 
+    # ent_train = np.union1d(np.unique(fb13["train"][:,0]), np.unique(fb13["train"][:,2]))
+    # ent_valid = np.union1d(np.unique(fb13["valid"][:,0]), np.unique(fb13["valid"][:,2]))
+    # ent_test = np.union1d(np.unique(fb13["test"][:,0]), np.unique(fb13["test"][:,2]))
+    # distinct_ent = np.union1d(np.union1d(ent_train, ent_valid), ent_test)
+    # distinct_rel = np.union1d(np.union1d(np.unique(fb13["train"][:,1]), np.unique(fb13["train"][:,1])), np.unique(fb13["train"][:,1]))
+
+    # assert len(distinct_ent) == 75043  
+    # assert len(distinct_rel) == 13  
 
 def test_load_fb15k():
     fb15k = load_fb15k()
@@ -39,17 +65,59 @@ def test_load_fb15k():
     assert len(fb15k['test']) == 59071
 
 
+    # ent_train = np.union1d(np.unique(fb15k["train"][:,0]), np.unique(fb15k["train"][:,2]))
+    # ent_valid = np.union1d(np.unique(fb15k["valid"][:,0]), np.unique(fb15k["valid"][:,2]))
+    # ent_test = np.union1d(np.unique(fb15k["test"][:,0]), np.unique(fb15k["test"][:,2]))
+    # distinct_ent = np.union1d(np.union1d(ent_train, ent_valid), ent_test)
+    # distinct_rel = np.union1d(np.union1d(np.unique(fb15k["train"][:,1]), np.unique(fb15k["train"][:,1])), np.unique(fb15k["train"][:,1]))
+
+    # assert len(distinct_ent) == 14951  
+    # assert len(distinct_rel) == 1345  
+
+
 def test_load_fb15k_237():
     fb15k_237 = load_fb15k_237()
     assert len(fb15k_237['train']) == 272115
     assert len(fb15k_237['valid']) == 17535
     assert len(fb15k_237['test']) == 20466
 
+    # ent_train = np.union1d(np.unique(fb15k_237["train"][:,0]), np.unique(fb15k_237["train"][:,2]))
+    # ent_valid = np.union1d(np.unique(fb15k_237["valid"][:,0]), np.unique(fb15k_237["valid"][:,2]))
+    # ent_test = np.union1d(np.unique(fb15k_237["test"][:,0]), np.unique(fb15k_237["test"][:,2]))
+    # distinct_ent = np.union1d(np.union1d(ent_train, ent_valid), ent_test)
+    # distinct_rel = np.union1d(np.union1d(np.unique(fb15k_237["train"][:,1]), np.unique(fb15k_237["train"][:,1])), np.unique(fb15k_237["train"][:,1]))
+
+    # assert len(distinct_ent) == 14541  
+    # assert len(distinct_rel) == 237     
+
+
+    # train_all_ent = set(fb15k_237['train'].flatten())
+    # valid_all_ent = set(fb15k_237['valid'].flatten())
+    # test_all_ent = set(fb15k_237['test'].flatten())
+
+    # unseen_valid = valid_all_ent - train_all_ent
+    # train_valid_ent = (valid_all_ent - unseen_valid) | train_all_ent
+
+    # unseen_test = test_all_ent - train_valid_ent
+
+    # assert len(unseen_valid) == 8
+    # assert len(unseen_test) == 29
+
+
 def test_yago_3_10():
     yago_3_10 = load_yago3_10()
     assert len(yago_3_10['train']) == 1079040
     assert len(yago_3_10['valid']) == 5000
     assert len(yago_3_10['test']) == 5000
+    
+    # ent_train = np.union1d(np.unique(yago_3_10["train"][:,0]), np.unique(yago_3_10["train"][:,2]))
+    # ent_valid = np.union1d(np.unique(yago_3_10["valid"][:,0]), np.unique(yago_3_10["valid"][:,2]))
+    # ent_test = np.union1d(np.unique(yago_3_10["test"][:,0]), np.unique(yago_3_10["test"][:,2]))
+    # distinct_ent = np.union1d(np.union1d(ent_train, ent_valid), ent_test)
+    # distinct_rel = np.union1d(np.union1d(np.unique(yago_3_10["train"][:,1]), np.unique(yago_3_10["train"][:,1])), np.unique(yago_3_10["train"][:,1]))
+
+    # assert len(distinct_ent) == 123182  
+    # assert len(distinct_rel) == 37  
 
 def test_wn18rr():
     wn18rr = load_wn18rr()
@@ -63,7 +131,17 @@ def test_wn18rr():
     assert len(wn18rr['train']) == 86835
     assert len(wn18rr['valid']) == 3034
     assert len(wn18rr['test']) == 3134
-    assert len(distinct_ent) == 40943
-    assert len(distinct_rel) == 11
+    # assert len(distinct_ent) == 40943
+    # assert len(distinct_rel) == 11
     
+    # train_all_ent = set(wn18rr['train'].flatten())
+    # valid_all_ent = set(wn18rr['valid'].flatten())
+    # test_all_ent = set(wn18rr['test'].flatten())
 
+    # unseen_valid = valid_all_ent - train_all_ent
+    # train_valid_ent = (valid_all_ent - unseen_valid) | train_all_ent
+
+    # unseen_test = test_all_ent - train_valid_ent
+
+    # assert len(unseen_valid) == 198
+    # assert len(unseen_test) == 209

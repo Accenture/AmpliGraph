@@ -1,3 +1,4 @@
+
 import ampligraph.datasets
 import ampligraph.latent_features
 from ampligraph.datasets import load_wn18, load_fb15k, load_fb15k_237
@@ -6,17 +7,21 @@ from ampligraph.evaluation import select_best_model_ranking, hits_at_n_score, mr
 
 import argparse, os, json, sys 
 import numpy as np
-import logging
-logging.basicConfig(level=logging.DEBUG)
 
 from os import path
 from beautifultable import BeautifulTable
 from tqdm import tqdm
 import yaml
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 import tensorflow as tf
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3" 
+
 import warnings
 warnings.simplefilter(action="ignore", category=Warning)
+
 
 def display_scores(scores):
     output_readme = {}
@@ -72,7 +77,7 @@ def clean_data(train, valid, test, throw_valid = False):
                     c_if+=1
                 count_test = count_test + 1
         filtered_test = np.delete(test, idxs_test, axis=0)
-        logging.debug("fit validation case: shape test: {0}  -  filtered test: {1}: {2} triples with unseen entties removed".format(test.shape, filtered_test.shape, c_if))
+        print("fit validation case: shape test: {0}  -  filtered test: {1}: {2} triples with unseen entties removed".format(test.shape, filtered_test.shape, c_if))
         return valid, filtered_test
     else:
         #filter valid
@@ -89,7 +94,7 @@ def clean_data(train, valid, test, throw_valid = False):
                     c_if+=1
                 count_valid = count_valid + 1
         filtered_valid = np.delete(valid, idxs_valid, axis=0)
-        logging.debug("not fitting validation case: shape valid: {0}  -  filtered valid: {1}: {2} triples with unseen entties removed".format(valid.shape, filtered_valid.shape, c_if))    
+        print("not fitting validation case: shape valid: {0}  -  filtered valid: {1}: {2} triples with unseen entties removed".format(valid.shape, filtered_valid.shape, c_if))    
         # filter test 
         ent_test_diff_train = test_ent - train_ent
 
@@ -106,17 +111,17 @@ def clean_data(train, valid, test, throw_valid = False):
                     c_if+=1
                 count_test = count_test + 1
         filtered_test = np.delete(test, idxs_test, axis=0)
-        logging.debug("not fitting validation case: shape test: {0}  -  filtered test: {1}: {2} triples with unseen entties removed".format(test.shape, filtered_test.shape, c_if))
+        print("not fitting validation case: shape test: {0}  -  filtered test: {1}: {2} triples with unseen entties removed".format(test.shape, filtered_test.shape, c_if))
         return filtered_valid, filtered_test
 
 def run_single_exp(config, dataset, model):
     hyperparams = config["hyperparams"][dataset][model]
     if hyperparams is None:
-        logging.info("dataset {0}...model {1} experiment is not conducted yet...".format(dataset, config["model_name_map"][model]))
+        logger.info("dataset {0}...model {1} experiment is not conducted yet...".format(dataset, config["model_name_map"][model]))
         return {
             "hyperparams": ".??"
         }
-    logging.info("dataset {0}...model {1}...best hyperparameter:...{2}".format(dataset, config["model_name_map"][model], hyperparams))
+    logger.info("dataset {0}...model {1}...best hyperparameter:...{2}".format(dataset, config["model_name_map"][model], hyperparams))
     es_code = "{0}_{1}".format(dataset, model)
 
     load_func = getattr(ampligraph.datasets, config["load_function_map"][dataset])
@@ -124,7 +129,7 @@ def run_single_exp(config, dataset, model):
     # print("Loaded...{0}...".format(dataset))
 
     if dataset in config["DATASET_WITH_UNSEEN_ENTITIES"]:
-        logging.debug("{0} contains unseen entities in test dataset, we cleaned them...".format(dataset))
+        logger.debug("{0} contains unseen entities in test dataset, we cleaned them...".format(dataset))
         X["valid"], X["test"] = clean_data(X["train"], X["valid"], X["test"], throw_valid=True)
 
     # load model
@@ -136,10 +141,10 @@ def run_single_exp(config, dataset, model):
     filter = np.concatenate((X['train'], X['valid'], X['test']))
 
     if es_code in config["no_early_stopping"]:
-        logging.debug("Fit without early stopping...")
+        logger.debug("Fit without early stopping...")
         model.fit(X["train"])
     else:
-        logging.debug("Fit with early stopping...")
+        logger.debug("Fit with early stopping...")
         model.fit(X["train"], True, 
         {
             'x_valid':X['valid'][::10], 
@@ -207,6 +212,10 @@ def run_single_model(config, model):
     return obj
 
 def main():
+    global logger 
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+
     with open("config.json", "r") as fi:
         config = json.load(fi)
 

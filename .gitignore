@@ -120,3 +120,5 @@ experiments/config_test.json
 experiments/result.csv
 experiments/playground.py
 experiments/fb237.txt
+
+.pytest_cache
