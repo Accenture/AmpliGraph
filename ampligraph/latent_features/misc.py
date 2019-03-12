@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 
 SUBJECT = 0
 PREDICATE = 1

@@ -1,5 +1,6 @@
 import tensorflow as tf
 import abc
+import logging
 
 LOSS_REGISTRY = {}
 
