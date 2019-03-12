@@ -51,8 +51,8 @@ def display_scores(scores):
                                                    ".??"])  
    
     for key, value in output_rst.items():
-        print(key)
-        print(value)
+        logger.debug(key)
+        logger.debug(value)
 
 # clean datasets with unseen entities
 def clean_data(train, valid, test, throw_valid = False):
@@ -77,7 +77,7 @@ def clean_data(train, valid, test, throw_valid = False):
                     c_if+=1
                 count_test = count_test + 1
         filtered_test = np.delete(test, idxs_test, axis=0)
-        print("fit validation case: shape test: {0}  -  filtered test: {1}: {2} triples with unseen entties removed".format(test.shape, filtered_test.shape, c_if))
+        logger.debug("fit validation case: shape test: {0}  -  filtered test: {1}: {2} triples with unseen entties removed".format(test.shape, filtered_test.shape, c_if))
         return valid, filtered_test
     else:
         #filter valid
@@ -94,7 +94,7 @@ def clean_data(train, valid, test, throw_valid = False):
                     c_if+=1
                 count_valid = count_valid + 1
         filtered_valid = np.delete(valid, idxs_valid, axis=0)
-        print("not fitting validation case: shape valid: {0}  -  filtered valid: {1}: {2} triples with unseen entties removed".format(valid.shape, filtered_valid.shape, c_if))    
+        logger.debug("not fitting validation case: shape valid: {0}  -  filtered valid: {1}: {2} triples with unseen entties removed".format(valid.shape, filtered_valid.shape, c_if))    
         # filter test 
         ent_test_diff_train = test_ent - train_ent
 
@@ -111,7 +111,7 @@ def clean_data(train, valid, test, throw_valid = False):
                     c_if+=1
                 count_test = count_test + 1
         filtered_test = np.delete(test, idxs_test, axis=0)
-        print("not fitting validation case: shape test: {0}  -  filtered test: {1}: {2} triples with unseen entties removed".format(test.shape, filtered_test.shape, c_if))
+        logger.debug("not fitting validation case: shape test: {0}  -  filtered test: {1}: {2} triples with unseen entties removed".format(test.shape, filtered_test.shape, c_if))
         return filtered_valid, filtered_test
 
 def run_single_exp(config, dataset, model):
@@ -126,7 +126,7 @@ def run_single_exp(config, dataset, model):
 
     load_func = getattr(ampligraph.datasets, config["load_function_map"][dataset])
     X = load_func()
-    # print("Loaded...{0}...".format(dataset))
+    # logger.debug("Loaded...{0}...".format(dataset))
 
     if dataset in config["DATASET_WITH_UNSEEN_ENTITIES"]:
         logger.debug("{0} contains unseen entities in test dataset, we cleaned them...".format(dataset))
@@ -221,14 +221,14 @@ def main():
 
     # set GPU id to run
     os.environ["CUDA_VISIBLE_DEVICES"]=config["CUDA_VISIBLE_DEVICES"]
-    # print("Will use gpu number...",config["CUDA_VISIBLE_DEVICES"])
+    # logger.debug("Will use gpu number...",config["CUDA_VISIBLE_DEVICES"])
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset", type=str)
     parser.add_argument("-m", "--model", type=str)
 
     args = parser.parse_args()
-    # print("Input dataset...{0}...input model...{1}...".format(args.dataset, args.model))
+    # logger.debug("Input dataset...{0}...input model...{1}...".format(args.dataset, args.model))
 
     if args.dataset is None:
         if args.model is None:
