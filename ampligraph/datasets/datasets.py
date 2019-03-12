@@ -161,6 +161,7 @@ def load_from_rdf(folder_name, file_name, format='nt'):
     """
 
     logger.debug('Loading rdf data from {}.'.format(file_name))
+    from rdflib import Graph
     g = Graph()
     g.parse(os.path.join(AMPLIGRAPH_DATA_HOME, folder_name, file_name), format=format, publicID='http://test#')
     return np.array(g)
@@ -328,9 +329,9 @@ def load_yago3_10():
     """
 
     logger.debug('Loading YAGO3-10.')
-    train=load_from_csv("yago_3_10", "train.txt", sep="\t")
-    test=load_from_csv("yago_3_10", "test.txt", sep="\t")
-    valid=load_from_csv("yago_3_10", "valid.txt", sep="\t")
+    train=load_from_csv("YAGO3-10", "train.txt", sep="\t")
+    test=load_from_csv("YAGO3-10", "test.txt", sep="\t")
+    valid=load_from_csv("YAGO3-10", "valid.txt", sep="\t")
     
     return {"train": train,  "test": test, "valid": valid}
 

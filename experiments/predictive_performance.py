@@ -2,12 +2,12 @@ import ampligraph.datasets
 import ampligraph.latent_features
 from ampligraph.datasets import load_wn18, load_fb15k, load_fb15k_237
 from ampligraph.latent_features import TransE, DistMult, ComplEx
-from ampligraph.evaluation import select_best_model_ranking, hits_at_n_score, mar_score, evaluate_performance, mrr_score
+from ampligraph.evaluation import select_best_model_ranking, hits_at_n_score, mr_score, evaluate_performance, mrr_score
 
 import argparse, os, json, sys 
 import numpy as np
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 from os import path
 from beautifultable import BeautifulTable
@@ -72,7 +72,7 @@ def clean_data(train, valid, test, throw_valid = False):
                     c_if+=1
                 count_test = count_test + 1
         filtered_test = np.delete(test, idxs_test, axis=0)
-        logging.debug("fit validation case: shape test: {0}  -  filtered test: {1}: {2} unseen entities cleaned".format(test.shape, filtered_test.shape, c_if))
+        logging.debug("fit validation case: shape test: {0}  -  filtered test: {1}: {2} triples with unseen entties removed".format(test.shape, filtered_test.shape, c_if))
         return valid, filtered_test
     else:
         #filter valid
@@ -89,7 +89,7 @@ def clean_data(train, valid, test, throw_valid = False):
                     c_if+=1
                 count_valid = count_valid + 1
         filtered_valid = np.delete(valid, idxs_valid, axis=0)
-        logging.debug("not fitting validation case: shape valid: {0}  -  filtered valid: {1}: {2} unseen entities cleaned".format(valid.shape, filtered_valid.shape, c_if))    
+        logging.debug("not fitting validation case: shape valid: {0}  -  filtered valid: {1}: {2} triples with unseen entties removed".format(valid.shape, filtered_valid.shape, c_if))    
         # filter test 
         ent_test_diff_train = test_ent - train_ent
 
@@ -106,7 +106,7 @@ def clean_data(train, valid, test, throw_valid = False):
                     c_if+=1
                 count_test = count_test + 1
         filtered_test = np.delete(test, idxs_test, axis=0)
-        logging.debug("not fitting validation case: shape test: {0}  -  filtered test: {1}: {2} unseen entities cleaned".format(test.shape, filtered_test.shape, c_if))
+        logging.debug("not fitting validation case: shape test: {0}  -  filtered test: {1}: {2} triples with unseen entties removed".format(test.shape, filtered_test.shape, c_if))
         return filtered_valid, filtered_test
 
 def run_single_exp(config, dataset, model):
@@ -157,7 +157,7 @@ def run_single_exp(config, dataset, model):
     ranks.extend(ranks2)
 
     # compute and print metrics:
-    mr = mar_score(ranks)
+    mr = mr_score(ranks)
     mrr = mrr_score(ranks)
     hits_1 = hits_at_n_score(ranks, n=1)
     hits_3 = hits_at_n_score(ranks, n=3)

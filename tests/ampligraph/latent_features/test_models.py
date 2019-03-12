@@ -27,38 +27,6 @@ def test_fit_predict_transE():
     print(y_pred)
     assert y_pred[0] > y_pred[1]
 
-def test_generate_approximate_embeddings():
-
-    X = np.array([['a', 'y', 'b'],
-                  ['b', 'y', 'a'],
-                  ['a', 'y', 'c'],
-                  ['c', 'y', 'a'],
-                  ['a', 'y', 'd'],
-                  ['c', 'y', 'd'],
-                  ['b', 'y', 'c'],
-                  ['f', 'y', 'e']])
-
-    AUX = np.array([['h', 'y', 'b'],
-                    ['h', 'y', 'c'],
-                    ['c', 'y', 'h']])
-
-    OOKG_e = 'h'
-
-    k = 10
-    model = TransE(batches_count=1, seed=555, epochs=20, k=k, loss='pairwise', loss_params={'margin':5})
-
-    model.fit(X)
-
-    neighbouring_triples = get_entity_triples(OOKG_e, AUX)
-
-    emb_approx = model.generate_approximate_embeddings(OOKG_e, neighbouring_triples)
-
-    emb_returned = model.get_embeddings(OOKG_e, type='entity')
-
-    assert('h' in model.ent_to_idx.keys())          # assert OOKG is now in model entity dict
-    assert(np.all(emb_approx == emb_returned))      # assert approximate embedding is same as embedding returned from model
-    assert(len(emb_approx) == k)                    # assert approximate embedding is of length k
-
 
 def test_fit_predict_DistMult():
     model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin':5})

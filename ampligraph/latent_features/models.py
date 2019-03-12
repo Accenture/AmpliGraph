@@ -692,54 +692,6 @@ class EmbeddingModel(abc.ABC):
         
         return scores, ranks
 
-    def generate_approximate_embeddings(self, e, neighbouring_triples, pool='avg', schema_aware=False):
-        """Generate approximate embeddings for entity, given neighbouring triples from auxiliary graph and a defined pooling function.
-                    
-        Parameters
-        ----------
-        entity : str
-            An entity label.
-        neighbouring_triples : ndarray, shape [n, 3]
-            The neighbouring triples. 
-        pool : str {'avg', 'max', 'sum'} : 
-            The pooling function to approximate the entity embedding. (Default: 'avg')
-        schema_aware: bool 
-            Flag if approximate embeddings are aware of schema. 
-        """
-
-        # Get entity neighbours
-        neighbour_entities = neighbouring_triples[:,[0,2]]
-        N_ent = np.unique(neighbour_entities[np.where(neighbour_entities != e)])
-
-        # Raise ValueError if a neighbour entity is not found in entity dict
-        if not np.all([x in self.ent_to_idx.keys() for x in N_ent]):
-            invalid_triples = neighbouring_triples[np.where([x not in self.ent_to_idx for x in N_ent])]
-            raise ValueError('Neighbouring triples contain two OOKG entities: ', invalid_triples)
-
-        # Get embeddings of each set and concatenate
-        neighbour_vectors = self.get_embeddings(N_ent, type='entity')
-
-        if pool == 'avg':
-            pool_fn = partial(np.mean, axis=0)
-        elif pool == 'max':
-            pool_fn = partial(np.max, axis=0)
-        elif pool == 'sum':
-            pool_fn = partial(np.sum, axis=0)
-        else:
-            raise ValueError('Unsupported pooling function: %s' % pool)
-
-        # Apply pooling function
-        approximate_embedding = pool_fn(neighbour_vectors)
-
-        new_emb = tf.constant(approximate_embedding, shape=[1, self.k], dtype=self.ent_emb.dtype)
-        new_emb_idx = int(self.ent_emb.shape[0])
-
-        # Add e and approximate embedding to self.ent_emb
-        self.trained_model_params[0] = np.concatenate([self.trained_model_params[0], np.expand_dims(approximate_embedding, 0)], axis=0)
-        self.ent_emb = tf.concat([self.ent_emb, new_emb], axis=0)
-        self.ent_to_idx[e] = new_emb_idx
-
-        return approximate_embedding
 
 
 class RandomBaseline():
@@ -1177,7 +1129,7 @@ class ComplEx(EmbeddingModel):
 class HolE(ComplEx):
     """ Holographic Embeddings model.
 
-        The model as described in :cite:`NickelRP15` and cite:`HayashiS17`.
+        The model as described in :cite:`NickelRP15` and :cite:`HayashiS17`.
 
         .. math::
 
@@ -1207,11 +1159,11 @@ class HolE(ComplEx):
         -0.1149573 , -0.1177371 , -0.20798951,  0.01935115,  0.13033926,
         -0.81528974,  0.22864424,  0.2045117 ,  0.1145515 ,  0.248952  ,
          0.03513691, -0.08550065, -0.06037813,  0.23231442, -0.39326245],
-       [ 0.204738  ,  0.10758886, -0.11931524,  0.14881928,  0.0929039 ,
+        [ 0.204738  ,  0.10758886, -0.11931524,  0.14881928,  0.0929039 ,
          0.25577265,  0.05722341,  0.2549932 , -0.16462566,  0.43789816,
         -0.91011846,  0.3533137 ,  0.1144442 ,  0.00359709, -0.09599967,
         -0.03151475,  0.14198618,  0.16138661,  0.07511608, -0.2465882 ]],
-      dtype=float32)
+        dtype=float32)
 
     """
 

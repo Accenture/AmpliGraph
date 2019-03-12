@@ -13,11 +13,10 @@ Learning-to-rank metrics to evaluate the performance of neural graph embedding m
     :toctree: generated
     :template: function.rst
 
-    mrr_score
-    mar_score
-    hits_at_n_score
     rank_score
-    quality_loss_mse
+    mrr_score
+    mr_score
+    hits_at_n_score
 
 
 Negatives Generation

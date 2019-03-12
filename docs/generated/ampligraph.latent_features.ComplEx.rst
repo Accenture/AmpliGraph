@@ -29,7 +29,6 @@ ComplEx
       ~ComplEx.configure_evaluation_protocol
       ~ComplEx.end_evaluation
       ~ComplEx.fit
-      ~ComplEx.generate_approximate_embeddings
       ~ComplEx.get_embedding_model_params
       ~ComplEx.get_embeddings
       ~ComplEx.predict
@@ -40,7 +39,6 @@ ComplEx
    .. automethod:: ComplEx.configure_evaluation_protocol
    .. automethod:: ComplEx.end_evaluation
    .. automethod:: ComplEx.fit
-   .. automethod:: ComplEx.generate_approximate_embeddings
    .. automethod:: ComplEx.get_embedding_model_params
    .. automethod:: ComplEx.get_embeddings
    .. automethod:: ComplEx.predict
