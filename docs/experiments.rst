@@ -133,8 +133,10 @@ WN18
                                                  seed: 0
 ========== ======== ====== ====== ====== ====== =========================
 
-WN18RR
+WN18RR 
 ------
+
+We removed 420 triples (210 in validation, 210 in test) containing unseen entities
 
 ========== ========= ====== ====== ====== ====== ========================
   Model       MR      MRR   H @ 1  H @ 3  H @ 10      Hyperparameters
@@ -194,8 +196,10 @@ TransE     1532.28   0.23   0.07   0.34   0.50    batches_count: 100;
 ========== ========= ====== ====== ====== ====== ========================
 
 
-FB15K-237
+FB15K-237 
 ---------
+
+We removed 37 triples (9 in validation, 28 in test set) containing unseen entities
 
 ========= ======== ====== ====== ====== ====== ==========================
   Model      MR     MRR    H @ 1 H @ 3  H @ 10      Hyperparameters
@@ -217,21 +221,24 @@ TransE     373.63   0.27   0.18   0.30   0.44    batches_count: 10;
                                                  lambda: 0.0001;
                                                  seed: 0
                                                   
-DistMult   269.68   0.26   0.17   0.29   0.44    batches_count: 6;
+ DistMult   441.22   0.29   0.20   0.32   0.48   batches_count: 50;
+                                                 embedding_model_params:
+                                                 norm: 1;
                                                  epochs: 4000;
-                                                 eta: 20;
-                                                 k: 200;
+                                                 eta: 50;
+                                                 k: 400;
                                                  loss: self_adversarial;
                                                  loss_params:
+                                                 alpha: 1;
                                                  margin: 1;
                                                  optimizer: adam;
                                                  optimizer_params:
-                                                 lr: 0.0005;
+                                                 lr: 0.0001;
                                                  regularizer: L2;
                                                  regularizer_params:
-                                                 lambda: 0.0001;
+                                                 lambda: 1.0e-05;
                                                  seed: 0
-
+                                                 
 ComplEx   606.17   0.27   0.18   0.29   0.45    batches_count: 100;
                                                 epochs: 4000;
                                                 eta: 20;
@@ -258,9 +265,25 @@ ComplEx   606.17   0.27   0.18   0.29   0.45    batches_count: 100;
                                                 seed: 0
 ========= ======== ====== ====== ====== ====== ==========================
 
-Results in the table above can be reproduced by running the script below:
+Results in the table above can be reproduced by running as below:
 
-`$ cd experiments && python predictive_performance.py -d dataset -m model`
+`$ cd experiements`
+
+To run all experiements: 
+
+`$ python predictive_performance.py`
+
+To run experiments of single dataset:
+
+`$ python predictive_performance.py -d dataset`
+
+To run experiements of single model:
+
+`$ python predictive_performance.py -m model`
+
+To run experiements of single model with single dataset:
+
+`$ python predictive_performance.py -m model -d dataset`
 
 
 Runtime Performance
