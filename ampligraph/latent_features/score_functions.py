@@ -1,5 +1,7 @@
 import tensorflow as tf
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 def trans_e_score(e_s, e_p, e_o, norm):
     """The TransE scoring function.
