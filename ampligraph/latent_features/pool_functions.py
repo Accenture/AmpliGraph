@@ -1,4 +1,8 @@
 import tensorflow as tf
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 def sum_pooling(embeddings):
