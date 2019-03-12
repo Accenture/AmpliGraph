@@ -1,11 +1,19 @@
 NoRegularizer
-==================================
+========================================
 
 .. currentmodule:: ampligraph.latent_features
 
 .. autoclass:: NoRegularizer
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~NoRegularizer.class_params
+      ~NoRegularizer.external_params
+      ~NoRegularizer.name
    
    
 
@@ -17,12 +25,14 @@ NoRegularizer
 
    .. autosummary::
    
-      ~NoRegularizer._init_hyperparams
-      ~NoRegularizer._apply
-      ~NoRegularizer._inputs_check
+      ~NoRegularizer.__init__
+      ~NoRegularizer.apply
+      ~NoRegularizer.get_state
    
-   .. automethod:: NoRegularizer._init_hyperparams
-   .. automethod:: NoRegularizer._apply
-   .. automethod:: NoRegularizer._inputs_check
+   .. automethod:: NoRegularizer.__init__
+   .. automethod:: NoRegularizer.apply
+   .. automethod:: NoRegularizer.get_state
    
    
+
+

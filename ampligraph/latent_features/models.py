@@ -135,7 +135,7 @@ class EmbeddingModel(abc.ABC):
             raise ValueError('Unsupported loss function: %s' % loss)
             
         try:
-            self.regularizer = REGULARIZER_REGISTRY[regularizer](self.regularizer_params, verbose=verbose)
+            self.regularizer = REGULARIZER_REGISTRY[regularizer](**self.regularizer_params, verbose=verbose)
         except KeyError:
             raise ValueError('Unsupported regularizer: %s' % regularizer)
             
@@ -727,7 +727,6 @@ class RandomBaseline():
         >>> model.fit(X)
         >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
     """
-
 
     def __init__(self, seed=0):
         self.seed = seed

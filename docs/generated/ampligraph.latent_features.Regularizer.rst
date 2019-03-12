@@ -1,11 +1,19 @@
 Regularizer
-==================================
+======================================
 
 .. currentmodule:: ampligraph.latent_features
 
 .. autoclass:: Regularizer
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Regularizer.class_params
+      ~Regularizer.external_params
+      ~Regularizer.name
    
    
 
@@ -18,17 +26,13 @@ Regularizer
    .. autosummary::
    
       ~Regularizer.__init__
-      ~Regularizer.get_state
-      ~Regularizer._init_hyperparams
-      ~Regularizer._inputs_check
       ~Regularizer.apply
-      ~Regularizer._apply
+      ~Regularizer.get_state
    
    .. automethod:: Regularizer.__init__
-   .. automethod:: Regularizer.get_state
-   .. automethod:: Regularizer._init_hyperparams
-   .. automethod:: Regularizer._inputs_check
    .. automethod:: Regularizer.apply
-   .. automethod:: Regularizer._apply
+   .. automethod:: Regularizer.get_state
    
    
+
+

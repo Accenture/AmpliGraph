@@ -1,11 +1,19 @@
 L2Regularizer
-==================================
+========================================
 
 .. currentmodule:: ampligraph.latent_features
 
 .. autoclass:: L2Regularizer
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~L2Regularizer.class_params
+      ~L2Regularizer.external_params
+      ~L2Regularizer.name
    
    
 
@@ -18,13 +26,13 @@ L2Regularizer
    .. autosummary::
    
       ~L2Regularizer.__init__
-      ~L2Regularizer._init_hyperparams
-      ~L2Regularizer._apply
-      ~L2Regularizer._inputs_check
+      ~L2Regularizer.apply
+      ~L2Regularizer.get_state
    
    .. automethod:: L2Regularizer.__init__
-   .. automethod:: L2Regularizer._init_hyperparams
-   .. automethod:: L2Regularizer._apply
-   .. automethod:: L2Regularizer._inputs_check
+   .. automethod:: L2Regularizer.apply
+   .. automethod:: L2Regularizer.get_state
    
    
+
+

@@ -16,73 +16,57 @@ def register_regularizer(name, external_params=[], class_params= {}):
 
 
 class Regularizer(abc.ABC):
-    """Abstract class for Regularizer.
+    """Abstract class for a regularizer
+
     """
-    
+
+    """The name of the regularizer"""
     name = ""
     external_params = []
     class_params = {}
-    
-    def __init__(self, hyperparam_dict, verbose=False):
-        """Initialize the regularizer.
+
+    def __init__(self, verbose=False, **kwargs):
+        """Initialize the regularizer
 
         Parameters
         ----------
-        hyperparam_dict : dict
-            dictionary of hyperparams for the regularizer
+        verbose : bool
+            Verbose mode
+        kwargs : reguarizer hyperparameters
         """
+
         self._regularizer_parameters = {}
-        
-        #perform check to see if all the required external hyperparams are passed
-        try:
-            self._init_hyperparams(hyperparam_dict)
-            if verbose:
-                print('------ Regularizer-----')
-                print('Name:', self.name)
-                print('Parameters:')
-                for key in self._regularizer_parameters.keys():
-                    print("  ", key, ": ", self._regularizer_parameters[key])
-            
-        except KeyError:
-            raise Exception('Some of the hyperparams for regularizer were not passed')
-            
+
     def get_state(self, param_name):
-        """Get the state value.
+        """Get the state value
 
         Parameters
         ----------
         param_name : string
             name of the state for which one wants to query the value
+
         Returns
         -------
         param_value:
             the value of the corresponding state
+
         """
+
         try:
             param_value = REGULARIZER_REGISTRY[self.name].class_params.get(param_name)
             return param_value
         except KeyError:
-             raise Exception('Invald Key')
+            raise Exception('Invalid Key')
 
-    def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparameters needed by the algorithm.
-        
-        Parameters
-        ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The regularizer will check the keys to get the corresponding params
-        """
-        NotImplementedError("This function is a placeholder in an abstract class")
-
-    def _apply(self, trainable_params):
+    def _apply(self, X):
         """ Apply the regularization function. Every inherited class must implement this function.
         
         (All the TF code must go in this function.)
         
         Parameters
         ----------
-        trainable_params : list, shape [n]
-            List of trainable params that should be reqularized
+        X : list, shape [n]
+            List of trainable params that should be regularized
         
         Returns
         -------
@@ -91,71 +75,63 @@ class Regularizer(abc.ABC):
         """
         NotImplementedError("This function is a placeholder in an abstract class")
 
-    def _inputs_check(self, trainable_params):
+    def _inputs_check(self, X):
         """ Creates any dependencies that need to be checked before performing regularization.
         
         Parameters
         ----------
-        trainable_params: list, shape [n]
-            List of trainable params that should be reqularized
+        X: list, shape [n]
+            List of trainable params that should be regularized
         """
         pass
-        
-    def apply(self, trainable_params):
+
+    def apply(self, X):
         """ Interface to external world. This function performs input checks, input pre-processing, and
         and applies the loss function.
 
         Parameters
         ----------
-        trainable_params : list, shape [n]
-            List of trainable params that should be reqularized
+        X : list, shape [n]
+            List of trainable params that should be regularized
         
         Returns
         -------
         loss : float
             Regularization Loss
         """
-        self._inputs_check(trainable_params)
-        loss = self._apply(trainable_params)
+        self._inputs_check(X)
+        loss = self._apply(X)
         return loss
-    
-    
-@register_regularizer("None" )      
+
+
+@register_regularizer("None")
 class NoRegularizer(Regularizer):
-    """ Class for performing no regularization.
-    """
-    
-    def __init__(self, hyperparam_dict, verbose=False):
-        super().__init__(hyperparam_dict, verbose)
-        
-    def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparameters needed by the algorithm.
-        
-        Parameters
-        ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The regularizer will check the keys to get the corresponding params
-        """
+    """No regularization"""
+
+    def __init__(self, verbose=False):
+        super().__init__(verbose=verbose)
+
+    def _init_hyperparams(self):
+        """Verifies and stores the hyperparameters needed by the algorithm."""
         pass
-        
-        
-    def _inputs_check(self, trainable_params):
+
+    def _inputs_check(self, X):
         """ Creates any dependencies that need to be checked before performing regularization .
         
         Parameters
         ----------
-        trainable_params: list, shape [n]
-            List of trainable params that should be reqularized
+        X: list, shape [n]
+            List of trainable params that should be regularized
         """
         pass
-        
-    def _apply(self, trainable_params):
+
+    def _apply(self, X):
         """ Apply the loss function.
 
         Parameters
         ----------
-        trainable_params : list, shape [n]
-            List of trainable params that should be reqularized
+        X : list, shape [n]
+            List of trainable params that should be regularized
         
         Returns
         -------
@@ -164,58 +140,48 @@ class NoRegularizer(Regularizer):
 
         """
         return tf.constant(0.0)
-    
-    
-@register_regularizer("L1", ['lambda'] )      
+
+
+@register_regularizer("L1", ['lambda'])
 class L1Regularizer(Regularizer):
-    """Class for performing L1 regularization.
-    
-    Hyperparameters:
-    
-    'lambda' - weight for regularizer loss for each parameter(default: 1e-5)
+    """L1 regularization
+
+    Parameters
+    ----------
+    lambda_weight : float
+        weight for regularizer loss for each parameter (default: 1e-5)
+    verbose : bool
+        verbose mode
+
     """
-    
-    def __init__(self, hyperparam_dict, verbose=False):
-        super().__init__(hyperparam_dict, verbose)
-        
-    def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparameters needed by the algorithm.
-        
-        Parameters
-        ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The regularizer will check the keys to get the corresponding params:
-            
-            'lambda': (list or int)
-            
-                weight for regularizer loss for each parameter(default: 1e-5). If list, size must be equal to no. of parameters.
-        """
-        self._regularizer_parameters['lambda'] = hyperparam_dict.get('lambda', 1e-5)
-        
-        
-    def _inputs_check(self, trainable_params):
+
+    def __init__(self, lambda_weight=1e-5, verbose=False):
+        super().__init__(verbose=verbose)
+        self._regularizer_parameters['lambda'] = lambda_weight
+
+    def _inputs_check(self, X):
         """ Creates any dependencies that need to be checked before performing regularization.
         
         Parameters
         ----------
-        trainable_params: list, shape [n]
-            List of trainable params that should be reqularized
+        X: list, shape [n]
+            List of trainable params that should be regularized
         """
         if np.isscalar(self._regularizer_parameters['lambda']):
-            self._regularizer_parameters['lambda'] = [self._regularizer_parameters['lambda']] * len(trainable_params)
-        elif isinstance(self._regularizer_parameters['lambda'], list) and len(self._regularizer_parameters['lambda']) == len(trainable_params):
+            self._regularizer_parameters['lambda'] = [self._regularizer_parameters['lambda']] * len(X)
+        elif isinstance(self._regularizer_parameters['lambda'], list) and len(self._regularizer_parameters['lambda']) == len(X):
             pass
         else:
-            raise ValueError("Regularizer weight must be a scalar or a list with length equal to number of params passes") 
+            raise ValueError("Regularizer weight must be a scalar or a "
+                             "list with length equal to number of params passes")
 
-        
-    def _apply(self, trainable_params):
+    def _apply(self, X):
         """ Apply the loss function.
 
         Parameters
         ----------
-        trainable_params : list, shape [n]
-            List of trainable params that should be reqularized.
+        X : list, shape [n]
+            List of trainable params that should be regularized.
         
         Returns
         -------
@@ -223,63 +189,52 @@ class L1Regularizer(Regularizer):
             Regularization Loss
 
         """
-        loss_reg = 0
-        for i in range(len(trainable_params)):
-            loss_reg += (self._regularizer_parameters['lambda'][i] * tf.reduce_sum(tf.abs(trainable_params[i])))
 
-        return loss_reg 
-    
+        self._inputs_check(X)
+
+        loss_reg = 0
+        for i in range(len(X)):
+            loss_reg += (self._regularizer_parameters['lambda'][i] * tf.reduce_sum(tf.abs(X[i])))
+
+        return loss_reg
+
 
 @register_regularizer("L2", ['lambda'])
 class L2Regularizer(Regularizer):
-    """Class for performing L2 regularization
+    """L2 regularization
     
     Hyperparameters:
     
     'lambda' - weight for regularizer loss for each parameter(default: 1e-5)
     """
 
-    def __init__(self, hyperparam_dict, verbose=False):
-        super().__init__(hyperparam_dict, verbose)
-        
-    def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparameters needed by the algorithm.
-        
-        Parameters
-        ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The regularizer will check the keys to get the corresponding params:
-            
-            'lambda': list or int
-            
-                weight for regularizer loss for each parameter(default: 1e-5). If list, size must be equal to no. of parameters.
-        """
-        self._regularizer_parameters['lambda'] = hyperparam_dict.get('lambda', 1e-5)
-        
-        
-    def _inputs_check(self, trainable_params):
+    def __init__(self, lambda_weight=1e-5, verbose=False):
+        super().__init__(verbose=verbose)
+        self._regularizer_parameters['lambda'] = lambda_weight
+
+    def _inputs_check(self, X):
         """ Creates any dependencies that need to be checked before performing regularization.
         
         Parameters
         ----------
-        trainable_params: list, shape [n]
-            List of trainable params that should be reqularized
+        X: list, shape [n]
+            List of trainable params that should be regularized
         """
         if np.isscalar(self._regularizer_parameters['lambda']):
-            self._regularizer_parameters['lambda'] = [self._regularizer_parameters['lambda']] * len(trainable_params)
-        elif isinstance(self._regularizer_parameters['lambda'], list) and len(self._regularizer_parameters['lambda']) == len(trainable_params):
+            self._regularizer_parameters['lambda'] = [self._regularizer_parameters['lambda']] * len(X)
+        elif isinstance(self._regularizer_parameters['lambda'], list) and len(self._regularizer_parameters['lambda']) == len(X):
             pass
         else:
-            raise ValueError("Regularizer weight must be a scalar or a list with length equal to number of params passes") 
+            raise ValueError("Regularizer weight must be a scalar or a list "
+                             "with length equal to number of params passes")
 
-        
-    def _apply(self, trainable_params):
+    def _apply(self, X):
         """ Apply the loss function.
 
         Parameters
         ----------
-        trainable_params : list, shape [n]
-            List of trainable params that should be reqularized
+        X : list, shape [n]
+            List of trainable params that should be regularized
         
         Returns
         -------
@@ -287,62 +242,53 @@ class L2Regularizer(Regularizer):
             Regularization Loss
 
         """
-        loss_reg = 0
-        for i in range(len(trainable_params)):
-            loss_reg += (self._regularizer_parameters['lambda'][i] * tf.reduce_sum(tf.square(trainable_params[i]))) 
 
-        return loss_reg 
-    
+        self._inputs_check(X)
+
+        loss_reg = 0
+        for i in range(len(X)):
+            loss_reg += (self._regularizer_parameters['lambda'][i] * tf.reduce_sum(tf.square(X[i])))
+
+        return loss_reg
+
+
 @register_regularizer("L3", ['lambda'])
 class L3Regularizer(Regularizer):
-    """Class for performing L3 regularization
+    """L3 regularization
     
     Hyperparameters:
     
     'lambda' - weight for regularizer loss for each parameter(default: 1e-5)
     """
 
-    def __init__(self, hyperparam_dict, verbose=False):
-        super().__init__(hyperparam_dict, verbose)
-        
-    def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparameters needed by the algorithm.
-        
-        Parameters
-        ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The regularizer will check the keys to get the corresponding params:
-            
-            'lambda': list or int
-            
-                weight for regularizer loss for each parameter(default: 1e-5). If list, size must be equal to no. of parameters.
-        """
-        self._regularizer_parameters['lambda'] = hyperparam_dict.get('lambda', 1e-5)
-        
-        
-    def _inputs_check(self, trainable_params):
+    def __init__(self, lambda_weight=1e-5, verbose=False):
+        super().__init__(verbose=verbose)
+        self._regularizer_parameters['lambda'] = lambda_weight
+
+    def _inputs_check(self, X):
         """ Creates any dependencies that need to be checked before performing regularization.
-        
+
         Parameters
         ----------
-        trainable_params: list, shape [n]
-            List of trainable params that should be reqularized
+        X: list, shape [n]
+            List of trainable params that should be regularized
         """
         if np.isscalar(self._regularizer_parameters['lambda']):
-            self._regularizer_parameters['lambda'] = [self._regularizer_parameters['lambda']] * len(trainable_params)
-        elif isinstance(self._regularizer_parameters['lambda'], list) and len(self._regularizer_parameters['lambda']) == len(trainable_params):
+            self._regularizer_parameters['lambda'] = [self._regularizer_parameters['lambda']] * len(X)
+        elif isinstance(self._regularizer_parameters['lambda'], list) and len(
+                self._regularizer_parameters['lambda']) == len(X):
             pass
         else:
-            raise ValueError("Regularizer weight must be a scalar or a list with length equal to number of params passes") 
+            raise ValueError("Regularizer weight must be a scalar or a list "
+                             "with length equal to number of params passes")
 
-        
-    def _apply(self, trainable_params):
+    def _apply(self, X):
         """ Apply the loss function.
 
         Parameters
         ----------
-        trainable_params : list, shape [n]
-            List of trainable params that should be reqularized.
+        X : list, shape [n]
+            List of trainable params that should be regularized.
         
         Returns
         -------
@@ -350,8 +296,10 @@ class L3Regularizer(Regularizer):
             Regularization Loss
 
         """
-        loss_reg = 0
-        for i in range(len(trainable_params)):
-            loss_reg += (self._regularizer_parameters['lambda'][i] * tf.reduce_sum(tf.pow(tf.abs(trainable_params[i]), 3)))
+        self._inputs_check(X)
 
-        return loss_reg 
+        loss_reg = 0
+        for i in range(len(X)):
+            loss_reg += (self._regularizer_parameters['lambda'][i] * tf.reduce_sum(tf.pow(tf.abs(X[i]), 3)))
+
+        return loss_reg

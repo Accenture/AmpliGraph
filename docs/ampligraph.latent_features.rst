@@ -76,6 +76,7 @@ AmpliGraph includes a number of regularizers that can be used with the loss func
     NoRegularizer
     L1Regularizer
     L2Regularizer
+    L3Regularizer
 
 
 Utils Functions
