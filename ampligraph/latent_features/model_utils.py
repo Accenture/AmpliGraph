@@ -53,7 +53,7 @@ def restore_model(loc):
     """
     restore_loc = os.path.join(loc, SAVED_MODEL_FILE_NAME)
     model = None
-    logger.debug('Loading model from {}.'.format(loc)
+    logger.debug('Loading model from {}.'.format(loc))
     restored_obj = None
     with open(restore_loc, 'rb') as fr:
         restored_obj = pickle.load(fr)
@@ -67,6 +67,6 @@ def restore_model(loc):
         model.ent_to_idx = restored_obj['ent_to_idx']
         model.rel_to_idx = restored_obj['rel_to_idx']
         model.restore_model_params(restored_obj)
-    else
+    else:
         logger.debug('No model found.')
     return model
