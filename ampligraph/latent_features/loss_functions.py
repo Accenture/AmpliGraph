@@ -3,6 +3,8 @@ import abc
 
 LOSS_REGISTRY = {}
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 def register_loss(name, external_params=[], class_params= {'require_same_size_pos_neg' : True,}):
     def insert_in_registry(class_handle):
@@ -42,13 +44,17 @@ class Loss(abc.ABC):
             self._init_hyperparams(hyperparam_dict)
             if verbose:
                 print('------ Loss-----')
+                logger.info('Name:{}'.format(self.name))
                 print('Name:', self.name)
+                logger.info('Parameters:')
                 print('Parameters:')
-                for key in self._loss_parameters.keys():
-                    print("  ", key, ": ", self._loss_parameters[key])
-            
-        except KeyError:
-            raise Exception('Some of the hyperparams for loss were not passed to the loss function')
+                for key,value in self._loss_parameters.items():
+                    logger.info('\t{}: '.format(key,value))
+                    print("  ", key, ": ", value) 
+        except KeyError as e:
+            msg = 'Some of the hyperparams for loss were not passed to the loss function.\n{}'.format(e)
+            logger.error(msg)
+            raise Exception(msg)
             
     def get_state(self, param_name):
         """Get the state value.
@@ -65,8 +71,10 @@ class Loss(abc.ABC):
         try:
             param_value = LOSS_REGISTRY[self.name].class_params.get(param_name)
             return param_value
-        except KeyError:
-             raise Exception('Invald Key')
+        except KeyError as e:
+            msg = 'Invalid Keu.\n{}'.format(e)
+            logger.error(msg)
+            raise Exception(msg)
 
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparameters needed by the algorithm.
@@ -76,7 +84,9 @@ class Loss(abc.ABC):
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
         """
-        NotImplementedError("This function is a placeholder in an abstract class")
+        msg = 'This function is a placeholder in an abstract class'
+        logger.error(msg)
+        NotImplementedError(msg)
         
     def _inputs_check(self, scores_pos, scores_neg):
         """ Creates any dependencies that need to be checked before performing loss computations
@@ -88,11 +98,11 @@ class Loss(abc.ABC):
         scores_neg : tf.Tensor
             A tensor of scores assigned to negative statements.
         """
+        logger.debug('Creating dependencies before loss computations.')
         self._dependencies = []
         if LOSS_REGISTRY[self.name].class_params['require_same_size_pos_neg'] and self._loss_parameters['eta']!=1:
-             self._dependencies.append(tf.Assert(tf.equal(tf.shape(scores_pos)[0] ,tf.shape(scores_neg)[0]), [tf.shape(scores_pos)[0], tf.shape(scores_neg)[0]]))
-        
-
+            logger.debug('Dependencies found: \n\tRequired same size positive and negative. \n\tEta is not 1.')
+            self._dependencies.append(tf.Assert(tf.equal(tf.shape(scores_pos)[0] ,tf.shape(scores_neg)[0]), [tf.shape(scores_pos)[0], tf.shape(scores_neg)[0]]))
         
     def _apply(self, scores_pos, scores_neg):
         """ Apply the loss function. Every inherited class must implement this function.
@@ -110,7 +120,9 @@ class Loss(abc.ABC):
         loss : float
             The loss value that must be minimized.
         """
-        NotImplementedError("This function is a placeholder in an abstract class")
+        msg = 'This function is a placeholder in an abstract class.'
+        logger.error(msg)
+        NotImplementedError(msg)
         
     def apply(self, scores_pos, scores_neg):
         """ Interface to external world. This function does the input checks, preprocesses input and finally applies loss fn.
