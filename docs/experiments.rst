@@ -136,7 +136,7 @@ WN18
 WN18RR 
 ------
 
-We removed 420 triples (210 in validation, 210 in test) containing unseen entities
+.. warning:: We removed (198,209) unseen entities in (validation, test) sets in this experiment.
 
 ========== ========= ====== ====== ====== ====== ========================
   Model       MR      MRR   H @ 1  H @ 3  H @ 10      Hyperparameters
@@ -199,7 +199,7 @@ TransE     1532.28   0.23   0.07   0.34   0.50    batches_count: 100;
 FB15K-237 
 ---------
 
-We removed 37 triples (9 in validation, 28 in test set) containing unseen entities
+.. warning:: We removed (8,29) unseen entities in (validation, test) sets in this experiment.
 
 ========= ======== ====== ====== ====== ====== ==========================
   Model      MR     MRR    H @ 1 H @ 3  H @ 10      Hyperparameters
@@ -267,21 +267,21 @@ ComplEx   606.17   0.27   0.18   0.29   0.45    batches_count: 100;
 
 Results in the table above can be reproduced by running as below:
 
-`$ cd experiements`
+`$ cd experiments`
 
-To run all experiements: 
+For all experiments: 
 
 `$ python predictive_performance.py`
 
-To run experiments of single dataset:
+For single dataset:
 
 `$ python predictive_performance.py -d dataset`
 
-To run experiements of single model:
+For single model:
 
 `$ python predictive_performance.py -m model`
 
-To run experiements of single model with single dataset:
+For single model with single dataset:
 
 `$ python predictive_performance.py -m model -d dataset`
 
