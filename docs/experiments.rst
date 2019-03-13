@@ -133,8 +133,10 @@ WN18
                                                  seed: 0
 ========== ======== ====== ====== ====== ====== =========================
 
-WN18RR
+WN18RR 
 ------
+
+.. warning:: We removed (198,209) unseen entities in (validation, test) sets in this experiment.
 
 ========== ========= ====== ====== ====== ====== ========================
   Model       MR      MRR   H @ 1  H @ 3  H @ 10      Hyperparameters
@@ -194,56 +196,68 @@ TransE     1532.28   0.23   0.07   0.34   0.50    batches_count: 100;
 ========== ========= ====== ====== ====== ====== ========================
 
 
-FB15K-237
+FB15K-237 
 ---------
+
+.. warning:: We removed (8,29) unseen entities in (validation, test) sets in this experiment.
 
 ========= ======== ====== ====== ====== ====== ==========================
   Model      MR     MRR    H @ 1 H @ 3  H @ 10      Hyperparameters
 ========= ======== ====== ====== ====== ====== ==========================
-TransE     373.63   0.27   0.18   0.30   0.44    batches_count: 10;
+TransE     373.63   0.30   0.21   0.33   0.48    batches_count: 8;
                                                  embedding_model_params:
                                                  norm: 1;
                                                  epochs: 4000;
-                                                 eta: 5;
-                                                 k: 150;
-                                                 loss: pairwise;
+                                                 eta: 50;
+                                                 k: 300;
+                                                 loss: self_adversarial;
                                                  loss_params:
-                                                 margin: 0.5;
+                                                 margin: 5;
+                                                 alpha: 0.5;
+                                                 optimizer: adam;
+                                                 optimizer_params:
+                                                 lr: 0.0001;
+                                                 regularizer: L3;
+                                                 regularizer_params:
+                                                 lambda: 0.00001;
+                                                 seed: 0
+                                                  
+ DistMult   441.22   0.29   0.20   0.32   0.48   batches_count: 50;
+                                                 embedding_model_params:
+                                                 norm: 1;
+                                                 epochs: 4000;
+                                                 eta: 50;
+                                                 k: 400;
+                                                 loss: self_adversarial;
+                                                 loss_params:
+                                                 alpha: 1;
+                                                 margin: 1;
                                                  optimizer: adam;
                                                  optimizer_params:
                                                  lr: 0.0001;
                                                  regularizer: L2;
                                                  regularizer_params:
-                                                 lambda: 0.0001;
+                                                 lambda: 1.0e-05;
                                                  seed: 0
-                                                  
-DistMult   269.68   0.26   0.17   0.29   0.44    batches_count: 6;
-                                                 epochs: 4000;
-                                                 eta: 20;
-                                                 k: 200;
-                                                 loss: self_adversarial;
-                                                 loss_params:
-                                                 margin: 1;
-                                                 optimizer: adam;
-                                                 optimizer_params:
-                                                 lr: 0.0005;
-                                                 regularizer: L2;
-                                                 regularizer_params:
-                                                 lambda: 0.0001;
-                                                 seed: 0
-
-ComplEx   606.17   0.27   0.18   0.29   0.45    batches_count: 100;
-                                                epochs: 4000;
-                                                eta: 20;
-                                                k: 200;
-                                                loss: self_adversarial;
-                                                loss_params:
-                                                margin: 1;
-                                                optimizer: adam;
-                                                optimizer_params:
-                                                lr: 0.0005;
-                                                seed: 0
-
+                                                 
+ ComplEx    513.9    0.30   0.20   0.33   0.48    batches_count: 50;
+                                                  embedding_model_params:
+                                                  norm: 1;
+                                                  epochs: 4000;
+                                                  eta: 30;
+                                                  k: 350;
+                                                  loss: self_adversarial;
+                                                  loss_params:
+                                                  alpha: 1;
+                                                  margin: 0.5;
+                                                  optimizer: adam;
+                                                  optimizer_params:
+                                                  lr: 0.0001;
+                                                  regularizer: L2;
+                                                  regularizer_params:
+                                                  lambda: 0.0001;
+                                                  seed: 0
+                                                   
  HolE      408.71   0.20  0.12   0.22   0.38    batches_count: 100;
                                                 epochs: 4000;
                                                 eta: 20;
@@ -258,9 +272,25 @@ ComplEx   606.17   0.27   0.18   0.29   0.45    batches_count: 100;
                                                 seed: 0
 ========= ======== ====== ====== ====== ====== ==========================
 
-Results in the table above can be reproduced by running the script below:
+Results in the table above can be reproduced by running as below:
 
-`$ cd experiments && python predictive_performance.py -d dataset -m model`
+`$ cd experiments`
+
+For all experiments: 
+
+`$ python predictive_performance.py`
+
+For single dataset:
+
+`$ python predictive_performance.py -d dataset`
+
+For single model:
+
+`$ python predictive_performance.py -m model`
+
+For single model with single dataset:
+
+`$ python predictive_performance.py -m model -d dataset`
 
 
 Runtime Performance

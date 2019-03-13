@@ -1,8 +1,13 @@
 import tensorflow as tf
 import numpy as np
 import abc
+import logging
 
 REGULARIZER_REGISTRY = {}
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 
 
 def register_regularizer(name, external_params=[], class_params= {}):
@@ -38,13 +43,19 @@ class Regularizer(abc.ABC):
             self._init_hyperparams(hyperparam_dict)
             if verbose:
                 print('------ Regularizer-----')
+                logger.info('------ Regularizer-----')
                 print('Name:', self.name)
+                logger.info('Name:{}'.format(self.name))
                 print('Parameters:')
-                for key in self._regularizer_parameters.keys():
-                    print("  ", key, ": ", self._regularizer_parameters[key])
+                logger.info('Parameters:')
+                for key,value in self._regularizer_parameters.items():
+                    logger.info('\t{}:{}\n'.format(key,value))
+                    print("  ", key, ": ", value)
             
-        except KeyError:
-            raise Exception('Some of the hyperparams for regularizer were not passed')
+        except KeyError as e:
+            msg = 'Some of the hyperparams for regularizer were not passed.\n{}'.format(e)
+            logger.error(msg)
+            raise Exception(msg)
             
     def get_state(self, param_name):
         """Get the state value.
@@ -61,8 +72,10 @@ class Regularizer(abc.ABC):
         try:
             param_value = REGULARIZER_REGISTRY[self.name].class_params.get(param_name)
             return param_value
-        except KeyError:
-             raise Exception('Invald Key')
+        except KeyError as e:
+            msg = 'Invalid Key.\n{}'.format(e)
+            logger.error(msg)
+            raise Exception(msg)
 
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparameters needed by the algorithm.
@@ -72,6 +85,7 @@ class Regularizer(abc.ABC):
         hyperparam_dict : dictionary
             Consists of key value pairs. The regularizer will check the keys to get the corresponding params
         """
+        logger.error('This function is a placeholder in an abstract class')
         NotImplementedError("This function is a placeholder in an abstract class")
 
     def _apply(self, trainable_params):
@@ -89,6 +103,7 @@ class Regularizer(abc.ABC):
         loss : float
             Regularization Loss
         """
+        logger.error('This function is a placeholder in an abstract class')
         NotImplementedError("This function is a placeholder in an abstract class")
 
     def _inputs_check(self, trainable_params):
@@ -206,6 +221,7 @@ class L1Regularizer(Regularizer):
         elif isinstance(self._regularizer_parameters['lambda'], list) and len(self._regularizer_parameters['lambda']) == len(trainable_params):
             pass
         else:
+            logger.error('Regularizer weight must be a scalar or a list with length equal to number of params passes')
             raise ValueError("Regularizer weight must be a scalar or a list with length equal to number of params passes") 
 
         
@@ -270,6 +286,7 @@ class L2Regularizer(Regularizer):
         elif isinstance(self._regularizer_parameters['lambda'], list) and len(self._regularizer_parameters['lambda']) == len(trainable_params):
             pass
         else:
+            logger.error('Regularizer weight must be a scalar or a list with length equal to number of params passes')
             raise ValueError("Regularizer weight must be a scalar or a list with length equal to number of params passes") 
 
         
@@ -333,6 +350,7 @@ class L3Regularizer(Regularizer):
         elif isinstance(self._regularizer_parameters['lambda'], list) and len(self._regularizer_parameters['lambda']) == len(trainable_params):
             pass
         else:
+            logger.error('Regularizer weight must be a scalar or a list with length equal to number of params passes')
             raise ValueError("Regularizer weight must be a scalar or a list with length equal to number of params passes") 
 
         
