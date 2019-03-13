@@ -19,6 +19,8 @@ def register_regularizer(name, external_params=[], class_params= {}):
         return class_handle
     return insert_in_registry
 
+#Defalut lambda to be used in L1, L2 and L3 regularizer
+DEFAULT_LAMBDA = 1e-5
 
 class Regularizer(abc.ABC):
     """Abstract class for Regularizer.
@@ -135,52 +137,6 @@ class Regularizer(abc.ABC):
         return loss
     
     
-@register_regularizer("None" )      
-class NoRegularizer(Regularizer):
-    """ Class for performing no regularization.
-    """
-    
-    def __init__(self, hyperparam_dict, verbose=False):
-        super().__init__(hyperparam_dict, verbose)
-        
-    def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparameters needed by the algorithm.
-        
-        Parameters
-        ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The regularizer will check the keys to get the corresponding params
-        """
-        pass
-        
-        
-    def _inputs_check(self, trainable_params):
-        """ Creates any dependencies that need to be checked before performing regularization .
-        
-        Parameters
-        ----------
-        trainable_params: list, shape [n]
-            List of trainable params that should be reqularized
-        """
-        pass
-        
-    def _apply(self, trainable_params):
-        """ Apply the loss function.
-
-        Parameters
-        ----------
-        trainable_params : list, shape [n]
-            List of trainable params that should be reqularized
-        
-        Returns
-        -------
-        loss : float
-            Regularization Loss
-
-        """
-        return tf.constant(0.0)
-    
-    
 @register_regularizer("L1", ['lambda'] )      
 class L1Regularizer(Regularizer):
     """Class for performing L1 regularization.
@@ -205,7 +161,7 @@ class L1Regularizer(Regularizer):
             
                 weight for regularizer loss for each parameter(default: 1e-5). If list, size must be equal to no. of parameters.
         """
-        self._regularizer_parameters['lambda'] = hyperparam_dict.get('lambda', 1e-5)
+        self._regularizer_parameters['lambda'] = hyperparam_dict.get('lambda', DEFAULT_LAMBDA)
         
         
     def _inputs_check(self, trainable_params):
@@ -270,7 +226,7 @@ class L2Regularizer(Regularizer):
             
                 weight for regularizer loss for each parameter(default: 1e-5). If list, size must be equal to no. of parameters.
         """
-        self._regularizer_parameters['lambda'] = hyperparam_dict.get('lambda', 1e-5)
+        self._regularizer_parameters['lambda'] = hyperparam_dict.get('lambda', DEFAULT_LAMBDA)
         
         
     def _inputs_check(self, trainable_params):
@@ -334,7 +290,7 @@ class L3Regularizer(Regularizer):
             
                 weight for regularizer loss for each parameter(default: 1e-5). If list, size must be equal to no. of parameters.
         """
-        self._regularizer_parameters['lambda'] = hyperparam_dict.get('lambda', 1e-5)
+        self._regularizer_parameters['lambda'] = hyperparam_dict.get('lambda', DEFAULT_LAMBDA)
         
         
     def _inputs_check(self, trainable_params):

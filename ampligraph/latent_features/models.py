@@ -4,20 +4,54 @@ from sklearn.utils import check_random_state
 from functools import partial
 import abc
 from tqdm import tqdm
-
+import logging
 
 
 MODEL_REGISTRY = {}
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 from .loss_functions import LOSS_REGISTRY
 from .regularizers import REGULARIZER_REGISTRY
 from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, hits_at_n_score, mrr_score
 import os
 
-DEFAULT_PAIRWISE_MARGIN = 1
+#######################################################################################################
+# If not specified, following defaults will be used at respective locations
 
+#Default learning rate for the optimizers
+DEFAULT_LR = 0.1
 
+#Default momentum for the optimizers
+DEFAULT_MOMENTUM = 0.9
+
+#Default burn in for early stopping
+DEFAULT_BURN_IN_EARLY_STOPPING = 100
+
+#Default check interval for early stopping
+DEFAULT_CHECK_INTERVAL_EARLY_STOPPING = 10
+
+#Default stop interval for early stopping
+DEFAULT_STOP_INTERVAL_EARLY_STOPPING = 3
+
+#default evaluation criteria for early stopping
+DEFAULT_CRITERIA_EARLY_STOPPING = 'mrr'
+
+#default value which indicates whether to normalize the embeddings after each batch update
+DEFAULT_NORMALIZE_EMBEDDINGS = False
+
+#default value for list of corruption entities to be used
+#If None, it uses all the entities in the dataset
+DEFAULT_CORRUPTION_ENTITIES = None
+
+#Default side to corrupt for evaluation
+DEFAULT_CORRUPT_SIDE = 's+o'
+
+#default hyperparameter for transE
+DEFAULT_NORM_TRANSE = 1
+
+#######################################################################################################
 
 def register_model(name, external_params=[], class_params= {}):
     def insert_in_registry(class_handle):
@@ -35,7 +69,7 @@ class EmbeddingModel(abc.ABC):
                  embedding_model_params = {},
                  optimizer="adagrad", optimizer_params={}, 
                  loss='nll', loss_params = {}, 
-                 regularizer="None", regularizer_params = {},
+                 regularizer=None, regularizer_params = {},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
         """Initialize an EmbeddingModel
 
@@ -126,31 +160,41 @@ class EmbeddingModel(abc.ABC):
         self.regularizer_params = regularizer_params
         self.batches_count = batches_count
         if batches_count == 1:
+            logger.warn('batches_count=1. All triples will be processed in the same batch. This may introduce memory issues.')
             print('WARN: when batches_count=1 all triples will be processed in the same batch. '
                   'This may introduce memory issues.')
             
         try:
             self.loss = LOSS_REGISTRY[loss](self.eta, self.loss_params, verbose=verbose)
         except KeyError:
-            raise ValueError('Unsupported loss function: %s' % loss)
+            msg = 'Unsupported loss function: {}'.format(loss)
+            logger.error(msg)
+            raise ValueError(msg)
             
         try:
-            self.regularizer = REGULARIZER_REGISTRY[regularizer](self.regularizer_params, verbose=verbose)
+            if regularizer is not None:
+                self.regularizer = REGULARIZER_REGISTRY[regularizer](self.regularizer_params, verbose=verbose)
+            else:
+                self.regularizer = regularizer
         except KeyError:
-            raise ValueError('Unsupported regularizer: %s' % regularizer)
+            msg = 'Unsupported regularizer: {}'.format(regularizer)
+            logger.error(msg)
+            raise ValueError(msg)
             
         
         self.optimizer_params = optimizer_params
         if optimizer == "adagrad":
-            self.optimizer = tf.train.AdagradOptimizer(learning_rate=self.optimizer_params.get('lr', 0.1))
+            self.optimizer = tf.train.AdagradOptimizer(learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
         elif optimizer == "adam":
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.optimizer_params.get('lr', 0.1))
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
         elif optimizer == "sgd":
-            self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.optimizer_params.get('lr', 0.1))
+            self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
         elif optimizer=="momentum":
-            self.optimizer = tf.train.MomentumOptimizer(learning_rate=self.optimizer_params.get('lr', 0.1), momentum=self.optimizer_params.get('momentum', 0.9))
+            self.optimizer = tf.train.MomentumOptimizer(learning_rate=self.optimizer_params.get('lr', DEFAULT_LR), momentum=self.optimizer_params.get('momentum', DEFAULT_MOMENTUM))
         else:
-            raise ValueError('Unsupported optimizer: %s' % optimizer)
+            msg = 'Unsupported optimizer: {}'.format(optimizer)
+            logger.error(msg)
+            raise ValueError(msg)
 
         self.verbose = verbose
 
@@ -188,6 +232,7 @@ class EmbeddingModel(abc.ABC):
             The operation corresponding to the TransE scoring function.
 
         """
+        logger.error('_fn is a placeholder function in an abstract class')
         NotImplementedError("This function is a placeholder in an abstract class")
 
     def get_embedding_model_params(self, output_dict):
@@ -246,9 +291,11 @@ class EmbeddingModel(abc.ABC):
             An array of k-dimensional embeddings.
 
         """
-
+        #TODO - Rename type with something else. This is masking the built-in function "type" #44
         if not self.is_fitted:
-            raise RuntimeError('Model has not been fitted.')
+            msg = 'Model has not been fitted.'
+            logger.error(msg)
+            raise RuntimeError(msg)
 
         if type is 'entity':
             emb_list = self.trained_model_params[0]
@@ -257,7 +304,9 @@ class EmbeddingModel(abc.ABC):
             emb_list = self.trained_model_params[1]
             lookup_dict = self.rel_to_idx
         else:
-            raise ValueError('Invalid entity type: %s' % type)
+            msg = 'Invalid entity type: {}'.format(type)
+            logger.error(msg)
+            raise ValueError(msg)
 
         idxs = np.vectorize(lookup_dict.get)(entities)
         return emb_list[idxs]
@@ -296,8 +345,12 @@ class EmbeddingModel(abc.ABC):
         """ Get the current loss including loss due to regularization.
             This function must be overridden if the model uses combination of different losses(eg: VAE) 
         """
-        return self.loss.apply(scores_pos, scores_neg) + \
+        
+        if self.regularizer is not None:
+            return self.loss.apply(scores_pos, scores_neg) + \
                 self.regularizer.apply([self.ent_emb, self.rel_emb])
+        else:
+            return self.loss.apply(scores_pos, scores_neg)
         
     def _initialize_early_stopping(self):
         """ Initializes and creates evaluation graph for early stopping
@@ -305,18 +358,26 @@ class EmbeddingModel(abc.ABC):
         try:
             self.x_valid = self.early_stopping_params['x_valid']
             if type(self.x_valid) != np.ndarray:
-                raise ValueError('Invalid type for input x_valid. Expected ndarray, got %s' % (type(self.x_valid)))
+                msg = 'Invalid type for input x_valid. Expected ndarray, got {}'.format(type(self.x_valid))
+                logger.error(msg)
+                raise ValueError(msg)
 
             if self.x_valid.ndim<=1 or (np.shape(self.x_valid)[1]) != 3:
-                raise ValueError('Invalid size for input x_valid. Expected (n,3):  got %s' % (np.shape(self.x_valid)))
+                msg = 'Invalid size for input x_valid. Expected (n,3):  got {}'.format(np.shape(self.x_valid))
+                logger.error(msg)
+                raise ValueError(msg)
             self.x_valid = to_idx(self.x_valid, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
 
         except KeyError:
-            raise KeyError('x_valid must be passed for early fitting.')
+            msg = 'x_valid must be passed for early fitting.'
+            logger.error(msg)
+            raise KeyError(msg)
 
         self.early_stopping_criteria = self.early_stopping_params.get('criteria', 'mrr')
         if self.early_stopping_criteria not in ['hits10','hits1', 'hits3', 'mrr']:
-            raise ValueError('Unsupported early stopping criteria')
+            msg = 'Unsupported early stopping criteria.'
+            logger.error(msg)
+            raise ValueError(msg)
 
 
         self.early_stopping_best_value = 0
@@ -326,6 +387,7 @@ class EmbeddingModel(abc.ABC):
             x_filter = to_idx(x_filter, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
             self.set_filter_for_eval(x_filter)
         except KeyError:
+            logger.debug('x_filter not found in early_stopping_params.')
             pass
 
         self._initialize_eval_graph()  
@@ -342,8 +404,8 @@ class EmbeddingModel(abc.ABC):
             Flag to indicate if the early stopping criteria is acheived
         """
         
-        if epoch >= self.early_stopping_params.get('burn_in', 100)  \
-                                and epoch%self.early_stopping_params.get('check_interval',10)==0:
+        if epoch >= self.early_stopping_params.get('burn_in', DEFAULT_BURN_IN_EARLY_STOPPING)  \
+                                and epoch%self.early_stopping_params.get('check_interval', DEFAULT_CHECK_INTERVAL_EARLY_STOPPING)==0:
             #compute and store test_loss
             ranks = []
 
@@ -364,13 +426,17 @@ class EmbeddingModel(abc.ABC):
 
             if self.early_stopping_best_value >= current_test_value:
                 self.early_stopping_stop_counter += 1
-                if self.early_stopping_stop_counter == self.early_stopping_params.get('stop_interval', 3):
+                if self.early_stopping_stop_counter == self.early_stopping_params.get('stop_interval', DEFAULT_STOP_INTERVAL_EARLY_STOPPING):
                     #Reset this variable as it is reused during evaluation phase
                     self.is_filtered = False
                     self.eval_config={}
                     if self.verbose:
-                        print('Early stopping at epoch:', epoch)
-                        print('Best %s: %.10f' % (self.early_stopping_criteria, self.early_stopping_best_value))
+                        msg = 'Early stopping at epoch:{}'.format(epoch)
+                        logger.info(msg)
+                        print(msg)
+                        msg = 'Best {}: {:10f}'.format(self.early_stopping_criteria, self.early_stopping_best_value)
+                        logger.info(msg)
+                        print(msg)
                     return True
             else:   
                 self.early_stopping_best_value = current_test_value
@@ -378,8 +444,12 @@ class EmbeddingModel(abc.ABC):
                 self._save_trained_params()
                 
             if self.verbose:
-                print('Current best:', self.early_stopping_best_value)
-                print('Current:', current_test_value)
+                msg = 'Current best:{}'.format(self.early_stopping_best_value)
+                logger.info(msg)
+                print(msg)
+                msg = 'Current:{}'.format(current_test_value)
+                logger.info(msg)
+                print(msg)
             
         return False
         
@@ -415,10 +485,14 @@ class EmbeddingModel(abc.ABC):
 
         """
         if type(X) != np.ndarray:
-            raise ValueError('Invalid type for input X. Expected ndarray, got %s' % (type(X)))
+            msg = 'Invalid type for input X. Expected ndarray, got {}'.format(type(X))
+            logger.error(msg)
+            raise ValueError(msg)
 
         if (np.shape(X)[1]) != 3:
-            raise ValueError('Invalid size for input X. Expected number of column 3, got %s' % (np.shape(X)[1]))
+            msg = 'Invalid size for input X. Expected number of column 3, got {}'.format(np.shape(X)[1])
+            logger.error(msg)
+            raise ValueError(msg)
 
         # create internal IDs mappings
         self.rel_to_idx, self.ent_to_idx = create_mappings(X)
@@ -444,6 +518,7 @@ class EmbeddingModel(abc.ABC):
         #generate negatives
         x_neg_tf = generate_corruptions_for_fit(x_pos_tf, all_ent_tf, self.eta, rnd=self.seed)
         if self.loss.get_state('require_same_size_pos_neg'):
+            logger.debug('Requires the same size of postive and negative')
             x_pos =  tf.reshape(tf.tile(tf.reshape(x_pos_tf,[-1]),[self.eta]),[tf.shape(x_pos_tf)[0]*self.eta,3])
             batch_size = batch_size * self.eta
         else:
@@ -476,7 +551,7 @@ class EmbeddingModel(abc.ABC):
         
         normalize_rel_emb_op = self.rel_emb.assign(tf.clip_by_norm(self.rel_emb, clip_norm=1, axes=1))    
         
-        if self.embedding_model_params.get('normalize_ent_emb', False):
+        if self.embedding_model_params.get('normalize_ent_emb', DEFAULT_NORMALIZE_EMBEDDINGS):
             self.sess_train.run(normalize_rel_emb_op)
             self.sess_train.run(normalize_ent_emb_op)
             
@@ -487,13 +562,17 @@ class EmbeddingModel(abc.ABC):
                 loss_batch, _ = self.sess_train.run([ loss, train])
                 
                 if np.isnan(loss_batch) or np.isinf(loss_batch):
-                    raise ValueError('Loss is %f. Please change the hyperparameters!!!'%(loss_batch))
+                    msg = 'Loss is {}. Please change the hyperparameters!!!'.format(loss_batch)
+                    logger.error(msg)
+                    raise ValueError(msg)
                     
                 losses.append(loss_batch)
-                if self.embedding_model_params.get('normalize_ent_emb', False):
+                if self.embedding_model_params.get('normalize_ent_emb', DEFAULT_NORMALIZE_EMBEDDINGS):
                     self.sess_train.run(normalize_ent_emb_op)
             if self.verbose:  
-                tqdm.write('epoch: %d: mean loss: %.10f' % (epoch, sum(losses)/ (batch_size*self.batches_count)))
+                msg = 'epoch: {}: mean loss: {:10f}'.format(epoch, sum(losses)/ (batch_size*self.batches_count))
+                logger.info(msg)
+                tqdm.write(msg)
 
             
 
@@ -533,6 +612,7 @@ class EmbeddingModel(abc.ABC):
         first_million_primes_list = []
         curr_dir, _ = os.path.split(__file__)
         with open(os.path.join(curr_dir, "prime_number_list.txt"), "r") as f:
+            logger.debug('Reading from prime_number_list.txt.')
             line = f.readline()
             i=0
             for line in f:
@@ -597,7 +677,7 @@ class EmbeddingModel(abc.ABC):
                             tf.contrib.lookup.KeyValueTensorInitializer(np.array(self.filter_keys, dtype=np.int64), np.zeros(len(self.filter_keys), dtype=np.int64))
                             , 1)
         
-        corruption_entities = self.eval_config.get('corruption_entities', None)
+        corruption_entities = self.eval_config.get('corruption_entities', DEFAULT_CORRUPTION_ENTITIES)
         
         if corruption_entities is None:
             corruption_entities = all_entities_np
@@ -607,7 +687,7 @@ class EmbeddingModel(abc.ABC):
         
         self.out_corr, self.out_corr_prime = generate_corruptions_for_eval(self.X_test_tf, 
                                                                            self.corruption_entities_tf,
-                                                                           self.eval_config.get('corrupt_side','s+o'),
+                                                                           self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE),
                                                                            self.table_entity_lookup_left,
                                                                            self.table_entity_lookup_right,
                                                                            self.table_reln_lookup)
@@ -660,10 +740,14 @@ class EmbeddingModel(abc.ABC):
         """
 
         if type(X) != np.ndarray:
-            raise ValueError('Invalid type for input X. Expected ndarray, got %s' % (type(X)))
+            msg = 'Invalid type for input X. Expected ndarray, got {}'.format(type(X))
+            logger.error(msg)
+            raise ValueError(msg)
 
         if not self.is_fitted:
-            raise RuntimeError('Model has not been fitted.')
+            msg = 'Model has not been fitted.'
+            logger.error(msg)
+            raise RuntimeError(msg)
 
         if not from_idx:
             X = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
@@ -797,7 +881,7 @@ class TransE(EmbeddingModel):
                  embedding_model_params = {}, 
                  optimizer="adagrad", optimizer_params={}, 
                  loss='nll', loss_params = {}, 
-                 regularizer="None", regularizer_params = {},
+                 regularizer=None, regularizer_params = {},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
         
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
@@ -831,7 +915,7 @@ class TransE(EmbeddingModel):
 
         """
 
-        return tf.negative(tf.norm(e_s + e_p - e_o, ord=self.embedding_model_params.get('norm', 1), axis=1))
+        return tf.negative(tf.norm(e_s + e_p - e_o, ord=self.embedding_model_params.get('norm', DEFAULT_NORM_TRANSE), axis=1))
 
     def fit(self, X, early_stopping=False, early_stopping_params={}):
         """Train an Translating Embeddings model.
@@ -908,7 +992,7 @@ class DistMult(EmbeddingModel):
                  embedding_model_params = {}, 
                  optimizer="adagrad", optimizer_params={}, 
                  loss='nll', loss_params = {}, 
-                 regularizer="None", regularizer_params = {},
+                 regularizer=None, regularizer_params = {},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
         
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
@@ -1023,7 +1107,7 @@ class ComplEx(EmbeddingModel):
                  embedding_model_params = {}, 
                  optimizer="adagrad", optimizer_params={}, 
                  loss='nll', loss_params = {}, 
-                 regularizer="None", regularizer_params = {},
+                 regularizer=None, regularizer_params = {},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
         
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
@@ -1165,7 +1249,7 @@ class HolE(ComplEx):
                  embedding_model_params = {}, 
                  optimizer="adagrad", optimizer_params={}, 
                  loss='nll', loss_params = {}, 
-                 regularizer="None", regularizer_params = {},
+                 regularizer=None, regularizer_params = {},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
         
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,

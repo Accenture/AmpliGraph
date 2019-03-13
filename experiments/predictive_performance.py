@@ -51,8 +51,8 @@ def display_scores(scores):
                                                    ".??"])  
    
     for key, value in output_rst.items():
-        logger.debug(key)
-        logger.debug(value)
+        print(key)
+        print(value)
 
 # clean datasets with unseen entities
 def clean_data(train, valid, test, throw_valid = False):
