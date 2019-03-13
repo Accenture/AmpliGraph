@@ -7,6 +7,15 @@ LOSS_REGISTRY = {}
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+#Default margin used by pairwise and absolute margin loss
+DEFAULT_MARGIN = 1
+
+#default sampling temperature used by adversarial loss 
+DEFAULT_ALPHA_ADVERSARIAL = 0.5
+
+#Default margin used by margin based adversarial loss
+DEFAULT_MARGIN_ADVERSARIAL = 3
+
 def register_loss(name, external_params=[], class_params= {'require_same_size_pos_neg' : True,}):
     def insert_in_registry(class_handle):
         LOSS_REGISTRY[name] = class_handle
@@ -175,7 +184,7 @@ class PairwiseLoss(Loss):
             
             'margin' - Margin to be used in pairwise loss computation(default:1)
         """
-        self._loss_parameters['margin'] = hyperparam_dict.get('margin', 1)
+        self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
         
             
     def _apply(self, scores_pos, scores_neg):
@@ -230,8 +239,8 @@ class NLLLoss(Loss):
         return tf.reduce_sum(tf.log(1 + tf.exp(scores)))
 
 
-@register_loss("nll-adversarial",['alpha'], {'require_same_size_pos_neg':False})        
-class NLLOriginalLoss(Loss):
+@register_loss("nll_adversarial",['alpha'], {'require_same_size_pos_neg':False})        
+class NLLAdversarialLoss(Loss):
     """Negative log-likelihood loss with adversarial sampling.
 
     """
@@ -246,7 +255,7 @@ class NLLOriginalLoss(Loss):
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
         """
-        self._loss_parameters['alpha'] = hyperparam_dict.get('alpha', 0.5)
+        self._loss_parameters['alpha'] = hyperparam_dict.get('alpha', DEFAULT_ALPHA_ADVERSARIAL)
         
     def _apply(self, scores_pos, scores_neg):
         """ Apply the loss function.
@@ -307,7 +316,7 @@ class AbsoluteMarginLoss(Loss):
         Returns
         -------    
         """
-        self._loss_parameters['margin'] =hyperparam_dict.get('margin', 1)
+        self._loss_parameters['margin'] =hyperparam_dict.get('margin', DEFAULT_MARGIN)
         
     
     def _apply(self, scores_pos, scores_neg):
@@ -364,8 +373,8 @@ class SelfAdversarialLoss(Loss):
             
             'alpha' - Temperature of sampling(default:0.5)
         """
-        self._loss_parameters['margin'] = hyperparam_dict.get('margin', 3)
-        self._loss_parameters['alpha'] = hyperparam_dict.get('alpha', 0.5)
+        self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN_ADVERSARIAL)
+        self._loss_parameters['alpha'] = hyperparam_dict.get('alpha', DEFAULT_ALPHA_ADVERSARIAL)
         
     
     
