@@ -14,7 +14,7 @@ FB15K-237
 ========== ======= ======== ======== ======== ======== ==========================
   Model      MR     MRR     Hits@1    Hits@3   Hits@10      Hyperparameters
 ========== ======= ======== ======== ======== ======== ==========================
-TransE     153      0.30     0.21     0.33     0.48      batches_count: 60;
+TransE     153      0.32     0.22     0.35     0.51      batches_count: 60;
                                                          embedding_model_params:
                                                          norm: 1;
                                                          epochs: 4000;
