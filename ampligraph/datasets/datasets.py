@@ -2,11 +2,59 @@ import pandas as pd
 import os
 import numpy as np
 import logging
+import urllib
+import zipfile
+from pathlib import Path
 
 AMPLIGRAPH_DATA_HOME = os.environ['AMPLIGRAPH_DATA_HOME']
+AMPLIGRAPH_ENV_NAME = 'AMPLIGRAPH_DATA_HOME'
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+def _get_data_home(data_home=None):
+    if data_home is None:
+        data_home = os.get(AMPLIGRAPH_ENV_NAME,os.path.join('~','ampligraph_dataset'))
+    data_home = os.path.expanduser(data_home)
+    if not os.path.exists(data_home):
+        os.makedirs(data_home)
+    return data_home 
+
+def _unzip_dataset(dataset_dir, file_name):
+    if not os.path.exists(dataset_dir):
+        os.makedirs(dataset_dir)
+    #TODO - add error checking
+    zip_ref = zipFile.ZipFile('{}.zip'.format(file_name),'r')
+    zip_ref.extractall(dataset_dir)
+    zip_ref.close()
+
+def _fetch_remote_data(url,dataset_dir,data_home):
+    file_name = '{}.zip'.format(dataset_dir)
+    if not Path(file_name).exists():
+        urllib.request.urlretrieve(url,file_name)
+        #TODO - add error checking
+    _unzip_dataset(dataset_dir,file_name)
+    
+def _fetch_dataset(dataset_name,data_home=None,url=None):
+    #This checks if dataset already exits
+    data_home = _get_data_home(data_home)
+    dataset_dir = os.path.join(data_home,dataset_name)
+    if not os.path.exists(dataset_dir):
+        if url is None:
+            raise Exception('No dataset at {} and no url provided.'.format(local_path))
+        _fetch_remote_data(url,dataset_dir,data_home)
+    return dataset_dir
+
+def load_dataset(dataset_name, url, data_home=None, train_name='train.txt', valid_name='valid.txt', test_name='test.txt'):
+    local_path = _fetch_dataset(dataset_name, data_home, url)
+    train = load_from_csv(local_path, train_name)
+    valid = load_from_csv(local_path, valid_name)
+    test = load_from_csv(local_path, test_name)
+    return {'train':train,'valid':valid,'test':test}
+
+def load_wn18(data_home=None):
+    return load_dataset('wn18','https://drive.google.com/drive/folders/16GBu89NCVyyYetry91tMntzpV_mSQ-gK/wn18.zip',data_home)
+
 
 def load_from_csv(folder_name, file_name, sep='\t', header=None):
     """Load a csv file
@@ -197,39 +245,39 @@ def load_from_ntriples(folder_name, file_name):
     # df = df.drop_duplicates()
     return df.as_matrix()
 
-def load_wn18():
-    """Load the WN18 dataset
-
-        The dataset is divided in three splits:
-
-        - ``train``
-        - ``valid``
-        - ``test``
-
-    Returns
-    -------
-
-    splits : dict
-        The dataset splits {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-
-    Examples
-    --------
-    >>> from ampligraph.datasets import load_wn18
-    >>> X = load_wn18()
-    >>> X['test'][:3]
-    array([['06845599', '_member_of_domain_usage', '03754979'],
-           ['00789448', '_verb_group', '01062739'],
-           ['10217831', '_hyponym', '10682169']], dtype=object)
-
-    """
-
-    logger.debug('Loading wordnet WN18')
-    train = load_from_csv('wn18', 'train.txt')
-    valid = load_from_csv('wn18', 'valid.txt')
-    test = load_from_csv('wn18', 'test.txt')
-
-    return {'train': train, 'valid': valid, 'test': test}
-
+#def load_wn18():
+#    """Load the WN18 dataset
+#
+#        The dataset is divided in three splits:
+#
+#        - ``train``
+#        - ``valid``
+#        - ``test``
+#
+#    Returns
+#    -------
+#
+#    splits : dict
+#        The dataset splits {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
+#
+#    Examples
+#    --------
+#    >>> from ampligraph.datasets import load_wn18
+#    >>> X = load_wn18()
+#    >>> X['test'][:3]
+#    array([['06845599', '_member_of_domain_usage', '03754979'],
+#           ['00789448', '_verb_group', '01062739'],
+#           ['10217831', '_hyponym', '10682169']], dtype=object)
+#
+#    """
+#
+#    logger.debug('Loading wordnet WN18')
+#    train = load_from_csv('wn18', 'train.txt')
+#    valid = load_from_csv('wn18', 'valid.txt')
+#    test = load_from_csv('wn18', 'test.txt')
+#
+#    return {'train': train, 'valid': valid, 'test': test}
+#
 
 def load_fb15k():
     """Load the FB15k dataset
