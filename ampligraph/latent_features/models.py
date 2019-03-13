@@ -1326,3 +1326,141 @@ class HolE(ComplEx):
         return super().predict(X, from_idx=from_idx) 
 
     
+@register_model("RotatE")
+class RotatE(EmbeddingModel):
+    """ Rotate Embeddings model.
+
+        The model as described in :cite:`sun2018rotate`.
+
+        .. math::
+
+            f_{RotatE}=-||\mathbf{e}_s \circ \mathbf{r}_p - \mathbf{e}_o||_2
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from ampligraph.latent_features import RotatE
+        >>> model = RotatE(batches_count=1, seed=555, epochs=20, k=10, 
+        >>>             loss='pairwise', loss_params={'margin':1}, 
+        >>>             regularizer='LP', regularizer_params={'lambda':0.1, 'p':2})
+
+        >>> X = np.array([['a', 'y', 'b'],
+        >>>               ['b', 'y', 'a'],
+        >>>               ['a', 'y', 'c'],
+        >>>               ['c', 'y', 'a'],
+        >>>               ['a', 'y', 'd'],
+        >>>               ['c', 'y', 'd'],
+        >>>               ['b', 'y', 'c'],
+        >>>               ['f', 'y', 'e']])
+        >>> model.fit(X)
+        >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+        ([-0.5440256, -2.1364462], [3, 8])
+        >>> model.get_embeddings(['f','e'], type='entity')
+        array([[0.21769601,  0.50337195,  0.15759109,  0.47421402,  0.1621065 ,
+         0.3356035 , -0.03751088,  0.04361391, -0.27752247,  0.62098897,
+         0.07596578,  0.0731838 ,  0.02322292,  0.5670342 ,  0.550395  ,
+         0.4143563 , -0.5241787 ,  0.44299904,  0.53574693, -0.50007296],
+        [ -0.22395124,  0.09082595,  0.06242271,  0.64942193,  0.35046905,
+         0.6611834 ,  0.4461781 ,  0.33218127, -0.3407303 ,  0.39955628,
+        -0.07239022,  0.67604166, -0.18704332, -0.03574913,  0.20055567,
+        -0.2691682 ,  0.06541196,  0.46618107,  0.35908118, -0.7174517 ]],
+        dtype=float32)
+    """
+
+    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0, 
+                 embedding_model_params = {}, 
+                 optimizer="adagrad", optimizer_params={}, 
+                 loss='nll', loss_params = {}, 
+                 regularizer=None, regularizer_params = {},
+                 model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+        
+        super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
+                         embedding_model_params = embedding_model_params,
+                         optimizer=optimizer, optimizer_params=optimizer_params,
+                         loss=loss, loss_params=loss_params,
+                         regularizer=regularizer, regularizer_params =regularizer_params,
+                         model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
+
+    def _initialize_parameters(self):
+        """ Initialize the complex embeddings.
+        """
+        self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k*2],
+                                        initializer=self.initializer)
+        self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
+                                        initializer=self.initializer)
+        
+        
+    def _fn(self, e_s, e_p, e_o):
+        """The RotatE scoring function.
+
+            .. math::
+
+                f_{RotatE}=-||\mathbf{e}_s \circ \mathbf{r}_p - \mathbf{e}_o||_2
+
+            Additional details available in :cite:`sun2018rotate` (Table 2).
+
+        Parameters
+        ----------
+        e_s : Tensor, shape [n]
+            The embeddings of a list of subjects.
+        e_p : Tensor, shape [n]
+            The embeddings of a list of predicates.
+        e_o : Tensor, shape [n]
+            The embeddings of a list of objects.
+
+        Returns
+        -------
+        score : TensorFlow operation
+            The operation corresponding to the RotatE scoring function.
+
+        """
+        
+        e_s_real, e_s_img = tf.split(e_s, 2, axis=1)
+        e_p_theta = e_p * tf.constant(np.pi)
+        e_p_real = tf.cos(e_p_theta)
+        e_p_img = tf.sin(e_p_theta)
+        e_o_real, e_o_img = tf.split(e_o, 2, axis=1)
+        
+        score_real = e_p_real * e_o_real + e_p_img * e_o_img - e_s_real
+        score_img = e_p_real * e_o_img - e_p_img * e_o_real - e_s_img
+        score = tf.negative(tf.sqrt(tf.reduce_sum(tf.square(score_real) + tf.square(score_img), axis=1)))
+
+        return score
+
+    def fit(self, X, early_stopping=False, early_stopping_params={}):
+        """Train a RotatE model.
+
+            The model is trained on a training set X using the training protocol
+            described in :cite:`NickelRP15`.
+
+        Parameters
+        ----------
+        x : ndarray, shape [n, 3]
+            The training triples
+
+        """
+        super().fit(X, early_stopping, early_stopping_params)
+
+    def predict(self, X, from_idx=False):
+        """Predict the score of triples using a trained embedding model.
+
+            The function returns raw scores generated by the model.
+            To obtain probability estimates, use a logistic sigmoid.
+
+        Parameters
+        ----------
+        X : ndarray, shape [n, 3]
+            The triples to score.
+        from_idx : bool
+            If True, will skip conversion to internal IDs. (default: False).
+
+        Returns
+        -------
+        scores_predict : ndarray, shape [n]
+            The predicted scores for input triples X.
+            
+        rank : ndarray, shape [n]
+            Rank of the triple
+
+        """
+        return super().predict(X, from_idx=from_idx) 
