@@ -42,9 +42,10 @@ TransE     153      0.30     0.21     0.33     0.48      batches_count: 60;
                                                          optimizer: adam;
                                                          optimizer_params:
                                                          lr: 0.0001;
-                                                         regularizer: L2;
+                                                         regularizer: LP;
                                                          regularizer_params:
                                                          lambda: 1.0e-05;
+                                                         p: 2;
                                                          seed: 0
                                                  
  ComplEx    513     0.30    0.20      0.33      0.48      batches_count: 50;
@@ -60,9 +61,10 @@ TransE     153      0.30     0.21     0.33     0.48      batches_count: 60;
                                                           optimizer: adam;
                                                           optimizer_params:
                                                           lr: 0.0001;
-                                                          regularizer: L2;
+                                                          regularizer: LP;
                                                           regularizer_params:
                                                           lambda: 0.0001;
+                                                          p: 2;
                                                           seed: 0
                                                    
  HolE       408      0.20   0.12     0.22      0.38       batches_count: 100;
@@ -73,9 +75,10 @@ TransE     153      0.30     0.21     0.33     0.48      batches_count: 60;
                                                           optimizer: adam;
                                                           optimizer_params:
                                                           lr: 0.0005;
-                                                          regularizer: L2;
+                                                          regularizer: LP;
                                                           regularizer_params:
                                                           lambda: 1.0e-05;
+                                                          p: 2;
                                                           seed: 0
 ========== ======= ======== ======== ======== ======== ==========================
 
@@ -101,9 +104,10 @@ TransE     1532    0.23     0.07     0.34      0.50       batches_count: 100;
                                                           optimizer: adam;
                                                           optimizer_params:
                                                           lr: 0.0001;
-                                                          regularizer: L1;
+                                                          regularizer: LP;
                                                           regularizer_params:
                                                           lambda: 1.0e-05;
+                                                          p: 1;
                                                           seed: 0
                                                  
  DistMult  6853     0.44      0.42    0.45     0.50      batches_count: 25;
@@ -164,9 +168,10 @@ FB15K
                                                          optimizer: adam;
                                                          optimizer_params:
                                                          lr: 0.0001;
-                                                         regularizer: L2;
+                                                         regularizer: LP;
                                                          regularizer_params:
                                                          lambda: 0.0001;
+                                                         p: 2;
                                                          seed: 0
                                                  
 
@@ -228,9 +233,10 @@ WN18
                                                          optimizer: adam;
                                                          optimizer_params:
                                                          lr: 0.0001;
-                                                         regularizer: L2;
+                                                         regularizer: LP;
                                                          regularizer_params:
                                                          lambda: 0.0001;
+                                                         p: 2;
                                                          seed: 0
                                                 
 

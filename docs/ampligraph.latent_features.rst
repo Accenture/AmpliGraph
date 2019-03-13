@@ -73,8 +73,7 @@ AmpliGraph includes a number of regularizers that can be used with the loss func
     :template: class.rst
 
     Regularizer
-    L1Regularizer
-    L2Regularizer
+    LPRegularizer
 
 
 Utils Functions
