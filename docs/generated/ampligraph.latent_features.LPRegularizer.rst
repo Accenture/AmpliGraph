@@ -17,10 +17,10 @@ LPRegularizer
 
    .. autosummary::
    
-      ~L2Regularizer.__init__
-      ~L2Regularizer._init_hyperparams
+      ~LPRegularizer.__init__
+      ~LPRegularizer._init_hyperparams
    
-   .. automethod:: L2Regularizer.__init__
-   .. automethod:: L2Regularizer._init_hyperparams
+   .. automethod:: LPRegularizer.__init__
+   .. automethod:: LPRegularizer._init_hyperparams
    
    
