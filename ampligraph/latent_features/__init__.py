@@ -7,7 +7,7 @@ Knowledge graph embedding models are neural architectures that encode concepts f
 from .models import EmbeddingModel, TransE, DistMult, ComplEx, HolE, RandomBaseline, MODEL_REGISTRY
 from .loss_functions import Loss, AbsoluteMarginLoss, SelfAdversarialLoss, NLLLoss, PairwiseLoss, NLLAdversarialLoss,\
     LOSS_REGISTRY
-from .regularizers import Regularizer, LPRegularizer
+from .regularizers import Regularizer, LPRegularizer, REGULARIZER_REGISTRY
 from .misc import get_entity_triples
 from .model_utils import save_model, restore_model
 
