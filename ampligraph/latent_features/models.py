@@ -5,7 +5,7 @@ from functools import partial
 import abc
 from tqdm import tqdm
 import logging
-
+import L4
 
 MODEL_REGISTRY = {}
 
@@ -51,6 +51,8 @@ DEFAULT_CORRUPT_SIDE = 's+o'
 #default hyperparameter for transE
 DEFAULT_NORM_TRANSE = 1
 
+#default fraction value for L4 optimizer
+DEFAULT_L4FRACTION = 0.20
 #######################################################################################################
 
 def register_model(name, external_params=[], class_params= {}):
@@ -191,6 +193,8 @@ class EmbeddingModel(abc.ABC):
             self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
         elif optimizer=="momentum":
             self.optimizer = tf.train.MomentumOptimizer(learning_rate=self.optimizer_params.get('lr', DEFAULT_LR), momentum=self.optimizer_params.get('momentum', DEFAULT_MOMENTUM))
+        elif optimizer=="L4Adam":
+            self.optimizer = L4.L4Adam(fraction=self.optimizer_params.get('fraction', DEFAULT_L4FRACTION))
         else:
             msg = 'Unsupported optimizer: {}'.format(optimizer)
             logger.error(msg)
