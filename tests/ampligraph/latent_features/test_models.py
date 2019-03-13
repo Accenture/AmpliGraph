@@ -46,7 +46,7 @@ def test_fit_predict_DistMult():
 
 def test_fit_predict_CompleEx():
     model = ComplEx(batches_count=1, seed=555, epochs=20, k=10, 
-                    loss='pairwise', loss_params={'margin':1}, regularizer='L2', regularizer_params={'lambda':0.1})
+                    loss='pairwise', loss_params={'margin':1}, regularizer='LP', regularizer_params={'lambda':0.1, 'p':2})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -62,7 +62,7 @@ def test_fit_predict_CompleEx():
 
 def test_fit_predict_HolE():
     model = HolE(batches_count=1, seed=555, epochs=20, k=10, 
-                    loss='pairwise', loss_params={'margin':1}, regularizer='L2', regularizer_params={'lambda':0.1})
+                    loss='pairwise', loss_params={'margin':1}, regularizer='LP', regularizer_params={'lambda':0.1, 'p':2})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -78,7 +78,7 @@ def test_fit_predict_HolE():
     
 def test_retrain():
     model = ComplEx(batches_count=1, seed=555, epochs=20, k=10, 
-                    loss='pairwise', loss_params={'margin':1}, regularizer='L2', regularizer_params={'lambda':0.1})
+                    loss='pairwise', loss_params={'margin':1}, regularizer='LP', regularizer_params={'lambda':0.1, 'p':2})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -107,7 +107,7 @@ def test_fit_predict_wn18_ComplEx():
 
     X = load_wn18()
     model = ComplEx(batches_count=1, seed=555, epochs=5, k=100,  
-                    loss='pairwise', loss_params={'margin':1}, regularizer='L2', regularizer_params={'lambda':0.1})
+                    loss='pairwise', loss_params={'margin':1}, regularizer='LP', regularizer_params={'lambda':0.1, 'p':2})
     model.fit(X['train'])
     y = model.predict(X['test'][:1])
     print(y)

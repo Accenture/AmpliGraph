@@ -23,7 +23,7 @@ def test_select_best_model_ranking():
                         },
         "embedding_model_params": {
                         },
-        "regularizer": ["None"],
+        "regularizer": [None],
 
         "regularizer_params": {
         },
@@ -44,7 +44,7 @@ def test_select_best_model_ranking():
 def test_evaluate_performance():
     X = load_wn18()
     model = ComplEx(batches_count=10, seed=0, epochs=10, k=150, eta=10, loss='pairwise', loss_params = {'margin': 5},
-                    regularizer='None', optimizer='adagrad', optimizer_params= {'lr':0.1}, verbose=True)
+                    regularizer=None, optimizer='adagrad', optimizer_params= {'lr':0.1}, verbose=True)
     model.fit(np.concatenate((X['train'], X['valid'])))
 
     filter = np.concatenate((X['train'], X['valid'], X['test']))
