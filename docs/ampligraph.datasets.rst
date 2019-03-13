@@ -3,6 +3,7 @@ Input
 .. currentmodule:: ampligraph.datasets
 
 .. automodule:: ampligraph.datasets
+
 Dataset-Specific Loaders
 ^^^^^^^^^^^^^^^^^^^^^^^^
 

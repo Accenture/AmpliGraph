@@ -204,22 +204,19 @@ FB15K-237
 ========= ======== ====== ====== ====== ====== ==========================
   Model      MR     MRR    H @ 1 H @ 3  H @ 10      Hyperparameters
 ========= ======== ====== ====== ====== ====== ==========================
-TransE     373.63   0.30   0.21   0.33   0.48    batches_count: 8;
+TransE     153.01   0.32   0.22   0.35   0.51    batches_count: 60;
                                                  embedding_model_params:
                                                  norm: 1;
                                                  epochs: 4000;
                                                  eta: 50;
-                                                 k: 300;
+                                                 k: 1000;
                                                  loss: self_adversarial;
                                                  loss_params:
-                                                 margin: 5;
                                                  alpha: 0.5;
+                                                 margin: 5;
                                                  optimizer: adam;
                                                  optimizer_params:
                                                  lr: 0.0001;
-                                                 regularizer: L3;
-                                                 regularizer_params:
-                                                 lambda: 0.00001;
                                                  seed: 0
                                                   
  DistMult   441.22   0.29   0.20   0.32   0.48   batches_count: 50;
