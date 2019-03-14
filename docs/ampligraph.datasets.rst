@@ -28,7 +28,7 @@ Use these helpers functions to load datasets used in graph representation learni
 **Dataset Summary**
 
 ========= ========= ======= ======= ============ ===========
- Dataset  Train     Valid  Test    Entities     Relations
+ Dataset  Train     Valid   Test    Entities     Relations
 ========= ========= ======= ======= ============ ===========
 FB15K-237 272,115   17,535  20,466  14,541        237
 WN18RR    86,835    3,034   3,134   40,943        11
