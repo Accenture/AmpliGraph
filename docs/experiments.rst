@@ -83,7 +83,9 @@ TransE     153      0.32     0.22     0.35     0.51      batches_count: 60;
 ========== ======= ======== ======== ======== ======== ==========================
 
 .. note:: FB15K-237 validation and test sets include triples with entities that do not occur 
-    in the training set. We removed (8, 29) unseen entities inside (9, 28) triples in (validation, test) sets in this experiment.
+    in the training set. We found 8 unseen entities in the validation set and 29 in the test set.
+    In the experiments we excluded the triples where such entities appear (9 triples in from the validation
+    set and 28 from the test set).
 
 
 
@@ -148,7 +150,10 @@ TransE     1532    0.23     0.07     0.34      0.50       batches_count: 100;
                                                          seed: 0
 ========== ======= ======== ======== ======== ======== ==========================
 
-.. note:: We removed (198, 209) unseen entities inside (210, 210) triples in (validation, test) sets in this experiment.
+.. note:: FB15K-237 validation and test sets include triples with entities that do not occur
+    in the training set. We found 198 unseen entities in the validation set and 209 in the test set.
+    In the experiments we excluded the triples where such entities appear (210 triples in from the validation
+    set and 210 from the test set).
 
 
 FB15K
@@ -285,7 +290,7 @@ WN18
 To reproduce the above results: ::
     
     $ cd experiments
-    $ predictive_performance.py
+    $ python predictive_performance.py
 
 
 .. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~xxx hours on 
@@ -296,14 +301,13 @@ To reproduce the above results: ::
 Experiments can be limited to specific models-dataset combinations as follows: ::
 
     $ python predictive_performance.py -h
-    usage: predictive_performance.py [-h] [-d DATASET] [-m MODEL]
+    usage: predictive_performance.py [-h] [-d {fb15k,fb15k-237,wn18,wn18rr}]
+                                     [-m {complex,transe,distmult,hole}]
 
     optional arguments:
       -h, --help            show this help message and exit
-      -d DATASET, --dataset DATASET
-      -m MODEL, --model MODEL
-
-
+      -d {fb15k,fb15k-237,wn18,wn18rr}, --dataset {fb15k,fb15k-237,wn18,wn18rr}
+      -m {complex,transe,distmult,hole}, --model {complex,transe,distmult,hole}
 
 Runtime Performance
 -------------------
