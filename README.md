@@ -41,9 +41,9 @@ AmpliGraph includes the following submodules:
 
 
 
-# Installation
+## Installation
 
-## Prerequisites
+### Prerequisites
 
 * Linux Box
 * Python ≥ 3.6
@@ -84,7 +84,7 @@ conda install tensorflow-gpu=1.12.0
 
 
 
-## Install AmpliGraph
+### Install AmpliGraph
 
 
 Install the latest stable release from pip:
@@ -104,20 +104,7 @@ pip install -e .
 ```
 
 
-## Download the Datasets
-
-Datasets can be downloaded from [Google Drive](https://drive.google.com/drive/folders/16GBu89NCVyyYetry91tMntzpV_mSQ-gK?usp=sharing).
-
-Once downloaded, decompress the archives.
-
-**You must also set the following environment variable:**
-
-```
-export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
-```
-
-
-## Sanity Check
+### Sanity Check
 
 ```python
 >> import ampligraph
