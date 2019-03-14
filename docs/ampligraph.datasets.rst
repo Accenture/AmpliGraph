@@ -1,13 +1,31 @@
-Input
-=====
+Datasets
+========
 .. currentmodule:: ampligraph.datasets
 
 .. automodule:: ampligraph.datasets
+
+.. note::
+    It is recommended to set the ``AMPLIGRAPH_DATA_HOME`` environment variable::
+
+        export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
+
+    When attempting to load a dataset, the module will first check if ``AMPLIGRAPH_DATA_HOME`` is set.
+    If it is, it will search this location for the required dataset.
+    If the dataset is not found it will be downloaded and placed in this directory.
+
+    If ``AMPLIGRAPH_DATA_HOME`` has not been set the databases will be saved in the following directory::
+
+        ~/ampligraph_datasets
+
+    Additionally, a specific directory can be passed to the dataset loader via the ``data_home`` parameter.
+
 
 Dataset-Specific Loaders
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 Use these helpers functions to load datasets used in graph representation learning literature.
+The functions will automatically download the datasets if they are not present in ``~/ampligraph_datasets`` or
+at the location set in ``AMPLIGRAPH_DATA_HOME``.
 
 .. role:: red
 
