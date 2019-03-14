@@ -27,19 +27,20 @@ Use these helpers functions to load datasets used in graph representation learni
 
 **Dataset Summary**
 
-========= ======= ====== ====== ============ ===========
- Dataset  Train   Valid  Test   Dist. Ents   Dist. Rels  
-========= ======= ====== ====== ============ ===========
-WN18      141442  5000    5000   40943       18
-FB15K     483142  50000  59071  14951        1345 
-FB15K-237 272115  17535  20466  14541        237
-WN11      110361  5215   21035  38588        11
-FB13      316232  11816  47464  75043        13
-YAGO3-10  1079040 5000   5000   123182       37
-WN18RR    86835   3034   3134   40943        11
-========= ======= ====== ====== ============ ===========
+========= ========= ======= ======= ============ ===========
+ Dataset  Train     Valid  Test    Entities     Relations
+========= ========= ======= ======= ============ ===========
+FB15K-237 272,115   17,535  20,466  14,541        237
+WN18RR    86,835    3,034   3,134   40,943        11
+FB15K     483,142   50,000  59,071  14,951        1,345
+WN18      141,442   5,000   5,000   40,943        18
+WN11      110,361   5,215   21,035  38,588        11
+FB13      316,232   11,816  47,464  75,043        13
+YAGO3-10  1,079,040 5,000   5,000   123,182       37
+========= ========= ======= ======= ============ ===========
 
-.. warning:: FB15K-237 contains (8, 29) unseen entities in (validation, test) sets. WN18RR contains (198,209) unseen entities in (validation, test) sets
+.. warning:: FB15K-237 contains 8 unseen entities in the validation set and 19 im the test set.
+             WN18RR contains 198 unseen entities in the validation set and 209 in the test set.
 
 Generic Loaders
 ^^^^^^^^^^^^^^^
