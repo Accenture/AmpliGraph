@@ -1,6 +1,6 @@
-
 from ampligraph.datasets import load_wn18, load_wn11, load_fb13, load_fb15k, load_fb15k_237, load_yago3_10, load_wn18rr
 import numpy as np
+import pytest
 
 def test_load_wn18():
 
@@ -19,6 +19,7 @@ def test_load_wn18():
     assert len(distinct_rel) == 18  
 
 
+@pytest.mark.skip(reason="Currently unsupported issue #50")
 def test_load_wn11():
     wn11 = load_wn11()
     # Hamaguchi17 reports numbers without filtering duplicates.
@@ -39,6 +40,7 @@ def test_load_wn11():
     # assert len(distinct_rel) == 11  
 
 
+@pytest.mark.skip(reason="Currently unsupported issue #50")
 def test_load_fb13():
     fb13 = load_fb13()
     # Hamaguchi17 reports numbers without filtering duplicates.

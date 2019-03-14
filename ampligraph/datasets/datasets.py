@@ -2,140 +2,113 @@ import pandas as pd
 import os
 import numpy as np
 import logging
+import urllib
+import zipfile
+from pathlib import Path
 
-AMPLIGRAPH_DATA_HOME = os.environ['AMPLIGRAPH_DATA_HOME']
+AMPLIGRAPH_ENV_NAME = 'AMPLIGRAPH_DATA_HOME'
+REMOTE_DATASET_SERVER = 'https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/'
+DATASET_FILE_NAME = {'WN18':'wn18.zip',
+'WN18RR':'wn18RR.zip',
+'FB15K':'fb15k.zip',
+'FB15K_237':'fb15k-237.zip',
+'YAGO3_10':'YAGO3-10.zip',
+'FB13':'freebase13.zip',
+'WN11':'wordnet11.zip'
+}
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def load_from_csv(folder_name, file_name, sep='\t', header=None):
-    """Load a csv file
+def _get_data_home(data_home=None):
+    if data_home is None:
+        data_home = os.environ.get(AMPLIGRAPH_ENV_NAME,os.path.join('~','ampligraph_dataset'))
+    data_home = os.path.expanduser(data_home)
+    if not os.path.exists(data_home):
+        os.makedirs(data_home)
+    logger.debug('data_home is set to {}'.format(data_home))
+    return data_home 
 
-        Loads a knowledge graph serialized in a csv file as:
+def _unzip_dataset(data_home, file_path):
+    #TODO - add error checking
+    with zipfile.ZipFile(file_path,'r') as zip_ref:
+        logger.debug('Unzipping {} to {}'.format(file_path, data_home))
+        zip_ref.extractall(data_home)
+    os.remove(file_path)
 
-        .. code-block:: text
+def _fetch_remote_data(url,dataset_dir,data_home):
+    file_path = '{}.zip'.format(dataset_dir)
+    if not Path(file_path).exists():
+        urllib.request.urlretrieve(url,file_path)
+        #TODO - add error checking
+    _unzip_dataset(data_home,file_path)
+    
+def _fetch_dataset(dataset_name,data_home=None,url=None):
+    data_home = _get_data_home(data_home)
+    dataset_dir = os.path.join(data_home,dataset_name)
+    if not os.path.exists(dataset_dir):
+        if url is None:
+            msg = 'No dataset at {} and no url provided.'.format(local_path)
+            logger.error(msg)
+            raise Exception(msg)
+        _fetch_remote_data(url,dataset_dir,data_home)
+    return dataset_dir
 
-           subj1    relationX   obj1
-           subj1    relationY   obj2
-           subj3    relationZ   obj2
-           subj4    relationY   obj2
-           ...
-
-
-        .. note::
-            Duplicates are filtered.
-
-    Parameters
-    ----------
-    folder_name: str
-        base folder within AMPLIGRAPH_DATA_HOME where the file is stored.
-    file_name : str
-        file name
-    sep : str
-        The subject-predicate-object separator (default \t).
-    header : int, None
-        The row of the header of the csv file. Same as pandas.read_csv header param.
-
-    Returns
-    -------
-        triples : ndarray , shape [n, 3]
-            the actual triples of the file.
-
-    Examples
-    --------
-    >>> from ampligraph.datasets import load_from_csv
-    >>> X = load_from_csv('folder', 'dataset.csv', sep=',')
-    >>> X[:3]
-    array([['a', 'y', 'b'],
-           ['b', 'y', 'a'],
-           ['a', 'y', 'c']],
-          dtype='<U1')
-
-
-
-
-
-    """
-
+def load_from_csv(directory_path,file_name, sep='\t', header=None):
     logger.debug('Loading data from {}.'.format(file_name))
-    df = pd.read_csv(os.path.join(AMPLIGRAPH_DATA_HOME, folder_name, file_name),
+    df = pd.read_csv(os.path.join(directory_path, file_name),
                      sep=sep,
                      header=header,
                      names=None,
                      dtype=str)
     logger.debug('Dropping duplicates.')
     df = df.drop_duplicates()
-    return df.as_matrix()
+    return df.values
 
+def load_dataset(url, data_home=None, train_name='train.txt', valid_name='valid.txt', test_name='test.txt'):
+    dataset_name = url[url.rfind('/')+1:url.rfind('.')]
+    dataset_path = _fetch_dataset(dataset_name, data_home, url)
+    train = load_from_csv(dataset_path, train_name)
+    valid = load_from_csv(dataset_path, valid_name)
+    test = load_from_csv(dataset_path, test_name)
+    return {'train':train,'valid':valid,'test':test}
 
-def load_wn11():
-    """Load the WN11 Dataset
-        
-        The dataset is divided in three splits:
+def load_wn18(data_home=None):
+    return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['WN18']), data_home)
 
-        - ``train``
-        - ``valid``
-        - ``test``
+def load_wn18rr(data_home=None):
+    return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['WN18RR']), data_home)
 
-    .. note:: The function filters duplicates.
-        :cite:`Hamaguchi2017` reports unfiltered numbers.
+def load_fb15k(data_home=None):
+    return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['FB15K']), data_home)
 
-    Returns
-    -------
+def load_fb15k_237(data_home=None):
+    return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['FB15K_237']), data_home)
 
-    splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
+def load_yago3_10(data_home=None):
+    return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['YAGO3_10']), data_home)
 
-    Examples
-    --------
-    >>> from ampligraph.datasets import load_wn11
-    >>> X = load_wn11()
-    >>> print("X[valid'][0]: ", X['valid'][0])
-    X[valid'][0]:  ['__genus_xylomelum_1' '_type_of' '__dicot_genus_1' '1']
+def load_fb13(data_home=None):
+    #return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['FB13']), data_home)
+    msg = 'Currently not supported due to filename name error. Blocked by issue #50'
+    logger.error(msg)
+    raise NotImplementedError(msg)
 
+def load_wn11(data_home=None):
+    #return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['WN11']), data_home)
+    msg = 'Currently not supported due to filename name error. Blocked by issue #50'
+    logger.error(msg)
+    raise NotImplementedError(msg)
 
-    """
-
-    logger.debug('Loading wn11 data.')
-    train = load_from_csv('wordnet11', 'train.txt')
-    valid = load_from_csv('wordnet11', 'dev.txt')
-    test = load_from_csv('wordnet11', 'test.txt')
-    return {'train': train, 'valid': valid, 'test': test}
-
-
-def load_fb13():
-    """Load the FB13 Dataset
-
-        The dataset is divided in three splits:
-
-        - ``train``
-        - ``valid``
-        - ``test``
-
-    .. note:: The function filters duplicates.
-        :cite:`Hamaguchi2017` reports unfiltered numbers.
-
-    Returns
-    -------
-
-    splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-
-    Examples
-    --------
-    >>> from ampligraph.datasets import load_fb13
-    >>> X = load_fb13()
-    >>> print("X['valid'][0]: ", X['valid'][0])
-    X['valid'][0]:  ['cornelie_van_zanten' 'gender' 'female' '1']
-
-
-    """
-
-    logger.debug('Loading freebase13 data.')
-    train = load_from_csv('freebase13', 'train.txt')
-    valid = load_from_csv('freebase13', 'dev.txt')
-    test = load_from_csv('freebase13', 'test.txt')
-    return {'train': train, 'valid': valid, 'test': test}
+def load_all_datasets(data_home=None):
+    load_wn18(data_home)
+    load_wn18rr(data_home)
+    load_fb15k(data_home)
+    load_fb15k_237(data_home)
+    load_yago3_10(data_home)
+    #load_fb13(data_home)
+    #load_wn11(data_home)
 
 
 def load_from_rdf(folder_name, file_name, format='nt'):
@@ -196,176 +169,3 @@ def load_from_ntriples(folder_name, file_name):
                      usecols=[0, 1, 2])
     # df = df.drop_duplicates()
     return df.as_matrix()
-
-def load_wn18():
-    """Load the WN18 dataset
-
-        The dataset is divided in three splits:
-
-        - ``train``
-        - ``valid``
-        - ``test``
-
-    Returns
-    -------
-
-    splits : dict
-        The dataset splits {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-
-    Examples
-    --------
-    >>> from ampligraph.datasets import load_wn18
-    >>> X = load_wn18()
-    >>> X['test'][:3]
-    array([['06845599', '_member_of_domain_usage', '03754979'],
-           ['00789448', '_verb_group', '01062739'],
-           ['10217831', '_hyponym', '10682169']], dtype=object)
-
-    """
-
-    logger.debug('Loading wordnet WN18')
-    train = load_from_csv('wn18', 'train.txt')
-    valid = load_from_csv('wn18', 'valid.txt')
-    test = load_from_csv('wn18', 'test.txt')
-
-    return {'train': train, 'valid': valid, 'test': test}
-
-
-def load_fb15k():
-    """Load the FB15k dataset
-
-    The dataset is divided in three splits:
-
-    - ``train``
-    - ``valid``
-    - ``test``
-
-    Returns
-    -------
-
-    splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-
-
-    Examples
-    --------
-    >>> from ampligraph.datasets import load_fb15k
-    >>> X = load_fb15k()
-    >>> X['test'][:3]
-    array([['/m/01qscs',
-            '/award/award_nominee/award_nominations./award/award_nomination/award',
-            '/m/02x8n1n'],
-           ['/m/040db', '/base/activism/activist/area_of_activism', '/m/0148d'],
-           ['/m/08966',
-            '/travel/travel_destination/climate./travel/travel_destination_monthly_climate/month',
-            '/m/05lf_']], dtype=object)
-
-
-    """
-
-    logger.debug('Loading Freebase FB15k')
-    train = load_from_csv('fb15k', 'train.txt')
-    valid = load_from_csv('fb15k', 'valid.txt')
-    test = load_from_csv('fb15k', 'test.txt')
-
-    return {'train': train, 'valid': valid, 'test': test}
-
-
-def load_fb15k_237():
-    """Load the FB15k-237 dataset
-    
-    FB15k-237 is a reduced version of FB15k.
-
-        The dataset is divided in three splits:
-
-        - ``train``
-        - ``valid``
-        - ``test``
-
-    Returns
-    -------
-
-    splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-
-    Examples
-    --------
-    >>> from ampligraph.datasets import load_fb15k
-    >>> X = load_fb15k()
-
-    """
-
-    logger.debug('Loading sample of Freebase FB15k-237')
-    train = load_from_csv('fb15k-237', 'train.txt')
-    valid = load_from_csv('fb15k-237', 'valid.txt')
-    test = load_from_csv('fb15k-237', 'test.txt')
-    return {'train': train, 'valid': valid, 'test': test}
-
-
-def load_yago3_10():
-    """ Load the YAGO3-10 dataset
-    
-    The dataset is described in :cite:`DettmersMS018`. It is divided in three splits:
-
-        - ``train``
-        - ``valid``        
-        - ``test``
-
-    Returns
-    -------
-
-    splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-    
-    Examples
-    -------
-    >>> from ampligraph.datasets import load_yago3_10
-    >>> X = load_yago3_10()
-    >>> X["valid"][0]
-    array(['Mikheil_Khutsishvili', 'playsFor', 'FC_Merani_Tbilisi'], dtype=object)    
-
-
-
-    """
-
-    logger.debug('Loading YAGO3-10.')
-    train=load_from_csv("YAGO3-10", "train.txt", sep="\t")
-    test=load_from_csv("YAGO3-10", "test.txt", sep="\t")
-    valid=load_from_csv("YAGO3-10", "valid.txt", sep="\t")
-    
-    return {"train": train,  "test": test, "valid": valid}
-
-def load_wn18rr():
-    """ Load the WN18RR dataset
-    
-    The dataset is described in :cite:`DettmersMS018`. It is divided in three splits:
-
-        - ``train``
-        - ``valid``        
-        - ``test``
-
-    Returns
-    -------
-
-    splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-
-    Examples
-    -------
-
-    >>> from ampligraph.datasets import load_wn18rr
-    >>> X = load_wn18rr()
-    >>> X["valid"][0]
-    array(['02174461', '_hypernym', '02176268'], dtype=object)
-
-
-
-    """
-
-    logger.debug('Loading WN18RR.')
-    train=load_from_csv("wn18rr", "train.txt", sep="\t")
-    test=load_from_csv("wn18rr", "test.txt", sep="\t")
-    valid=load_from_csv("wn18rr", "valid.txt", sep="\t")
-    
-    return {"train": train,  "test": test, "valid": valid}    
-
