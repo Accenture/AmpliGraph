@@ -122,6 +122,7 @@ def load_dataset(url, data_home=None, train_name='train.txt', valid_name='valid.
 def load_wn18(data_home=None):
     """Load the WN18 dataset
 
+        WN18 is a subset of Wordnet. It was first presented by :cite:`bordes2013translating`.
         The dataset is divided in three splits:
 
         - ``train``
@@ -175,7 +176,9 @@ def load_wn18rr(data_home=None):
 
 def load_fb15k(data_home=None):
     """Load the FB15k dataset
-    
+
+    FB15k is a split of Freebase, first proposed by :cite:`bordes2013translating`.
+
     The dataset is divided in three splits:
     
     - ``train``
@@ -209,7 +212,7 @@ def load_fb15k(data_home=None):
 def load_fb15k_237(data_home=None):
     """Load the FB15k-237 dataset
     
-    FB15k-237 is a reduced version of FB15k.
+    FB15k-237 is a reduced version of FB15k. It was first proposed by :cite:`toutanova2015representing`.
         The dataset is divided in three splits:
         - ``train``
         - ``valid``
@@ -234,7 +237,7 @@ def load_fb15k_237(data_home=None):
 def load_yago3_10(data_home=None):
     """ Load the YAGO3-10 dataset
     
-    The dataset is described in :cite:`DettmersMS018`. It is divided in three splits:
+    The dataset is presented in :cite:`mahdisoltani2013yago3`. It is divided in three splits:
         - ``train``
         - ``valid``        
         - ``test``
@@ -260,6 +263,7 @@ def load_yago3_10(data_home=None):
 def load_fb13(data_home=None):
     """Load the FB13 Dataset
 
+        WN11 is a subste of Freebase. It was first presented in :cite:`socher2013reasoning`.
         The dataset is divided in three splits:
 
         - ``train``
@@ -291,7 +295,8 @@ def load_fb13(data_home=None):
 
 def load_wn11(data_home=None):
     """Load the WN11 Dataset
-        
+
+        WN11 is a subste of wordnet. It was first presented in :cite:`socher2013reasoning`.
         The dataset is divided in three splits:
     
         - ``train``
