@@ -48,7 +48,7 @@ AmpliGraph includes the following submodules:
 * Linux Box
 * Python ≥ 3.6
 
-##### Provision a Virtual Environment
+#### Provision a Virtual Environment
 
 Create and activate a virtual environment (conda)
 
@@ -57,7 +57,7 @@ conda create --name ampligraph python=3.6
 source activate ampligraph
 ```
 
-##### Install TensorFlow
+#### Install TensorFlow
 
 AmpliGraph is built on TensorFlow 1.x.
 Install from pip or conda:
@@ -152,3 +152,6 @@ If you instead use AmpliGraph in an academic publication, cite as:
 TODO
 ```
 
+## Licence
+
+AmpliGraph is licensed under the Apache 2.0 License.
