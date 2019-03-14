@@ -24,7 +24,8 @@ setup_params = dict(name='ampligraph',
                         'sphinx_rtd_theme>=0.4.0',
                         'sphinxcontrib-bibtex>=0.4.0',
                         'beautifultable>=0.7.0',
-                        'pyyaml>=3.13'
+                        'pyyaml>=3.13',
+                        'rdflib>=4.2.2'
                     ],
                     extras_require={
                         'cpu': ['tensorflow>=1.12.0,<2.0'],
