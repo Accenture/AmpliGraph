@@ -60,11 +60,12 @@ def load_from_csv(directory_path,file_name, sep='\t', header=None):
     
     Loads a knowledge graph serialized in a csv file as:
     .. code-block:: text
-           subj1    relationX   obj1
-           subj1    relationY   obj2
-           subj3    relationZ   obj2
-           subj4    relationY   obj2
-           ...
+
+       subj1    relationX   obj1
+       subj1    relationY   obj2
+       subj3    relationZ   obj2
+       subj4    relationY   obj2
+       ...
 
         .. note::
             Duplicates are filtered.
@@ -84,8 +85,8 @@ def load_from_csv(directory_path,file_name, sep='\t', header=None):
     Returns
     -------
     
-        triples : ndarray , shape [n, 3]
-            the actual triples of the file.
+    triples : ndarray , shape [n, 3]
+        the actual triples of the file.
     
     Examples
     --------
