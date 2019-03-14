@@ -321,6 +321,37 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
         It computes the mean reciprocal rank, by assessing the ranking of each positive triple against all
         possible negatives created in compliance with the local closed world assumption (LCWA).
+        
+        For filtering, we use a hashing based strategy to speed up the computation (i.e. to solve the set difference problem).
+        This strategy is as described below:
+        
+        * We compute unique entities and relations in our dataset
+        
+        * We assign unique prime numbers for entities (unique for subject and object separately) and for relations 
+          and create 3 hash tables.
+        
+        * For each triplet in the filter_triples, we get the prime numbers associated with subject, relation 
+          and object by mapping to their respective hash tables; and we compute the **prime product for the
+          filter triplet**. We store this triplet product. 
+        
+        * Since the numbers assigned to subjects, relations and objects are unique, their prime product is also 
+          unique. i.e. a triplet [a, b, c] would have a different product compared to triplet [c, b, a] as a, c of 
+          subject have different primes compared to a, c of object.
+        
+        * While generating corruptions for evaluation, we hash the triplet entities and relations and get 
+          the associated prime number and compute the **prime product for the corruption triplet**. 
+        
+        * If this product is present in the products stored for the filter set, then we remove the corresponding corruption 
+          triplet (as it is a duplicate i.e. the corruption triplet is present in filter_triples)
+          
+        * Using this approach we generate filtered corruptions for evaluation.
+        
+        **Benefits:** Initially, we had a python loop based set difference computation. This method used to take
+        around 3 hours with fb15k test set evaluation. With the new hashing strategy, it has now reduced to less than 10 minutes.
+        
+        **Warning:** Currently we are using the first million primes taken from primes.utm.edu. 
+        If the dataset being used is too sparse, with millions of unique entities and relations, this method wouldn't work.
+        There is also a problem of overflow if the prime product goes beyond the range of long.
 
     Parameters
     ----------
