@@ -12,7 +12,7 @@ FB15K-237
 ---------
 
 ========== ======= ======== ======== ======== ======== ==========================
-  Model      MR     MRR     Hits@1    Hits@3   Hits@10      Hyperparameters
+  Model      MR     MRR     Hits@1    Hits@3  Hits\@10      Hyperparameters
 ========== ======= ======== ======== ======== ======== ==========================
 TransE     153      0.32     0.22     0.35     0.51      batches_count: 60;
                                                          embedding_model_params:
@@ -67,23 +67,23 @@ TransE     153      0.32     0.22     0.35     0.51      batches_count: 60;
                                                           p: 2;
                                                           seed: 0
                                                    
- HolE       408      0.20   0.12     0.22      0.38       batches_count: 100;
+ HolE       296      0.28   0.19     0.31      0.46       batches_count: 50;
                                                           epochs: 4000;
-                                                          eta: 20;
-                                                          k: 200;
-                                                          loss: nll;
+                                                          eta: 30;
+                                                          k: 350;
+                                                          loss: self_adversarial;
+                                                          loss_params:
+                                                          alpha: 1;
+                                                          margin: 0.5;
                                                           optimizer: adam;
                                                           optimizer_params:
-                                                          lr: 0.0005;
-                                                          regularizer: LP;
-                                                          regularizer_params:
-                                                          lambda: 1.0e-05;
-                                                          p: 2;
+                                                          lr: 0.0001;
                                                           seed: 0
+
 ========== ======= ======== ======== ======== ======== ==========================
 
 .. note:: FB15K-237 validation and test sets include triples with entities that do not occur 
-    in the training set. We We removed (829) unseen entities in FB15k-237 (validation, test) sets in this experiment.
+    in the training set. We We removed (8, 29) unseen entities in FB15k-237 (validation, test) sets in this experiment.
 
 
 
@@ -91,7 +91,7 @@ WN18RR
 ------
 
 ========== ======= ======== ======== ======== ======== ==========================
-  Model      MR     MRR     Hits@1    Hits@3   Hits@10      Hyperparameters
+  Model      MR     MRR     Hits@1    Hits@3  Hits\@10      Hyperparameters
 ========== ======= ======== ======== ======== ======== ==========================
 TransE     1532    0.23     0.07     0.34      0.50       batches_count: 100;
                                                           embedding_model_params:
@@ -148,14 +148,14 @@ TransE     1532    0.23     0.07     0.34      0.50       batches_count: 100;
                                                          seed: 0
 ========== ======= ======== ======== ======== ======== ==========================
 
-.. note:: We removed (198,209) unseen entities in (validation, test) sets in this experiment.
+.. note:: We removed (198, 209) unseen entities in (validation, test) sets in this experiment.
 
 
 FB15K
 -----
 
 ========== ======= ======== ======== ======== ======== ==========================
-  Model      MR     MRR     Hits@1    Hits@3   Hits@10      Hyperparameters
+  Model      MR     MRR     Hits@1    Hits@3  Hits\@10      Hyperparameters
 ========== ======= ======== ======== ======== ======== ==========================
   TransE    105    0.55      0.39     0.68     0.79      batches_count: 10;
                                                          embedding_model_params:
@@ -220,7 +220,7 @@ WN18
 ----
 
 ========== ======= ======== ======== ======== ======== ==========================
-  Model      MR     MRR     Hits@1    Hits@3   Hits@10      Hyperparameters
+  Model      MR     MRR     Hits@1    Hits@3  Hits\@10      Hyperparameters
 ========== ======= ======== ======== ======== ======== ==========================
  TransE    445      0.50     0.16     0.82     0.90      batches_count: 10;
                                                          embedding_model_params:
