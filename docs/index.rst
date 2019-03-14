@@ -12,8 +12,9 @@ AmpliGraph
 AmpliGraph is a suite of neural machine learning models for relational Learning, a branch of machine learning
 that deals with supervised learning on knowledge graphs.
 
-
 .. image:: img/kg_lp.png
+   :scale: 40%
+   :align: center
 
 
 **Use AmpliGraph if you need to**:
@@ -48,16 +49,12 @@ Key Features
 .. and negative statements generator strategies.
 
 
-System Architecture
--------------------
-
-.. image:: img/arch.png
-   :scale: 60%
-   :align: center
+Modules
+-------
 
 AmpliGraph includes the following submodules:
 
-* **KG Loaders**: Helper functions to load datasets (knowledge graphs).
+* **Input**: Helper functions to load datasets (knowledge graphs).
 * **Latent Feature Models**: knowledge graph embedding models. AmpliGraph contains: TransE, DistMult, ComplEx, ConvE, and RotatE.
 * **Evaluation**: Metrics and evaluation protocols to assess the predictive power of the models.
 
@@ -142,9 +139,21 @@ Apply dimensionality reduction and visualize the embeddings:
 .. image:: img/concept_embeddings.png
 
 
-## How to Cite
+How to Cite
+-----------
 
-TODO
+If you like AmpliGraph and you use it in your project, why not starring the project on GitHub!
+
+|GitHub stars|
+
+.. |GitHub stars| image:: https://img.shields.io/github/stars/ampligraph.svg?style=social&label=Star&maxAge=2592000
+   :target: https://github.com/accenture/ampligraph/stargazers/
+
+If you instead use AmpliGraph in an academic publication, cite as:
+
+.. code-block:: bibtex
+
+   todo
 
 
 .. toctree::

@@ -8,7 +8,24 @@ The AmpliGraph [Slack channel is available here](https://join.slack.com/t/amplig
 
 You can contact us by email at [about@ampligraph.org](mailto:about@ampligraph.org).
 
+
+## How to Cite
+
+If you like AmpliGraph and you use it in your project, why not starring the project on GitHub!
+
+[![GitHub stars](https://img.shields.io/github/stars/accenture/ampligraph.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/accenture/ampligraph/stargazers/)
+
+
+If you instead use AmpliGraph in an academic publication, cite as:
+
+```
+TODO
+```
+
+
 ## Contributors
+
+Active contributors (in alphabetical order)
 
 + [Luca Costabello](http://github.com/lukostaz)
 + [Chan Le Van](http://github.com/chanlevan)
