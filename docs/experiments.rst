@@ -83,7 +83,7 @@ TransE     153      0.32     0.22     0.35     0.51      batches_count: 60;
 ========== ======= ======== ======== ======== ======== ==========================
 
 .. note:: FB15K-237 validation and test sets include triples with entities that do not occur 
-    in the training set. We We removed (8, 29) unseen entities in FB15k-237 (validation, test) sets in this experiment.
+    in the training set. We removed (8, 29) unseen entities inside (9, 28) triples in (validation, test) sets in this experiment.
 
 
 
@@ -148,7 +148,7 @@ TransE     1532    0.23     0.07     0.34      0.50       batches_count: 100;
                                                          seed: 0
 ========== ======= ======== ======== ======== ======== ==========================
 
-.. note:: We removed (198, 209) unseen entities in (validation, test) sets in this experiment.
+.. note:: We removed (198, 209) unseen entities inside (210, 210) triples in (validation, test) sets in this experiment.
 
 
 FB15K
