@@ -14,7 +14,7 @@ logger.setLevel(logging.DEBUG)
 
 def _get_data_home(data_home=None):
     if data_home is None:
-        data_home = os.get(AMPLIGRAPH_ENV_NAME,os.path.join('~','ampligraph_dataset'))
+        data_home = os.environ.get(AMPLIGRAPH_ENV_NAME,os.path.join('~','ampligraph_dataset'))
     data_home = os.path.expanduser(data_home)
     if not os.path.exists(data_home):
         os.makedirs(data_home)
@@ -39,7 +39,9 @@ def _fetch_dataset(dataset_name,data_home=None,url=None):
     dataset_dir = os.path.join(data_home,dataset_name)
     if not os.path.exists(dataset_dir):
         if url is None:
-            raise Exception('No dataset at {} and no url provided.'.format(local_path))
+            msg = 'No dataset at {} and no url provided.'.format(local_path)
+            logger.error(msg)
+            raise Exception(msg)
         _fetch_remote_data(url,dataset_dir,data_home)
     return dataset_dir
 
@@ -56,7 +58,6 @@ def load_from_csv(directory_path,file_name, sep='\t', header=None):
 
 def load_dataset(url, data_home=None, train_name='train.txt', valid_name='valid.txt', test_name='test.txt'):
     dataset_name = url[url.rfind('/')+1:url.rfind('.')]
-    print('dataset name: {}'.format(dataset_name))
     dataset_path = _fetch_dataset(dataset_name, data_home, url)
     train = load_from_csv(dataset_path, train_name)
     valid = load_from_csv(dataset_path, valid_name)
@@ -80,11 +81,15 @@ def load_yago3_10(data_home=None):
 
 def load_fb13(data_home=None):
     #return load_dataset('https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/freebase13.zip', data_home)
-    raise NotImplementedError('Currently not supported due to filename name error. Blocked by issue #50')
+    msg = 'Currently not supported due to filename name error. Blocked by issue #50'
+    logger.error(msg)
+    raise NotImplementedError(msg)
 
 def load_wn11(data_home=None):
     #return load_dataset('https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wordnet11.zip', data_home)
-    raise NotImplementedError('Currently not supported due to filename name error. Blocked by issue #50')
+    msg = 'Currently not supported due to filename name error. Blocked by issue #50'
+    logger.error(msg)
+    raise NotImplementedError(msg)
 
 def load_all_datasets(data_home=None):
     load_wn18(data_home)
