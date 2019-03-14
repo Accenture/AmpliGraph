@@ -425,7 +425,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     
     logger.debug('Making predictions.')
     for i in tqdm(range(X_test.shape[0]), disable=(not verbose)):
-        y_pred, rank = model.predict(X_test[i], from_idx=True)
+        y_pred, rank = model.predict(X_test[i], from_idx=True, get_ranks=True)
         ranks.append(rank)
     model.end_evaluation()
     logger.debug('Returning ranks of positive test triples.')
