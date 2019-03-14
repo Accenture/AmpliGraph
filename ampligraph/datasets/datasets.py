@@ -257,12 +257,65 @@ def load_yago3_10(data_home=None):
     return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['YAGO3_10']), data_home)
 
 def load_fb13(data_home=None):
+    """Load the FB13 Dataset
+
+        The dataset is divided in three splits:
+
+        - ``train``
+        - ``valid``
+        - ``test``
+
+    .. note:: The function filters duplicates.
+        :cite:`Hamaguchi2017` reports unfiltered numbers.
+
+    Returns
+    -------
+
+    splits : dict
+        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
+    
+    Examples
+    --------
+    
+    >>> from ampligraph.datasets import load_fb13
+    >>> X = load_fb13()
+    >>> print("X['valid'][0]: ", X['valid'][0])
+    X['valid'][0]:  ['cornelie_van_zanten' 'gender' 'female' '1']
+    
+    """
     #return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['FB13']), data_home)
     msg = 'Currently not supported due to filename name error. Blocked by issue #50'
     logger.error(msg)
     raise NotImplementedError(msg)
 
 def load_wn11(data_home=None):
+    """Load the WN11 Dataset
+        
+        The dataset is divided in three splits:
+    
+        - ``train``
+        - ``valid``
+        - ``test``
+    
+    .. note:: The function filters duplicates.
+        :cite:`Hamaguchi2017` reports unfiltered numbers.
+    
+    Returns
+    -------
+    
+    splits : dict
+        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
+    
+    Examples
+    --------
+   
+    >>> from ampligraph.datasets import load_wn11
+    >>> X = load_wn11()
+    >>> print("X[valid'][0]: ", X['valid'][0])
+    X[valid'][0]:  ['__genus_xylomelum_1' '_type_of' '__dicot_genus_1' '1']
+
+    """
+
     #return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['WN11']), data_home)
     msg = 'Currently not supported due to filename name error. Blocked by issue #50'
     logger.error(msg)
