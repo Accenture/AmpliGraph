@@ -39,7 +39,13 @@ FB13      316,232   11,816  47,464  75,043        13
 YAGO3-10  1,079,040 5,000   5,000   123,182       37
 ========= ========= ======= ======= ============ ===========
 
-.. warning:: FB15K-237 contains 8 unseen entities in the validation set and 19 im the test set.
+These datasets are originated from: `FB15K-237 <https://www.microsoft.com/en-us/download/details.aspx?id=52312>`_, 
+`WN18RR <https://github.com/TimDettmers/ConvE/blob/master/WN18RR.tar.gz>`_, 
+`FB15K <https://www.hds.utc.fr/everest/doku.php?id=en:transe>`_, 
+`WN18 <https://www.hds.utc.fr/everest/doku.php?id=en:transe>`_, 
+`YAGO3-10 <https://github.com/TimDettmers/ConvE/blob/master/YAGO3-10.tar.gz>`_
+
+.. warning:: FB15K-237 contains 8 unseen entities in the validation set and 19 in the test set.
              WN18RR contains 198 unseen entities in the validation set and 209 in the test set.
 
 Generic Loaders
