@@ -43,7 +43,8 @@ class Loss(abc.ABC):
         eta: int
             number of negatives
         hyperparam_dict : dict
-            dictionary of hyperparams for the loss
+            dictionary of hyperparams.
+            (Keys are described in the hyperparameters section)
         """
         self._loss_parameters = {}
         self._dependencies = []
@@ -87,7 +88,7 @@ class Loss(abc.ABC):
             raise Exception(msg)
 
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparameters needed by the algorithm.
+        """ Initializes the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -166,9 +167,9 @@ class PairwiseLoss(Loss):
     where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives,
     :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
-    Hyperparameters:
+     **Hyperparameters:**
     
-    'margin' - Margin to be used in pairwise loss computation(default:1)
+     - 'margin' - Margin to be used in pairwise loss computation (default:1)
     """
     
     def __init__(self, eta, hyperparam_dict, verbose=False):
@@ -182,7 +183,7 @@ class PairwiseLoss(Loss):
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
             
-            'margin' - Margin to be used in pairwise loss computation(default:1)
+            - 'margin' - Margin to be used in pairwise loss computation(default:1)
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
         
@@ -205,13 +206,15 @@ class NLLLoss(Loss):
 
     where :math:`y` is the label of the statement :math:` \in [-1, 1]`, :math:`\mathcal{G}` is the set of positives,
     :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
+    
+     **Hyperparameters:**  None
 
     """
     def __init__(self, eta, hyperparam_dict, verbose=False):
         super().__init__(eta, hyperparam_dict, verbose)
     
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparameters needed by the algorithm.
+        """ Initializes the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -237,49 +240,6 @@ class NLLLoss(Loss):
         """
         scores = tf.concat([-scores_pos, scores_neg], 0)
         return tf.reduce_sum(tf.log(1 + tf.exp(scores)))
-
-
-@register_loss("nll_adversarial",['alpha'], {'require_same_size_pos_neg':False})        
-class NLLAdversarialLoss(Loss):
-    """Negative log-likelihood loss with adversarial sampling.
-
-    """
-    def __init__(self, eta, hyperparam_dict, verbose=False):
-        super().__init__(eta, hyperparam_dict, verbose)
-    
-    def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparameters needed by the algorithm.
-        
-        Parameters
-        ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The Loss will check the keys to get the corresponding params
-        """
-        self._loss_parameters['alpha'] = hyperparam_dict.get('alpha', DEFAULT_ALPHA_ADVERSARIAL)
-        
-    def _apply(self, scores_pos, scores_neg):
-        """ Apply the loss function.
-        Parameters
-        ----------
-        scores_pos : tf.Tensor, shape [n, 1]
-            A tensor of scores assigned to positive statements.
-        scores_neg : tf.Tensor, shape [n, 1]
-            A tensor of scores assigned to negative statements.
-
-        Returns
-        -------
-        loss : float
-            The loss value that must be minimized.
-
-        """
-        #scores = tf.concat([scores_pos, -scores_neg], 0)
-        alpha = tf.constant(self._loss_parameters['alpha'], dtype=tf.float32, name='alpha')
-        scores_neg_reshaped = tf.reshape(scores_neg, [self._loss_parameters['eta'], tf.shape(scores_pos)[0]])
-        p_neg = tf.nn.softmax(alpha * scores_neg_reshaped, axis = 0)
-        
-        return tf.reduce_sum(tf.negative(tf.log(tf.sigmoid(scores_pos)))) + tf.reduce_sum(p_neg * tf.negative(tf.log(tf.sigmoid(-scores_neg_reshaped))))
-    
-    
     
     
 @register_loss("absolute_margin", ['margin'] )      
@@ -295,16 +255,16 @@ class AbsoluteMarginLoss(Loss):
        where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives,
        :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
        
-       Hyperparameters:
+        **Hyperparameters:**
        
-       'margin' - Margin to be used in pairwise loss computation(default:1)
+        - 'margin' - Margin to be used in pairwise loss computation(default:1)
     """
     
     def __init__(self, eta, hyperparam_dict, verbose=False):
         super().__init__(eta, hyperparam_dict, verbose)
         
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparameters needed by the algorithm.
+        """ Initializes the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -348,30 +308,30 @@ class SelfAdversarialLoss(Loss):
 
        .. math::
 
-           \mathcal{L} = -log \sigma(\gamma - d_r (h,t)) - \sum_{i=1}^{n} p(h_{i}^{'} ,r,t_{i}^{'} ) log \sigma(d_r (h_{i}^{'},t_{i}^{'}) - \gamma)
+           \mathcal{L} = -log \sigma(\gamma - d_r (h,t)) - \sum_{i=1}^{n} p(h_{i}^{'}, r, t_{i}^{'} ) \ log \ \sigma(d_r (h_{i}^{'},t_{i}^{'}) - \gamma)
 
-       where :math:`\gamma` is the margin, and p(h_{i}^{'} ,r,t_{i}^{'} ) is the sampling proportion
+       where :math:`\gamma` is the margin, and :math:`p(h_{i}^{'}, r, t_{i}^{'} )` is the sampling proportion
        
-        Hyperparameters:
+        **Hyperparameters:**
         
-        'margin' - Margin to be used in adversarial loss computation(default:3)
+        - 'margin' - Margin to be used in adversarial loss computation (default:3)
         
-        'alpha' - Temperature of sampling(default:0.5)
+        - 'alpha' - Temperature of sampling (default:0.5)
     """
     def __init__(self, eta, hyperparam_dict, verbose=False):
         super().__init__(eta, hyperparam_dict, verbose)
     
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparameters needed by the algorithm.
+        """ Initializes the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
             
-            'margin' - Margin to be used in adversarial loss computation(default:3)
+            - 'margin' - Margin to be used in adversarial loss computation (default:3)
             
-            'alpha' - Temperature of sampling(default:0.5)
+            - 'alpha' - Temperature of sampling (default:0.5)
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN_ADVERSARIAL)
         self._loss_parameters['alpha'] = hyperparam_dict.get('alpha', DEFAULT_ALPHA_ADVERSARIAL)
