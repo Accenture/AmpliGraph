@@ -13,7 +13,27 @@ logger.setLevel(logging.DEBUG)
 
 def save_model(model, loc):
     """ Save a trained model to disk.
-
+    
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from ampligraph.latent_features import ComplEx, save_model, restore_model
+    >>> model = ComplEx(batches_count=2, seed=555, epochs=20, k=10)
+    >>> X = np.array([['a', 'y', 'b'],
+    >>>               ['b', 'y', 'a'],
+    >>>               ['a', 'y', 'c'],
+    >>>               ['c', 'y', 'a'],
+    >>>               ['a', 'y', 'd'],
+    >>>               ['c', 'y', 'd'],
+    >>>               ['b', 'y', 'c'],
+    >>>               ['f', 'y', 'e']])
+    >>> model.fit(X)
+    >>> y_pred_before = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+    >>> EXAMPLE_LOC = 'saved_models'
+    >>> save_model(model, EXAMPLE_LOC)
+    >>> print(y_pred_before)
+    [1.261404, -1.324778]
+        
     Parameters
     ----------
     model: A trained neural knowledge graph embedding model, the model must be an instance of TransE, DistMult or ComplEx classes
@@ -42,7 +62,17 @@ def save_model(model, loc):
     #dump model tf
 def restore_model(loc):
     """ Restore a saved model from disk.
-
+    
+    Examples
+    --------
+    >>> from ampligraph.latent_features import restore_model
+    >>> import numpy as np
+    >>> EXAMPLE_LOC = 'saved_models' # Assuming that the model is present at this location
+    >>> restored_model = restore_model(EXAMPLE_LOC)
+    >>> y_pred_after = restored_model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+    >>> print(y_pred_after)
+    [1.261404, -1.324778]
+    
     Parameters
     ----------
     loc: Directory containing the saved model
