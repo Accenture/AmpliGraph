@@ -710,7 +710,8 @@ class EmbeddingModel(abc.ABC):
     def end_evaluation(self):
         """End the evaluation and close the Tensorflow session.
         """
-        self.sess_predict.close()
+        if self.sess_predict is not None:
+            self.sess_predict.close()
         self.sess_predict=None
         self.is_filtered = False
         self.eval_config = {}
@@ -769,17 +770,17 @@ class EmbeddingModel(abc.ABC):
         ranks = []
         if X.ndim>1:
             for x in X:
-                all_scores = self.sess_predict.run([self.scores_predict], feed_dict={self.X_test_tf: [x]})
+                all_scores = self.sess_predict.run(self.scores_predict, feed_dict={self.X_test_tf: [x]})
                 scores.append(all_scores[0])
                 
                 if get_ranks:        
-                    rank = self.sess_predict.run([self.rank], feed_dict={self.X_test_tf: [x]})
+                    rank = self.sess_predict.run(self.rank, feed_dict={self.X_test_tf: [x]})
                     ranks.append(rank)
         else:
-            all_scores = self.sess_predict.run([self.scores_predict], feed_dict={self.X_test_tf: [X]})
+            all_scores = self.sess_predict.run(self.scores_predict, feed_dict={self.X_test_tf: [X]})
             scores = all_scores[0]
             if get_ranks:
-                ranks = self.sess_predict.run([self.rank], feed_dict={self.X_test_tf: [X]})
+                ranks = self.sess_predict.run(self.rank, feed_dict={self.X_test_tf: [X]})
         
         if get_ranks:        
             return scores, ranks
@@ -787,8 +788,8 @@ class EmbeddingModel(abc.ABC):
         return scores
 
 
-
-class RandomBaseline():
+@register_model("RandomBaseline")
+class RandomBaseline(EmbeddingModel):
     """Random baseline
 
         A dummy model that assigns a pseud-random score included between 0 and 1,
@@ -826,6 +827,10 @@ class RandomBaseline():
     def __init__(self, seed=0):
         self.seed = seed
         self.rnd = check_random_state(self.seed)
+        self.eval_config = {}
+    
+    def _fn(e_s, e_p, e_o):
+        pass
 
     def fit(self, X, early_stopping=False, early_stopping_params={}):
         """Train the random model
@@ -837,6 +842,12 @@ class RandomBaseline():
 
         """
         self.rel_to_idx, self.ent_to_idx = create_mappings(X)
+        
+    def end_evaluation(self):
+        """End the evaluation
+        """
+        self.is_filtered=False
+        self.eval_config = {}
 
     def predict(self, X, from_idx=False, get_ranks=False):
         """Assign random scores to candidate triples
@@ -851,7 +862,34 @@ class RandomBaseline():
             Flag to compute ranks by scoring against corruptions (default: False).
 
         """
-        return self.rnd.uniform(low=0, high=1, size=len(X))
+        if X.ndim==1:
+            X = np.expand_dims(X,0)
+            
+        positive_scores = self.rnd.uniform(low=0, high=1, size=len(X)).tolist()
+        if get_ranks:
+            corruption_entities = self.eval_config.get('corruption_entities', DEFAULT_CORRUPTION_ENTITIES)
+            if corruption_entities is None:
+                corruption_length = len(self.ent_to_idx)
+            else:
+                corruption_length = len(corruption_entities)
+
+            corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE)
+            if corrupt_side == 's+o':
+                #since we are corrupting both subject and object
+                corruption_length *= 2  
+                #to account for the positive that we are testing
+                corruption_length -= 2
+            else:
+                #to account for the positive that we are testing
+                corruption_length-=1
+            ranks = []
+            for i in range(len(X)):
+                rank = np.sum(self.rnd.uniform(low=0, high=1, size=corruption_length) >= positive_scores[i]) + 1
+                ranks.append(rank)
+        
+            return positive_scores, ranks
+        
+        return positive_scores
 
 @register_model("TransE", ["norm", "normalize_ent_emb"])
 class TransE(EmbeddingModel):
