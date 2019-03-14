@@ -39,7 +39,8 @@ class Regularizer(abc.ABC):
         Parameters
         ----------
         hyperparam_dict : dict
-            dictionary of hyperparams for the regularizer
+            dictionary of hyperparams
+            (Keys are described in the hyperparameters section)
         """
         self._regularizer_parameters = {}
         
@@ -83,7 +84,7 @@ class Regularizer(abc.ABC):
             raise Exception(msg)
 
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparameters needed by the algorithm.
+        """ Initializes the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -130,21 +131,27 @@ class Regularizer(abc.ABC):
     
 @register_regularizer("LP", ['p', 'lambda'])
 class LPRegularizer(Regularizer):
-    """LP regularization
+    """ Performs LP regularization
+    
+        .. math::
 
-    Class to perform LP regularization, where P is the P-norm.
+               \mathcal{L}(Reg) =  \sum_{i=1}^{n}  \lambda_i * \mid w_i \mid^p
+           
+        where n is the number of model parameters, p is the p-norm and :math:`\lambda` is the regularization weight.
+           
+        p==1 does L1 regularization; p==2 does L2 regularization and so on.   
+          
+        **Hyperparameters:**
     
-    Hyperparameters:
-    
-    'lambda' - weight for regularizer loss for each parameter(default: 1e-5)
-    'p' - norm (default: 2)
+          - 'lambda' - weight of regularization loss for each parameter (default: 1e-5)
+          - 'p' - norm (default: 2)
     """
 
     def __init__(self, hyperparam_dict, verbose=False):
         super().__init__(hyperparam_dict, verbose)
         
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparameters needed by the algorithm.
+        """ Initializes the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
