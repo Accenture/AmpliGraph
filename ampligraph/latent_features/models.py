@@ -51,6 +51,9 @@ DEFAULT_CORRUPT_SIDE = 's+o'
 #default hyperparameter for transE
 DEFAULT_NORM_TRANSE = 1
 
+#initial value for criteria in early stopping
+INITIAL_EARLY_STOPPING_CRITERIA_VALUE = 0
+
 #######################################################################################################
 
 def register_model(name, external_params=[], class_params= {}):
@@ -63,7 +66,10 @@ def register_model(name, external_params=[], class_params= {}):
     return insert_in_registry
 
 class EmbeddingModel(abc.ABC):
-    """Abstract class for a neural knowledge graph embedding model.
+    """Abstract class for embedding models
+
+    AmpliGraph neural knowledge graph embeddings models extend this class and its functionalities.
+
     """
     def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
                  embedding_model_params = {},
@@ -373,14 +379,14 @@ class EmbeddingModel(abc.ABC):
             logger.error(msg)
             raise KeyError(msg)
 
-        self.early_stopping_criteria = self.early_stopping_params.get('criteria', 'mrr')
+        self.early_stopping_criteria = self.early_stopping_params.get('criteria', DEFAULT_CRITERIA_EARLY_STOPPING)
         if self.early_stopping_criteria not in ['hits10','hits1', 'hits3', 'mrr']:
             msg = 'Unsupported early stopping criteria.'
             logger.error(msg)
             raise ValueError(msg)
 
 
-        self.early_stopping_best_value = 0
+        self.early_stopping_best_value = INITIAL_EARLY_STOPPING_CRITERIA_VALUE
         self.early_stopping_stop_counter = 0
         try:
             x_filter = self.early_stopping_params['x_filter']
@@ -427,6 +433,12 @@ class EmbeddingModel(abc.ABC):
             if self.early_stopping_best_value >= current_test_value:
                 self.early_stopping_stop_counter += 1
                 if self.early_stopping_stop_counter == self.early_stopping_params.get('stop_interval', DEFAULT_STOP_INTERVAL_EARLY_STOPPING):
+                    
+                    #If the best value for the criteria has not changed from initial value then 
+                    #save the model before early stopping
+                    if self.early_stopping_best_value == INITIAL_EARLY_STOPPING_CRITERIA_VALUE:
+                        self._save_trained_params()
+                        
                     #Reset this variable as it is reused during evaluation phase
                     self.is_filtered = False
                     self.eval_config={}
@@ -893,7 +905,7 @@ class RandomBaseline(EmbeddingModel):
 
 @register_model("TransE", ["norm", "normalize_ent_emb"])
 class TransE(EmbeddingModel):
-    """The Translating Embedding model (TransE)
+    """Translating Embeddings (TransE)
 
         The model as described in :cite:`bordes2013translating`.
 
@@ -1008,7 +1020,7 @@ class TransE(EmbeddingModel):
 
 @register_model("DistMult", ["normalize_ent_emb"])
 class DistMult(EmbeddingModel):
-    """The DistMult model.
+    """The DistMult model
 
         The model as described in :cite:`yang2014embedding`.
 
@@ -1054,7 +1066,7 @@ class DistMult(EmbeddingModel):
                          model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
 
     def _fn(self, e_s, e_p, e_o):
-        """The DistMult scoring function.
+        """DistMult
 
         .. math::
 
@@ -1122,7 +1134,7 @@ class DistMult(EmbeddingModel):
 
 @register_model("ComplEx")
 class ComplEx(EmbeddingModel):
-    """ The ComplEx model.
+    """ Complex embeddings (ComplEx)
 
         The ComplEx model :cite:`trouillon2016complex` is an extension of the :class:`ampligraph.latent_features.DistMult` bilinear diagonal model
         . ComplEx scoring function is based on the trilinear Hermitian dot product in :math:`\mathcal{C}`:
@@ -1180,7 +1192,7 @@ class ComplEx(EmbeddingModel):
         
         
     def _fn(self, e_s, e_p, e_o):
-        """The ComplEx scoring function.
+        """ComplEx scoring function.
 
             .. math::
 
@@ -1260,7 +1272,7 @@ class ComplEx(EmbeddingModel):
 
 @register_model("HolE")
 class HolE(ComplEx):
-    """ Holographic Embeddings model.
+    """ Holographic Embeddings
 
         The model as described in :cite:`NickelRP15` and :cite:`HayashiS17`.
 

@@ -19,6 +19,8 @@ Learning-to-rank metrics to evaluate the performance of neural graph embedding m
     hits_at_n_score
 
 
+.. _negatives:
+
 Negatives Generation
 --------------------
 
@@ -31,6 +33,8 @@ Negatives generation routines. These are corruption strategies based on the Loca
     generate_corruptions_for_eval
     generate_corruptions_for_fit
 
+
+.. _eval:
 
 Evaluation & Model Selection
 -----------------------------

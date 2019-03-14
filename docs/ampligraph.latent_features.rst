@@ -9,46 +9,86 @@ Models
 Knowledge Graph Embedding Models
 --------------------------------
 
-Existing models propose scoring functions that combine the embeddings :math:`\mathbf{e}_{sub},\mathbf{e}_{pred}, \mathbf{e}_{obj} \in \mathcal{R}^k` of the subject, predicate, and object of triple :math:`t=(sub,pred,obj)` using different intuitions: TransE :cite:`bordes2013translating` relies on distances, DistMult :cite:`yang2014embedding` and ComplEx :cite:`trouillon2016complex` are bilinear-diagonal models, HolE :cite:`nickel2016holographic` uses circular correlation. While the above models can be interpreted as multilayer perceptrons, others such as ConvE include convolutional layers :cite:`DettmersMS018`.
-
-As example, the scoring function of TransE computes a similarity between the embedding of the subject :math:`\mathbf{e}_{sub}` translated by the embedding of the predicate :math:`\mathbf{e}_{pred}` and the embedding of the object :math:`\mathbf{e}_{obj}`, using the :math:`L_1` or :math:`L_2` norm :math:`||\cdot||`:
-
-.. math::
-
-    f_{TransE}=-||\mathbf{e}_{sub} + \mathbf{e}_{pred} - \mathbf{e}_{obj}||_n
-
-
-Such scoring function is then used on positive and negative triples :math:`t^+, t^-` in the loss function.
-
-
 .. autosummary::
     :toctree: generated
     :template: class.rst
 
-    EmbeddingModel
     RandomBaseline
     TransE
     DistMult
     ComplEx
     HolE
 
+Anatomy of a Model
+^^^^^^^^^^^^^^^^^^
+
+Knowledge graph embeddings are learned by training a neural architecture over a graph. Although such architectures vary,
+the training phase always consists in minimizing a :ref:`loss function <loss>` :math:`\mathcal{L}` that includes a
+*scoring function* :math:`f_{m}(t)`, i.e. a model-specific function that assigns a score to a triple :math:`t=(sub,pred,obj)`.
+
+
+AmpliGraph models include the following components:
+
++ :ref:`Scoring function <scoring>` :math:`f(t)`
++ :ref:`Loss function <loss>` :math:`\mathcal{L}`
++ :ref:`Optimization algorithm <optimizer>`
++ :ref:`Negatives generation strategy <negatives>`
+
+AmpliGraph comes with a number of such components. They can be used in any combination to come up with a model that
+performs sufficiently well for the dataset of choice.
+
+AmpliGraph features a number of abstract classes that can be extended to design new models:
+
+.. autosummary::
+    :toctree: generated
+    :template: class.rst
+
+    EmbeddingModel
+    Loss
+    Regularizer
+
+
+.. _scoring:
+
+Scoring functions
+-----------------
+
+Existing models propose scoring functions that combine the embeddings
+:math:`\mathbf{e}_{sub},\mathbf{e}_{pred}, \mathbf{e}_{obj} \in \mathcal{R}^k` of the subject, predicate,
+and object of a triple :math:`t=(sub,pred,obj)` according to different intuitions:
+
++ :class:`TransE` :cite:`bordes2013translating` relies on distances. The scoring function computes a similarity between the embedding of the subject translated by the embedding of the predicate  and the embedding of the object, using the :math:`L_1` or :math:`L_2` norm :math:`||\cdot||`:
+
+.. math::
+    f_{TransE}=-||\mathbf{e}_{sub} + \mathbf{e}_{pred} - \mathbf{e}_{obj}||_n
+
++ :class:`DistMult` :cite:`yang2014embedding` uses the trilinear dot product:
+
+.. math::
+    f_{DistMult}=\langle \mathbf{r}_p, \mathbf{e}_s, \mathbf{e}_o \rangle
+
++ :class:`ComplEx` :cite:`trouillon2016complex` extends DistMult with the Hermitian dot product:
+
+.. math::
+    f_{ComplEx}=Re(\langle \mathbf{r}_p, \mathbf{e}_s, \overline{\mathbf{e}_o}  \rangle)
+
++ :class:`HolE` :cite:`nickel2016holographic` uses circular correlation.
+
+.. math::
+    f_{HolE}=\mathbf{w}_r \cdot (\mathbf{e}_s \star \mathbf{e}_o) = \frac{1}{k}\mathcal{F}(\mathbf{w}_r)\cdot( \overline{\mathcal{F}(\mathbf{e}_s)} \odot \mathcal{F}(\mathbf{e}_o))
+
+Other models such ConvE include convolutional layers :cite:`DettmersMS018`
+(will be available in AmpliGraph future releases).
+
+
+.. _loss:
 
 Loss Functions
 --------------
 
-
-Knowledge graph embeddings are learned by training a neural architecture over a graph. Although such architectures vary, the training phase always consists in minimizing a loss function :math:`\mathcal{L}` that includes a *scoring function* :math:`f_{m}(t)`, i.e. a model-specific function that assigns a score to a triple :math:`t=(sub,pred,obj)`.  
-
-The goal of the optimization procedure is learning optimal embeddings, such that the scoring function is able to assign high scores to positive statements and low scores to statements unlikely to be true.
-
- This can be for example a pairwise margin-based loss, as shown in the equation below:
-
-.. math::
-    \mathcal{L}(\Theta) = \sum_{t^+ \in \mathcal{G}}\sum_{t^- \in \mathcal{N}}max(0, [\gamma + f_{m}(t^-;\Theta) - f_{m}(t^+;\Theta)])
-
-where :math:`\Theta` are the embeddings learned by the model, :math:`f_{m}` is the model-specific scoring function, :math:`\gamma \in \mathcal{R}` is the margin and :math:`\mathcal{N}` is a set of negative triples generated with a corruption heuristic :cite:`bordes2013translating`.
-
-
+AmpliGraph includes a number of loss functions commonly used in literature.
+Each function can be used with any of the implemented models. Loss functions are passed to models as hyperparameter,
+and they can be thus used :ref:`during model selection <eval>`.
 
 
 
@@ -56,24 +96,36 @@ where :math:`\Theta` are the embeddings learned by the model, :math:`f_{m}` is t
     :toctree: generated
     :template: class.rst
 
-    Loss
     PairwiseLoss
     NLLLoss
     AbsoluteMarginLoss
     SelfAdversarialLoss
     
+.. _ref-reg:
 
 Regularizers
 --------------
 
-AmpliGraph includes a number of regularizers that can be used with the loss functions defined above.
+AmpliGraph includes a number of regularizers that can be used with the :ref:`loss function <loss>`.
+:class:`LPRegularizer` supports L1, L2, and L3.
 
 .. autosummary::
     :toctree: generated
     :template: class.rst
 
-    Regularizer
     LPRegularizer
+
+
+.. _optimizer:
+
+Optimizers
+----------
+
+The goal of the optimization procedure is learning optimal embeddings, such that the scoring function is able to
+assign high scores to positive statements and low scores to statements unlikely to be true.
+
+We support SGD-based optimizers provided by TensorFlow, by setting the ``optimizer`` argument in a model initializer.
+Best results are currently obtained with Adam.
 
 
 Utils Functions

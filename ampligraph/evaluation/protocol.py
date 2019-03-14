@@ -688,8 +688,9 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
     >>>                     "embedding_model_params": {
     >>> 
     >>>                     },
-    >>>                     "regularizer": ["L2", "None"],
+    >>>                     "regularizer": ["LP", None],
     >>>                     "regularizer_params": {
+    >>>                         "p": [1, 3],
     >>>                         "lambda": [1e-4, 1e-5]
     >>>                     },
     >>>                     "optimizer": ["adagrad", "adam"],

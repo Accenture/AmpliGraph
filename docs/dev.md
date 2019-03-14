@@ -6,6 +6,8 @@ AmpliGraph [repository is available on GitHub](https://innersource.accenture.com
 
 A list of open issues [is available here](https://github.com/Accenture/AmpliGraph/issues).
 
+The AmpliGraph [Slack channel is available here](https://join.slack.com/t/ampligraph/shared_invite/enQtNTc2NTI0MzUxMTM5LTAxM2ViYTc0ZTI2NzNhOGZiNjkzZjNkN2NkNDc3NWUyZmU2Njg0MDMxYWY5NGUwYWVmOTNkOWI5NmI0NDJjYWI).
+
 
 ## How to Contribute
 We welcome community contributions, whether they are new models, tests, or documentation.
@@ -19,15 +21,18 @@ You can contribute to AmpliGraph in many ways:
 - Add a new graph embedding model (see below)
 
 
-## How to Roll Your Own Model
+## Adding Your Own Model
 
-AmpliGraph embeddings models include the following components:
+The landscape of knowledge graph embeddings evolves rapidly.
+We welcome new models as a contribution to AmpliGraph, which has been built to provide a shared codebase to guarantee a
+fair evalaution and comparison acros models.
 
--
+You can add your own model by raising a pull request.
+
+To get started, [read the documentation on how current models have been implemented](ampligraph.latent_features.html#anatomy-of-a-model).
 
 
 
-TODO
 
 
 ## Unit Tests
@@ -43,13 +48,15 @@ See [pytest documentation](https://docs.pytest.org/en/latest/) for additional ar
 
 ## Documentation
 
-The project documentation is [hosted at this address](https://docs.ampligraph.org).
-It is based on Sphinx and can be built as follows:
+The [project documentation](https://docs.ampligraph.org) is based on Sphinx and can be built on your local working
+copy as follows:
 
 ```
 cd docs
 make clean autogen html
 ```
+
+The above generates an HTML version of the documentation under `docs/_built/html`.
 
 
 ## Packaging
