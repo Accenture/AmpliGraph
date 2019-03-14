@@ -111,7 +111,7 @@ def load_all_datasets(data_home=None):
     #load_wn11(data_home)
 
 
-def load_from_rdf(folder_name, file_name, format='nt'):
+def load_from_rdf(folder_name, file_name, format='nt', data_home=None):
     """Load an RDF file
 
         Loads an RDF knowledge graph using rdflib APIs.
@@ -134,13 +134,14 @@ def load_from_rdf(folder_name, file_name, format='nt'):
     """
 
     logger.debug('Loading rdf data from {}.'.format(file_name))
+    data_home = _get_data_home(data_home)
     from rdflib import Graph
     g = Graph()
-    g.parse(os.path.join(AMPLIGRAPH_DATA_HOME, folder_name, file_name), format=format, publicID='http://test#')
+    g.parse(os.path.join(data_home, folder_name, file_name), format=format, publicID='http://test#')
     return np.array(g)
 
 
-def load_from_ntriples(folder_name, file_name):
+def load_from_ntriples(folder_name, file_name, data_home=None):
     """Load RDF ntriples as csv statements
 
         Loads an RDF knowledge graph serialized as ntriples, without building an RDF graph in mmeory.
@@ -161,7 +162,8 @@ def load_from_ntriples(folder_name, file_name):
     """
 
     logger.debug('Loading rdf ntriples from {}.'.format(file_name))
-    df = pd.read_csv(os.path.join(AMPLIGRAPH_DATA_HOME, folder_name, file_name),
+    data_home = _get_data_home(data_home)
+    df = pd.read_csv(os.path.join(data_home, folder_name, file_name),
                      sep=' ',
                      header=None,
                      names=None,
