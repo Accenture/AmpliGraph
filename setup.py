@@ -26,8 +26,8 @@ setup_params = dict(name='ampligraph',
                         'beautifultable>=0.7.0'
                     ],
                     extras_require={
-                        'cpu': ['tensorflow>=1.13.1,<2.0'],
-                        'gpu': ['tensorflow-gpu==1.13.1,<2.0'],
+                        'cpu': ['tensorflow>=1.12.0,<2.0'],
+                        'gpu': ['tensorflow-gpu==1.12.0,<2.0'],
                     }
                     )
 if __name__ == '__main__':
