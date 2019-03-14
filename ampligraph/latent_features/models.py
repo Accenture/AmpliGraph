@@ -51,6 +51,9 @@ DEFAULT_CORRUPT_SIDE = 's+o'
 #default hyperparameter for transE
 DEFAULT_NORM_TRANSE = 1
 
+#initial value for criteria in early stopping
+INITIAL_EARLY_STOPPING_CRITERIA_VALUE = 0
+
 #######################################################################################################
 
 def register_model(name, external_params=[], class_params= {}):
@@ -376,14 +379,14 @@ class EmbeddingModel(abc.ABC):
             logger.error(msg)
             raise KeyError(msg)
 
-        self.early_stopping_criteria = self.early_stopping_params.get('criteria', 'mrr')
+        self.early_stopping_criteria = self.early_stopping_params.get('criteria', DEFAULT_CRITERIA_EARLY_STOPPING)
         if self.early_stopping_criteria not in ['hits10','hits1', 'hits3', 'mrr']:
             msg = 'Unsupported early stopping criteria.'
             logger.error(msg)
             raise ValueError(msg)
 
 
-        self.early_stopping_best_value = 0
+        self.early_stopping_best_value = INITIAL_EARLY_STOPPING_CRITERIA_VALUE
         self.early_stopping_stop_counter = 0
         try:
             x_filter = self.early_stopping_params['x_filter']
@@ -430,6 +433,12 @@ class EmbeddingModel(abc.ABC):
             if self.early_stopping_best_value >= current_test_value:
                 self.early_stopping_stop_counter += 1
                 if self.early_stopping_stop_counter == self.early_stopping_params.get('stop_interval', DEFAULT_STOP_INTERVAL_EARLY_STOPPING):
+                    
+                    #If the best value for the criteria has not changed from initial value then 
+                    #save the model before early stopping
+                    if self.early_stopping_best_value == INITIAL_EARLY_STOPPING_CRITERIA_VALUE:
+                        self._save_trained_params()
+                        
                     #Reset this variable as it is reused during evaluation phase
                     self.is_filtered = False
                     self.eval_config={}
