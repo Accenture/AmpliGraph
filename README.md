@@ -31,8 +31,7 @@ It then combines embeddings with model-specific scoring functions to predict uns
 * **Extensible**: Roll your own knowledge graph embeddings model by extending AmpliGraph base estimators.
 
 
-## System Architecture
-
+## Modules
 
 AmpliGraph includes the following submodules:
 
@@ -49,7 +48,7 @@ AmpliGraph includes the following submodules:
 * Linux Box
 * Python ≥ 3.6
 
-#### Provision a Virtual Environment
+##### Provision a Virtual Environment
 
 Create and activate a virtual environment (conda)
 
@@ -58,29 +57,31 @@ conda create --name ampligraph python=3.6
 source activate ampligraph
 ```
 
-#### Install TensorFlow
+##### Install TensorFlow
 
+AmpliGraph is built on TensorFlow 1.x.
 Install from pip or conda:
 
 **CPU-only**
 
 ```
-pip install tensorflow
+pip install tensorflow==1.12.0
 
-or 
+or
 
-conda install tensorflow
+conda install tensorflow=1.12.0
 ```
 
 **GPU support**
 
 ```
-pip install tensorflow-gpu
+pip install tensorflow-gpu==1.12.0
 
-or 
+or
 
-conda install tensorflow-gpu
+conda install tensorflow-gpu=1.12.0
 ```
+
 
 
 ## Install AmpliGraph
@@ -134,22 +135,33 @@ export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
 | ComplEx  | 0.79 | 0.94  | 0.44  | 0.30    |
 | HolE     | 0.80 | 0.94  | 0.47  | 0.28    |
 
-##  Documentation
 
-**[Latest documentation available here](http://10.106.43.211/docs/ampligraph/dev/index.html)**
+## Documentation
 
+**[Documentation available here](http://docs.ampligraph.org)**
 
-The project documentation can be built with Sphinx:
+The project documentation can be built from your local working copy with:
 
 ```
 cd docs
 make clean autogen html
 ```
 
-## Tests
+## How to contribute
 
+See [guidelines](http://docs.ampligraph.org) from AmpliGraph documentation.
+
+
+## How to Cite
+
+If you like AmpliGraph and you use it in your project, why not starring the project on GitHub!
+
+[![GitHub stars](https://img.shields.io/github/stars/accenture/ampligraph.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/accenture/ampligraph/stargazers/)
+
+
+If you instead use AmpliGraph in an academic publication, cite as:
 
 ```
-pytest -s tests
+TODO
 ```
 
