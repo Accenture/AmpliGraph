@@ -293,7 +293,7 @@ To reproduce the above results: ::
     $ python predictive_performance.py
 
 
-.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~xxx hours on 
+.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~24 hours on
     an Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box equipped with a Tesla V100 16GB.
 
 
@@ -312,10 +312,11 @@ Experiments can be limited to specific models-dataset combinations as follows: :
 Runtime Performance
 -------------------
 
-With the same configuration as above experiments, below is the running time report per epoch of FB15K-237 dataset
+Training the models on FB15K-237 (``k=200, eta=2, batches_count=100, loss=nll``), on an Intel Xeon Gold 6142, 64 GB
+Ubuntu 16.04 box equipped with a Tesla V100 16GB gives the following runtime report:
 
 ======== ==============
-model      second/epoch
+model     seconds/epoch
 ======== ==============
 ComplEx     3.19
 TransE      3.26
