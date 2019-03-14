@@ -36,7 +36,7 @@ It then combines embeddings with model-specific scoring functions to predict uns
 AmpliGraph includes the following submodules:
 
 * **KG Loaders**: Helper functions to load datasets (knowledge graphs).
-* **Latent Feature Models**: knowledge graph embedding models. AmpliGraph contains: TransE, DistMult, ComplEx, ConvE, and RotatE.
+* **Latent Feature Models**: knowledge graph embedding models. AmpliGraph contains: TransE, DistMult, ComplEx, HolE. (More to come!)
 * **Evaluation**: Metrics and evaluation protocols to assess the predictive power of the models.
 
 
