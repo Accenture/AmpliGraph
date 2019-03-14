@@ -86,12 +86,9 @@ Other models such ConvE include convolutional layers :cite:`DettmersMS018`
 Loss Functions
 --------------
 
- This can be for example a pairwise margin-based loss, as shown in the equation below:
-
-.. math::
-    \mathcal{L}(\Theta) = \sum_{t^+ \in \mathcal{G}}\sum_{t^- \in \mathcal{N}}max(0, [\gamma + f_{m}(t^-;\Theta) - f_{m}(t^+;\Theta)])
-
-where :math:`\Theta` are the embeddings learned by the model, :math:`f_{m}` is the model-specific scoring function, :math:`\gamma \in \mathcal{R}` is the margin and :math:`\mathcal{N}` is a set of negative triples generated with a corruption heuristic :cite:`bordes2013translating`.
+AmpliGraph includes a number of loss functions commonly used in literature.
+Each function can be used with any of the implemented models. Loss functions are passed to models as hyperparameter,
+and they can be thus used :ref:`during model selection <eval>`.
 
 
 
@@ -109,7 +106,8 @@ where :math:`\Theta` are the embeddings learned by the model, :math:`f_{m}` is t
 Regularizers
 --------------
 
-AmpliGraph includes a number of regularizers that can be used with the loss functions defined above.
+AmpliGraph includes a number of regularizers that can be used with the :ref:`loss function <loss>`.
+:class:`LPRegularizer` supports L1, L2, and L3.
 
 .. autosummary::
     :toctree: generated

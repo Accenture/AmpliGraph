@@ -34,6 +34,8 @@ Negatives generation routines. These are corruption strategies based on the Loca
     generate_corruptions_for_fit
 
 
+.. _eval:
+
 Evaluation & Model Selection
 -----------------------------
 
