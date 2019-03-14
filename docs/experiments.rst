@@ -82,7 +82,8 @@ TransE     153      0.32     0.22     0.35     0.51      batches_count: 60;
                                                           seed: 0
 ========== ======= ======== ======== ======== ======== ==========================
 
-.. note:: We removed (829) unseen entities in FB15k-237 (validation, test) sets in this experiment.
+.. note:: FB15K-237 validation and test sets include triples with entities that do not occur 
+    in the training set. We We removed (829) unseen entities in FB15k-237 (validation, test) sets in this experiment.
 
 
 
@@ -287,7 +288,8 @@ To reproduce the above results: ::
     $ predictive_performance.py
 
 
-.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~xxx hours on a Linux box equipped with .....
+.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~xxx hours on 
+    an Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box equipped with a Tesla V100 16GB.
 
 
 
