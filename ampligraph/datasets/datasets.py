@@ -23,7 +23,7 @@ logger.setLevel(logging.DEBUG)
 
 def _get_data_home(data_home=None):
     if data_home is None:
-        data_home = os.environ.get(AMPLIGRAPH_ENV_NAME,os.path.join('~','ampligraph_dataset'))
+        data_home = os.environ.get(AMPLIGRAPH_ENV_NAME,os.path.join('~','ampligraph_datasets'))
     data_home = os.path.expanduser(data_home)
     if not os.path.exists(data_home):
         os.makedirs(data_home)

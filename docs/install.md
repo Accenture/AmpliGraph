@@ -80,7 +80,7 @@ If the dataset is not found it will be downloaded and placed in this directory.
 If **AMPLIGRAPH\_DATA\_HOME** has not been set the databases will be saved in the following directory:
 
 ```
-~/ampligraph_databases
+~/ampligraph_datasets
 ```
 
 Additionally a specific directory can be passed to the dataset loader via the **data\_home** parameter.
