@@ -132,7 +132,7 @@ export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
 | TransE   | 0.55 | 0.50  | 0.23  | 0.32    |
 | DistMult | 0.79 | 0.83  | 0.44  | 0.29    |
 | ComplEx  | 0.79 | 0.94  | 0.44  | 0.30    |
-| HolE     | 0.80 | 0.94  | 0.47  | 0.20    |
+| HolE     | 0.80 | 0.94  | 0.47  | 0.28    |
 
 ##  Documentation
 

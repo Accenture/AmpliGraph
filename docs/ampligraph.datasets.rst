@@ -43,7 +43,11 @@ These datasets are originated from: `FB15K-237 <https://www.microsoft.com/en-us/
 `WN18RR <https://github.com/TimDettmers/ConvE/blob/master/WN18RR.tar.gz>`_, 
 `FB15K <https://www.hds.utc.fr/everest/doku.php?id=en:transe>`_, 
 `WN18 <https://www.hds.utc.fr/everest/doku.php?id=en:transe>`_, 
-`YAGO3-10 <https://github.com/TimDettmers/ConvE/blob/master/YAGO3-10.tar.gz>`_
+`YAGO3-10 <https://github.com/TimDettmers/ConvE/blob/master/YAGO3-10.tar.gz>`_,
+`WN11 <https://cs.stanford.edu/people/danqi/data/nips13-dataset.tar.bz2>`_,
+`FB13 <https://cs.stanford.edu/people/danqi/data/nips13-dataset.tar.bz2>`_
+
+
 
 .. warning:: FB15K-237 contains 8 unseen entities inside 9 triples in the validation set and 29 inside 28 triples in the test set.
              WN18RR contains 198 unseen entities inside 210 triples in the validation set and 209 inside 210 triples in the test set.

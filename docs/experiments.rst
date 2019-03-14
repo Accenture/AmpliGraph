@@ -150,7 +150,7 @@ TransE     1532    0.23     0.07     0.34      0.50       batches_count: 100;
                                                          seed: 0
 ========== ======= ======== ======== ======== ======== ==========================
 
-.. note:: FB15K-237 validation and test sets include triples with entities that do not occur
+.. note:: WN18RR validation and test sets include triples with entities that do not occur
     in the training set. We found 198 unseen entities in the validation set and 209 in the test set.
     In the experiments we excluded the triples where such entities appear (210 triples in from the validation
     set and 210 from the test set).
