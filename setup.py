@@ -29,7 +29,7 @@ setup_params = dict(name='ampligraph',
                     ],
                     extras_require={
                         'cpu': ['tensorflow>=1.12.0,<2.0'],
-                        'gpu': ['tensorflow-gpu==1.12.0,<2.0'],
+                        'gpu': ['tensorflow-gpu>=1.12.0,<2.0'],
                     }
                     )
 if __name__ == '__main__':

@@ -17,26 +17,27 @@ source activate ampligraph
 
 #### Install TensorFlow
 
+AmpliGraph is built on TensorFlow 1.x.
 Install from pip or conda:
 
 **CPU-only**
 
 ```
-pip install tensorflow
+pip install tensorflow==1.12.0
 
 or 
 
-conda install tensorflow
+conda install tensorflow=1.12.0
 ```
 
 **GPU support**
 
 ```
-pip install tensorflow-gpu
+pip install tensorflow-gpu==1.12.0
 
 or 
 
-conda install tensorflow-gpu
+conda install tensorflow-gpu=1.12.0
 ```
 
 
