@@ -312,5 +312,13 @@ Experiments can be limited to specific models-dataset combinations as follows: :
 Runtime Performance
 -------------------
 
-//TODO
-see issue #49
+With the same configuration as above experiments, below is the running time report per epoch of FB15K-237 dataset
+
+======== ==============
+model      second/epoch
+======== ==============
+ComplEx     3.19
+TransE      3.26
+DistMult    2.61
+HolE        3.21
+======== ==============
