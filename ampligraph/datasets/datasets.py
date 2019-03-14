@@ -7,7 +7,16 @@ import zipfile
 from pathlib import Path
 
 AMPLIGRAPH_ENV_NAME = 'AMPLIGRAPH_DATA_HOME'
-AMPLIGRAPH_DATA_HOME = os.environ[AMPLIGRAPH_ENV_NAME]
+REMOTE_DATASET_SERVER = 'https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/'
+DATASET_FILE_NAME = {'WN18':'wn18.zip',
+'WN18RR':'wn18RR.zip',
+'FB15K':'fb15k.zip',
+'FB15K_237':'fb15k-237.zip',
+'YAGO3_10':'YAGO3-10.zip',
+'FB13':'freebase13.zip',
+'WN11':'wordnet11.zip'
+}
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -21,18 +30,19 @@ def _get_data_home(data_home=None):
     logger.debug('data_home is set to {}'.format(data_home))
     return data_home 
 
-def _unzip_dataset(data_home, file_name):
+def _unzip_dataset(data_home, file_path):
     #TODO - add error checking
-    with zipfile.ZipFile(file_name,'r') as zip_ref:
-        logger.debug('Unzipping {} to {}'.format(file_name, data_home))
+    with zipfile.ZipFile(file_path,'r') as zip_ref:
+        logger.debug('Unzipping {} to {}'.format(file_path, data_home))
         zip_ref.extractall(data_home)
+    os.remove(file_path)
 
 def _fetch_remote_data(url,dataset_dir,data_home):
-    file_name = '{}.zip'.format(dataset_dir)
-    if not Path(file_name).exists():
-        urllib.request.urlretrieve(url,file_name)
+    file_path = '{}.zip'.format(dataset_dir)
+    if not Path(file_path).exists():
+        urllib.request.urlretrieve(url,file_path)
         #TODO - add error checking
-    _unzip_dataset(data_home,file_name)
+    _unzip_dataset(data_home,file_path)
     
 def _fetch_dataset(dataset_name,data_home=None,url=None):
     data_home = _get_data_home(data_home)
@@ -65,28 +75,28 @@ def load_dataset(url, data_home=None, train_name='train.txt', valid_name='valid.
     return {'train':train,'valid':valid,'test':test}
 
 def load_wn18(data_home=None):
-    return load_dataset('https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wn18.zip', data_home)
+    return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['WN18']), data_home)
 
 def load_wn18rr(data_home=None):
-    return load_dataset('https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wn18RR.zip', data_home)
+    return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['WN18RR']), data_home)
 
 def load_fb15k(data_home=None):
-    return load_dataset('https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/fb15k.zip', data_home)
+    return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['FB15K']), data_home)
 
 def load_fb15k_237(data_home=None):
-    return load_dataset('https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/fb15k-237.zip', data_home)
+    return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['FB15K_237']), data_home)
 
 def load_yago3_10(data_home=None):
-    return load_dataset('https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/YAGO3-10.zip', data_home)
+    return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['YAGO3_10']), data_home)
 
 def load_fb13(data_home=None):
-    #return load_dataset('https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/freebase13.zip', data_home)
+    #return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['FB13']), data_home)
     msg = 'Currently not supported due to filename name error. Blocked by issue #50'
     logger.error(msg)
     raise NotImplementedError(msg)
 
 def load_wn11(data_home=None):
-    #return load_dataset('https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wordnet11.zip', data_home)
+    #return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['WN11']), data_home)
     msg = 'Currently not supported due to filename name error. Blocked by issue #50'
     logger.error(msg)
     raise NotImplementedError(msg)
