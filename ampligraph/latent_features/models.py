@@ -63,7 +63,10 @@ def register_model(name, external_params=[], class_params= {}):
     return insert_in_registry
 
 class EmbeddingModel(abc.ABC):
-    """Abstract class for a neural knowledge graph embedding model.
+    """Abstract class for embedding models
+
+    AmpliGraph neural knowledge graph embeddings models extend this class and its functionalities.
+
     """
     def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
                  embedding_model_params = {},
@@ -855,7 +858,7 @@ class RandomBaseline():
 
 @register_model("TransE", ["norm", "normalize_ent_emb"])
 class TransE(EmbeddingModel):
-    """The Translating Embedding model (TransE)
+    """Translating Embeddings (TransE)
 
         The model as described in :cite:`bordes2013translating`.
 
@@ -970,7 +973,7 @@ class TransE(EmbeddingModel):
 
 @register_model("DistMult", ["normalize_ent_emb"])
 class DistMult(EmbeddingModel):
-    """The DistMult model.
+    """The DistMult model
 
         The model as described in :cite:`yang2014embedding`.
 
@@ -1016,7 +1019,7 @@ class DistMult(EmbeddingModel):
                          model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
 
     def _fn(self, e_s, e_p, e_o):
-        """The DistMult scoring function.
+        """DistMult
 
         .. math::
 
@@ -1084,7 +1087,7 @@ class DistMult(EmbeddingModel):
 
 @register_model("ComplEx")
 class ComplEx(EmbeddingModel):
-    """ The ComplEx model.
+    """ Complex embeddings (ComplEx)
 
         The ComplEx model :cite:`trouillon2016complex` is an extension of the :class:`ampligraph.latent_features.DistMult` bilinear diagonal model
         . ComplEx scoring function is based on the trilinear Hermitian dot product in :math:`\mathcal{C}`:
@@ -1142,7 +1145,7 @@ class ComplEx(EmbeddingModel):
         
         
     def _fn(self, e_s, e_p, e_o):
-        """The ComplEx scoring function.
+        """ComplEx scoring function.
 
             .. math::
 
@@ -1222,7 +1225,7 @@ class ComplEx(EmbeddingModel):
 
 @register_model("HolE")
 class HolE(ComplEx):
-    """ Holographic Embeddings model.
+    """ Holographic Embeddings
 
         The model as described in :cite:`NickelRP15` and :cite:`HayashiS17`.
 

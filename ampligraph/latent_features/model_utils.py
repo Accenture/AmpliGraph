@@ -41,7 +41,7 @@ def save_model(model, loc):
 
     #dump model tf
 def restore_model(loc):
-    """ Restore a saved model into an instance of TransE, DistMult or ComplEx classes.
+    """ Restore a saved model from disk.
 
     Parameters
     ----------

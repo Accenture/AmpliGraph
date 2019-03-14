@@ -130,7 +130,9 @@ class Regularizer(abc.ABC):
     
 @register_regularizer("LP", ['p', 'lambda'])
 class LPRegularizer(Regularizer):
-    """Class for performing LP regularization, where p is the p norm
+    """LP regularization
+
+    Class to perform LP regularization, where P is the P-norm.
     
     Hyperparameters:
     

@@ -19,6 +19,8 @@ Learning-to-rank metrics to evaluate the performance of neural graph embedding m
     hits_at_n_score
 
 
+.. _negatives:
+
 Negatives Generation
 --------------------
 
