@@ -1,5 +1,8 @@
 # AmpliGraph
 
+[![DOI](https://zenodo.org/badge/164881995.svg)](https://zenodo.org/badge/latestdoi/164881995)
+
+
 **Open source Python library that predicts links between concepts in a knowledge graph.**
 
 AmpliGraph is a suite of neural machine learning models for relational Learning, a branch of machine learning
@@ -149,7 +152,18 @@ If you like AmpliGraph and you use it in your project, why not starring the proj
 If you instead use AmpliGraph in an academic publication, cite as:
 
 ```
-TODO
+@misc{ampligraph,
+ author= {Luca Costabello and
+          Sumit Pai and
+          Chan Le Van and
+          Rory McGrath and
+          Nick McCarthy},
+ title = {{AmpliGraph: a Library for Representation Learning on Knowledge Graphs}},
+ month = mar,
+ year  = 2019,
+ doi   = {10.5281/zenodo.2595049},
+ url   = {https://doi.org/10.5281/zenodo.2595049}
+}
 ```
 
 ## Licence

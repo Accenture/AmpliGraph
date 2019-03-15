@@ -158,7 +158,21 @@ If you instead use AmpliGraph in an academic publication, cite as:
 
 .. code-block:: bibtex
 
-   todo
+   @misc{ampligraph,
+     author= {Luca Costabello and
+              Sumit Pai and
+              Chan Le Van and
+              Rory McGrath and
+              Nick McCarthy},
+     title = {{AmpliGraph: a Library for Representation Learning on Knowledge Graphs}},
+     month = mar,
+     year  = 2019,
+     doi   = {10.5281/zenodo.2595049},
+     url   = {https://doi.org/10.5281/zenodo.2595049}
+   }
+
+.. image:: https://zenodo.org/badge/164881995.svg
+   :target: https://zenodo.org/badge/latestdoi/164881995
 
 
 .. toctree::
