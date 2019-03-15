@@ -968,7 +968,7 @@ class TransE(EmbeddingModel):
 
             - 'norm' - type of norm to be used in scoring function (1 or 2 norm - default:1)
             - 'normalize_ent_emb' - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
-            
+
             (Refer documentation of specific embedding models for more details)
         optimizer : string
             The optimizer used to minimize the loss function. Choose between ``sgd``,
