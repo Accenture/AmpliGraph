@@ -272,7 +272,7 @@ class AbsoluteMarginLoss(Loss):
 
        where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives,
        :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
-       
+
     """
 
     def __init__(self, eta, hyperparam_dict={'margin': DEFAULT_MARGIN}, verbose=False):
