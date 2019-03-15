@@ -239,9 +239,11 @@ def load_fb15k_237(data_home=None):
     Examples
     --------
     
-    >>> from ampligraph.datasets import load_fb15k
-    >>> X = load_fb15k()
-
+    >>> from ampligraph.datasets import load_fb15k_237
+    >>> X = load_fb15k_237()
+    >>> X["train"][2]
+    array(['/m/07s9rl0', '/media_common/netflix_genre/titles', '/m/0170z3'],
+      dtype=object)
     """
 
     return  _load_core_dataset('FB15K_237',data_home)
