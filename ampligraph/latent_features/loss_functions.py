@@ -7,34 +7,35 @@ LOSS_REGISTRY = {}
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-#Default margin used by pairwise and absolute margin loss
+# Default margin used by pairwise and absolute margin loss
 DEFAULT_MARGIN = 1
 
-#default sampling temperature used by adversarial loss 
+# default sampling temperature used by adversarial loss
 DEFAULT_ALPHA_ADVERSARIAL = 0.5
 
-#Default margin used by margin based adversarial loss
+# Default margin used by margin based adversarial loss
 DEFAULT_MARGIN_ADVERSARIAL = 3
 
-def register_loss(name, external_params=[], class_params= {'require_same_size_pos_neg' : True,}):
+
+def register_loss(name, external_params=[], class_params={'require_same_size_pos_neg': True, }):
     def insert_in_registry(class_handle):
         LOSS_REGISTRY[name] = class_handle
         class_handle.name = name
         LOSS_REGISTRY[name].external_params = external_params
         LOSS_REGISTRY[name].class_params = class_params
         return class_handle
-        
+
     return insert_in_registry
 
 
 class Loss(abc.ABC):
     """Abstract class for loss function.
     """
-    
+
     name = ""
     external_params = []
     class_params = {}
-    
+
     def __init__(self, eta, hyperparam_dict, verbose=False):
         """Initialize Loss.
 
@@ -48,8 +49,8 @@ class Loss(abc.ABC):
         """
         self._loss_parameters = {}
         self._dependencies = []
-        
-        #perform check to see if all the required external hyperparams are passed
+
+        # perform check to see if all the required external hyperparams are passed
         try:
             self._loss_parameters['eta'] = eta
             self._init_hyperparams(hyperparam_dict)
@@ -59,14 +60,14 @@ class Loss(abc.ABC):
                 print('Name:', self.name)
                 logger.info('Parameters:')
                 print('Parameters:')
-                for key,value in self._loss_parameters.items():
-                    logger.info('\t{}: '.format(key,value))
-                    print("  ", key, ": ", value) 
+                for key, value in self._loss_parameters.items():
+                    logger.info('\t{}: '.format(key, value))
+                    print("  ", key, ": ", value)
         except KeyError as e:
             msg = 'Some of the hyperparams for loss were not passed to the loss function.\n{}'.format(e)
             logger.error(msg)
             raise Exception(msg)
-            
+
     def get_state(self, param_name):
         """Get the state value.
 
@@ -98,7 +99,7 @@ class Loss(abc.ABC):
         msg = 'This function is a placeholder in an abstract class'
         logger.error(msg)
         NotImplementedError(msg)
-        
+
     def _inputs_check(self, scores_pos, scores_neg):
         """ Creates any dependencies that need to be checked before performing loss computations
         
@@ -111,10 +112,11 @@ class Loss(abc.ABC):
         """
         logger.debug('Creating dependencies before loss computations.')
         self._dependencies = []
-        if LOSS_REGISTRY[self.name].class_params['require_same_size_pos_neg'] and self._loss_parameters['eta']!=1:
+        if LOSS_REGISTRY[self.name].class_params['require_same_size_pos_neg'] and self._loss_parameters['eta'] != 1:
             logger.debug('Dependencies found: \n\tRequired same size positive and negative. \n\tEta is not 1.')
-            self._dependencies.append(tf.Assert(tf.equal(tf.shape(scores_pos)[0] ,tf.shape(scores_neg)[0]), [tf.shape(scores_pos)[0], tf.shape(scores_neg)[0]]))
-        
+            self._dependencies.append(tf.Assert(tf.equal(tf.shape(scores_pos)[0], tf.shape(scores_neg)[0]),
+                                                [tf.shape(scores_pos)[0], tf.shape(scores_neg)[0]]))
+
     def _apply(self, scores_pos, scores_neg):
         """ Apply the loss function. Every inherited class must implement this function.
         (All the TF code must go in this function.)
@@ -134,7 +136,7 @@ class Loss(abc.ABC):
         msg = 'This function is a placeholder in an abstract class.'
         logger.error(msg)
         NotImplementedError(msg)
-        
+
     def apply(self, scores_pos, scores_neg):
         """ Interface to external world. This function does the input checks, preprocesses input and finally applies loss fn.
         Parameters
@@ -154,6 +156,7 @@ class Loss(abc.ABC):
             loss = self._apply(scores_pos, scores_neg)
         return loss
 
+
 @register_loss("pairwise", ['margin'])
 class PairwiseLoss(Loss):
     """Pairwise, max-margin loss.
@@ -171,10 +174,10 @@ class PairwiseLoss(Loss):
     
      - 'margin' - Margin to be used in pairwise loss computation (default:1)
     """
-    
+
     def __init__(self, eta, hyperparam_dict, verbose=False):
-        super().__init__(eta,  hyperparam_dict, verbose)
-        
+        super().__init__(eta, hyperparam_dict, verbose)
+
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparameters needed by the algorithm.
         
@@ -186,15 +189,14 @@ class PairwiseLoss(Loss):
             - 'margin' - Margin to be used in pairwise loss computation(default:1)
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
-        
-            
+
     def _apply(self, scores_pos, scores_neg):
         margin = tf.constant(self._loss_parameters['margin'], dtype=tf.float32, name='margin')
-        loss = tf.reduce_sum(tf.maximum(margin- scores_pos + scores_neg, 0))
+        loss = tf.reduce_sum(tf.maximum(margin - scores_pos + scores_neg, 0))
         return loss
-    
 
-@register_loss("nll")        
+
+@register_loss("nll")
 class NLLLoss(Loss):
     """Negative log-likelihood loss.
 
@@ -210,9 +212,10 @@ class NLLLoss(Loss):
      **Hyperparameters:**  None
 
     """
+
     def __init__(self, eta, hyperparam_dict, verbose=False):
         super().__init__(eta, hyperparam_dict, verbose)
-    
+
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.
         
@@ -222,7 +225,7 @@ class NLLLoss(Loss):
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
         """
         return
-        
+
     def _apply(self, scores_pos, scores_neg):
         """ Apply the loss function.
         Parameters
@@ -240,9 +243,9 @@ class NLLLoss(Loss):
         """
         scores = tf.concat([-scores_pos, scores_neg], 0)
         return tf.reduce_sum(tf.log(1 + tf.exp(scores)))
-    
-    
-@register_loss("absolute_margin", ['margin'] )      
+
+
+@register_loss("absolute_margin", ['margin'])
 class AbsoluteMarginLoss(Loss):
     """Absolute margin , max-margin loss.
 
@@ -259,10 +262,10 @@ class AbsoluteMarginLoss(Loss):
        
         - 'margin' - Margin to be used in pairwise loss computation(default:1)
     """
-    
+
     def __init__(self, eta, hyperparam_dict, verbose=False):
         super().__init__(eta, hyperparam_dict, verbose)
-        
+
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.
         
@@ -276,9 +279,8 @@ class AbsoluteMarginLoss(Loss):
         Returns
         -------    
         """
-        self._loss_parameters['margin'] =hyperparam_dict.get('margin', DEFAULT_MARGIN)
-        
-    
+        self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
+
     def _apply(self, scores_pos, scores_neg):
         """ Apply the loss function.
 
@@ -295,12 +297,12 @@ class AbsoluteMarginLoss(Loss):
            The loss value that must be minimized.
 
         """
-        margin =  tf.constant(self._loss_parameters['margin'], dtype=tf.float32, name='margin')
+        margin = tf.constant(self._loss_parameters['margin'], dtype=tf.float32, name='margin')
         loss = tf.reduce_sum(tf.maximum(margin + scores_neg, 0) - scores_pos)
         return loss
-    
 
-@register_loss("self_adversarial", ['margin', 'alpha'], {'require_same_size_pos_neg':False})      
+
+@register_loss("self_adversarial", ['margin', 'alpha'], {'require_same_size_pos_neg': False})
 class SelfAdversarialLoss(Loss):
     """ Self adversarial sampling loss.
 
@@ -318,9 +320,10 @@ class SelfAdversarialLoss(Loss):
         
         - 'alpha' - Temperature of sampling (default:0.5)
     """
+
     def __init__(self, eta, hyperparam_dict, verbose=False):
         super().__init__(eta, hyperparam_dict, verbose)
-    
+
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.
         
@@ -335,9 +338,7 @@ class SelfAdversarialLoss(Loss):
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN_ADVERSARIAL)
         self._loss_parameters['alpha'] = hyperparam_dict.get('alpha', DEFAULT_ALPHA_ADVERSARIAL)
-        
-    
-    
+
     def _apply(self, scores_pos, scores_neg):
         """ Apply the loss function.
 
@@ -356,13 +357,13 @@ class SelfAdversarialLoss(Loss):
        """
         margin = tf.constant(self._loss_parameters['margin'], dtype=tf.float32, name='margin')
         alpha = tf.constant(self._loss_parameters['alpha'], dtype=tf.float32, name='alpha')
-    
+
         # Compute p(neg_samples) based on eq 4
         scores_neg_reshaped = tf.reshape(scores_neg, [self._loss_parameters['eta'], tf.shape(scores_pos)[0]])
-        p_neg = tf.nn.softmax(alpha * scores_neg_reshaped, axis = 0)
+        p_neg = tf.nn.softmax(alpha * scores_neg_reshaped, axis=0)
 
         # Compute Loss based on eg 5
-        loss = tf.reduce_sum(-tf.log( tf.nn.sigmoid(margin -  tf.negative(scores_pos)) )) - \
-                                tf.reduce_sum(tf.multiply(p_neg, \
-                                                          tf.log( tf.nn.sigmoid( tf.negative(scores_neg_reshaped) - margin)) ))
+        loss = tf.reduce_sum(-tf.log(tf.nn.sigmoid(margin - tf.negative(scores_pos)))) - \
+               tf.reduce_sum(tf.multiply(p_neg, \
+                                         tf.log(tf.nn.sigmoid(tf.negative(scores_neg_reshaped) - margin))))
         return loss

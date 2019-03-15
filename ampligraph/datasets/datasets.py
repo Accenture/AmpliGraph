@@ -8,54 +8,58 @@ from pathlib import Path
 
 AMPLIGRAPH_ENV_NAME = 'AMPLIGRAPH_DATA_HOME'
 REMOTE_DATASET_SERVER = 'https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/'
-DATASET_FILE_NAME = {'WN18':'wn18.zip',
-'WN18RR':'wn18RR.zip',
-'FB15K':'fb15k.zip',
-'FB15K_237':'fb15k-237.zip',
-'YAGO3_10':'YAGO3-10.zip',
-'FB13':'freebase13.zip',
-'WN11':'wordnet11.zip'
-}
-
+DATASET_FILE_NAME = {'WN18': 'wn18.zip',
+                     'WN18RR': 'wn18RR.zip',
+                     'FB15K': 'fb15k.zip',
+                     'FB15K_237': 'fb15k-237.zip',
+                     'YAGO3_10': 'YAGO3-10.zip',
+                     'FB13': 'freebase13.zip',
+                     'WN11': 'wordnet11.zip'
+                     }
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+
 def _get_data_home(data_home=None):
     if data_home is None:
-        data_home = os.environ.get(AMPLIGRAPH_ENV_NAME,os.path.join('~','ampligraph_datasets'))
+        data_home = os.environ.get(AMPLIGRAPH_ENV_NAME, os.path.join('~', 'ampligraph_datasets'))
     data_home = os.path.expanduser(data_home)
     if not os.path.exists(data_home):
         os.makedirs(data_home)
     logger.debug('data_home is set to {}'.format(data_home))
-    return data_home 
+    return data_home
+
 
 def _unzip_dataset(data_home, file_path):
-    #TODO - add error checking
-    with zipfile.ZipFile(file_path,'r') as zip_ref:
+    # TODO - add error checking
+    with zipfile.ZipFile(file_path, 'r') as zip_ref:
         logger.debug('Unzipping {} to {}'.format(file_path, data_home))
         zip_ref.extractall(data_home)
     os.remove(file_path)
 
-def _fetch_remote_data(url,dataset_dir,data_home):
+
+def _fetch_remote_data(url, dataset_dir, data_home):
     file_path = '{}.zip'.format(dataset_dir)
     if not Path(file_path).exists():
-        urllib.request.urlretrieve(url,file_path)
-        #TODO - add error checking
-    _unzip_dataset(data_home,file_path)
-    
-def _fetch_dataset(dataset_name,data_home=None,url=None):
+        urllib.request.urlretrieve(url, file_path)
+        # TODO - add error checking
+    _unzip_dataset(data_home, file_path)
+
+
+def _fetch_dataset(dataset_name, data_home=None, url=None):
     data_home = _get_data_home(data_home)
-    dataset_dir = os.path.join(data_home,dataset_name)
+    dataset_dir = os.path.join(data_home, dataset_name)
     if not os.path.exists(dataset_dir):
         if url is None:
             msg = 'No dataset at {} and no url provided.'.format(local_path)
             logger.error(msg)
             raise Exception(msg)
-        _fetch_remote_data(url,dataset_dir,data_home)
+        _fetch_remote_data(url, dataset_dir, data_home)
     return dataset_dir
 
-def load_from_csv(directory_path,file_name, sep='\t', header=None):
+
+def load_from_csv(directory_path, file_name, sep='\t', header=None):
     """Load a csv file
     
     Loads a knowledge graph serialized in a csv file as:
@@ -111,13 +115,15 @@ def load_from_csv(directory_path,file_name, sep='\t', header=None):
     df = df.drop_duplicates()
     return df.values
 
+
 def load_dataset(url, data_home=None, train_name='train.txt', valid_name='valid.txt', test_name='test.txt'):
-    dataset_name = url[url.rfind('/')+1:url.rfind('.')]
+    dataset_name = url[url.rfind('/') + 1:url.rfind('.')]
     dataset_path = _fetch_dataset(dataset_name, data_home, url)
     train = load_from_csv(dataset_path, train_name)
     valid = load_from_csv(dataset_path, valid_name)
     test = load_from_csv(dataset_path, test_name)
-    return {'train':train,'valid':valid,'test':test}
+    return {'train': train, 'valid': valid, 'test': test}
+
 
 def load_wn18(data_home=None):
     """Load the WN18 dataset
@@ -146,7 +152,8 @@ def load_wn18(data_home=None):
 
     """
 
-    return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['WN18']), data_home)
+    return load_dataset('{}{}'.format(REMOTE_DATASET_SERVER, DATASET_FILE_NAME['WN18']), data_home)
+
 
 def load_wn18rr(data_home=None):
     """ Load the WN18RR dataset
@@ -172,7 +179,8 @@ def load_wn18rr(data_home=None):
     
     """
 
-    return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['WN18RR']), data_home)
+    return load_dataset('{}{}'.format(REMOTE_DATASET_SERVER, DATASET_FILE_NAME['WN18RR']), data_home)
+
 
 def load_fb15k(data_home=None):
     """Load the FB15k dataset
@@ -206,8 +214,9 @@ def load_fb15k(data_home=None):
             '/m/05lf_']], dtype=object)
 
     """
-    
-    return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['FB15K']), data_home)
+
+    return load_dataset('{}{}'.format(REMOTE_DATASET_SERVER, DATASET_FILE_NAME['FB15K']), data_home)
+
 
 def load_fb15k_237(data_home=None):
     """Load the FB15k-237 dataset
@@ -232,7 +241,8 @@ def load_fb15k_237(data_home=None):
 
     """
 
-    return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['FB15K_237']), data_home)
+    return load_dataset('{}{}'.format(REMOTE_DATASET_SERVER, DATASET_FILE_NAME['FB15K_237']), data_home)
+
 
 def load_yago3_10(data_home=None):
     """ Load the YAGO3-10 dataset
@@ -258,7 +268,8 @@ def load_yago3_10(data_home=None):
     
     """
 
-    return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['YAGO3_10']), data_home)
+    return load_dataset('{}{}'.format(REMOTE_DATASET_SERVER, DATASET_FILE_NAME['YAGO3_10']), data_home)
+
 
 def load_fb13(data_home=None):
     """Load the FB13 Dataset
@@ -288,10 +299,11 @@ def load_fb13(data_home=None):
     X['valid'][0]:  ['cornelie_van_zanten' 'gender' 'female' '1']
     
     """
-    #return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['FB13']), data_home)
+    # return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['FB13']), data_home)
     msg = 'Currently not supported due to filename name error. Blocked by issue #50'
     logger.error(msg)
     raise NotImplementedError(msg)
+
 
 def load_wn11(data_home=None):
     """Load the WN11 Dataset
@@ -322,10 +334,11 @@ def load_wn11(data_home=None):
 
     """
 
-    #return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['WN11']), data_home)
+    # return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['WN11']), data_home)
     msg = 'Currently not supported due to filename name error. Blocked by issue #50'
     logger.error(msg)
     raise NotImplementedError(msg)
+
 
 def load_all_datasets(data_home=None):
     load_wn18(data_home)
@@ -333,8 +346,8 @@ def load_all_datasets(data_home=None):
     load_fb15k(data_home)
     load_fb15k_237(data_home)
     load_yago3_10(data_home)
-    #load_fb13(data_home)
-    #load_wn11(data_home)
+    # load_fb13(data_home)
+    # load_wn11(data_home)
 
 
 def load_from_rdf(folder_name, file_name, format='nt', data_home=None):

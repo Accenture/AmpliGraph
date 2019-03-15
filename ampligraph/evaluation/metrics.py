@@ -140,7 +140,7 @@ def mrr_score(ranks):
         logger.debug('Converting ranks to numpy array.')
         ranks = np.asarray(ranks)
 
-    return np.sum(1/ranks)/len(ranks)
+    return np.sum(1 / ranks) / len(ranks)
 
 
 def rank_score(y_true, y_pred, pos_lab=1):
@@ -236,4 +236,4 @@ def mr_score(ranks):
     if isinstance(ranks, list):
         logger.debug('Converting ranks to numpy array.')
         ranks = np.asarray(ranks)
-    return np.sum(ranks)/len(ranks)
+    return np.sum(ranks) / len(ranks)

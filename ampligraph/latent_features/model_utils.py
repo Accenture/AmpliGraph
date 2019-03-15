@@ -1,5 +1,5 @@
 import os
-import pickle 
+import pickle
 import importlib
 import logging
 
@@ -11,6 +11,7 @@ SAVED_MODEL_FILE_NAME = 'model.pickle'
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+
 def save_model(model, loc):
     """ Save a trained model to disk.
     
@@ -18,7 +19,6 @@ def save_model(model, loc):
     --------
     >>> import numpy as np
     >>> from ampligraph.latent_features import ComplEx, save_model, restore_model
-    >>> model = ComplEx(batches_count=2, seed=555, epochs=20, k=10)
     >>> X = np.array([['a', 'y', 'b'],
     >>>               ['b', 'y', 'a'],
     >>>               ['a', 'y', 'c'],
@@ -55,11 +55,13 @@ def save_model(model, loc):
         'rel_to_idx': model.rel_to_idx,
     }
     model.get_embedding_model_params(obj)
-    logger.debug('Saving parameters: hyperparams:{}\n\tis_fitted:{}'.format(model.all_params,model.is_fitted))
+    logger.debug('Saving parameters: hyperparams:{}\n\tis_fitted:{}'.format(model.all_params, model.is_fitted))
     with open(hyperParamPath, 'wb') as fw:
         pickle.dump(obj, fw)
 
-    #dump model tf
+        # dump model tf
+
+
 def restore_model(loc):
     """ Restore a saved model from disk.
     

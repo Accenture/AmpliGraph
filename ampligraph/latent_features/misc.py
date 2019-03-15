@@ -9,6 +9,7 @@ DEBUG = True
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+
 def get_entity_triples(entity, graph):
     """
     Given an entity label e included in the graph G, returns an list of all triples where e appears either as subject or object.
@@ -39,4 +40,3 @@ def get_entity_triples(entity, graph):
     neighbours = graph[rows, :]
 
     return neighbours
-

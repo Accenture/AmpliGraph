@@ -9,30 +9,32 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-
-def register_regularizer(name, external_params=[], class_params= {}):
+def register_regularizer(name, external_params=[], class_params={}):
     def insert_in_registry(class_handle):
         REGULARIZER_REGISTRY[name] = class_handle
         class_handle.name = name
         REGULARIZER_REGISTRY[name].external_params = external_params
         REGULARIZER_REGISTRY[name].class_params = class_params
         return class_handle
+
     return insert_in_registry
 
-#defalut lambda to be used in L1, L2 and L3 regularizer
+
+# defalut lambda to be used in L1, L2 and L3 regularizer
 DEFAULT_LAMBDA = 1e-5
 
-#default regularization - L2
+# default regularization - L2
 DEFAULT_NORM = 2
+
 
 class Regularizer(abc.ABC):
     """Abstract class for Regularizer.
     """
-    
+
     name = ""
     external_params = []
     class_params = {}
-    
+
     def __init__(self, hyperparam_dict, verbose=False):
         """Initialize the regularizer.
 
@@ -43,8 +45,8 @@ class Regularizer(abc.ABC):
             (Keys are described in the hyperparameters section)
         """
         self._regularizer_parameters = {}
-        
-        #perform check to see if all the required external hyperparams are passed
+
+        # perform check to see if all the required external hyperparams are passed
         try:
             self._init_hyperparams(hyperparam_dict)
             if verbose:
@@ -54,15 +56,15 @@ class Regularizer(abc.ABC):
                 logger.info('Name:{}'.format(self.name))
                 print('Parameters:')
                 logger.info('Parameters:')
-                for key,value in self._regularizer_parameters.items():
-                    logger.info('\t{}:{}\n'.format(key,value))
+                for key, value in self._regularizer_parameters.items():
+                    logger.info('\t{}:{}\n'.format(key, value))
                     print("  ", key, ": ", value)
-            
+
         except KeyError as e:
             msg = 'Some of the hyperparams for regularizer were not passed.\n{}'.format(e)
             logger.error(msg)
             raise Exception(msg)
-            
+
     def get_state(self, param_name):
         """Get the state value.
 
@@ -111,7 +113,7 @@ class Regularizer(abc.ABC):
         """
         logger.error('This function is a placeholder in an abstract class')
         NotImplementedError("This function is a placeholder in an abstract class")
-        
+
     def apply(self, trainable_params):
         """ Interface to external world. This function performs input checks, input pre-processing, and
         and applies the loss function.
@@ -128,7 +130,8 @@ class Regularizer(abc.ABC):
         """
         loss = self._apply(trainable_params)
         return loss
-    
+
+
 @register_regularizer("LP", ['p', 'lambda'])
 class LPRegularizer(Regularizer):
     """ Performs LP regularization
@@ -149,7 +152,7 @@ class LPRegularizer(Regularizer):
 
     def __init__(self, hyperparam_dict, verbose=False):
         super().__init__(hyperparam_dict, verbose)
-        
+
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.
         
@@ -166,14 +169,15 @@ class LPRegularizer(Regularizer):
             
                 Norm of the regularizer (``1`` for L1 regularizer, ``2`` for L2 and so on.) (default:2) 
                 
-        """ 
+        """
         self._regularizer_parameters['lambda'] = hyperparam_dict.get('lambda', DEFAULT_LAMBDA)
         self._regularizer_parameters['p'] = hyperparam_dict.get('p', DEFAULT_NORM)
         if type(self._regularizer_parameters['p']) is not int:
-            msg = 'Invalid value for regularizer parameter p:{}. Supported type int'.format(self._regularizer_parameters['p'])
+            msg = 'Invalid value for regularizer parameter p:{}. Supported type int'.format(
+                self._regularizer_parameters['p'])
             logger.error(msg)
-            raise Exception(msg) 
-        
+            raise Exception(msg)
+
     def _apply(self, trainable_params):
         """ Apply the regularizer to the params.
 
@@ -190,15 +194,17 @@ class LPRegularizer(Regularizer):
         """
         if np.isscalar(self._regularizer_parameters['lambda']):
             self._regularizer_parameters['lambda'] = [self._regularizer_parameters['lambda']] * len(trainable_params)
-        elif isinstance(self._regularizer_parameters['lambda'], list) and len(self._regularizer_parameters['lambda']) == len(trainable_params):
+        elif isinstance(self._regularizer_parameters['lambda'], list) and len(
+                self._regularizer_parameters['lambda']) == len(trainable_params):
             pass
         else:
             logger.error('Regularizer weight must be a scalar or a list with length equal to number of params passes')
-            raise ValueError("Regularizer weight must be a scalar or a list with length equal to number of params passes") 
+            raise ValueError(
+                "Regularizer weight must be a scalar or a list with length equal to number of params passes")
 
-            
         loss_reg = 0
         for i in range(len(trainable_params)):
-            loss_reg += (self._regularizer_parameters['lambda'][i] * tf.reduce_sum(tf.pow(tf.abs(trainable_params[i]), self._regularizer_parameters['p'])))
+            loss_reg += (self._regularizer_parameters['lambda'][i] * tf.reduce_sum(
+                tf.pow(tf.abs(trainable_params[i]), self._regularizer_parameters['p'])))
 
-        return loss_reg 
+        return loss_reg
