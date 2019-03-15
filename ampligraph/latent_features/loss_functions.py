@@ -170,12 +170,20 @@ class PairwiseLoss(Loss):
     where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives,
     :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
-     **Hyperparameters:**
-    
-     - 'margin' - Margin to be used in pairwise loss computation (default:1)
     """
 
-    def __init__(self, eta, hyperparam_dict, verbose=False):
+    def __init__(self, eta, hyperparam_dict={'margin': 1}, verbose=False):
+        """Initialize Loss.
+
+        Parameters
+        ----------
+        eta: int
+            number of negatives
+        hyperparam_dict : dict
+            dictionary of hyperparams.
+
+            - 'margin': float. Margin to be used in pairwise loss computation (default:1)
+        """
         super().__init__(eta, hyperparam_dict, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
@@ -208,12 +216,19 @@ class NLLLoss(Loss):
 
     where :math:`y` is the label of the statement :math:` \in [-1, 1]`, :math:`\mathcal{G}` is the set of positives,
     :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
-    
-     **Hyperparameters:**  None
 
     """
 
     def __init__(self, eta, hyperparam_dict, verbose=False):
+        """Initialize Loss.
+
+        Parameters
+        ----------
+        eta: int
+            number of negatives
+        hyperparam_dict : dict
+            dictionary of hyperparams. No hyperparameters are required for this loss.
+        """
         super().__init__(eta, hyperparam_dict, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
@@ -257,13 +272,21 @@ class AbsoluteMarginLoss(Loss):
 
        where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives,
        :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
-       
-        **Hyperparameters:**
-       
-        - 'margin' - Margin to be used in pairwise loss computation(default:1)
+
     """
 
-    def __init__(self, eta, hyperparam_dict, verbose=False):
+    def __init__(self, eta, hyperparam_dict={'margin': DEFAULT_MARGIN}, verbose=False):
+        """Initialize Loss
+
+        Parameters
+        ----------
+        eta: int
+            number of negatives
+        hyperparam_dict : dict
+            dictionary of hyperparams.
+
+            - 'margin': float. Margin to be used in pairwise loss computation (default:1)
+        """
         super().__init__(eta, hyperparam_dict, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
@@ -313,15 +336,23 @@ class SelfAdversarialLoss(Loss):
            \mathcal{L} = -log \sigma(\gamma - d_r (h,t)) - \sum_{i=1}^{n} p(h_{i}^{'}, r, t_{i}^{'} ) \ log \ \sigma(d_r (h_{i}^{'},t_{i}^{'}) - \gamma)
 
        where :math:`\gamma` is the margin, and :math:`p(h_{i}^{'}, r, t_{i}^{'} )` is the sampling proportion
-       
-        **Hyperparameters:**
-        
-        - 'margin' - Margin to be used in adversarial loss computation (default:3)
-        
-        - 'alpha' - Temperature of sampling (default:0.5)
+
     """
 
-    def __init__(self, eta, hyperparam_dict, verbose=False):
+    def __init__(self, eta, hyperparam_dict={'margin': DEFAULT_MARGIN_ADVERSARIAL,
+                                             'alpha': DEFAULT_ALPHA_ADVERSARIAL}, verbose=False):
+        """Initialize Loss
+
+        Parameters
+        ----------
+        eta: int
+            number of negatives
+        hyperparam_dict : dict
+            dictionary of hyperparams.
+
+            - 'margin': float. Margin to be used in pairwise loss computation (default:1)
+            - 'alpha' : float. Temperature of sampling (default:0.5)
+        """
         super().__init__(eta, hyperparam_dict, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
@@ -364,6 +395,6 @@ class SelfAdversarialLoss(Loss):
 
         # Compute Loss based on eg 5
         loss = tf.reduce_sum(-tf.log(tf.nn.sigmoid(margin - tf.negative(scores_pos)))) - \
-               tf.reduce_sum(tf.multiply(p_neg, \
+               tf.reduce_sum(tf.multiply(p_neg,
                                          tf.log(tf.nn.sigmoid(tf.negative(scores_neg_reshaped) - margin))))
         return loss
