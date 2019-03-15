@@ -1,142 +1,172 @@
-# Knowledge Graph Embedding Models
+# AmpliGraph
+
+[![DOI](https://zenodo.org/badge/164881995.svg)](https://zenodo.org/badge/latestdoi/164881995)
+[![Documentation Status](https://readthedocs.org/projects/ampligraph/badge/?version=latest)](http://ampligraph.readthedocs.io/?badge=latest)
 
 
-## About
+**Open source Python library that predicts links between concepts in a knowledge graph.**
 
-Explainable Link Prediction (`ampligraph`) is a machine learning library for Relational Learning, a branch of machine learning
+AmpliGraph is a suite of neural machine learning models for relational Learning, a branch of machine learning
 that deals with supervised learning on knowledge graphs.
 
-The library includes Relational Learning models, i.e. supervised learning models designed to predict
-links in knowledge graphs.
 
-The tool also includes the required evaluation protocol, metrics, knowledge graph preprocessing,
-and negative statements generator strategies.
+**Use AmpliGraph if you need to**:
+
+* Discover new knowledge from an existing knowledge graph.
+* Complete large knowledge graphs with missing statements.
+* Generate stand-alone knowledge graph embeddings.
+* Develop and evaluate a new relational model.
 
 
-# Installation
+AmpliGraph's machine learning models generate **knowledge graph embeddings**, vector representations of concepts in a metric space:
 
-### Provision a Virtual Environment
+![](docs/img/kg_lp_step1.png)
 
-**Installation using Anaconda is highly recommended.**
+It then combines embeddings with model-specific scoring functions to predict unseen and novel links:
 
-Create & activate Virtual Environment (conda)
+![](docs/img/kg_lp_step2.png)
+
+
+## Key Features
+
+
+* **Intuitive APIs**: AmpliGraph APIs are designed to reduce the code amount required to learn models that predict links in knowledge graphs.
+* **GPU-Ready**: AmpliGraph is based on TensorFlow, and it is designed to run seamlessly on CPU and GPU devices - to speed-up training.
+* **Extensible**: Roll your own knowledge graph embeddings model by extending AmpliGraph base estimators.
+
+
+## Modules
+
+AmpliGraph includes the following submodules:
+
+* **KG Loaders**: Helper functions to load datasets (knowledge graphs).
+* **Latent Feature Models**: knowledge graph embedding models. AmpliGraph contains: TransE, DistMult, ComplEx, HolE. (More to come!)
+* **Evaluation**: Metrics and evaluation protocols to assess the predictive power of the models.
+
+
+
+## Installation
+
+### Prerequisites
+
+* Linux Box
+* Python ≥ 3.6
+
+#### Provision a Virtual Environment
+
+Create and activate a virtual environment (conda)
 
 ```
 conda create --name ampligraph python=3.6
 source activate ampligraph
 ```
 
-### Install TensorFlow
+#### Install TensorFlow
 
-**CPU version**
+AmpliGraph is built on TensorFlow 1.x.
+Install from pip or conda:
 
-```
-pip install tensorflow
-```
-
-or you could install the version packaged with conda:
+**CPU-only**
 
 ```
-conda install tensorflow
+pip install tensorflow==1.12.0
+
+or
+
+conda install tensorflow=1.12.0
 ```
 
-**GPU version**
+**GPU support**
 
 ```
-pip install tensorflow-gpu
-```
+pip install tensorflow-gpu==1.12.0
 
-or you could install the version packaged with conda:
+or
 
-```
-conda install tensorflow-gpu
+conda install tensorflow-gpu=1.12.0
 ```
 
 
-## Install the library
+
+### Install AmpliGraph
 
 
-You can install the latest stable release of `ampligraph` with pip, using the latest wheel (0.3.0) published by Dublin Labs:
-*Note this work only from within the Dublin Labs network*
+Install the latest stable release from pip:
 
 ```
-pip install http://dubaldeweb001.techlabs.accenture.com/wheels/ampligraph/ampligraph-0.3.dev0-py3-none-any.whl
+pip install ampligraph
 ```
 
 If instead you want the most recent development version, you can clone the repository
-and install from source (this will pull the latest commit on `develop` branch).
+and install from source (your local working copy will be on the latest commit on the `develop` branch).
 The code snippet below will install the library in editable mode (`-e`):
 
 ```
-git clone ssh://git@innersource.accenture.com/dl/ampligraph.git
-cd ampligraph
+git clone https://github.com/Accenture/AmpliGraph.git
+cd AmpliGraph
 pip install -e .
-
 ```
 
 
-## Download the Datasets
-
-Datasets can be downloaded from [SharePoint](https://ts.accenture.com/sites/TechLabs-Dublin/_layouts/15/guestaccess.aspx?guestaccesstoken=Uz28P2m4hWp2TEgbvFrD%2b4BiURBHVTAw0NbPBRLzWWA%3d&folderid=2_012fd581718e74e4a9305c845a1224ee1&rev=1).
-Once downloaded, decompress the archives.
-
-**You must also set the following environment variable:**
-
-```
-export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
-```
-
-## Sanity Check
+### Sanity Check
 
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'0.3-dev'
+'1.0-dev'
 ```
 
-## Installing with HDT Support
-[HDT](http://www.rdfhdt.org/) is a compressed type of RDF graph data. By default, the installed ampligraph library does not support loading this data type. To enable it, you must have **`gcc` with C++11 support** installed in your Linux box.
 
-**Ubuntu**
+## Predictive Power Evaluation (MRR Filtered)
 
-```
-sudo add-apt-repository ppa:jonathonf/gcc-7.3
-sudo apt-get update
-sudo apt-get install gcc-7
-```
-
-**CentOS**
-
-Below are commands we used to install gcc 7.3.1 on CentOS 7.5:
-
-```
-sudo yum install centos-release-scl
-sudo yum install devtoolset-7-gcc*
-scl enable devtoolset-7 bash
-```
-
-Once finished installing gcc, you can install the ampligraph library with hdt support by:
-
-```
-pip install .[hdt]
-```
-
-##  Documentation
-
-**[Latest documentation available here](http://10.106.43.211/docs/ampligraph/dev/index.html)**
+|          |FB15k |WN18   |WN18RR |FB15K-237|
+|----------|------|-------|-------|---------|
+| TransE   | 0.55 | 0.50  | 0.23  | 0.32    |
+| DistMult | 0.79 | 0.83  | 0.44  | 0.29    |
+| ComplEx  | 0.79 | 0.94  | 0.44  | 0.30    |
+| HolE     | 0.80 | 0.94  | 0.47  | 0.28    |
 
 
-The project documentation can be built with Sphinx:
+## Documentation
+
+**[Documentation available here](http://docs.ampligraph.org)**
+
+The project documentation can be built from your local working copy with:
 
 ```
 cd docs
 make clean autogen html
 ```
 
-## Tests
+## How to contribute
 
+See [guidelines](http://docs.ampligraph.org) from AmpliGraph documentation.
+
+
+## How to Cite
+
+If you like AmpliGraph and you use it in your project, why not starring the project on GitHub!
+
+[![GitHub stars](https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/Accenture/AmpliGraph/stargazers/)
+
+
+If you instead use AmpliGraph in an academic publication, cite as:
 
 ```
-pytest -s tests
+@misc{ampligraph,
+ author= {Luca Costabello and
+          Sumit Pai and
+          Chan Le Van and
+          Rory McGrath and
+          Nick McCarthy},
+ title = {{AmpliGraph: a Library for Representation Learning on Knowledge Graphs}},
+ month = mar,
+ year  = 2019,
+ doi   = {10.5281/zenodo.2595049},
+ url   = {https://doi.org/10.5281/zenodo.2595049}
+}
 ```
 
+## Licence
+
+AmpliGraph is licensed under the Apache 2.0 License.

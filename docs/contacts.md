@@ -1,22 +1,51 @@
-# Contacts
+# About
 
-AmpliGraph is developed and maintained by Accenture Labs Dublin.
+AmpliGraph is maintained by [Accenture Labs Dublin](https://www.accenture.com/us-en/accenture-technology-labs-index).
 
-For inquiries, contact [luca.costabello@accenture.com](mailto:luca.costabello@accenture.com).
+## Contact us
 
-A dedicated [Microsoft Teams channel is available here](https://teams.microsoft.com/l/team/19%3ad909bb60a8254765a11c18b1645c27ed%40thread.skype/conversations?groupId=8caaa2f8-27a2-4a01-9bfa-07f60f0527ba&tenantId=e0793d39-0939-496d-b129-198edd916feb)
-(Join code: `vsprdag`).
+The AmpliGraph [Slack channel is available here](https://join.slack.com/t/ampligraph/shared_invite/enQtNTc2NTI0MzUxMTM5LTAxM2ViYTc0ZTI2NzNhOGZiNjkzZjNkN2NkNDc3NWUyZmU2Njg0MDMxYWY5NGUwYWVmOTNkOWI5NmI0NDJjYWI).
+
+You can contact us by email at [about@ampligraph.org](mailto:about@ampligraph.org).
+
+
+## How to Cite
+
+If you like AmpliGraph and you use it in your project, why not starring the project on GitHub!
+
+[![GitHub stars](https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/Accenture/AmpliGraph/stargazers/)
+
+
+If you instead use AmpliGraph in an academic publication, cite as:
+
+```
+@misc{ampligraph,
+ author= {Luca Costabello and
+          Sumit Pai and
+          Chan Le Van and
+          Rory McGrath and
+          Nick McCarthy},
+ title = {{AmpliGraph: a Library for Representation Learning on Knowledge Graphs}},
+ month = mar,
+ year  = 2019,
+ doi   = {10.5281/zenodo.2595049},
+ url   = {https://doi.org/10.5281/zenodo.2595049}
+}
+```
+[![DOI](https://zenodo.org/badge/164881995.svg)](https://zenodo.org/badge/latestdoi/164881995)
+
+
 
 ## Contributors
 
-+ [Rachit Agarwal](mailto:rachit.r.agarwal@accenture.com)
-+ [Jules Bayet](mailto:jules.bayet@polytechnique.edu)
-+ [Luca Costabello](mailto:luca.costabello@accenture.com)
-+ [Freddy Lecue](mailto:freddy.lecuen@accenture.com)
-+ [Chan Le Van](mailto:chan.v.le.van@accenture.com)
-+ [Nicholas McCarthy](mailto:nicholas.mccarthy@accenture.com)
-+ [Rory McGrath](mailto:rory.m.mcgrath@accenture.com)
-+ [Sumit Pai](mailto:jadran.sirotkovic@accenture.com)
+Active contributors (in alphabetical order)
+
++ [Luca Costabello](http://github.com/lukostaz)
++ [Chan Le Van](http://github.com/chanlevan)
++ [Nicholas McCarthy](http://github.com/NicholasMcCarthy)
++ [Rory McGrath](http://github.com/rorymcgrath)
++ [Sumit Pai](http://github.com/sumitpai)
+
 
 
 

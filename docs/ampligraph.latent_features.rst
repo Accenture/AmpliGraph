@@ -1,38 +1,138 @@
-Latent Features Models
-======================
+Models
+======
 
 .. currentmodule:: ampligraph.latent_features
 
 .. automodule:: ampligraph.latent_features
 
 
-Embedding Models
-----------------
+Knowledge Graph Embedding Models
+--------------------------------
+
+.. autosummary::
+    :toctree: generated
+    :template: class.rst
+
+    RandomBaseline
+    TransE
+    DistMult
+    ComplEx
+    HolE
+
+Anatomy of a Model
+^^^^^^^^^^^^^^^^^^
+
+Knowledge graph embeddings are learned by training a neural architecture over a graph. Although such architectures vary,
+the training phase always consists in minimizing a :ref:`loss function <loss>` :math:`\mathcal{L}` that includes a
+*scoring function* :math:`f_{m}(t)`, i.e. a model-specific function that assigns a score to a triple :math:`t=(sub,pred,obj)`.
+
+
+AmpliGraph models include the following components:
+
++ :ref:`Scoring function <scoring>` :math:`f(t)`
++ :ref:`Loss function <loss>` :math:`\mathcal{L}`
++ :ref:`Optimization algorithm <optimizer>`
++ :ref:`Negatives generation strategy <negatives>`
+
+AmpliGraph comes with a number of such components. They can be used in any combination to come up with a model that
+performs sufficiently well for the dataset of choice.
+
+AmpliGraph features a number of abstract classes that can be extended to design new models:
 
 .. autosummary::
     :toctree: generated
     :template: class.rst
 
     EmbeddingModel
-    TransE
-    DistMult
-    ComplEx
+    Loss
+    Regularizer
 
+
+.. _scoring:
+
+Scoring functions
+-----------------
+
+Existing models propose scoring functions that combine the embeddings
+:math:`\mathbf{e}_{sub},\mathbf{e}_{pred}, \mathbf{e}_{obj} \in \mathcal{R}^k` of the subject, predicate,
+and object of a triple :math:`t=(sub,pred,obj)` according to different intuitions:
+
++ :class:`TransE` :cite:`bordes2013translating` relies on distances. The scoring function computes a similarity between the embedding of the subject translated by the embedding of the predicate  and the embedding of the object, using the :math:`L_1` or :math:`L_2` norm :math:`||\cdot||`:
+
+.. math::
+    f_{TransE}=-||\mathbf{e}_{sub} + \mathbf{e}_{pred} - \mathbf{e}_{obj}||_n
+
++ :class:`DistMult` :cite:`yang2014embedding` uses the trilinear dot product:
+
+.. math::
+    f_{DistMult}=\langle \mathbf{r}_p, \mathbf{e}_s, \mathbf{e}_o \rangle
+
++ :class:`ComplEx` :cite:`trouillon2016complex` extends DistMult with the Hermitian dot product:
+
+.. math::
+    f_{ComplEx}=Re(\langle \mathbf{r}_p, \mathbf{e}_s, \overline{\mathbf{e}_o}  \rangle)
+
++ :class:`HolE` :cite:`nickel2016holographic` uses circular correlation.
+
+.. math::
+    f_{HolE}=\mathbf{w}_r \cdot (\mathbf{e}_s \star \mathbf{e}_o) = \frac{1}{k}\mathcal{F}(\mathbf{w}_r)\cdot( \overline{\mathcal{F}(\mathbf{e}_s)} \odot \mathcal{F}(\mathbf{e}_o))
+
+Other models such ConvE include convolutional layers :cite:`DettmersMS018`
+(will be available in AmpliGraph future releases).
+
+
+.. _loss:
 
 Loss Functions
 --------------
 
+AmpliGraph includes a number of loss functions commonly used in literature.
+Each function can be used with any of the implemented models. Loss functions are passed to models as hyperparameter,
+and they can be thus used :ref:`during model selection <eval>`.
+
+
+
 .. autosummary::
     :toctree: generated
-    :template: function.rst
+    :template: class.rst
 
-    pairwise_loss
-    negative_log_likelihood_loss
-    absolute_margin_loss
+    PairwiseLoss
+    NLLLoss
+    AbsoluteMarginLoss
+    SelfAdversarialLoss
+    
+.. _ref-reg:
+
+Regularizers
+--------------
+
+AmpliGraph includes a number of regularizers that can be used with the :ref:`loss function <loss>`.
+:class:`LPRegularizer` supports L1, L2, and L3.
+
+.. autosummary::
+    :toctree: generated
+    :template: class.rst
+
+    LPRegularizer
+
+
+.. _optimizer:
+
+Optimizers
+----------
+
+The goal of the optimization procedure is learning optimal embeddings, such that the scoring function is able to
+assign high scores to positive statements and low scores to statements unlikely to be true.
+
+We support SGD-based optimizers provided by TensorFlow, by setting the ``optimizer`` argument in a model initializer.
+Best results are currently obtained with Adam.
 
 
 Utils Functions
 ---------------
+
+Models can be saved and restored from disk. This is useful to avoid re-training a model.
+
 
 .. autosummary::
     :toctree: generated

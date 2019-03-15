@@ -1,33 +1,19 @@
 # Changelog
 
-## 0.3-dev
-- ConvE
-- RotatE
-- Tensorflow-based negatives generation
-- Adversarial negatives generation strategy
-
-
-## 0.2 
-### [1 Aug 2018]
-
-- RDF, ntriples loaders
-- RDF HDT loader
-- Freebase13 loader
-- Wordnet11 loader
-- ICEWS loader
-- Added save/restore capabilities
-
-## 0.1 
-### [8 Jan 2018]
-
-- EmbeddingModel abstract class
+## 1.0-dev
 - TransE
 - DistMult
 - ComplEx
-- pairwise and nll loss functions
-- load functions for WN18, FB15K, FB15K-237
-- generic load function for csv files
-- Evaluation protocol
+- FB15k, WN18, FB15k-237, WN18RR, YAGO3-10 loaders
+- generic lloader for csv files
+- RDF, ntriples loaders
+- Learning to rank evaluation protocol
+- Tensorflow-based negatives generation
+- save/restore capabilities for mdoels
+- pairwise loss
+- nll loss
+- self-adversarial loss
+- absolute margin loss
 - Model selection routine
 - LCWA corruption strategy for training and eval
 - rank, Hits@N, MRR scores functions

@@ -9,11 +9,17 @@ AmpliGraph
 **Open source Python library that predicts links between concepts in a knowledge graph.**
 
 
+`View the GitHub repository <https://github.com/Accenture/AmpliGraph/>`_ |ImageLink|_
+
+   .. |ImageLink| image:: /img/GitHub-Mark-32px.png
+   .. _ImageLink: https://github.com/Accenture/AmpliGraph/
+
 AmpliGraph is a suite of neural machine learning models for relational Learning, a branch of machine learning
 that deals with supervised learning on knowledge graphs.
 
-
 .. image:: img/kg_lp.png
+   :scale: 40%
+   :align: center
 
 
 **Use AmpliGraph if you need to**:
@@ -48,99 +54,45 @@ Key Features
 .. and negative statements generator strategies.
 
 
-System Architecture
--------------------
-
-.. image:: img/arch.png
-   :scale: 60%
-   :align: center
+Modules
+-------
 
 AmpliGraph includes the following submodules:
 
-* **KG Loaders**: Helper functions to load datasets (knowledge graphs).
-* **Latent Feature Models**: knowledge graph embedding models. AmpliGraph contains: TransE, DistMult, ComplEx, ConvE, and RotatE.
+* **Input**: Helper functions to load datasets (knowledge graphs).
+* **Latent Feature Models**: knowledge graph embedding models. AmpliGraph contains: TransE, DistMult, ComplEx, HolE. (More to come!)
 * **Evaluation**: Metrics and evaluation protocols to assess the predictive power of the models.
 
 
-
-Quick Start
+How to Cite
 -----------
 
+If you like AmpliGraph and you use it in your project, why not starring the `project on GitHub <https://github.com/Accenture/AmpliGraph/>`_!
 
-Import a dataset with helper functions:
+|GitHub stars|
 
-.. code:: ipython3
+.. |GitHub stars| image:: https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=2592000
+   :target: https://github.com/Accenture/AmpliGraph/stargazers/
 
-    X = load_wn18()
+If you instead use AmpliGraph in an academic publication, cite as:
 
-Declare a knowledge graph embeddings model:
+.. code-block:: bibtex
 
-.. code:: ipython3
-    
-    model = ComplEx()
+   @misc{ampligraph,
+     author= {Luca Costabello and
+              Sumit Pai and
+              Chan Le Van and
+              Rory McGrath and
+              Nick McCarthy},
+     title = {{AmpliGraph: a Library for Representation Learning on Knowledge Graphs}},
+     month = mar,
+     year  = 2019,
+     doi   = {10.5281/zenodo.2595049},
+     url   = {https://doi.org/10.5281/zenodo.2595049}
+   }
 
-Fit the model on the training set
-
-.. code:: ipython3
-
-    model.fit(X['train'])
-
-Predict scores for 5 unseen statements, and convert scores into probability estimates:
-
-.. code:: ipython3
-
-    y_pred = model.predict(X['test'][:5,])
-
-    from scipy.special import expit
-    expit(y_pred)
-
-    array([0.76576346, 0.7471501 , 0.7953226 , 0.76191056, 0.7733138 ],
-      dtype=float32)
-
-
-Evaluate the performance of the model with the state-of-the-art evaluation protocol:
-
-.. code:: ipython3
-
- ranks = evaluate_performance(X['test'][:10], model=model)
- print(ranks)
-
- [ 1  2  1  1  2  1  1  1  1 17]
-
-
-
-Compute learning to rank metrics:
-
-.. code:: ipython3
-
-    mrr = mrr_score(ranks)
-    hits_10 = hits_at_n_score(ranks, n=10)
-    print("MRR: %f, Hits@10: %f" % (mrr, hits_10))
-   
-
-    MRR: 0.805882, Hits@10: 0.900000
-
-
-Apply dimensionality reduction and visualize the embeddings:
-
-.. code:: ipython3
-
-   import matplotlib.pyplot as plt
-   from sklearn.manifold import TSNE
-   
-   embs = model.get_embeddings(embs_labels, type='entity')
-   embs_2d = TSNE(n_components=2).fit_transform(embs)
-
-   fig, ax = plt.subplots()
-   ax.scatter(embs_2d[:, 0], embs_2d[:, 1])
-   for i, lab in enumerate(embs_labels):
-       ax.annotate(lab, (embs_2d[i, 0], embs_2d[i, 1]))
-
-   plt.show(fig)
-
-
-.. image:: img/concept_embeddings_wordnet3_1_v0_2.png
-
+.. image:: https://zenodo.org/badge/164881995.svg
+   :target: https://zenodo.org/badge/latestdoi/164881995
 
 
 .. toctree::
@@ -148,9 +100,11 @@ Apply dimensionality reduction and visualize the embeddings:
    :caption: Contents:
 
    install
+   background
    api
    dev
    examples
+   experiments
    biblio
    changelog
    contacts

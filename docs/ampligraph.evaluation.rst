@@ -13,12 +13,13 @@ Learning-to-rank metrics to evaluate the performance of neural graph embedding m
     :toctree: generated
     :template: function.rst
 
-    mrr_score
-    mar_score
-    hits_at_n_score
     rank_score
-    quality_loss_mse
+    mrr_score
+    mr_score
+    hits_at_n_score
 
+
+.. _negatives:
 
 Negatives Generation
 --------------------
@@ -33,6 +34,8 @@ Negatives generation routines. These are corruption strategies based on the Loca
     generate_corruptions_for_fit
 
 
+.. _eval:
+
 Evaluation & Model Selection
 -----------------------------
 
@@ -46,8 +49,8 @@ Functions to evaluate the predictive power of knowledge graph embedding models, 
     select_best_model_ranking
 
 
-Misc
------
+Helper Functions
+----------------
 
 Utilities and support functions for evaluation procedures.
 
@@ -55,5 +58,9 @@ Utilities and support functions for evaluation procedures.
     :toctree: generated
     :template: function.rst
 
+    train_test_split_no_unseen
     create_mappings
     to_idx
+
+    
+

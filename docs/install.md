@@ -1,75 +1,63 @@
 
 # Installation
 
-### Provision a Virtual Environment
+## Prerequisites
 
-**Installation using Anaconda is highly recommended.**
+* Linux Box
+* Python ≥ 3.6
 
-Create & activate Virtual Environment (conda)
+#### Provision a Virtual Environment
+
+Create and activate a virtual environment (conda)
 
 ```
 conda create --name ampligraph python=3.6
 source activate ampligraph
 ```
 
-### Install TensorFlow
+#### Install TensorFlow
 
-**CPU version**
+AmpliGraph is built on TensorFlow 1.x.
+Install from pip or conda:
 
-```
-pip install tensorflow
-```
-
-or you could install the version packaged with conda:
+**CPU-only**
 
 ```
-conda install tensorflow
+pip install tensorflow==1.12.0
+
+or 
+
+conda install tensorflow=1.12.0
 ```
 
-**GPU version**
+**GPU support**
 
 ```
-pip install tensorflow-gpu
-```
+pip install tensorflow-gpu==1.12.0
 
-or you could install the version packaged with conda:
+or 
 
-```
-conda install tensorflow-gpu
+conda install tensorflow-gpu=1.12.0
 ```
 
 
-## Install the library
+## Install AmpliGraph
 
 
-You can install the latest stable release of `ampligraph` with pip, using the latest wheel (0.3.0) published by Dublin Labs:
-*Note this work only from within the Dublin Labs network*
+Install the latest stable release from pip:
 
 ```
-pip install http://dubaldeweb001.techlabs.accenture.com/wheels/ampligraph/ampligraph-0.3.dev0-py3-none-any.whl
+pip install ampligraph
 ```
 
 If instead you want the most recent development version, you can clone the repository
-and install from source (this will pull the latest commit on `develop` branch).
+and install from source (your local working copy will be on the latest commit on the `develop` branch).
 The code snippet below will install the library in editable mode (`-e`):
 
 ```
-git clone ssh://git@innersource.accenture.com/dl/ampligraph.git 
-cd ampligraph
-pip install .
-
-```
-
-
-## Download the Datasets
-
-Datasets can be downloaded from [SharePoint](https://ts.accenture.com/sites/TechLabs-Dublin/_layouts/15/guestaccess.aspx?guestaccesstoken=Uz28P2m4hWp2TEgbvFrD%2b4BiURBHVTAw0NbPBRLzWWA%3d&folderid=2_012fd581718e74e4a9305c845a1224ee1&rev=1).
-Once downloaded, decompress the archives.
-
-**You must also set the following environment variable:**
-
-```
-export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
+git clone https://github.com/Accenture/AmpliGraph.git
+cd AmpliGraph
+pip install -e .
 ```
 
 ## Sanity Check
@@ -77,32 +65,5 @@ export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'0.3-dev'
-```
-
-## Installing with HDT Support
-[HDT](http://www.rdfhdt.org/) is a compressed type of RDF graph data. By default, the installed AmpliGraph library does not support loading this data type. To enable it, you must have **`gcc` with C++11 support** installed in your Linux box.
-
-**Ubuntu**
-
-```
-sudo add-apt-repository ppa:jonathonf/gcc-7.3
-sudo apt-get update
-sudo apt-get install gcc-7
-```
-
-**CentOS**
-
-Below are commands we used to install gcc 7.3.1 on CentOS 7.5:
-
-```
-sudo yum install centos-release-scl
-sudo yum install devtoolset-7-gcc*
-scl enable devtoolset-7 bash
-```
-
-Once finished installing gcc, you can install AmpliGraph with hdt support by:
-
-```
-pip install .[hdt]
+'1.0.0'
 ```

@@ -11,7 +11,7 @@ conda create --name ampligraph python=3.6
 source activate ampligraph
 
 # Install library
-pip install .[cpu,hdt] -v
+pip install .[cpu] -v
 
 # configure dataset location
 export AMPLIGRAPH_DATA_HOME=/var/datasets

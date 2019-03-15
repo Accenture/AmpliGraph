@@ -18,12 +18,12 @@
 @article{yang2014embedding,
   title={Embedding entities and relations for learning and inference in knowledge bases},
   author={Yang, Bishan and Yih, Wen-tau and He, Xiaodong and Gao, Jianfeng and Deng, Li},
-  journal={arXiv preprint arXiv:1412.6575},
+  journal={arXiv preprint},
+  arxivId = {1412.6575},
   year={2014}
 }
 
 @article{Hamaguchi2017,
-abstract = {Knowledge base completion (KBC) aims to predict missing information in a knowledge base.In this paper, we address the out-of-knowledge-base (OOKB) entity problem in KBC:how to answer queries concerning test entities not observed at training time. Existing embedding-based KBC models assume that all test entities are available at training time, making it unclear how to obtain embeddings for new entities without costly retraining. To solve the OOKB entity problem without retraining, we use graph neural networks (Graph-NNs) to compute the embeddings of OOKB entities, exploiting the limited auxiliary knowledge provided at test time.The experimental results show the effectiveness of our proposed model in the OOKB setting.Additionally, in the standard KBC setting in which OOKB entities are not involved, our model achieves state-of-the-art performance on the WordNet dataset. The code and dataset are available at https://github.com/takuo-h/GNN-for-OOKB},
 arxivId = {1706.05674},
 author = {Hamaguchi, Takuo and Oiwa, Hidekazu and Shimbo, Masashi and Matsumoto, Yuji},
 journal = {IJCAI International Joint Conference on Artificial Intelligence},
@@ -32,10 +32,115 @@ title = {{Knowledge transfer for out-of-knowledge-base entities: A graph neural 
 year = {2017}
 }
 
-@inproceedings{trivedi2017know,
-  title={Know-Evolve: Deep Temporal Reasoning for Dynamic Knowledge Graphs},
-  author={Trivedi, Rakshit and Dai, Hanjun and Wang, Yichen and Song, Le},
-  booktitle={International Conference on Machine Learning},
-  pages={3462--3471},
-  year={2017}
+@article{HayashiS17,
+  author    = {Katsuhiko Hayashi and
+               Masashi Shimbo},
+  title     = {On the Equivalence of Holographic and Complex Embeddings for Link
+               Prediction},
+  journal   = {CoRR},
+  volume    = {abs/1702.05563},
+  year      = {2017},
+  url       = {http://arxiv.org/abs/1702.05563},
+  archivePrefix = {arXiv},
+  eprint    = {1702.05563},
+  timestamp = {Mon, 13 Aug 2018 16:48:53 +0200},
+  biburl    = {https://dblp.org/rec/bib/journals/corr/HayashiS17},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+@inproceedings{sun2018rotate,
+title={RotatE: Knowledge Graph Embedding by Relational Rotation in Complex Space},
+author={Zhiqing Sun and Zhi-Hong Deng and Jian-Yun Nie and Jian Tang},
+booktitle={International Conference on Learning Representations},
+year={2019},
+url={https://openreview.net/forum?id=HkgEQnRqYQ},
+}
+
+
+@inproceedings{DettmersMS018,
+  author    = {Tim Dettmers and
+               Pasquale Minervini and
+               Pontus Stenetorp and
+               Sebastian Riedel},
+  title     = {Convolutional 2D Knowledge Graph Embeddings},
+  booktitle = {Procs of AAAI},
+  year      = {2018},
+  url       = {https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/view/17366}
+}
+
+
+@inproceedings{nickel2016holographic,
+  title     = {Holographic Embeddings of Knowledge Graphs.},
+  author    = {Nickel, Maximilian and Rosasco, Lorenzo and Poggio, Tomaso A and others},
+  booktitle = {AAAI},
+  pages     = {1955--1961},
+  year      = {2016}
+}
+
+
+@inproceedings{bizer2011linked,
+  title     = {Linked data: The story so far},
+  author    = {Bizer, Christian and Heath, Tom and Berners-Lee, Tim},
+  booktitle = {Semantic services, interoperability and web applications: emerging concepts},
+  pages     = {205--227},
+  year      = {2011},
+  publisher = {IGI Global}
+}
+
+
+@inproceedings{suchanek2007yago,
+  title        = {Yago: a core of semantic knowledge},
+  author       = {Suchanek, Fabian M and Kasneci, Gjergji and Weikum, Gerhard},
+  booktitle    = {Procs of WWW},
+  pages        = {697--706},
+  year         = {2007},
+  organization = {ACM}
+}
+
+
+@inproceedings{auer2007dbpedia,
+  title     = {Dbpedia: A nucleus for a web of open data},
+  author    = {Auer, S{\"o}ren and Bizer, Christian and Kobilarov, Georgi and Lehmann, Jens and Cyganiak, Richard and Ives, Zachary},
+  booktitle = {The semantic web},
+  pages     = {722--735},
+  year      = {2007},
+  publisher = {Springer}
+}
+
+
+@article{wordnet,
+  author  = {Princeton},
+  title   = {About WordNet},
+  year    = {2010},
+  journal = {Web},
+  note     = {https://wordnet.princeton.edu},
+  urldate = {2018-08-30}
+}
+
+@article{nickel2016review,
+  title     = {A review of relational machine learning for knowledge graphs},
+  author    = {Nickel, Maximilian and Murphy, Kevin and Tresp, Volker and Gabrilovich, Evgeniy},
+  journal   = {Procs of the IEEE},
+  volume    = {104},
+  number    = {1},
+  pages     = {11--33},
+  year      = {2016},
+  publisher = {IEEE}
+}
+
+
+@inproceedings{toutanova2015representing,
+  title={Representing text for joint embedding of text and knowledge bases},
+  author={Toutanova, Kristina and Chen, Danqi and Pantel, Patrick and Poon, Hoifung and Choudhury, Pallavi and Gamon, Michael},
+  booktitle={Proceedings of the 2015 Conference on Empirical Methods in Natural Language Processing},
+  pages={1499--1509},
+  year={2015}
+}
+
+
+@inproceedings{mahdisoltani2013yago3,
+  title={Yago3: A knowledge base from multilingual wikipedias},
+  author={Mahdisoltani, Farzaneh and Biega, Joanna and Suchanek, Fabian M},
+  booktitle={CIDR},
+  year={2013}
 }

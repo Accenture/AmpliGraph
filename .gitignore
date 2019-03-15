@@ -112,8 +112,13 @@ venv.bak/
 # pycharm
 .idea/
 
-#chan-hdt
-model
+#vim
+.swp
+
+# experiments
+experiments/config_test.json
+experiments/result.csv
+experiments/playground.py
+experiments/fb237.txt
+
 .pytest_cache
-output.txt
-unittest_save_and_restore_models
