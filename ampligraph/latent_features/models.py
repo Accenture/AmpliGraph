@@ -921,17 +921,12 @@ class TransE(EmbeddingModel):
 
             f_{TransE}=-||(\mathbf{e}_s + \mathbf{r}_p) - \mathbf{e}_o||_n
             
-        **Hyperparameters:**
-        
-            - 'norm' - type of norm to be used in scoring function (1 or 2 norm - default:1) 
-            
-            - 'normalize_ent_emb' - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
-
         Examples
         --------
         >>> import numpy as np
         >>> from ampligraph.latent_features import TransE
-        >>> model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin':5})
+        >>> model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise',
+        >>>                loss_params={'margin':5})
         >>> X = np.array([['a', 'y', 'b'],
         >>>               ['b', 'y', 'a'],
         >>>               ['a', 'y', 'c'],
@@ -941,17 +936,74 @@ class TransE(EmbeddingModel):
         >>>               ['b', 'y', 'c'],
         >>>               ['f', 'y', 'e']])
         >>> model.fit(X)
-        >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
-        ([-2.219729, -3.9848995], [3, 9])
+        >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+        ([-2.219729, -3.9848995])
 
     """
 
     def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
-                 embedding_model_params={},
+                 embedding_model_params={'norm':DEFAULT_NORM_TRANSE, 'normalize_ent_emb':DEFAULT_NORMALIZE_EMBEDDINGS},
                  optimizer="adagrad", optimizer_params={},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+        """Initialize an EmbeddingModel
+
+            Also creates a new Tensorflow session for training.
+
+        Parameters
+        ----------
+        k : int
+            Embedding space dimensionality
+        eta : int
+            The number of negatives that must be generated at runtime during training for each positive.
+        epochs : int
+            The iterations of the training loop.
+        batches_count : int
+            The number of batches in which the training set must be split during the training loop.
+        seed : int
+            The seed used by the internal random numbers generator.
+        embedding_model_params : dict
+            TransE-specific hyperparams:
+
+            - 'norm' - type of norm to be used in scoring function (1 or 2 norm - default:1)
+            - 'normalize_ent_emb' - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
+            
+            (Refer documentation of specific embedding models for more details)
+        optimizer : string
+            The optimizer used to minimize the loss function. Choose between ``sgd``,
+            ``adagrad``, ``adam``.
+        optimizer_params : dict
+            Parameters values specific to the optimizer.
+
+            Currently supported "lr" - learning rate
+        loss : string
+            The type of loss function to use during training.
+
+            ``pairwise``  the model will use pairwise margin-based loss function.
+
+            ``nll`` the model will use negative loss likelihood.
+
+            ``absolute_margin`` the model will use absolute margin likelihood.
+
+            ``self_adversarial`` the model will use adversarial sampling loss function.
+        loss_params : dict
+            Parameters dictionary specific to the loss.
+
+            (Refer documentation of loss_functions for more details)
+        regularizer : string
+            The regularization strategy to use with the loss function. ``LP``.
+        regularizer_params : dict
+            Parameters dictionary specific to the regularizer.
+
+            (Refer documentation of regularizer for more details)
+        model_checkpoint_path: string
+            Path to save the model.
+        verbose : bool
+            Verbose mode
+        kwargs : dict
+            Additional inputs, if any
+        """
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
                          embedding_model_params=embedding_model_params,
                          optimizer=optimizer, optimizer_params=optimizer_params,
