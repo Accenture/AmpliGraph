@@ -1266,41 +1266,44 @@ class ComplEx(EmbeddingModel):
 class HolE(ComplEx):
     """ Holographic Embeddings
 
-        The model as described in :cite:`NickelRP15` and :cite:`HayashiS17`.
+    The HolE model :cite:`nickel2016holographic` as re-defined by :cite:`HayashiS17`.
 
-        .. math::
+    Hayashi et al. :cite:`HayashiS17` redifine the original HolE scoring function as:
 
-            f_{HolE}= 2 / n * f_{ComplEx}
+    .. math::
 
-        Examples
-        --------
-        >>> import numpy as np
-        >>> from ampligraph.latent_features import HolE
-        >>> model = HolE(batches_count=1, seed=555, epochs=20, k=10, 
-        >>>             loss='pairwise', loss_params={'margin':1}, 
-        >>>             regularizer='L2', regularizer_params={'lambda':0.1})
+        f_{HolE}= 2 / n * f_{ComplEx}
 
-        >>> X = np.array([['a', 'y', 'b'],
-        >>>               ['b', 'y', 'a'],
-        >>>               ['a', 'y', 'c'],
-        >>>               ['c', 'y', 'a'],
-        >>>               ['a', 'y', 'd'],
-        >>>               ['c', 'y', 'd'],
-        >>>               ['b', 'y', 'c'],
-        >>>               ['f', 'y', 'e']])
-        >>> model.fit(X)
-        >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
-        [[0.3046168, -0.0379385], [3, 9]]
-        >>> model.get_embeddings(['f','e'], type='entity')
-        array([[-0.2704807 , -0.05434025,  0.13363852,  0.04879733,  0.00184516,
-        -0.1149573 , -0.1177371 , -0.20798951,  0.01935115,  0.13033926,
-        -0.81528974,  0.22864424,  0.2045117 ,  0.1145515 ,  0.248952  ,
-         0.03513691, -0.08550065, -0.06037813,  0.23231442, -0.39326245],
-        [ 0.204738  ,  0.10758886, -0.11931524,  0.14881928,  0.0929039 ,
-         0.25577265,  0.05722341,  0.2549932 , -0.16462566,  0.43789816,
-        -0.91011846,  0.3533137 ,  0.1144442 ,  0.00359709, -0.09599967,
-        -0.03151475,  0.14198618,  0.16138661,  0.07511608, -0.2465882 ]],
-        dtype=float32)
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from ampligraph.latent_features import HolE
+    >>> model = HolE(batches_count=1, seed=555, epochs=20, k=10,
+    >>>             loss='pairwise', loss_params={'margin':1},
+    >>>             regularizer='L2', regularizer_params={'lambda':0.1})
+    >>>
+    >>> X = np.array([['a', 'y', 'b'],
+    >>>               ['b', 'y', 'a'],
+    >>>               ['a', 'y', 'c'],
+    >>>               ['c', 'y', 'a'],
+    >>>               ['a', 'y', 'd'],
+    >>>               ['c', 'y', 'd'],
+    >>>               ['b', 'y', 'c'],
+    >>>               ['f', 'y', 'e']])
+    >>> model.fit(X)
+    >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
+    [[0.3046168, -0.0379385], [3, 9]]
+    >>> model.get_embeddings(['f','e'], type='entity')
+    array([[-0.2704807 , -0.05434025,  0.13363852,  0.04879733,  0.00184516,
+    -0.1149573 , -0.1177371 , -0.20798951,  0.01935115,  0.13033926,
+    -0.81528974,  0.22864424,  0.2045117 ,  0.1145515 ,  0.248952  ,
+     0.03513691, -0.08550065, -0.06037813,  0.23231442, -0.39326245],
+    [ 0.204738  ,  0.10758886, -0.11931524,  0.14881928,  0.0929039 ,
+     0.25577265,  0.05722341,  0.2549932 , -0.16462566,  0.43789816,
+    -0.91011846,  0.3533137 ,  0.1144442 ,  0.00359709, -0.09599967,
+    -0.03151475,  0.14198618,  0.16138661,  0.07511608, -0.2465882 ]],
+    dtype=float32)
 
     """
 
@@ -1320,6 +1323,7 @@ class HolE(ComplEx):
     def _fn(self, e_s, e_p, e_o):
         """The Hole scoring function.
 
+            The function implements the scoring function as defined by
             .. math::
 
                 f_{HolE}= 2 / n * f_{ComplEx}
@@ -1347,7 +1351,7 @@ class HolE(ComplEx):
         """Train a HolE model.
 
             The model is trained on a training set X using the training protocol
-            described in :cite:`NickelRP15`.
+            described in :cite:`nickel2016holographic`.
 
         Parameters
         ----------

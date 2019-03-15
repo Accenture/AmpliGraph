@@ -312,10 +312,10 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
                          corrupt_side='s+o'):
     """Evaluate the performance of an embedding model.
 
-        Run the relational learning evaluation protocol defined in Bordes TransE paper.
+        Run the relational learning evaluation protocol defined in :cite:`bordes2013translating`.
 
         It computes the mean reciprocal rank, by assessing the ranking of each positive triple against all
-        possible negatives created in compliance with the local closed world assumption (LCWA).
+        possible negatives created in compliance with the local closed world assumption (LCWA) :cite:`nickel2016review`.
         
         For filtering, we use a hashing based strategy to speed up the computation (i.e. to solve the set difference problem).
         This strategy is as described below:
