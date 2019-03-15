@@ -76,7 +76,7 @@ class EmbeddingModel(abc.ABC):
 
     def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
                  embedding_model_params={},
-                 optimizer="adagrad", optimizer_params={},
+                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR, 'momentum':DEFAULT_MOMENTUM},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
@@ -102,11 +102,13 @@ class EmbeddingModel(abc.ABC):
             (Refer documentation of specific embedding models for more details)
         optimizer : string
             The optimizer used to minimize the loss function. Choose between ``sgd``,
-            ``adagrad``, ``adam``.
+            ``adagrad``, ``adam``, ``momentum``.
         optimizer_params : dict    
-            Parameters values specific to the optimizer.
+            Parameters values specific to the optimizer.Currently supported:
+
+            - **lr** - learning rate (used by all the optimizers)
+            - **momentum** - learning momentum (used by momentum optimizer)
             
-            Currently supported "lr" - learning rate
         loss : string
             The type of loss function to use during training. 
             
@@ -120,7 +122,7 @@ class EmbeddingModel(abc.ABC):
         loss_params : dict
             Parameters dictionary specific to the loss. 
             
-            (Refer documentation of loss_functions for more details)
+            (Refer documentation of specific loss functions for more details)
         regularizer : string
             The regularization strategy to use with the loss function. ``LP``.
         regularizer_params : dict
@@ -650,7 +652,19 @@ class EmbeddingModel(abc.ABC):
 
         self.is_filtered = True
 
-    def configure_evaluation_protocol(self, config):
+    def configure_evaluation_protocol(self, config={'corruption_entities': DEFAULT_CORRUPTION_ENTITIES, \
+                                                    'corrupt_side':DEFAULT_CORRUPT_SIDE}):
+        """ Set the configuration for evaluation
+        
+        Parameters
+        ----------
+        config : dictionary
+            Dictionary of parameters for evaluation configuration. Can contain following keys:
+            
+            - **corruption_entities**: Entities to be used for corruptions. If None, it uses all entities (default: None)
+            - **corrupt_side**: Specifies which side to corrupt. ``s``, ``o``, ``s+o`` (default)
+            
+        """
         self.eval_config = config
 
     def _initialize_eval_graph(self):
@@ -824,6 +838,7 @@ class RandomBaseline(EmbeddingModel):
         >>>               ['f', 'y', 'e']])
         >>> model.fit(X)
         >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+        [0.5488135039273248, 0.7151893663724195]
     """
 
     def __init__(self, seed=0):
@@ -842,6 +857,25 @@ class RandomBaseline(EmbeddingModel):
 
     def _fn(e_s, e_p, e_o):
         pass
+    
+    def get_embeddings(self, entities, type='entity'):
+        """Get the embeddings of entities or relations.
+
+        Parameters
+        ----------
+        entities : array-like, dtype=int, shape=[n]
+            The entities (or relations) of interest. Element of the vector must be the original string literals, and
+            not internal IDs.
+        type : string
+            If 'entity', will consider input as KG entities. If `relation`, they will be treated as KG predicates.
+
+        Returns
+        -------
+        embeddings : None
+            Returns None as this model does not have any embeddings. While scoring, it creates a random score for a triplet.
+
+        """
+        return None
 
     def fit(self, X):
         """Train the random model
@@ -937,13 +971,19 @@ class TransE(EmbeddingModel):
         >>>               ['f', 'y', 'e']])
         >>> model.fit(X)
         >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-        ([-2.219729, -3.9848995])
+        [-2.219729, -3.9848995]
+        >>> model.get_embeddings(['f','e'], type='entity')
+        array([[-0.65229136, -0.50060457,  1.2316223 ,  0.23738968,  0.29145557,
+        -0.20187911, -0.3053819 , -0.6947149 ,  0.9377473 ,  0.12985024],
+        [-1.1272118 ,  0.10723944,  0.79431695,  0.6795645 , -0.14428931,
+        -0.34959725, -0.60184777, -1.1885864 ,  1.0374763 , -0.36612505]],
+        dtype=float32)
 
     """
 
     def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
                  embedding_model_params={'norm':DEFAULT_NORM_TRANSE, 'normalize_ent_emb':DEFAULT_NORMALIZE_EMBEDDINGS},
-                 optimizer="adagrad", optimizer_params={},
+                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR, 'momentum':DEFAULT_MOMENTUM},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
@@ -966,17 +1006,18 @@ class TransE(EmbeddingModel):
         embedding_model_params : dict
             TransE-specific hyperparams:
 
-            - 'norm' - type of norm to be used in scoring function (1 or 2 norm - default:1)
-            - 'normalize_ent_emb' - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
-
-            (Refer documentation of specific embedding models for more details)
+            - **norm** - type of norm to be used in scoring function (1 or 2 norm - default:1)
+            - **normalize_ent_emb** - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
+            
         optimizer : string
             The optimizer used to minimize the loss function. Choose between ``sgd``,
-            ``adagrad``, ``adam``.
+            ``adagrad``, ``adam``, ``momentum``.
         optimizer_params : dict
-            Parameters values specific to the optimizer.
+            Parameters values specific to the optimizer.Currently supported:
 
-            Currently supported "lr" - learning rate
+            - **lr** - learning rate (used by all the optimizers)
+            - **momentum** - learning momentum (used by momentum optimizer)
+            
         loss : string
             The type of loss function to use during training.
 
@@ -990,7 +1031,7 @@ class TransE(EmbeddingModel):
         loss_params : dict
             Parameters dictionary specific to the loss.
 
-            (Refer documentation of loss_functions for more details)
+            (Refer documentation of specific loss functions for more details)
         regularizer : string
             The regularization strategy to use with the loss function. ``LP``.
         regularizer_params : dict
@@ -1106,9 +1147,6 @@ class DistMult(EmbeddingModel):
 
             f_{DistMult}=\langle \mathbf{r}_p, \mathbf{e}_s, \mathbf{e}_o \\rangle
             
-        **Hyperparameters:**
-        
-            - 'normalize_ent_emb' - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
 
         Examples
         --------
@@ -1124,17 +1162,80 @@ class DistMult(EmbeddingModel):
         >>>               ['b', 'y', 'c'],
         >>>               ['f', 'y', 'e']])
         >>> model.fit(X)
-        >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
-        ([3.29703, -3.543957], [3, 10])
+        >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+        [3.29703, -3.543957]
+        >>> model.get_embeddings(['f','e'], type='entity')
+        array([[-0.7101061 , -0.35752687,  0.5337027 , -0.612499  , -0.34532365,
+        -0.7219143 , -0.07083285,  0.19323194,  1.0108972 ,  0.42850104],
+        [-1.2280471 , -0.22018537,  0.17179069,  0.757755  , -0.05845603,
+         0.94373196, -0.14994079, -0.929564  ,  1.0907435 ,  0.20400602]],
+        dtype=float32)
 
     """
 
     def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
-                 embedding_model_params={},
-                 optimizer="adagrad", optimizer_params={},
+                 embedding_model_params={'normalize_ent_emb':DEFAULT_NORMALIZE_EMBEDDINGS},
+                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR, 'momentum':DEFAULT_MOMENTUM},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+        """Initialize an EmbeddingModel
+
+            Also creates a new Tensorflow session for training.
+
+        Parameters
+        ----------
+        k : int
+            Embedding space dimensionality
+        eta : int
+            The number of negatives that must be generated at runtime during training for each positive.
+        epochs : int
+            The iterations of the training loop.
+        batches_count : int
+            The number of batches in which the training set must be split during the training loop.
+        seed : int
+            The seed used by the internal random numbers generator.
+        embedding_model_params : dict
+            DistMult-specific hyperparams:
+            
+            - **normalize_ent_emb** - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
+            
+        optimizer : string
+            The optimizer used to minimize the loss function. Choose between ``sgd``,
+            ``adagrad``, ``adam``, ``momentum``.
+        optimizer_params : dict
+            Parameters values specific to the optimizer. Currently supported:
+
+            - **lr** - learning rate (used by all the optimizers)
+            - **momentum** - learning momentum (used by momentum optimizer)
+            
+        loss : string
+            The type of loss function to use during training.
+
+            ``pairwise``  the model will use pairwise margin-based loss function.
+
+            ``nll`` the model will use negative loss likelihood.
+
+            ``absolute_margin`` the model will use absolute margin likelihood.
+
+            ``self_adversarial`` the model will use adversarial sampling loss function.
+        loss_params : dict
+            Parameters dictionary specific to the loss.
+
+            (Refer documentation of specific loss functions for more details)
+        regularizer : string
+            The regularization strategy to use with the loss function. ``LP``.
+        regularizer_params : dict
+            Parameters dictionary specific to the regularizer.
+
+            (Refer documentation of regularizer for more details)
+        model_checkpoint_path: string
+            Path to save the model.
+        verbose : bool
+            Verbose mode
+        kwargs : dict
+            Additional inputs, if any
+        """
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
                          embedding_model_params=embedding_model_params,
                          optimizer=optimizer, optimizer_params=optimizer_params,
@@ -1240,8 +1341,6 @@ class ComplEx(EmbeddingModel):
 
         Note that because embeddings are in :math:`\mathcal{C}`, ComplEx uses twice as many parameters as its counterpart in :math:`\mathcal{R}` DistMult.
 
-        **Hyperparameters:**  None
-
         Examples
         --------
         >>> import numpy as np
@@ -1249,7 +1348,7 @@ class ComplEx(EmbeddingModel):
         >>>
         >>> model = ComplEx(batches_count=1, seed=555, epochs=20, k=10, 
         >>>             loss='pairwise', loss_params={'margin':1}, 
-        >>>             regularizer='L2', regularizer_params={'lambda':0.1})
+        >>>             regularizer='LP', regularizer_params={'lambda':0.1})
         >>> X = np.array([['a', 'y', 'b'],
         >>>               ['b', 'y', 'a'],
         >>>               ['a', 'y', 'c'],
@@ -1259,17 +1358,81 @@ class ComplEx(EmbeddingModel):
         >>>               ['b', 'y', 'c'],
         >>>               ['f', 'y', 'e']])
         >>> model.fit(X)
-        >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
-        ([0.96325016, -0.17629346], [3, 8])
+        >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+        [0.96325016, -0.17629346]
+        >>> model.get_embeddings(['f','e'], type='entity')
+        array([[-0.11257   , -0.09226837,  0.2829331 , -0.02094189,  0.02826234,
+        -0.3068198 , -0.41022655, -0.23714773, -0.00084166,  0.22521858,
+        -0.48155236,  0.29627186,  0.29841757,  0.16540456,  0.45836073,
+         0.14025007, -0.03458257, -0.03813137,  0.35438442, -0.4733188 ],
+        [ 0.06088537,  0.13615245, -0.20476362,  0.20391239,  0.22199424,
+         0.5762486 , -0.01087974,  0.39070424, -0.1372974 ,  0.39998057,
+        -0.5944237 ,  0.506474  ,  0.1255992 , -0.06021457, -0.26678884,
+        -0.18713273,  0.36862013,  0.07165384, -0.00845572, -0.16494963]],
+        dtype=float32)
 
     """
 
     def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
                  embedding_model_params={},
-                 optimizer="adagrad", optimizer_params={},
+                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR, 'momentum':DEFAULT_MOMENTUM},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+        """Initialize an EmbeddingModel
+
+            Also creates a new Tensorflow session for training.
+
+        Parameters
+        ----------
+        k : int
+            Embedding space dimensionality
+        eta : int
+            The number of negatives that must be generated at runtime during training for each positive.
+        epochs : int
+            The iterations of the training loop.
+        batches_count : int
+            The number of batches in which the training set must be split during the training loop.
+        seed : int
+            The seed used by the internal random numbers generator.
+        embedding_model_params : dict
+            ComplEx-specific hyperparams: Currently ComplEx does not require any hyperparameters.
+        optimizer : string
+            The optimizer used to minimize the loss function. Choose between ``sgd``,
+            ``adagrad``, ``adam``, ``momentum``.
+        optimizer_params : dict
+            Parameters values specific to the optimizer. Currently supported:
+            
+            - **lr** - learning rate (used by all the optimizers)
+            - **momentum** - learning momentum (used by momentum optimizer)
+            
+        loss : string
+            The type of loss function to use during training.
+
+            ``pairwise``  the model will use pairwise margin-based loss function.
+
+            ``nll`` the model will use negative loss likelihood.
+
+            ``absolute_margin`` the model will use absolute margin likelihood.
+
+            ``self_adversarial`` the model will use adversarial sampling loss function.
+        loss_params : dict
+            Parameters dictionary specific to the loss.
+
+            (Refer documentation of specific loss functions for more details)
+        regularizer : string
+            The regularization strategy to use with the loss function. ``LP``.
+        regularizer_params : dict
+            Parameters dictionary specific to the regularizer.
+
+            (Refer documentation of regularizer for more details)
+        model_checkpoint_path: string
+            Path to save the model.
+        verbose : bool
+            Verbose mode
+        kwargs : dict
+            Additional inputs, if any
+        """
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
                          embedding_model_params=embedding_model_params,
                          optimizer=optimizer, optimizer_params=optimizer_params,
@@ -1393,15 +1556,13 @@ class HolE(ComplEx):
 
         f_{HolE}= 2 / n * f_{ComplEx}
 
-    **Hyperparameters:**  None
-    
     Examples
     --------
     >>> import numpy as np
     >>> from ampligraph.latent_features import HolE
     >>> model = HolE(batches_count=1, seed=555, epochs=20, k=10,
     >>>             loss='pairwise', loss_params={'margin':1},
-    >>>             regularizer='L2', regularizer_params={'lambda':0.1})
+    >>>             regularizer='LP', regularizer_params={'lambda':0.1})
     >>>
     >>> X = np.array([['a', 'y', 'b'],
     >>>               ['b', 'y', 'a'],
@@ -1413,7 +1574,7 @@ class HolE(ComplEx):
     >>>               ['f', 'y', 'e']])
     >>> model.fit(X)
     >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
-    [[0.3046168, -0.0379385], [3, 9]]
+    [0.3046168, -0.0379385]
     >>> model.get_embeddings(['f','e'], type='entity')
     array([[-0.2704807 , -0.05434025,  0.13363852,  0.04879733,  0.00184516,
     -0.1149573 , -0.1177371 , -0.20798951,  0.01935115,  0.13033926,
@@ -1429,10 +1590,64 @@ class HolE(ComplEx):
 
     def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
                  embedding_model_params={},
-                 optimizer="adagrad", optimizer_params={},
+                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR, 'momentum':DEFAULT_MOMENTUM},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+        """Initialize an EmbeddingModel
+
+            Also creates a new Tensorflow session for training.
+
+        Parameters
+        ----------
+        k : int
+            Embedding space dimensionality
+        eta : int
+            The number of negatives that must be generated at runtime during training for each positive.
+        epochs : int
+            The iterations of the training loop.
+        batches_count : int
+            The number of batches in which the training set must be split during the training loop.
+        seed : int
+            The seed used by the internal random numbers generator.
+        embedding_model_params : dict
+            HolE-specific hyperparams: Currently HolE does not require any hyperparameters.
+        optimizer : string
+            The optimizer used to minimize the loss function. Choose between ``sgd``,
+            ``adagrad``, ``adam``, ``momentum``.
+        optimizer_params : dict
+            Parameters values specific to the optimizer. Currently supported:
+
+            - **lr** - learning rate (used by all the optimizers)
+            - **momentum** - learning momentum (used by momentum optimizer)
+            
+        loss : string
+            The type of loss function to use during training.
+
+            ``pairwise``  the model will use pairwise margin-based loss function.
+
+            ``nll`` the model will use negative loss likelihood.
+
+            ``absolute_margin`` the model will use absolute margin likelihood.
+
+            ``self_adversarial`` the model will use adversarial sampling loss function.
+        loss_params : dict
+            Parameters dictionary specific to the loss.
+
+            (Refer documentation of specific loss functions for more details)
+        regularizer : string
+            The regularization strategy to use with the loss function. ``LP``.
+        regularizer_params : dict
+            Parameters dictionary specific to the regularizer.
+
+            (Refer documentation of regularizer for more details)
+        model_checkpoint_path: string
+            Path to save the model.
+        verbose : bool
+            Verbose mode
+        kwargs : dict
+            Additional inputs, if any
+        """
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
                          embedding_model_params=embedding_model_params,
                          optimizer=optimizer, optimizer_params=optimizer_params,
