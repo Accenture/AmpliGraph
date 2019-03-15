@@ -143,7 +143,7 @@ See [guidelines](http://docs.ampligraph.org) from AmpliGraph documentation.
 
 If you like AmpliGraph and you use it in your project, why not starring the project on GitHub!
 
-[![GitHub stars](https://img.shields.io/github/stars/accenture/ampligraph.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/accenture/ampligraph/stargazers/)
+[![GitHub stars](https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/Accenture/AmpliGraph/stargazers/)
 
 
 If you instead use AmpliGraph in an academic publication, cite as:

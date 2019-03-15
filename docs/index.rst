@@ -9,6 +9,11 @@ AmpliGraph
 **Open source Python library that predicts links between concepts in a knowledge graph.**
 
 
+`View the GitHub repository <https://github.com/Accenture/AmpliGraph/>`_ |ImageLink|_
+
+   .. |ImageLink| image:: /img/GitHub-Mark-32px.png
+   .. _ImageLink: https://github.com/Accenture/AmpliGraph/
+
 AmpliGraph is a suite of neural machine learning models for relational Learning, a branch of machine learning
 that deals with supervised learning on knowledge graphs.
 
@@ -142,12 +147,12 @@ Apply dimensionality reduction and visualize the embeddings:
 How to Cite
 -----------
 
-If you like AmpliGraph and you use it in your project, why not starring the project on GitHub!
+If you like AmpliGraph and you use it in your project, why not starring the `project on GitHub <https://github.com/Accenture/AmpliGraph/>`_!
 
 |GitHub stars|
 
-.. |GitHub stars| image:: https://img.shields.io/github/stars/ampligraph.svg?style=social&label=Star&maxAge=2592000
-   :target: https://github.com/accenture/ampligraph/stargazers/
+.. |GitHub stars| image:: https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=2592000
+   :target: https://github.com/Accenture/AmpliGraph/stargazers/
 
 If you instead use AmpliGraph in an academic publication, cite as:
 
