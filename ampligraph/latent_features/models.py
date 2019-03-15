@@ -122,7 +122,7 @@ class EmbeddingModel(abc.ABC):
             
             (Refer documentation of loss_functions for more details)
         regularizer : string
-            The regularization strategy to use with the loss function. ``L2`` or ``L1`` or ``None``.
+            The regularization strategy to use with the loss function. ``LP``.
         regularizer_params : dict
             Parameters dictionary specific to the regularizer. 
             
@@ -809,11 +809,6 @@ class RandomBaseline(EmbeddingModel):
         .. note:: Although the model still requires invoking the `fit()` method,
             no training will be carried out.
 
-        Parameters
-        ----------
-        seed : int
-            The seed used by the internal random numbers generator.
-
         Examples
         --------
         >>> import numpy as np
@@ -832,23 +827,32 @@ class RandomBaseline(EmbeddingModel):
     """
 
     def __init__(self, seed=0):
+        """ Initialize RandomBaseline model
+        
+        Parameters
+        ----------
+        seed : int
+            The seed used by the internal random numbers generator.
+            
+        """
         self.seed = seed
+        self.is_fitted = False
         self.rnd = check_random_state(self.seed)
         self.eval_config = {}
 
     def _fn(e_s, e_p, e_o):
         pass
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}):
+    def fit(self, X):
         """Train the random model
 
         Parameters
         ----------
-        x : ndarray, shape [n, 3]
+        X : ndarray, shape [n, 3]
             The training triples
-
         """
         self.rel_to_idx, self.ent_to_idx = create_mappings(X)
+        self.is_fitted = True
 
     def end_evaluation(self):
         """End the evaluation
@@ -857,7 +861,7 @@ class RandomBaseline(EmbeddingModel):
         self.eval_config = {}
 
     def predict(self, X, from_idx=False, get_ranks=False):
-        """Assign random scores to candidate triples
+        """Assign random scores to candidate triples and then ranks them
 
         Parameters
         ----------
@@ -867,6 +871,14 @@ class RandomBaseline(EmbeddingModel):
             If True, will skip conversion to internal IDs. (default: False).
         get_ranks : bool
             Flag to compute ranks by scoring against corruptions (default: False).
+            
+        Returns
+        -------
+        scores : ndarray, shape [n]
+            The predicted scores for input triples X.
+            
+        ranks : ndarray, shape [n]
+            Rank of the triple
 
         """
         if X.ndim == 1:
@@ -909,11 +921,11 @@ class TransE(EmbeddingModel):
 
             f_{TransE}=-||(\mathbf{e}_s + \mathbf{r}_p) - \mathbf{e}_o||_n
             
-        Hyperparameters:
+        **Hyperparameters:**
         
-            norm - type of norm to be used in scoring function(1 or 2 norm - default:1) 
+            - 'norm' - type of norm to be used in scoring function (1 or 2 norm - default:1) 
             
-            normalize_ent_emb - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
+            - 'normalize_ent_emb' - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
 
         Examples
         --------
@@ -981,8 +993,26 @@ class TransE(EmbeddingModel):
 
         Parameters
         ----------
-        x : ndarray, shape [n, 3]
+        X : ndarray, shape [n, 3]
             The training triples
+        early_stopping: bool
+            Flag to enable early stopping(default:False)
+        early_stopping_params: dictionary
+            Dictionary of parameters for early stopping. 
+            
+            The following keys are supported: 
+            
+                **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                
+                **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
+                
+                **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
+                
+                **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                
+                **check_interval**: int : Early stopping interval after burn-in (default:10).
+                
+                **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
 
         """
         super().fit(X, early_stopping, early_stopping_params)
@@ -1024,9 +1054,9 @@ class DistMult(EmbeddingModel):
 
             f_{DistMult}=\langle \mathbf{r}_p, \mathbf{e}_s, \mathbf{e}_o \\rangle
             
-        Hyperparameters:
+        **Hyperparameters:**
         
-            normalize_ent_emb - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
+            - 'normalize_ent_emb' - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
 
         Examples
         --------
@@ -1094,8 +1124,26 @@ class DistMult(EmbeddingModel):
 
         Parameters
         ----------
-        x : ndarray, shape [n, 3]
+        X : ndarray, shape [n, 3]
             The training triples
+        early_stopping: bool
+            Flag to enable early stopping(default:False)
+        early_stopping_params: dictionary
+            Dictionary of parameters for early stopping. 
+            
+            The following keys are supported: 
+            
+                **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                
+                **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
+                
+                **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
+                
+                **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                
+                **check_interval**: int : Early stopping interval after burn-in (default:10).
+                
+                **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
 
         """
         super().fit(X, early_stopping, early_stopping_params)
@@ -1140,6 +1188,7 @@ class ComplEx(EmbeddingModel):
 
         Note that because embeddings are in :math:`\mathcal{C}`, ComplEx uses twice as many parameters as its counterpart in :math:`\mathcal{R}` DistMult.
 
+        **Hyperparameters:**  None
 
         Examples
         --------
@@ -1229,8 +1278,26 @@ class ComplEx(EmbeddingModel):
 
         Parameters
         ----------
-        x : ndarray, shape [n, 3]
+        X : ndarray, shape [n, 3]
             The training triples
+        early_stopping: bool
+            Flag to enable early stopping(default:False)
+        early_stopping_params: dictionary
+            Dictionary of parameters for early stopping. 
+            
+            The following keys are supported: 
+            
+                **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                
+                **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
+                
+                **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
+                
+                **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                
+                **check_interval**: int : Early stopping interval after burn-in (default:10).
+                
+                **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
 
         """
         super().fit(X, early_stopping, early_stopping_params)
@@ -1274,7 +1341,8 @@ class HolE(ComplEx):
 
         f_{HolE}= 2 / n * f_{ComplEx}
 
-
+    **Hyperparameters:**  None
+    
     Examples
     --------
     >>> import numpy as np
@@ -1355,8 +1423,26 @@ class HolE(ComplEx):
 
         Parameters
         ----------
-        x : ndarray, shape [n, 3]
+        X : ndarray, shape [n, 3]
             The training triples
+        early_stopping: bool
+            Flag to enable early stopping(default:False)
+        early_stopping_params: dictionary
+            Dictionary of parameters for early stopping. 
+            
+            The following keys are supported: 
+            
+                **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                
+                **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
+                
+                **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
+                
+                **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                
+                **check_interval**: int : Early stopping interval after burn-in (default:10).
+                
+                **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
 
         """
         super().fit(X, early_stopping, early_stopping_params)
