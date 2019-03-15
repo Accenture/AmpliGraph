@@ -72,14 +72,23 @@ Quick Start
 Import a dataset with helper functions:
 
 .. code-block:: python
-
+    
+    from ampligraph.datasets import load_wn18
     X = load_wn18()
 
 Declare a knowledge graph embeddings model:
 
 .. code-block:: python
     
-    model = ComplEx()
+    from ampligraph.latent_features import ComplEx
+    model = ComplEx(batches_count = 10,
+                    seed= 0,
+                    epochs = 20,
+                    k = 50,
+                    eta = 2,
+                    loss = "nll",
+                    optimizer = "adam",
+                    optimizer_params = {"lr":0.01})
 
 Fit the model on the training set
 
@@ -90,26 +99,22 @@ Fit the model on the training set
 Predict scores for 5 unseen statements, and convert scores into probability estimates:
 
 .. code-block:: python
-
+    
     y_pred = model.predict(X['test'][:5,])
-
     from scipy.special import expit
-    expit(y_pred)
-
-    array([0.76576346, 0.7471501 , 0.7953226 , 0.76191056, 0.7733138 ],
-      dtype=float32)
-
+    print(expit(y_pred))
+    
+    [0.9828379  0.9057542  0.92555004 0.9421897  0.8734926 ]
 
 Evaluate the performance of the model with the state-of-the-art evaluation protocol:
 
 .. code-block:: python
+    
+    from ampligraph.evaluation import evaluate_performance, hits_at_n_score, mrr_score
+    ranks = evaluate_performance(X['test'][:10], model=model)
+    print(ranks)
 
- ranks = evaluate_performance(X['test'][:10], model=model)
- print(ranks)
-
- [ 1  2  1  1  2  1  1  1  1 17]
-
-
+    [210, 14, 5, 476, 28, 21, 42, 13, 34, 85]
 
 Compute learning to rank metrics:
 
@@ -118,9 +123,8 @@ Compute learning to rank metrics:
     mrr = mrr_score(ranks)
     hits_10 = hits_at_n_score(ranks, n=10)
     print("MRR: %f, Hits@10: %f" % (mrr, hits_10))
-   
 
-    MRR: 0.805882, Hits@10: 0.900000
+    MRR: 0.050353, Hits@10: 0.100000
 
 
 Apply dimensionality reduction and visualize the embeddings:
