@@ -170,6 +170,7 @@ def rank_score(y_true, y_pred, pos_lab=1):
 
     Examples
     --------
+    >>> import numpy as np
     >>> from ampligraph.evaluation.metrics import rank_score
     >>> y_pred = np.array([.434, .65, .21, .84])
     >>> y_true = np.array([0, 0, 1, 0])

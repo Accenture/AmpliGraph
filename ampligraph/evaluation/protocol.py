@@ -213,13 +213,12 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
 def generate_corruptions_for_fit(X, all_entities, eta=1, corrupt_side='s+o', rnd=None):
     """Generate corruptions for training.
 
-        Creates corrupted triples for each statement in an array of statements.
-
-        Strategy as per ::cite:`trouillon2016complex`.
+        Creates corrupted triples for each statement in an array of statements,
+        as described by ::cite:`trouillon2016complex`.
 
         .. note::
-            Collisions are not checked. 
-            Too computationally expensive (see ::cite:`trouillon2016complex`).
+            Collisions are not checked, as this will be computationally expensive :cite:`trouillon2016complex`.
+            That means that some corruptions *may* result in being positive statements (i.e. *unfiltered* settings).
 
     Parameters
     ----------
