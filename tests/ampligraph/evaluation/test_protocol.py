@@ -8,6 +8,7 @@ from ampligraph.evaluation import evaluate_performance, generate_corruptions_for
 from ampligraph.datasets import load_wn18
 import tensorflow as tf
 
+
 @pytest.mark.skip(reason="Speeding up jenkins")
 def test_select_best_model_ranking():
     X = load_wn18()
@@ -20,15 +21,15 @@ def test_select_best_model_ranking():
         "eta": [10],
         "loss": ["nll"],
         "loss_params": {
-                        },
+        },
         "embedding_model_params": {
-                        },
+        },
         "regularizer": [None],
 
         "regularizer_params": {
         },
         "optimizer": ["adagrad"],
-        "optimizer_params":{
+        "optimizer_params": {
             "lr": [0.1, 0.01, 0.001]
         }
     }
@@ -43,8 +44,8 @@ def test_select_best_model_ranking():
 @pytest.mark.skip(reason="Speeding up jenkins")
 def test_evaluate_performance():
     X = load_wn18()
-    model = ComplEx(batches_count=10, seed=0, epochs=10, k=150, eta=10, loss='pairwise', loss_params = {'margin': 5},
-                    regularizer=None, optimizer='adagrad', optimizer_params= {'lr':0.1}, verbose=True)
+    model = ComplEx(batches_count=10, seed=0, epochs=10, k=150, eta=10, loss='pairwise', loss_params={'margin': 5},
+                    regularizer=None, optimizer='adagrad', optimizer_params={'lr': 0.1}, verbose=True)
     model.fit(np.concatenate((X['train'], X['valid'])))
 
     filter = np.concatenate((X['train'], X['valid'], X['test']))
@@ -62,7 +63,7 @@ def test_evaluate_performance():
 @pytest.mark.skip(reason="Speeding up jenkins")
 def test_evaluate_performance_nll_complex():
     X = load_wn18()
-    model = ComplEx(batches_count=10, seed=0, epochs=10, k=150, optimizer_params= {'lr':0.1}, eta=10, loss='nll',
+    model = ComplEx(batches_count=10, seed=0, epochs=10, k=150, optimizer_params={'lr': 0.1}, eta=10, loss='nll',
                     optimizer='adagrad', verbose=True)
     model.fit(np.concatenate((X['train'], X['valid'])))
 
@@ -79,8 +80,8 @@ def test_evaluate_performance_nll_complex():
 @pytest.mark.skip(reason="Speeding up jenkins")
 def test_evaluate_performance_TransE():
     X = load_wn18()
-    model = TransE(batches_count=10, seed=0, epochs=100, k=100, eta=5, optimizer_params= {'lr':0.1},
-                   loss='pairwise', loss_params = {'margin': 5}, optimizer='adagrad')
+    model = TransE(batches_count=10, seed=0, epochs=100, k=100, eta=5, optimizer_params={'lr': 0.1},
+                   loss='pairwise', loss_params={'margin': 5}, optimizer='adagrad')
     model.fit(np.concatenate((X['train'], X['valid'])))
 
     filter = np.concatenate((X['train'], X['valid'], X['test']))
@@ -102,10 +103,10 @@ def test_generate_corruptions_for_eval():
                   ['e', 'x', 'f'],
                   ['b', 'y', 'h'],
                   ['a', 'y', 'l']])
-    
+
     rel_to_idx, ent_to_idx = create_mappings(X)
     X = to_idx(X, ent_to_idx=ent_to_idx, rel_to_idx=rel_to_idx)
-    
+
     with tf.Session() as sess:
         all_ent = tf.constant(list(ent_to_idx.values()), dtype=tf.int64)
         x = tf.constant(np.array([X[0]]), dtype=tf.int64)
@@ -128,6 +129,7 @@ def test_generate_corruptions_for_eval():
                                  [7, 0, 1]])
     np.testing.assert_array_equal(x_n_actual, x_n_expected)
 
+
 @pytest.mark.skip(reason="Needs to change to account for prime-product evaluation strategy")
 def test_generate_corruptions_for_eval_filtered():
     x = np.array([0, 0, 1])
@@ -140,6 +142,7 @@ def test_generate_corruptions_for_eval_filtered():
                              [0, 0, 2],
                              [0, 0, 3]])
     np.testing.assert_array_equal(np.sort(x_n_actual, axis=0), np.sort(x_n_expected, axis=0))
+
 
 @pytest.mark.skip(reason="Needs to change to account for prime-product evaluation strategy")
 def test_generate_corruptions_for_eval_filtered_object():
@@ -155,7 +158,6 @@ def test_generate_corruptions_for_eval_filtered_object():
 
 
 def test_to_idx():
-
     X = np.array([['a', 'x', 'b'], ['c', 'y', 'd']])
     X_idx_expected = [[0, 0, 1], [2, 1, 3]]
     rel_to_idx, ent_to_idx = create_mappings(X)
@@ -165,7 +167,6 @@ def test_to_idx():
 
 
 def test_filter_unseen_entities_with_strict_mode():
-
     from collections import namedtuple
     base_model = namedtuple('test_model', 'ent_to_idx')
 
@@ -180,7 +181,6 @@ def test_filter_unseen_entities_with_strict_mode():
 
 
 def test_filter_unseen_entities_without_strict_mode():
-
     from collections import namedtuple
     base_model = namedtuple('test_model', 'ent_to_idx')
 
@@ -207,7 +207,7 @@ def test_generate_corruptions_for_fit_corrupt_side_so():
                   ['a', 'y', 'l']])
     rel_to_idx, ent_to_idx = create_mappings(X)
     X = to_idx(X, ent_to_idx=ent_to_idx, rel_to_idx=rel_to_idx)
-    eta=1
+    eta = 1
     with tf.Session() as sess:
         all_ent = tf.squeeze(tf.constant(list(ent_to_idx.values()), dtype=tf.int32))
         dataset = tf.constant(X, dtype=tf.int32)
@@ -215,13 +215,14 @@ def test_generate_corruptions_for_fit_corrupt_side_so():
 
     # these values occur when seed=0
 
-    X_corr_exp =  [[0, 0, 1],
-                   [2, 0, 5],
-                   [6, 0, 5],
-                   [1, 1, 5],
-                   [0, 1, 1]]
+    X_corr_exp = [[0, 0, 1],
+                  [2, 0, 5],
+                  [6, 0, 5],
+                  [1, 1, 5],
+                  [0, 1, 1]]
 
     np.testing.assert_array_equal(X_corr, X_corr_exp)
+
 
 def test_generate_corruptions_for_fit_curropt_side_s():
     X = np.array([['a', 'x', 'b'],
@@ -231,7 +232,7 @@ def test_generate_corruptions_for_fit_curropt_side_s():
                   ['a', 'y', 'l']])
     rel_to_idx, ent_to_idx = create_mappings(X)
     X = to_idx(X, ent_to_idx=ent_to_idx, rel_to_idx=rel_to_idx)
-    eta=1
+    eta = 1
     with tf.Session() as sess:
         all_ent = tf.squeeze(tf.constant(list(ent_to_idx.values()), dtype=tf.int32))
         dataset = tf.constant(X, dtype=tf.int32)
@@ -239,11 +240,11 @@ def test_generate_corruptions_for_fit_curropt_side_s():
 
     # these values occur when seed=0
 
-    X_corr_exp =  [[1, 0, 1],
-                   [5, 0, 3],
-                   [6, 0, 5],
-                   [5, 1, 6],
-                   [1, 1, 7]]
+    X_corr_exp = [[1, 0, 1],
+                  [5, 0, 3],
+                  [6, 0, 5],
+                  [5, 1, 6],
+                  [1, 1, 7]]
 
     np.testing.assert_array_equal(X_corr, X_corr_exp)
 
@@ -256,7 +257,7 @@ def test_generate_corruptions_for_fit_curropt_side_o():
                   ['a', 'y', 'l']])
     rel_to_idx, ent_to_idx = create_mappings(X)
     X = to_idx(X, ent_to_idx=ent_to_idx, rel_to_idx=rel_to_idx)
-    eta=1
+    eta = 1
     with tf.Session() as sess:
         all_ent = tf.squeeze(tf.constant(list(ent_to_idx.values()), dtype=tf.int32))
         dataset = tf.constant(X, dtype=tf.int32)
@@ -264,9 +265,9 @@ def test_generate_corruptions_for_fit_curropt_side_o():
 
     # these values occur when seed=0
 
-    X_corr_exp =  [[0, 0, 1],
-                   [2, 0, 5],
-                   [4, 0, 6],
-                   [1, 1, 5],
-                   [0, 1, 1]]
+    X_corr_exp = [[0, 0, 1],
+                  [2, 0, 5],
+                  [4, 0, 6],
+                  [1, 1, 5],
+                  [0, 1, 1]]
     np.testing.assert_array_equal(X_corr, X_corr_exp)
