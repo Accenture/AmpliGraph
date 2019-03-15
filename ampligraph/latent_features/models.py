@@ -228,6 +228,7 @@ class EmbeddingModel(abc.ABC):
 
             Assigns a score to a list of triples, with a model-specific strategy.
             Triples are passed as lists of subject, predicate, object embeddings.
+            This function must be overridden by every model to return corresponding score.
 
         Parameters
         ----------
@@ -241,7 +242,7 @@ class EmbeddingModel(abc.ABC):
         Returns
         -------
         score : TensorFlow operation
-            The operation corresponding to the TransE scoring function.
+            The operation corresponding to the scoring function.
 
         """
         logger.error('_fn is a placeholder function in an abstract class')
@@ -273,7 +274,7 @@ class EmbeddingModel(abc.ABC):
     def _save_trained_params(self):
         """After model fitting, save all the trained parameters in trained_model_params in some order. 
         The order would be useful for loading the model. 
-        This method must be overridden if the model has any other parameters(apart from entity-relation embeddings)
+        This method must be overridden if the model has any other parameters (apart from entity-relation embeddings)
         """
         self.trained_model_params = self.sess_train.run([self.ent_emb, self.rel_emb])
 
@@ -281,7 +282,7 @@ class EmbeddingModel(abc.ABC):
         """Load the model from trained params. 
             While restoring make sure that the order of loaded parameters match the saved order.
             It's the duty of the embedding model to load the variables correctly.
-            This method must be overridden if the model has any other parameters(apart from entity-relation embeddings)
+            This method must be overridden if the model has any other parameters (apart from entity-relation embeddings)
         """
         self.ent_emb = tf.constant(self.trained_model_params[0])
         self.rel_emb = tf.constant(self.trained_model_params[1])
@@ -346,7 +347,10 @@ class EmbeddingModel(abc.ABC):
         return e_s, e_p, e_o
 
     def _initialize_parameters(self):
-        """ Initialize parameters of the model.
+        """ Initialize parameters of the model. 
+            
+            This function creates and initializes entity and relation embeddings (with size k). 
+            Overload this function if the parameters needs to be initialized differently.
         """
         self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k],
                                        initializer=self.initializer)
@@ -354,8 +358,20 @@ class EmbeddingModel(abc.ABC):
                                        initializer=self.initializer)
 
     def _get_model_loss(self, scores_pos, scores_neg):
-        """ Get the current loss including loss due to regularization.
+        """ Get the current batch loss including loss due to regularization.
             This function must be overridden if the model uses combination of different losses(eg: VAE) 
+            
+        Parameters
+        ----------
+        scores_pos : tf.Tensor
+            A tensor of scores assigned to positive statements.
+        scores_neg : tf.Tensor
+            A tensor of scores assigned to negative statements.
+            
+        Returns
+        -------
+        loss : tf.Tensor
+            The loss value that must be minimized.    
         """
 
         if self.regularizer is not None:
@@ -481,23 +497,16 @@ class EmbeddingModel(abc.ABC):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping(default:False)
+            Flag to enable early stopping (default:False)
         early_stopping_params: dictionary
-            Dictionary of parameters for early stopping. 
+            Dictionary of parameters for early stopping. Following keys are supported: 
             
-            The following keys are supported: 
-            
-                x_valid: ndarray, shape [n, 3] : Validation set to be used for early stopping.
-                
-                criteria: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
-                
-                x_filter: ndarray, shape [n, 3] : Filter to be used(no filter by default).
-                
-                burn_in: int : Number of epochs to pass before kicking in early stopping(default: 100).
-                
-                check_interval: int : Early stopping interval after burn-in(default:10).
-                
-                stop_interval: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
+                - **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
+                - **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
+                - **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                - **check_interval**: int : Early stopping interval after burn-in (default:10).
+                - **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
 
         """
         if type(X) != np.ndarray:
@@ -1091,21 +1100,14 @@ class TransE(EmbeddingModel):
         early_stopping: bool
             Flag to enable early stopping(default:False)
         early_stopping_params: dictionary
-            Dictionary of parameters for early stopping. 
+            Dictionary of parameters for early stopping. Following keys are supported: 
             
-            The following keys are supported: 
-            
-                **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
-                
-                **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
-                
-                **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
-                
-                **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
-                
-                **check_interval**: int : Early stopping interval after burn-in (default:10).
-                
-                **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
+                - **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
+                - **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
+                - **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                - **check_interval**: int : Early stopping interval after burn-in (default:10).
+                - **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
 
         """
         super().fit(X, early_stopping, early_stopping_params)
@@ -1282,21 +1284,14 @@ class DistMult(EmbeddingModel):
         early_stopping: bool
             Flag to enable early stopping(default:False)
         early_stopping_params: dictionary
-            Dictionary of parameters for early stopping. 
+            Dictionary of parameters for early stopping. Following keys are supported: 
             
-            The following keys are supported: 
-            
-                **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
-                
-                **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
-                
-                **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
-                
-                **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
-                
-                **check_interval**: int : Early stopping interval after burn-in (default:10).
-                
-                **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
+                - **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
+                - **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
+                - **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                - **check_interval**: int : Early stopping interval after burn-in (default:10).
+                - **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
 
         """
         super().fit(X, early_stopping, early_stopping_params)
@@ -1498,21 +1493,14 @@ class ComplEx(EmbeddingModel):
         early_stopping: bool
             Flag to enable early stopping(default:False)
         early_stopping_params: dictionary
-            Dictionary of parameters for early stopping. 
+            Dictionary of parameters for early stopping. Following keys are supported: 
             
-            The following keys are supported: 
-            
-                **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
-                
-                **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
-                
-                **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
-                
-                **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
-                
-                **check_interval**: int : Early stopping interval after burn-in (default:10).
-                
-                **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
+                - **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
+                - **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
+                - **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                - **check_interval**: int : Early stopping interval after burn-in (default:10).
+                - **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
 
         """
         super().fit(X, early_stopping, early_stopping_params)
@@ -1695,21 +1683,14 @@ class HolE(ComplEx):
         early_stopping: bool
             Flag to enable early stopping(default:False)
         early_stopping_params: dictionary
-            Dictionary of parameters for early stopping. 
+            Dictionary of parameters for early stopping. Following keys are supported: 
             
-            The following keys are supported: 
-            
-                **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
-                
-                **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
-                
-                **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
-                
-                **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
-                
-                **check_interval**: int : Early stopping interval after burn-in (default:10).
-                
-                **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
+                - **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
+                - **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
+                - **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                - **check_interval**: int : Early stopping interval after burn-in (default:10).
+                - **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
 
         """
         super().fit(X, early_stopping, early_stopping_params)
