@@ -1,6 +1,7 @@
 # AmpliGraph
 
 [![DOI](https://zenodo.org/badge/164881995.svg)](https://zenodo.org/badge/latestdoi/164881995)
+[![Documentation Status](https://readthedocs.org/projects/ampligraph/badge/?version=latest)](http://ampligraph.readthedocs.io/?badge=latest)
 
 
 **Open source Python library that predicts links between concepts in a knowledge graph.**
