@@ -13,8 +13,6 @@ DATASET_FILE_NAME = {'WN18': 'wn18.zip',
                      'FB15K': 'fb15k.zip',
                      'FB15K_237': 'fb15k-237.zip',
                      'YAGO3_10': 'YAGO3-10.zip',
-                     'FB13': 'freebase13.zip',
-                     'WN11': 'wordnet11.zip'
                      }
 
 logger = logging.getLogger(__name__)
@@ -52,7 +50,7 @@ def _fetch_dataset(dataset_name, data_home=None, url=None):
     dataset_dir = os.path.join(data_home, dataset_name)
     if not os.path.exists(dataset_dir):
         if url is None:
-            msg = 'No dataset at {} and no url provided.'
+            msg = 'No dataset at {} and no url provided.'.format(dataset_dir)
             logger.error(msg)
             raise Exception(msg)
         _fetch_remote_data(url, dataset_dir, data_home)
@@ -116,14 +114,19 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None):
     return df.values
 
 
-def load_dataset(url, data_home=None, train_name='train.txt', valid_name='valid.txt', test_name='test.txt'):
-    dataset_name = url[url.rfind('/') + 1:url.rfind('.')]
+def load_dataset(dataset_name=None, url=None, data_home=None, train_name='train.txt', valid_name='valid.txt', test_name='test.txt'):
+    if dataset_name is None:
+        if url is None:
+            raise ValueError('The dataset name or url must be provided to load a dataset.')
+        dataset_name = url[url.rfind('/') + 1:url.rfind('.')]
     dataset_path = _fetch_dataset(dataset_name, data_home, url)
     train = load_from_csv(dataset_path, train_name)
     valid = load_from_csv(dataset_path, valid_name)
     test = load_from_csv(dataset_path, test_name)
     return {'train': train, 'valid': valid, 'test': test}
 
+def _load_core_dataset(dataset_key,data_home=None):
+    return load_dataset(url='{}{}'.format(REMOTE_DATASET_SERVER, DATASET_FILE_NAME[dataset_key]), data_home=data_home)
 
 def load_wn18(data_home=None):
     """Load the WN18 dataset
@@ -151,8 +154,8 @@ def load_wn18(data_home=None):
            ['10217831', '_hyponym', '10682169']], dtype=object)
 
     """
-
-    return load_dataset('{}{}'.format(REMOTE_DATASET_SERVER, DATASET_FILE_NAME['WN18']), data_home)
+    
+    return  _load_core_dataset('WN18',data_home)
 
 
 def load_wn18rr(data_home=None):
@@ -179,7 +182,7 @@ def load_wn18rr(data_home=None):
     
     """
 
-    return load_dataset('{}{}'.format(REMOTE_DATASET_SERVER, DATASET_FILE_NAME['WN18RR']), data_home)
+    return  _load_core_dataset('WN18RR',data_home)
 
 
 def load_fb15k(data_home=None):
@@ -215,7 +218,7 @@ def load_fb15k(data_home=None):
 
     """
 
-    return load_dataset('{}{}'.format(REMOTE_DATASET_SERVER, DATASET_FILE_NAME['FB15K']), data_home)
+    return  _load_core_dataset('FB15K',data_home)
 
 
 def load_fb15k_237(data_home=None):
@@ -236,12 +239,14 @@ def load_fb15k_237(data_home=None):
     Examples
     --------
     
-    >>> from ampligraph.datasets import load_fb15k
-    >>> X = load_fb15k()
-
+    >>> from ampligraph.datasets import load_fb15k_237
+    >>> X = load_fb15k_237()
+    >>> X["train"][2]
+    array(['/m/07s9rl0', '/media_common/netflix_genre/titles', '/m/0170z3'],
+      dtype=object)
     """
 
-    return load_dataset('{}{}'.format(REMOTE_DATASET_SERVER, DATASET_FILE_NAME['FB15K_237']), data_home)
+    return  _load_core_dataset('FB15K_237',data_home)
 
 
 def load_yago3_10(data_home=None):
@@ -268,77 +273,7 @@ def load_yago3_10(data_home=None):
     
     """
 
-    return load_dataset('{}{}'.format(REMOTE_DATASET_SERVER, DATASET_FILE_NAME['YAGO3_10']), data_home)
-
-
-def load_fb13(data_home=None):
-    """Load the FB13 Dataset
-
-        WN11 is a subste of Freebase. It was first presented in :cite:`socher2013reasoning`.
-        The dataset is divided in three splits:
-
-        - ``train``
-        - ``valid``
-        - ``test``
-
-    .. note:: The function filters duplicates.
-        :cite:`Hamaguchi2017` reports unfiltered numbers.
-
-    Returns
-    -------
-
-    splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-    
-    Examples
-    --------
-    
-    >>> from ampligraph.datasets import load_fb13
-    >>> X = load_fb13()
-    >>> print("X['valid'][0]: ", X['valid'][0])
-    X['valid'][0]:  ['cornelie_van_zanten' 'gender' 'female' '1']
-    
-    """
-    # return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['FB13']), data_home)
-    msg = 'Currently not supported due to filename name error. Blocked by issue #50'
-    logger.error(msg)
-    raise NotImplementedError(msg)
-
-
-def load_wn11(data_home=None):
-    """Load the WN11 Dataset
-
-        WN11 is a subste of wordnet. It was first presented in :cite:`socher2013reasoning`.
-        The dataset is divided in three splits:
-    
-        - ``train``
-        - ``valid``
-        - ``test``
-    
-    .. note:: The function filters duplicates.
-        :cite:`Hamaguchi2017` reports unfiltered numbers.
-    
-    Returns
-    -------
-    
-    splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-    
-    Examples
-    --------
-   
-    >>> from ampligraph.datasets import load_wn11
-    >>> X = load_wn11()
-    >>> print("X[valid'][0]: ", X['valid'][0])
-    X[valid'][0]:  ['__genus_xylomelum_1' '_type_of' '__dicot_genus_1' '1']
-
-    """
-
-    # return load_dataset( '{}{}'.format(REMOTE_DATASET_SERVER,DATASET_FILE_NAME['WN11']), data_home)
-    msg = 'Currently not supported due to filename name error. Blocked by issue #50'
-    logger.error(msg)
-    raise NotImplementedError(msg)
-
+    return  _load_core_dataset('YAGO3_10',data_home)
 
 def load_all_datasets(data_home=None):
     load_wn18(data_home)
@@ -346,9 +281,6 @@ def load_all_datasets(data_home=None):
     load_fb15k(data_home)
     load_fb15k_237(data_home)
     load_yago3_10(data_home)
-    # load_fb13(data_home)
-    # load_wn11(data_home)
-
 
 def load_from_rdf(folder_name, file_name, format='nt', data_home=None):
     """Load an RDF file
@@ -408,5 +340,4 @@ def load_from_ntriples(folder_name, file_name, data_home=None):
                      names=None,
                      dtype=str,
                      usecols=[0, 1, 2])
-    # df = df.drop_duplicates()
     return df.as_matrix()

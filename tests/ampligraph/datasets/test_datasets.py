@@ -1,4 +1,4 @@
-from ampligraph.datasets import load_wn18, load_wn11, load_fb13, load_fb15k, load_fb15k_237, load_yago3_10, load_wn18rr
+from ampligraph.datasets import load_wn18, load_fb15k, load_fb15k_237, load_yago3_10, load_wn18rr
 import numpy as np
 import pytest
 
@@ -18,49 +18,6 @@ def test_load_wn18():
 
     assert len(distinct_ent) == 40943
     assert len(distinct_rel) == 18
-
-
-@pytest.mark.skip(reason="Currently unsupported issue #50")
-def test_load_wn11():
-    wn11 = load_wn11()
-    # Hamaguchi17 reports numbers without filtering duplicates.
-    # assert len(wn11['train']) == 112581
-    # assert len(wn11['valid']) == 5218
-    # assert len(wn11['test']) == 21088
-    assert len(wn11['train']) == 110361
-    assert len(wn11['valid']) == 5215
-    assert len(wn11['test']) == 21035
-
-    # ent_train = np.union1d(np.unique(wn11["train"][:,0]), np.unique(wn11["train"][:,2]))
-    # ent_valid = np.union1d(np.unique(wn11["valid"][:,0]), np.unique(wn11["valid"][:,2]))
-    # ent_test = np.union1d(np.unique(wn11["test"][:,0]), np.unique(wn11["test"][:,2]))
-    # distinct_ent = np.union1d(np.union1d(ent_train, ent_valid), ent_test)
-    # distinct_rel = np.union1d(np.union1d(np.unique(wn11["train"][:,1]), np.unique(wn11["train"][:,1])), np.unique(wn11["train"][:,1]))
-
-    # assert len(distinct_ent) == 38588  
-    # assert len(distinct_rel) == 11  
-
-
-@pytest.mark.skip(reason="Currently unsupported issue #50")
-def test_load_fb13():
-    fb13 = load_fb13()
-    # Hamaguchi17 reports numbers without filtering duplicates.
-    # assert len(fb13['train']) == 316232
-    # assert len(fb13['valid']) == 11816
-    # assert len(fb13['test']) == 47466
-    assert len(fb13['train']) == 316232
-    assert len(fb13['valid']) == 11816
-    assert len(fb13['test']) == 47464
-
-    # ent_train = np.union1d(np.unique(fb13["train"][:,0]), np.unique(fb13["train"][:,2]))
-    # ent_valid = np.union1d(np.unique(fb13["valid"][:,0]), np.unique(fb13["valid"][:,2]))
-    # ent_test = np.union1d(np.unique(fb13["test"][:,0]), np.unique(fb13["test"][:,2]))
-    # distinct_ent = np.union1d(np.union1d(ent_train, ent_valid), ent_test)
-    # distinct_rel = np.union1d(np.union1d(np.unique(fb13["train"][:,1]), np.unique(fb13["train"][:,1])), np.unique(fb13["train"][:,1]))
-
-    # assert len(distinct_ent) == 75043  
-    # assert len(distinct_rel) == 13  
-
 
 def test_load_fb15k():
     fb15k = load_fb15k()

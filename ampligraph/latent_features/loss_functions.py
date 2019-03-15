@@ -130,7 +130,7 @@ class Loss(abc.ABC):
         
         Returns
         -------
-        loss : float
+        loss : tf.Tensor
             The loss value that must be minimized.
         """
         msg = 'This function is a placeholder in an abstract class.'
@@ -148,7 +148,7 @@ class Loss(abc.ABC):
         
         Returns
         -------
-        loss : float
+        loss : tf.Tensor
             The loss value that must be minimized.
         """
         self._inputs_check(scores_pos, scores_neg)
@@ -199,6 +199,20 @@ class PairwiseLoss(Loss):
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
 
     def _apply(self, scores_pos, scores_neg):
+        """ Apply the loss function.
+        Parameters
+        ----------
+        scores_pos : tf.Tensor, shape [n, 1]
+            A tensor of scores assigned to positive statements.
+        scores_neg : tf.Tensor, shape [n, 1]
+            A tensor of scores assigned to negative statements.
+
+        Returns
+        -------
+        loss : tf.Tensor
+            The loss value that must be minimized.
+
+        """
         margin = tf.constant(self._loss_parameters['margin'], dtype=tf.float32, name='margin')
         loss = tf.reduce_sum(tf.maximum(margin - scores_pos + scores_neg, 0))
         return loss
@@ -252,7 +266,7 @@ class NLLLoss(Loss):
 
         Returns
         -------
-        loss : float
+        loss : tf.Tensor
             The loss value that must be minimized.
 
         """
@@ -316,7 +330,7 @@ class AbsoluteMarginLoss(Loss):
 
         Returns
         -------
-        loss : float
+        loss : tf.Tensor
            The loss value that must be minimized.
 
         """
@@ -382,7 +396,7 @@ class SelfAdversarialLoss(Loss):
 
        Returns
        -------
-       loss : float
+       loss : tf.Tensor
            The loss value that must be minimized.
 
        """

@@ -15,7 +15,7 @@ def main():
 
     # Initialize a ComplEx neural embedding model with pairwise loss function:
     # The model will be trained for 300 epochs.
-    model = ComplEx(batches_count=10, seed=0, epochs=300, k=150, eta=10,
+    model = ComplEx(batches_count=10, seed=0, epochs=20, k=150, eta=10,
                     # Use adam optimizer with learning rate 1e-3
                     optimizer='adam', optimizer_params={'lr':1e-3},
                     # Use pairwise loss with margin 0.5
@@ -68,7 +68,7 @@ def main():
     mrr = mrr_score(ranks)
     hits_10 = hits_at_n_score(ranks, n=10)
     print("MRR: %f, Hits@10: %f" % (mrr, hits_10))
-
+    # Output: MRR: 0.886406, Hits@10: 0.935000
 
 if __name__ == "__main__":
     main()
