@@ -52,7 +52,7 @@ def _fetch_dataset(dataset_name, data_home=None, url=None):
     dataset_dir = os.path.join(data_home, dataset_name)
     if not os.path.exists(dataset_dir):
         if url is None:
-            msg = 'No dataset at {} and no url provided.'.format(local_path)
+            msg = 'No dataset at {} and no url provided.'
             logger.error(msg)
             raise Exception(msg)
         _fetch_remote_data(url, dataset_dir, data_home)
