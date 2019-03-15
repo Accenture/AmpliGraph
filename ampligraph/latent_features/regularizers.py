@@ -108,7 +108,7 @@ class Regularizer(abc.ABC):
         
         Returns
         -------
-        loss : float
+        loss : tf.Tensor
             Regularization Loss
         """
         logger.error('This function is a placeholder in an abstract class')
@@ -125,7 +125,7 @@ class Regularizer(abc.ABC):
         
         Returns
         -------
-        loss : float
+        loss : tf.Tensor
             Regularization Loss
         """
         loss = self._apply(trainable_params)
@@ -194,7 +194,7 @@ class LPRegularizer(Regularizer):
         
         Returns
         -------
-        loss : float
+        loss : tf.Tensor
             Regularization Loss
 
         """

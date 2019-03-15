@@ -138,7 +138,9 @@ class Loss(abc.ABC):
         NotImplementedError(msg)
 
     def apply(self, scores_pos, scores_neg):
-        """ Interface to external world. This function does the input checks, preprocesses input and finally applies loss fn.
+        """ Interface to external world. 
+        This function does the input checks, preprocesses input and finally applies loss function.
+        
         Parameters
         ----------
         scores_pos : tf.Tensor

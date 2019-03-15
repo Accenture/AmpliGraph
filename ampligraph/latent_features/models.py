@@ -76,7 +76,7 @@ class EmbeddingModel(abc.ABC):
 
     def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
                  embedding_model_params={},
-                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR, 'momentum':DEFAULT_MOMENTUM},
+                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
@@ -112,19 +112,21 @@ class EmbeddingModel(abc.ABC):
         loss : string
             The type of loss function to use during training. 
             
-            ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
             
-            ``nll`` the model will use negative loss likelihood.
-            
-            ``absolute_margin`` the model will use absolute margin likelihood.
-            
-            ``self_adversarial`` the model will use adversarial sampling loss function.
         loss_params : dict
             Parameters dictionary specific to the loss. 
             
             (Refer documentation of specific loss functions for more details)
         regularizer : string
-            The regularization strategy to use with the loss function. ``LP``.
+            The regularization strategy to use with the loss function. 
+            
+            - ``LP`` the model will use L1, L2 or L3 based on the value passed to param p.
+            - ``None`` the model will not use any regularizer
+            
         regularizer_params : dict
             Parameters dictionary specific to the regularizer. 
             
@@ -992,7 +994,7 @@ class TransE(EmbeddingModel):
 
     def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
                  embedding_model_params={'norm':DEFAULT_NORM_TRANSE, 'normalize_ent_emb':DEFAULT_NORMALIZE_EMBEDDINGS},
-                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR, 'momentum':DEFAULT_MOMENTUM},
+                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
@@ -1030,19 +1032,21 @@ class TransE(EmbeddingModel):
         loss : string
             The type of loss function to use during training.
 
-            ``pairwise``  the model will use pairwise margin-based loss function.
-
-            ``nll`` the model will use negative loss likelihood.
-
-            ``absolute_margin`` the model will use absolute margin likelihood.
-
-            ``self_adversarial`` the model will use adversarial sampling loss function.
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            
         loss_params : dict
             Parameters dictionary specific to the loss.
 
             (Refer documentation of specific loss functions for more details)
         regularizer : string
-            The regularization strategy to use with the loss function. ``LP``.
+            The regularization strategy to use with the loss function. 
+            
+            - ``LP`` the model will use L1, L2 or L3 based on the value passed to param p.
+            - ``None`` the model will not use any regularizer
+            
         regularizer_params : dict
             Parameters dictionary specific to the regularizer.
 
@@ -1177,7 +1181,7 @@ class DistMult(EmbeddingModel):
 
     def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
                  embedding_model_params={'normalize_ent_emb':DEFAULT_NORMALIZE_EMBEDDINGS},
-                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR, 'momentum':DEFAULT_MOMENTUM},
+                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
@@ -1214,19 +1218,21 @@ class DistMult(EmbeddingModel):
         loss : string
             The type of loss function to use during training.
 
-            ``pairwise``  the model will use pairwise margin-based loss function.
-
-            ``nll`` the model will use negative loss likelihood.
-
-            ``absolute_margin`` the model will use absolute margin likelihood.
-
-            ``self_adversarial`` the model will use adversarial sampling loss function.
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            
         loss_params : dict
             Parameters dictionary specific to the loss.
 
             (Refer documentation of specific loss functions for more details)
         regularizer : string
-            The regularization strategy to use with the loss function. ``LP``.
+            The regularization strategy to use with the loss function. 
+            
+            - ``LP`` the model will use L1, L2 or L3 based on the value passed to param p.
+            - ``None`` the model will not use any regularizer
+            
         regularizer_params : dict
             Parameters dictionary specific to the regularizer.
 
@@ -1370,7 +1376,7 @@ class ComplEx(EmbeddingModel):
 
     def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
                  embedding_model_params={},
-                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR, 'momentum':DEFAULT_MOMENTUM},
+                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
@@ -1404,19 +1410,21 @@ class ComplEx(EmbeddingModel):
         loss : string
             The type of loss function to use during training.
 
-            ``pairwise``  the model will use pairwise margin-based loss function.
-
-            ``nll`` the model will use negative loss likelihood.
-
-            ``absolute_margin`` the model will use absolute margin likelihood.
-
-            ``self_adversarial`` the model will use adversarial sampling loss function.
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            
         loss_params : dict
             Parameters dictionary specific to the loss.
 
             (Refer documentation of specific loss functions for more details)
         regularizer : string
-            The regularization strategy to use with the loss function. ``LP``.
+            The regularization strategy to use with the loss function. 
+            
+            - ``LP`` the model will use L1, L2 or L3 based on the value passed to param p.
+            - ``None`` the model will not use any regularizer
+            
         regularizer_params : dict
             Parameters dictionary specific to the regularizer.
 
@@ -1578,7 +1586,7 @@ class HolE(ComplEx):
 
     def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
                  embedding_model_params={},
-                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR, 'momentum':DEFAULT_MOMENTUM},
+                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
                  model_checkpoint_path='saved_model/', verbose=False, **kwargs):
@@ -1612,19 +1620,21 @@ class HolE(ComplEx):
         loss : string
             The type of loss function to use during training.
 
-            ``pairwise``  the model will use pairwise margin-based loss function.
-
-            ``nll`` the model will use negative loss likelihood.
-
-            ``absolute_margin`` the model will use absolute margin likelihood.
-
-            ``self_adversarial`` the model will use adversarial sampling loss function.
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            
         loss_params : dict
             Parameters dictionary specific to the loss.
 
             (Refer documentation of specific loss functions for more details)
         regularizer : string
-            The regularization strategy to use with the loss function. ``LP``.
+            The regularization strategy to use with the loss function. 
+            
+            - ``LP`` the model will use L1, L2 or L3 based on the value passed to param p.
+            - ``None`` the model will not use any regularizer
+            
         regularizer_params : dict
             Parameters dictionary specific to the regularizer.
 
