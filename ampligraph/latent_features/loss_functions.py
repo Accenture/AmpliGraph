@@ -138,7 +138,9 @@ class Loss(abc.ABC):
         NotImplementedError(msg)
 
     def apply(self, scores_pos, scores_neg):
-        """ Interface to external world. This function does the input checks, preprocesses input and finally applies loss fn.
+        """ Interface to external world. 
+        This function does the input checks, preprocesses input and finally applies loss function.
+        
         Parameters
         ----------
         scores_pos : tf.Tensor
@@ -172,7 +174,7 @@ class PairwiseLoss(Loss):
 
     """
 
-    def __init__(self, eta, hyperparam_dict={'margin': 1}, verbose=False):
+    def __init__(self, eta, hyperparam_dict={'margin': DEFAULT_MARGIN}, verbose=False):
         """Initialize Loss.
 
         Parameters
@@ -182,7 +184,7 @@ class PairwiseLoss(Loss):
         hyperparam_dict : dict
             dictionary of hyperparams.
 
-            - 'margin': float. Margin to be used in pairwise loss computation (default:1)
+            - **margin**: float. Margin to be used in pairwise loss computation (default:1)
         """
         super().__init__(eta, hyperparam_dict, verbose)
 
@@ -194,7 +196,7 @@ class PairwiseLoss(Loss):
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
             
-            - 'margin' - Margin to be used in pairwise loss computation(default:1)
+            - **margin** - Margin to be used in pairwise loss computation(default:1)
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
 
@@ -233,7 +235,7 @@ class NLLLoss(Loss):
 
     """
 
-    def __init__(self, eta, hyperparam_dict, verbose=False):
+    def __init__(self, eta, hyperparam_dict={}, verbose=False):
         """Initialize Loss.
 
         Parameters
@@ -299,7 +301,7 @@ class AbsoluteMarginLoss(Loss):
         hyperparam_dict : dict
             dictionary of hyperparams.
 
-            - 'margin': float. Margin to be used in pairwise loss computation (default:1)
+            - **margin**: float. Margin to be used in loss computation (default:1)
         """
         super().__init__(eta, hyperparam_dict, verbose)
 
@@ -311,7 +313,7 @@ class AbsoluteMarginLoss(Loss):
         hyperparam_dict : dict
            Consists of key value pairs. The Loss will check the keys to get the corresponding params.
             
-           'margin' - Margin to be used in pairwise loss computation(default:1)
+           **margin** - Margin to be used in loss computation(default:1)
            
         Returns
         -------    
@@ -364,8 +366,8 @@ class SelfAdversarialLoss(Loss):
         hyperparam_dict : dict
             dictionary of hyperparams.
 
-            - 'margin': float. Margin to be used in pairwise loss computation (default:1)
-            - 'alpha' : float. Temperature of sampling (default:0.5)
+            - **margin**: float. Margin to be used in adversarial loss computation (default:3)
+            - **alpha** : float. Temperature of sampling (default:0.5)
         """
         super().__init__(eta, hyperparam_dict, verbose)
 
@@ -377,9 +379,9 @@ class SelfAdversarialLoss(Loss):
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
             
-            - 'margin' - Margin to be used in adversarial loss computation (default:3)
+            - **margin** - Margin to be used in adversarial loss computation (default:3)
             
-            - 'alpha' - Temperature of sampling (default:0.5)
+            - **alpha** - Temperature of sampling (default:0.5)
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN_ADVERSARIAL)
         self._loss_parameters['alpha'] = hyperparam_dict.get('alpha', DEFAULT_ALPHA_ADVERSARIAL)

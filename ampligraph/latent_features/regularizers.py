@@ -108,7 +108,7 @@ class Regularizer(abc.ABC):
         
         Returns
         -------
-        loss : float
+        loss : tf.Tensor
             Regularization Loss
         """
         logger.error('This function is a placeholder in an abstract class')
@@ -125,7 +125,7 @@ class Regularizer(abc.ABC):
         
         Returns
         -------
-        loss : float
+        loss : tf.Tensor
             Regularization Loss
         """
         loss = self._apply(trainable_params)
@@ -146,7 +146,7 @@ class LPRegularizer(Regularizer):
           
     """
 
-    def __init__(self, hyperparam_dict={'lambda', DEFAULT_LAMBDA, 'p', DEFAULT_NORM}, verbose=False):
+    def __init__(self, hyperparam_dict={'lambda': DEFAULT_LAMBDA, 'p': DEFAULT_NORM}, verbose=False):
         """ Initializes the hyperparameters needed by the algorithm.
 
         Parameters
@@ -154,8 +154,9 @@ class LPRegularizer(Regularizer):
         hyperparam_dict : dictionary
             Consists of key value pairs. The regularizer will check the keys to get the corresponding params:
 
-            - 'lambda': float. Weight of regularization loss for each parameter (default: 1e-5)
-            - 'p': int: norm (default: 2)
+            - **lambda**: float. Weight of regularization loss for each parameter (default: 1e-5)
+            - **p**: int: norm (default: 2)
+            
         """
         super().__init__(hyperparam_dict, verbose)
 
@@ -194,7 +195,7 @@ class LPRegularizer(Regularizer):
         
         Returns
         -------
-        loss : float
+        loss : tf.Tensor
             Regularization Loss
 
         """
