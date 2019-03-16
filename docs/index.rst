@@ -71,7 +71,7 @@ If you like AmpliGraph and you use it in your project, why not starring the `pro
 
 |GitHub stars|
 
-.. |GitHub stars| image:: https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=2592000
+.. |GitHub stars| image:: https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=3600
    :target: https://github.com/Accenture/AmpliGraph/stargazers/
 
 If you instead use AmpliGraph in an academic publication, cite as:
@@ -87,12 +87,12 @@ If you instead use AmpliGraph in an academic publication, cite as:
      title = {{AmpliGraph: a Library for Representation Learning on Knowledge Graphs}},
      month = mar,
      year  = 2019,
-     doi   = {10.5281/zenodo.2595049},
-     url   = {https://doi.org/10.5281/zenodo.2595049}
+     doi   = {10.5281/zenodo.2595043},
+     url   = {https://doi.org/10.5281/zenodo.2595043}
    }
 
-.. image:: https://zenodo.org/badge/164881995.svg
-   :target: https://zenodo.org/badge/latestdoi/164881995
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.2595043.svg
+   :target: https://doi.org/10.5281/zenodo.2595043
 
 
 .. toctree::
