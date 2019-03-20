@@ -32,7 +32,7 @@ def display_scores(scores):
         output_rst[obj["dataset"]].set_style(BeautifulTable.STYLE_RST)
         output_rst[obj["dataset"]].column_headers = \
             ["Model", "MR", "MRR", "Hits@1", \
-             "Hits@3", "Hits\@10", "Hyperparameters"]
+             "Hits@3", "Hits@10", "Hyperparameters"]
 
     for obj in scores:
         try:
