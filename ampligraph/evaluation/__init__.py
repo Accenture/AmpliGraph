@@ -1,5 +1,5 @@
-"""The module incldues performance metrics for neural graph embeddings models, along with model selection routines,
- negatives generation, and an implementation of the learning-to-rank-based  evaluation protocol used in literature."""
+"""The module includes performance metrics for neural graph embeddings models, along with model selection routines,
+ negatives generation, and an implementation of the learning-to-rank-based evaluation protocol used in literature."""
 
 from .metrics import mrr_score, mr_score, hits_at_n_score, rank_score
 from .protocol import generate_corruptions_for_fit, evaluate_performance, to_idx, \
