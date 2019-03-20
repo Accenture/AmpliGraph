@@ -20,6 +20,28 @@ logger.setLevel(logging.DEBUG)
 
 
 def _get_data_home(data_home=None):
+    """Get to loacation of the dataset folder to use.
+
+    Automatically determine the dataset folder to use.
+    If data_home is provided this location a check is 
+    performed to see if the path exists and creates one if it does not.
+    If data_home is None the AMPLIGRAPH_ENV_NAME dataset is used.
+    If AMPLIGRAPH_ENV_NAME is not set the a default environment ~/ampligraph_datasets is used.
+
+    Parameters
+    ----------
+
+    data_home : str
+       The path to the folder that contains the datasets.
+
+    Returns
+    -------
+
+    str
+        The path to the dataset directory
+
+    """
+
     if data_home is None:
         data_home = os.environ.get(AMPLIGRAPH_ENV_NAME, os.path.join('~', 'ampligraph_datasets'))
     data_home = os.path.expanduser(data_home)
@@ -29,23 +51,70 @@ def _get_data_home(data_home=None):
     return data_home
 
 
-def _unzip_dataset(data_home, file_path):
+def _unzip_dataset(source, destination):
+    """Unzip a file from a source location to a destination.
+
+    Parameters
+    ----------
+
+    source : str
+        The path to the zipped file
+    destinatin : str
+        The destination directory to unzip the files to.
+
+    """
+
     # TODO - add error checking
-    with zipfile.ZipFile(file_path, 'r') as zip_ref:
-        logger.debug('Unzipping {} to {}'.format(file_path, data_home))
-        zip_ref.extractall(data_home)
-    os.remove(file_path)
+    with zipfile.ZipFile(source, 'r') as zip_ref:
+        logger.debug('Unzipping {} to {}'.format(source, destination))
+        zip_ref.extractall(destination)
+    os.remove(source)
 
 
-def _fetch_remote_data(url, dataset_dir, data_home):
-    file_path = '{}.zip'.format(dataset_dir)
+def _fetch_remote_data(url, download_dir, data_home):
+    """Download a remote datasets.
+
+    Parameters
+    ----------
+
+    url : str
+        The url of the dataset to download.
+    dataset_dir : str
+        The location to downlaod the file to.
+    data_home : str
+        The location to save the dataset.
+
+    """
+
+    file_path = '{}.zip'.format(download_dir)
     if not Path(file_path).exists():
         urllib.request.urlretrieve(url, file_path)
         # TODO - add error checking
-    _unzip_dataset(data_home, file_path)
+    _unzip_dataset(file_path,data_home)
 
 
 def _fetch_dataset(dataset_name, data_home=None, url=None):
+    """Get a dataset.
+
+    Gets the directory of a dataset. If the dataset is not found
+    it is downloaded automatically.
+
+    Parameters
+    ----------
+
+    dataset_name : str
+        The name of the dataset to download.
+    data_home : str
+        The location to save the dataset to.
+    url : str
+        The url to download the dataset from.
+
+    Returns
+    ------
+    
+    str
+        The location of the dataset.
+    """
     data_home = _get_data_home(data_home)
     dataset_dir = os.path.join(data_home, dataset_name)
     if not os.path.exists(dataset_dir):
@@ -128,9 +197,15 @@ def load_dataset(dataset_name=None, url=None, data_home=None, train_name='train.
 def _load_core_dataset(dataset_key,data_home=None):
     return load_dataset(url='{}{}'.format(REMOTE_DATASET_SERVER, DATASET_FILE_NAME[dataset_key]), data_home=data_home)
 
-def load_wn18(data_home=None):
+def load_wn18():
     """Load the WN18 dataset
 
+    The WN18 dataset is loaded from file if it exists at the AMPLIGAPH_DATA_HOME location.
+    IF AMPLIGRAPH_DATA_HOME is not set the the default  ~/ampligraph_datasets is checked.
+
+    If the dataset is not found at either location it is downloaded and placed in AMPLIGRAPH_DATA_HOME
+    or ~/ampligraph_datasets.    
+ 
         WN18 is a subset of Wordnet. It was first presented by :cite:`bordes2013translating`.
         The dataset is divided in three splits:
 
@@ -155,11 +230,17 @@ def load_wn18(data_home=None):
 
     """
     
-    return  _load_core_dataset('WN18',data_home)
+    return  _load_core_dataset('WN18',data_home=None)
 
 
-def load_wn18rr(data_home=None):
+def load_wn18rr():
     """ Load the WN18RR dataset
+    
+    The WN18RR dataset is loaded from file if it exists at the AMPLIGAPH_DATA_HOME location.
+    IF AMPLIGRAPH_DATA_HOME is not set the the default  ~/ampligraph_datasets is checked.
+
+    If the dataset is not found at either location it is downloaded and placed in AMPLIGRAPH_DATA_HOME
+    or ~/ampligraph_datasets.    
     
     The dataset is described in :cite:`DettmersMS018`. It is divided in three splits:
         - ``train``
@@ -182,12 +263,18 @@ def load_wn18rr(data_home=None):
     
     """
 
-    return  _load_core_dataset('WN18RR',data_home)
+    return  _load_core_dataset('WN18RR',data_home=None)
 
 
-def load_fb15k(data_home=None):
+def load_fb15k():
     """Load the FB15k dataset
+    
+    The FB15k dataset is loaded from file if it exists at the AMPLIGAPH_DATA_HOME location.
+    IF AMPLIGRAPH_DATA_HOME is not set the the default  ~/ampligraph_datasets is checked.
 
+    If the dataset is not found at either location it is downloaded and placed in AMPLIGRAPH_DATA_HOME
+    or ~/ampligraph_datasets.    
+    
     FB15k is a split of Freebase, first proposed by :cite:`bordes2013translating`.
 
     The dataset is divided in three splits:
@@ -218,11 +305,17 @@ def load_fb15k(data_home=None):
 
     """
 
-    return  _load_core_dataset('FB15K',data_home)
+    return  _load_core_dataset('FB15K',data_home=None)
 
 
-def load_fb15k_237(data_home=None):
+def load_fb15k_237():
     """Load the FB15k-237 dataset
+    
+    The FB15k-237 dataset is loaded from file if it exists at the AMPLIGAPH_DATA_HOME location.
+    IF AMPLIGRAPH_DATA_HOME is not set the the default  ~/ampligraph_datasets is checked.
+
+    If the dataset is not found at either location it is downloaded and placed in AMPLIGRAPH_DATA_HOME
+    or ~/ampligraph_datasets.    
     
     FB15k-237 is a reduced version of FB15k. It was first proposed by :cite:`toutanova2015representing`.
         The dataset is divided in three splits:
@@ -246,12 +339,18 @@ def load_fb15k_237(data_home=None):
       dtype=object)
     """
 
-    return  _load_core_dataset('FB15K_237',data_home)
+    return  _load_core_dataset('FB15K_237',data_home=None)
 
 
-def load_yago3_10(data_home=None):
+def load_yago3_10():
     """ Load the YAGO3-10 dataset
-    
+   
+    The YAGO3-10 dataset is loaded from file if it exists at the AMPLIGAPH_DATA_HOME location.
+    IF AMPLIGRAPH_DATA_HOME is not set the the default  ~/ampligraph_datasets is checked.
+
+    If the dataset is not found at either location it is downloaded and placed in AMPLIGRAPH_DATA_HOME
+    or ~/ampligraph_datasets. 
+ 
     The dataset is presented in :cite:`mahdisoltani2013yago3`. It is divided in three splits:
         - ``train``
         - ``valid``        
@@ -273,14 +372,14 @@ def load_yago3_10(data_home=None):
     
     """
 
-    return  _load_core_dataset('YAGO3_10',data_home)
+    return  _load_core_dataset('YAGO3_10',data_home=None)
 
-def load_all_datasets(data_home=None):
-    load_wn18(data_home)
-    load_wn18rr(data_home)
-    load_fb15k(data_home)
-    load_fb15k_237(data_home)
-    load_yago3_10(data_home)
+def load_all_datasets():
+    load_wn18()
+    load_wn18rr()
+    load_fb15k()
+    load_fb15k_237()
+    load_yago3_10()
 
 def load_from_rdf(folder_name, file_name, format='nt', data_home=None):
     """Load an RDF file
