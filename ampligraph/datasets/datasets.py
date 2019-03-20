@@ -20,7 +20,7 @@ logger.setLevel(logging.DEBUG)
 
 
 def _get_data_home(data_home=None):
-    """Get to loacation of the dataset folder to use.
+    """Get to location of the dataset folder to use.
 
     Automatically determine the dataset folder to use.
     If data_home is provided this location a check is 
@@ -59,7 +59,7 @@ def _unzip_dataset(source, destination):
 
     source : str
         The path to the zipped file
-    destinatin : str
+    destination : str
         The destination directory to unzip the files to.
 
     """
@@ -90,7 +90,7 @@ def _fetch_remote_data(url, download_dir, data_home):
     if not Path(file_path).exists():
         urllib.request.urlretrieve(url, file_path)
         # TODO - add error checking
-    _unzip_dataset(file_path,data_home)
+    _unzip_dataset(file_path, data_home)
 
 
 def _fetch_dataset(dataset_name, data_home=None, url=None):
@@ -127,9 +127,10 @@ def _fetch_dataset(dataset_name, data_home=None, url=None):
 
 
 def load_from_csv(directory_path, file_name, sep='\t', header=None):
-    """Load a csv file
+    """Load a knowledge graph from a csv file
     
     Loads a knowledge graph serialized in a csv file as:
+
     .. code-block:: text
 
        subj1    relationX   obj1
@@ -138,14 +139,14 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None):
        subj4    relationY   obj2
        ...
 
-        .. note::
-            Duplicates are filtered.
+    .. note::
+        The function filters duplicated statements.
     
     Parameters
     ----------
     
-    folder_name: str
-        base folder within AMPLIGRAPH_DATA_HOME where the file is stored.
+    directory_path: str
+        folder where the input file is stored.
     file_name : str
         file name
     sep : str
@@ -183,7 +184,8 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None):
     return df.values
 
 
-def load_dataset(dataset_name=None, url=None, data_home=None, train_name='train.txt', valid_name='valid.txt', test_name='test.txt'):
+def load_dataset(dataset_name=None, url=None, data_home=None, train_name='train.txt', valid_name='valid.txt',
+                 test_name='test.txt'):
     if dataset_name is None:
         if url is None:
             raise ValueError('The dataset name or url must be provided to load a dataset.')
@@ -194,24 +196,35 @@ def load_dataset(dataset_name=None, url=None, data_home=None, train_name='train.
     test = load_from_csv(dataset_path, test_name)
     return {'train': train, 'valid': valid, 'test': test}
 
-def _load_core_dataset(dataset_key,data_home=None):
+
+def _load_core_dataset(dataset_key, data_home=None):
     return load_dataset(url='{}{}'.format(REMOTE_DATASET_SERVER, DATASET_FILE_NAME[dataset_key]), data_home=data_home)
+
 
 def load_wn18():
     """Load the WN18 dataset
 
-    The WN18 dataset is loaded from file if it exists at the AMPLIGAPH_DATA_HOME location.
-    IF AMPLIGRAPH_DATA_HOME is not set the the default  ~/ampligraph_datasets is checked.
+    WN18 is a subset of Wordnet. It was first presented by :cite:`bordes2013translating`.
 
-    If the dataset is not found at either location it is downloaded and placed in AMPLIGRAPH_DATA_HOME
-    or ~/ampligraph_datasets.    
- 
-        WN18 is a subset of Wordnet. It was first presented by :cite:`bordes2013translating`.
-        The dataset is divided in three splits:
+    The WN18 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    IF ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
 
-        - ``train``
-        - ``valid``
-        - ``test``
+    If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    or ``~/ampligraph_datasets``.
+
+    The dataset is divided in three splits:
+
+    - ``train``: 141,442 triples
+    - ``valid`` 5,000 triples
+    - ``test`` 5,000 triples
+
+    ========= ========= ======= ======= ============ ===========
+     Dataset  Train     Valid   Test    Entities     Relations
+    ========= ========= ======= ======= ============ ===========
+    WN18      141,442   5,000   5,000   40,943        18
+    ========= ========= ======= ======= ============ ===========
+
+
 
     Returns
     -------
@@ -229,24 +242,37 @@ def load_wn18():
            ['10217831', '_hyponym', '10682169']], dtype=object)
 
     """
-    
-    return  _load_core_dataset('WN18',data_home=None)
+
+    return _load_core_dataset('WN18', data_home=None)
 
 
 def load_wn18rr():
     """ Load the WN18RR dataset
-    
-    The WN18RR dataset is loaded from file if it exists at the AMPLIGAPH_DATA_HOME location.
-    IF AMPLIGRAPH_DATA_HOME is not set the the default  ~/ampligraph_datasets is checked.
 
-    If the dataset is not found at either location it is downloaded and placed in AMPLIGRAPH_DATA_HOME
-    or ~/ampligraph_datasets.    
-    
-    The dataset is described in :cite:`DettmersMS018`. It is divided in three splits:
-        - ``train``
-        - ``valid``        
-        - ``test``
-    
+    The dataset is described in :cite:`DettmersMS018`.
+
+    The WN18RR dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    IF ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+
+    If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    or ``~/ampligraph_datasets``.
+
+
+    It is divided in three splits:
+
+    - ``train``
+    - ``valid``
+    - ``test``
+
+    ========= ========= ======= ======= ============ ===========
+     Dataset  Train     Valid   Test    Entities     Relations
+    ========= ========= ======= ======= ============ ===========
+    WN18RR    86,835    3,034   3,134   40,943        11
+    ========= ========= ======= ======= ============ ===========
+
+    .. warning:: WN18RR's validation set contains 198 unseen entities over 210 triples.
+        The test set has 209 unseen entities, distributed over 210 triples.
+
     Returns
     -------
     
@@ -263,26 +289,32 @@ def load_wn18rr():
     
     """
 
-    return  _load_core_dataset('WN18RR',data_home=None)
+    return _load_core_dataset('WN18RR', data_home=None)
 
 
 def load_fb15k():
     """Load the FB15k dataset
-    
-    The FB15k dataset is loaded from file if it exists at the AMPLIGAPH_DATA_HOME location.
-    IF AMPLIGRAPH_DATA_HOME is not set the the default  ~/ampligraph_datasets is checked.
 
-    If the dataset is not found at either location it is downloaded and placed in AMPLIGRAPH_DATA_HOME
-    or ~/ampligraph_datasets.    
-    
     FB15k is a split of Freebase, first proposed by :cite:`bordes2013translating`.
+
+    The FB15k dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    IF ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+
+    If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    or ``~/ampligraph_datasets``.
 
     The dataset is divided in three splits:
     
     - ``train``
     - ``valid``
     - ``test``
-    
+
+    ========= ========= ======= ======= ============ ===========
+     Dataset  Train     Valid   Test    Entities     Relations
+    ========= ========= ======= ======= ============ ===========
+    FB15K     483,142   50,000  59,071  14,951        1,345
+    ========= ========= ======= ======= ============ ===========
+
     Returns
     -------
     
@@ -305,24 +337,36 @@ def load_fb15k():
 
     """
 
-    return  _load_core_dataset('FB15K',data_home=None)
+    return _load_core_dataset('FB15K', data_home=None)
 
 
 def load_fb15k_237():
     """Load the FB15k-237 dataset
-    
-    The FB15k-237 dataset is loaded from file if it exists at the AMPLIGAPH_DATA_HOME location.
-    IF AMPLIGRAPH_DATA_HOME is not set the the default  ~/ampligraph_datasets is checked.
 
-    If the dataset is not found at either location it is downloaded and placed in AMPLIGRAPH_DATA_HOME
-    or ~/ampligraph_datasets.    
-    
-    FB15k-237 is a reduced version of FB15k. It was first proposed by :cite:`toutanova2015representing`.
-        The dataset is divided in three splits:
-        - ``train``
-        - ``valid``
-        - ``test``
-    
+    FB15k-237 is a reduced version of FB15K. It was first proposed by :cite:`toutanova2015representing`.
+
+    The FB15k-237 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    IF ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+
+    If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    or ``~/ampligraph_datasets``.
+
+    The dataset is divided in three splits:
+
+    - ``train``
+    - ``valid``
+    - ``test``
+
+    ========= ========= ======= ======= ============ ===========
+     Dataset  Train     Valid   Test    Entities     Relations
+    ========= ========= ======= ======= ============ ===========
+    FB15K-237 272,115   17,535  20,466  14,541        237
+    ========= ========= ======= ======= ============ ===========
+
+    .. warning:: FB15K-237's validation set contains 8 unseen entities over 9 triples. The test set has 29 unseen entities,
+        distributed over 28 triples.
+
+
     Returns
     -------
     
@@ -339,23 +383,33 @@ def load_fb15k_237():
       dtype=object)
     """
 
-    return  _load_core_dataset('FB15K_237',data_home=None)
+    return _load_core_dataset('FB15K_237', data_home=None)
 
 
 def load_yago3_10():
     """ Load the YAGO3-10 dataset
    
-    The YAGO3-10 dataset is loaded from file if it exists at the AMPLIGAPH_DATA_HOME location.
-    IF AMPLIGRAPH_DATA_HOME is not set the the default  ~/ampligraph_datasets is checked.
+    The dataset is a split of YAGO3 :cite:`mahdisoltani2013yago3`, and has been first presented in :cite:`DettmersMS018`.
 
-    If the dataset is not found at either location it is downloaded and placed in AMPLIGRAPH_DATA_HOME
-    or ~/ampligraph_datasets. 
- 
-    The dataset is presented in :cite:`mahdisoltani2013yago3`. It is divided in three splits:
-        - ``train``
-        - ``valid``        
-        - ``test``
-    
+    The YAGO3-10 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    IF ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+
+    If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    or ``~/ampligraph_datasets``.
+
+    It is divided in three splits:
+
+    - ``train``
+    - ``valid``
+    - ``test``
+
+    ========= ========= ======= ======= ============ ===========
+     Dataset  Train     Valid   Test    Entities     Relations
+    ========= ========= ======= ======= ============ ===========
+    YAGO3-10  1,079,040 5,000   5,000   123,182       37
+    ========= ========= ======= ======= ============ ===========
+
+
     Returns
     -------
     
@@ -372,7 +426,8 @@ def load_yago3_10():
     
     """
 
-    return  _load_core_dataset('YAGO3_10',data_home=None)
+    return _load_core_dataset('YAGO3_10', data_home=None)
+
 
 def load_all_datasets():
     load_wn18()
@@ -381,17 +436,24 @@ def load_all_datasets():
     load_fb15k_237()
     load_yago3_10()
 
+
 def load_from_rdf(folder_name, file_name, format='nt', data_home=None):
     """Load an RDF file
 
-        Loads an RDF knowledge graph using rdflib APIs.
+        Loads an RDF knowledge graph using rdflib_ APIs.
+        Multiple RDF serialization formats are supported (nt, ttl, rdf/xml, etc).
         The entire graph will be loaded in memory, and converted into an rdflib `Graph` object.
+
+        .. _rdflib: https://rdflib.readthedocs.io/
+
+    .. warning::
+        Large RDF graphs should be serialized to ntriples beforehand and loaded with ``load_from_ntriples()`` instead.
 
 
     Parameters
     ----------
     folder_name: str
-        base folder within AMPLIGRAPH_DATA_HOME where the file is stored.
+        base folder where the file is stored.
     file_name : str
         file name
     format : str
@@ -412,16 +474,24 @@ def load_from_rdf(folder_name, file_name, format='nt', data_home=None):
 
 
 def load_from_ntriples(folder_name, file_name, data_home=None):
-    """Load RDF ntriples as csv statements
+    """Load RDF ntriples
 
-        Loads an RDF knowledge graph serialized as ntriples, without building an RDF graph in mmeory.
-        This function is faster than ``load_from_rdf()``.
+        Loads an RDF knowledge graph serialized as ntriples, without building an RDF graph in memory.
+        This function should be preferred over ``load_from_rdf()``, since it does not load the graph into an rdflib model
+        (and it is therefore faster by order of magnitudes). Nevertheless, it requires a ntriples_ serialization
+        as in the example below:
 
+        .. _ntriples: https://www.w3.org/TR/n-triples/.
+
+    .. code-block:: text
+
+        _:alice <http://xmlns.com/foaf/0.1/knows> _:bob .
+        _:bob <http://xmlns.com/foaf/0.1/knows> _:alice .
 
     Parameters
     ----------
     folder_name: str
-        base folder within AMPLIGRAPH_DATA_HOME where the file is stored.
+        base folder where the file is stored.
     file_name : str
         file name
 
