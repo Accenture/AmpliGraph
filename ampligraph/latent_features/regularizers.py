@@ -146,19 +146,19 @@ class LPRegularizer(Regularizer):
           
     """
 
-    def __init__(self, hyperparam_dict={'lambda': DEFAULT_LAMBDA, 'p': DEFAULT_NORM}, verbose=False):
+    def __init__(self, regularizer_params={'lambda': DEFAULT_LAMBDA, 'p': DEFAULT_NORM}, verbose=False):
         """ Initializes the hyperparameters needed by the algorithm.
 
         Parameters
         ----------
-        hyperparam_dict : dictionary
+        regularizer_params : dictionary
             Consists of key value pairs. The regularizer will check the keys to get the corresponding params:
 
             - **lambda**: float. Weight of regularization loss for each parameter (default: 1e-5)
             - **p**: int: norm (default: 2)
             
         """
-        super().__init__(hyperparam_dict, verbose)
+        super().__init__(regularizer_params, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.
