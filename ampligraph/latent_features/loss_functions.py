@@ -174,19 +174,19 @@ class PairwiseLoss(Loss):
 
     """
 
-    def __init__(self, eta, hyperparam_dict={'margin': DEFAULT_MARGIN}, verbose=False):
+    def __init__(self, eta, loss_params={'margin': DEFAULT_MARGIN}, verbose=False):
         """Initialize Loss.
 
         Parameters
         ----------
         eta: int
             number of negatives
-        hyperparam_dict : dict
+        loss_params : dict
             dictionary of hyperparams.
 
             - **margin**: float. Margin to be used in pairwise loss computation (default:1)
         """
-        super().__init__(eta, hyperparam_dict, verbose)
+        super().__init__(eta, loss_params, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparameters needed by the algorithm.
@@ -235,17 +235,17 @@ class NLLLoss(Loss):
 
     """
 
-    def __init__(self, eta, hyperparam_dict={}, verbose=False):
+    def __init__(self, eta, loss_params={}, verbose=False):
         """Initialize Loss.
 
         Parameters
         ----------
         eta: int
             number of negatives
-        hyperparam_dict : dict
+        loss_params : dict
             dictionary of hyperparams. No hyperparameters are required for this loss.
         """
-        super().__init__(eta, hyperparam_dict, verbose)
+        super().__init__(eta, loss_params, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.
@@ -291,19 +291,19 @@ class AbsoluteMarginLoss(Loss):
 
     """
 
-    def __init__(self, eta, hyperparam_dict={'margin': DEFAULT_MARGIN}, verbose=False):
+    def __init__(self, eta, loss_params={'margin': DEFAULT_MARGIN}, verbose=False):
         """Initialize Loss
 
         Parameters
         ----------
         eta: int
             number of negatives
-        hyperparam_dict : dict
+        loss_params : dict
             dictionary of hyperparams.
 
             - **margin**: float. Margin to be used in loss computation (default:1)
         """
-        super().__init__(eta, hyperparam_dict, verbose)
+        super().__init__(eta, loss_params, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.
@@ -355,7 +355,7 @@ class SelfAdversarialLoss(Loss):
 
     """
 
-    def __init__(self, eta, hyperparam_dict={'margin': DEFAULT_MARGIN_ADVERSARIAL,
+    def __init__(self, eta, loss_params={'margin': DEFAULT_MARGIN_ADVERSARIAL,
                                              'alpha': DEFAULT_ALPHA_ADVERSARIAL}, verbose=False):
         """Initialize Loss
 
@@ -363,13 +363,13 @@ class SelfAdversarialLoss(Loss):
         ----------
         eta: int
             number of negatives
-        hyperparam_dict : dict
+        loss_params : dict
             dictionary of hyperparams.
 
             - **margin**: float. Margin to be used in adversarial loss computation (default:3)
             - **alpha** : float. Temperature of sampling (default:0.5)
         """
-        super().__init__(eta, hyperparam_dict, verbose)
+        super().__init__(eta, loss_params, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.
