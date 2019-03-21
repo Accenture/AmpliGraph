@@ -825,14 +825,14 @@ class EmbeddingModel(abc.ABC):
 class RandomBaseline(EmbeddingModel):
     """Random baseline
 
-        A dummy model that assigns a pseud-random score included between 0 and 1,
-        and drawn from a uniform distribution.
+        A dummy model that assigns a pseudo-random score included between 0 and 1,
+        drawn from a uniform distribution.
 
-        A dummy random model is useful whenever you need to compare the performance of
+        The model is useful whenever you need to compare the performance of
         another model on a custom knowledge graph, and no other baseline is available. 
         
-        .. note:: Although the model still requires invoking the `fit()` method,
-            no training will be carried out.
+        .. note:: Although the model still requires invoking the ``fit()`` method,
+            no actual training will be carried out.
 
         Examples
         --------
@@ -853,7 +853,7 @@ class RandomBaseline(EmbeddingModel):
     """
 
     def __init__(self, seed=0):
-        """ Initialize RandomBaseline model
+        """ Initialize the model
         
         Parameters
         ----------
@@ -962,10 +962,20 @@ class TransE(EmbeddingModel):
 
         The model as described in :cite:`bordes2013translating`.
 
+
+        The scoring function of TransE computes a similarity between the embedding of the subject
+        :math:`\mathbf{e}_{sub}` translated by the embedding of the predicate :math:`\mathbf{e}_{pred}`
+        and the embedding of the object :math:`\mathbf{e}_{obj}`,
+        using the :math:`L_1` or :math:`L_2` norm :math:`||\cdot||`:
+
         .. math::
 
-            f_{TransE}=-||(\mathbf{e}_s + \mathbf{r}_p) - \mathbf{e}_o||_n
-            
+            f_{TransE}=-||\mathbf{e}_{sub} + \mathbf{e}_{pred} - \mathbf{e}_{obj}||_n
+
+
+        Such scoring function is then used on positive and negative triples :math:`t^+, t^-` in the loss function.
+
+
         Examples
         --------
         >>> import numpy as np
@@ -1015,42 +1025,55 @@ class TransE(EmbeddingModel):
         seed : int
             The seed used by the internal random numbers generator.
         embedding_model_params : dict
-            TransE-specific hyperparams:
+            TransE-specific hyperparams, passed to the model as a dictionary.
 
-            - **norm** - type of norm to be used in scoring function (1 or 2 norm - default:1)
-            - **normalize_ent_emb** - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
-            
+            Supported keys:
+
+            - **'norm'** (int): the norm to be used in the scoring function (1 or 2-norm - default: 1).
+            - **'normalize_ent_emb'** (bool): flag to indicate whether to normalize entity embeddings after each batch update (default: False).
+
+            Example: ``embedding_model_params={'norm': 1, 'normalize_ent_emb': False}``
+
         optimizer : string
-            The optimizer used to minimize the loss function. Choose between ``sgd``,
-            ``adagrad``, ``adam``, ``momentum``.
+            The optimizer used to minimize the loss function. Choose between 'sgd',
+            'adagrad', 'adam', 'momentum'.
         optimizer_params : dict
-            Parameters values specific to the optimizer.Currently supported:
+            Arguments specific to the optimizer, passed as a dictionary.
 
-            - **lr** - learning rate (used by all the optimizers)
-            - **momentum** - learning momentum (used by momentum optimizer)
+            Supported keys:
+
+            - **'lr'** (float): learning rate (used by all the optimizers). Default: 0.1.
+            - **'momentum'** (float): learning momentum (only used when ``optimizer=momentum``). Default: 0.9.
+
+            Example: ``optimizer_params={'lr': 0.01}``
             
         loss : string
             The type of loss function to use during training.
 
-            - ``pairwise``  the model will use pairwise margin-based loss function.
-            - ``nll`` the model will use negative loss likelihood.
-            - ``absolute_margin`` the model will use absolute margin likelihood.
-            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            - 'pairwise'  the model will use pairwise margin-based loss function.
+            - 'nll' the model will use negative loss likelihood.
+            - 'absolute_margin' the model will use absolute margin likelihood.
+            - 'self_adversarial' the model will use adversarial sampling loss function.
             
         loss_params : dict
-            Parameters dictionary specific to the loss.
+            Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
+            documentation for additional details.
 
-            (Refer documentation of specific loss functions for more details)
+            Example: ``optimizer_params={'lr': 0.01}`` if ``loss='pairwise'``.
+
+
         regularizer : string
             The regularization strategy to use with the loss function. 
             
-            - ``LP`` the model will use L1, L2 or L3 based on the value passed to param p.
-            - ``None`` the model will not use any regularizer
-            
-        regularizer_params : dict
-            Parameters dictionary specific to the regularizer.
+            - ``None``: the model will not use any regularizer (default)
+            - 'LP': the model will use L1, L2 or L3 based on the value of ``regularizer_params['p']`` (see below).
 
-            (Refer documentation of regularizer for more details)
+        regularizer_params : dict
+            Dictionary of regularizer-specific hyperparameters. See the :ref:`regularizers <ref-reg>`
+            documentation for additional details.
+
+            Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
+
         model_checkpoint_path: string
             Path to save the model.
         verbose : bool
@@ -1149,16 +1172,22 @@ class DistMult(EmbeddingModel):
 
         The model as described in :cite:`yang2014embedding`.
 
+        The bilinear diagonal DistMult model uses the trilinear dot product as scoring function:
+
         .. math::
 
             f_{DistMult}=\langle \mathbf{r}_p, \mathbf{e}_s, \mathbf{e}_o \\rangle
-            
+
+        where :math:`\mathbf{e}_{s}` is the embedding of the subject, :math:`\mathbf{r}_{p}` the embedding
+        of the predicate and :math:`\mathbf{e}_{o}` the embedding of the object.
+
 
         Examples
         --------
         >>> import numpy as np
         >>> from ampligraph.latent_features import DistMult
-        >>> model = DistMult(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin':5})
+        >>> model = DistMult(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise',
+        >>>         loss_params={'margin':5})
         >>> X = np.array([['a', 'y', 'b'],
         >>>               ['b', 'y', 'a'],
         >>>               ['a', 'y', 'c'],
@@ -1333,14 +1362,16 @@ class DistMult(EmbeddingModel):
 class ComplEx(EmbeddingModel):
     """ Complex embeddings (ComplEx)
 
-        The ComplEx model :cite:`trouillon2016complex` is an extension of the :class:`ampligraph.latent_features.DistMult` bilinear diagonal model
+        The ComplEx model :cite:`trouillon2016complex` is an extension of
+        the :class:`ampligraph.latent_features.DistMult` bilinear diagonal model
         . ComplEx scoring function is based on the trilinear Hermitian dot product in :math:`\mathcal{C}`:
 
         .. math::
 
             f_{ComplEx}=Re(\langle \mathbf{r}_p, \mathbf{e}_s, \overline{\mathbf{e}_o}  \\rangle)
 
-        Note that because embeddings are in :math:`\mathcal{C}`, ComplEx uses twice as many parameters as its counterpart in :math:`\mathcal{R}` DistMult.
+        Note that because embeddings are in :math:`\mathcal{C}`, ComplEx uses twice as many parameters as
+        :class:`ampligraph.latent_features.DistMult`.
 
         Examples
         --------

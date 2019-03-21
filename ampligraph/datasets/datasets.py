@@ -252,7 +252,7 @@ def load_wn18rr():
     The dataset is described in :cite:`DettmersMS018`.
 
     The WN18RR dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-    IF ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
 
     If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
@@ -298,7 +298,7 @@ def load_fb15k():
     FB15k is a split of Freebase, first proposed by :cite:`bordes2013translating`.
 
     The FB15k dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-    IF ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
 
     If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
@@ -346,7 +346,7 @@ def load_fb15k_237():
     FB15k-237 is a reduced version of FB15K. It was first proposed by :cite:`toutanova2015representing`.
 
     The FB15k-237 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-    IF ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
 
     If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
@@ -392,7 +392,7 @@ def load_yago3_10():
     The dataset is a split of YAGO3 :cite:`mahdisoltani2013yago3`, and has been first presented in :cite:`DettmersMS018`.
 
     The YAGO3-10 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-    IF ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
 
     If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
