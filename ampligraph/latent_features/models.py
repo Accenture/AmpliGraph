@@ -689,10 +689,10 @@ class EmbeddingModel(abc.ABC):
         self.table_entity_lookup_right = None
         self.table_reln_lookup = None
 
-        all_entities_np = np.int64(np.array(list(self.ent_to_idx.values())))
+        all_entities_np = np.int64(np.arange(len(self.ent_to_idx)))
 
         if self.is_filtered:
-            all_reln_np = np.int64(np.array(list(self.rel_to_idx.values())))
+            all_reln_np = np.int64(np.arange(len(self.rel_to_idx)))
             self.table_entity_lookup_left = tf.contrib.lookup.HashTable(
                 tf.contrib.lookup.KeyValueTensorInitializer(all_entities_np,
                                                             np.array(self.entity_primes_left, dtype=np.int64))
