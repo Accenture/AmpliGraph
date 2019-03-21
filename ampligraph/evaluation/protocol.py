@@ -330,7 +330,7 @@ def to_idx(X, ent_to_idx, rel_to_idx):
 
 
 def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=True, rank_against_ent=None,
-                         corrupt_side='s+o'):
+                         corrupt_side='s+o', use_default_protocol=True):
     """Evaluate the performance of an embedding model.
 
         Run the relational learning evaluation protocol defined in :cite:`bordes2013translating`.
@@ -390,6 +390,9 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         ``s`` is to corrupt only subject.
         ``o`` is to corrupt only object
         ``s+o`` is to corrupt both subject and object
+    use_default_protocol: bool
+        Flag to indicate whether to evaluate head and tail corruptions separately(default:True).
+        If this is set to true, it will ignore corrupt_side argument and corrupt both head and tail separately and rank triplets.
     Returns
     -------
     ranks : ndarray, shape [n]
@@ -422,29 +425,41 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     X_test = filter_unseen_entities(X, model, verbose=verbose, strict=True)
 
     X_test = to_idx(X_test, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
-
-    ranks = []
-
+    
     if filter_triples is not None:
         logger.debug('Getting filtered triples.')
         filter_triples = to_idx(filter_triples, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
-        model.set_filter_for_eval(filter_triples)
+    
+    if use_default_protocol:
+        corruption_sides = ['s', 'o']
+    else:
+        corruption_sides = [corrupt_side]
+        
     eval_dict = {}
 
     if rank_against_ent is not None:
         idx_entities = np.asarray([idx for uri, idx in model.ent_to_idx.items() if uri in rank_against_ent])
         eval_dict['corruption_entities'] = idx_entities
-
-    eval_dict['corrupt_side'] = corrupt_side
-    model.configure_evaluation_protocol(eval_dict)
-
-    logger.debug('Making predictions.')
-    for i in tqdm(range(X_test.shape[0]), disable=(not verbose)):
-        y_pred, rank = model.predict(X_test[i], from_idx=True, get_ranks=True)
-        ranks.append(rank)
-    model.end_evaluation()
-    logger.debug('Returning ranks of positive test triples.')
+    
+    ranks = []
+    for side in corruption_sides:
+        logger.debug('Evaluating the test set by corrupting side : {}'.format(side))
+        eval_dict['corrupt_side'] = side
+        if filter_triples is not None:
+            model.set_filter_for_eval(filter_triples)
+        logger.debug('Configuring evaluation protocol.')
+        model.configure_evaluation_protocol(eval_dict)
+        logger.debug('Making predictions.')
+        for i in tqdm(range(X_test.shape[0]), disable=(not verbose)):
+            _, rank = model.predict(X_test[i], from_idx=True, get_ranks=True)
+            ranks.append(rank)
+        model.end_evaluation()
+        logger.debug('Ending Evaluation')
+        
+    logger.info('Returning ranks of positive test triples obtained by corrupting {}.'.format(corruption_sides))
     return ranks
+      
+    
 
 
 def filter_unseen_entities(X, model, verbose=False, strict=True):
@@ -770,15 +785,12 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
         model = model_class(**model_params)
         model.fit(X['train'], early_stopping, early_stopping_params)
 
-        if use_default_protocol:
-            ranks = evaluate_performance(selection_dataset, model=model, filter_triples=X_filter, verbose=verbose,
-                                         rank_against_ent=rank_against_ent, corrupt_side='s')
-            ranks_obj = evaluate_performance(selection_dataset, model=model, filter_triples=X_filter, verbose=verbose,
-                                             rank_against_ent=rank_against_ent, corrupt_side='o')
-            ranks.extend(ranks_obj)
-        else:
-            ranks = evaluate_performance(selection_dataset, model=model, filter_triples=X_filter, verbose=verbose,
-                                         rank_against_ent=rank_against_ent, corrupt_side=corrupt_side)
+
+        ranks = evaluate_performance(selection_dataset, model=model, 
+                                         filter_triples=X_filter, verbose=verbose,
+                                         rank_against_ent=rank_against_ent, 
+                                         use_default_protocol=use_default_protocol,
+                                         corrupt_side=corrupt_side)
 
         curr_mrr = mrr_score(ranks)
         mr = mr_score(ranks)
@@ -801,15 +813,12 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
     # Retraining
     best_model.fit(np.concatenate((X['train'], X['valid'])))
 
-    if use_default_protocol:
-        ranks_test = evaluate_performance(X['test'], model=best_model, filter_triples=X_filter, verbose=verbose,
-                                          rank_against_ent=rank_against_ent, corrupt_side='s')
-        ranks_test_obj = evaluate_performance(X['test'], model=best_model, filter_triples=X_filter, verbose=verbose,
-                                              rank_against_ent=rank_against_ent, corrupt_side='o')
-        ranks_test.extend(ranks_test_obj)
-    else:
-        ranks_test = evaluate_performance(X['test'], model=best_model, filter_triples=X_filter, verbose=verbose,
-                                          rank_against_ent=rank_against_ent, corrupt_side=corrupt_side)
+
+    ranks_test = evaluate_performance(X['test'], model=best_model, 
+                                          filter_triples=X_filter, verbose=verbose,
+                                          rank_against_ent=rank_against_ent, 
+                                          use_default_protocol=use_default_protocol, 
+                                          corrupt_side=corrupt_side)
 
     mrr_test = mrr_score(ranks_test)
 

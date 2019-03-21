@@ -187,14 +187,7 @@ def run_single_exp(config, dataset, model):
     ranks = evaluate_performance(X['test'],
                                  model,
                                  filter,
-                                 verbose=False,
-                                 corrupt_side='s')
-    ranks2 = evaluate_performance(X['test'],
-                                  model,
-                                  filter,
-                                  verbose=False,
-                                  corrupt_side='o')
-    ranks.extend(ranks2)
+                                 verbose=False)
 
     # compute and print metrics:
     mr = mr_score(ranks)
