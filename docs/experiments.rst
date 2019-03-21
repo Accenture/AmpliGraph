@@ -294,7 +294,7 @@ To reproduce the above results: ::
     $ python predictive_performance.py
 
 
-.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~24 hours on
+.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~13 hours on
     an Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box equipped with a Tesla V100 16GB.
 
 
