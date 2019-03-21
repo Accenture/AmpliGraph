@@ -79,7 +79,7 @@ class EmbeddingModel(abc.ABC):
                  optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
-                 model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+                 verbose=False, **kwargs):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -131,8 +131,6 @@ class EmbeddingModel(abc.ABC):
             Parameters dictionary specific to the regularizer. 
             
             (Refer documentation of regularizer for more details)
-        model_checkpoint_path: string
-            Path to save the model.
         verbose : bool
             Verbose mode
         kwargs : dict
@@ -153,7 +151,6 @@ class EmbeddingModel(abc.ABC):
                 'loss_params': loss_params,
                 'regularizer': regularizer,
                 'regularizer_params': regularizer_params,
-                'model_checkpoint_path': model_checkpoint_path,
                 'verbose': verbose
 
             }
@@ -222,7 +219,6 @@ class EmbeddingModel(abc.ABC):
         self.trained_model_params = []
         self.is_fitted = False
         self.eval_config = {}
-        self.model_checkpoint_path = model_checkpoint_path
 
     @abc.abstractmethod
     def _fn(self, e_s, e_p, e_o):
@@ -1007,7 +1003,7 @@ class TransE(EmbeddingModel):
                  optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
-                 model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+                 verbose=False, **kwargs):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -1074,8 +1070,6 @@ class TransE(EmbeddingModel):
 
             Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
 
-        model_checkpoint_path: string
-            Path to save the model.
         verbose : bool
             Verbose mode
         kwargs : dict
@@ -1086,7 +1080,7 @@ class TransE(EmbeddingModel):
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
-                         model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
+                         verbose=verbose, **kwargs)
 
     def _fn(self, e_s, e_p, e_o):
         """The TransE scoring function.
@@ -1213,7 +1207,7 @@ class DistMult(EmbeddingModel):
                  optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
-                 model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+                 verbose=False, **kwargs):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -1266,8 +1260,6 @@ class DistMult(EmbeddingModel):
             Parameters dictionary specific to the regularizer.
 
             (Refer documentation of regularizer for more details)
-        model_checkpoint_path: string
-            Path to save the model.
         verbose : bool
             Verbose mode
         kwargs : dict
@@ -1278,7 +1270,7 @@ class DistMult(EmbeddingModel):
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
-                         model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
+                         verbose=verbose, **kwargs)
 
     def _fn(self, e_s, e_p, e_o):
         """DistMult
@@ -1410,7 +1402,7 @@ class ComplEx(EmbeddingModel):
                  optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
-                 model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+                 verbose=False, **kwargs):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -1460,8 +1452,6 @@ class ComplEx(EmbeddingModel):
             Parameters dictionary specific to the regularizer.
 
             (Refer documentation of regularizer for more details)
-        model_checkpoint_path: string
-            Path to save the model.
         verbose : bool
             Verbose mode
         kwargs : dict
@@ -1472,7 +1462,7 @@ class ComplEx(EmbeddingModel):
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
-                         model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
+                         verbose=verbose, **kwargs)
 
     def _initialize_parameters(self):
         """ Initialize the complex embeddings.
@@ -1620,7 +1610,7 @@ class HolE(ComplEx):
                  optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
-                 model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+                 verbose=False, **kwargs):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -1670,8 +1660,6 @@ class HolE(ComplEx):
             Parameters dictionary specific to the regularizer.
 
             (Refer documentation of regularizer for more details)
-        model_checkpoint_path: string
-            Path to save the model.
         verbose : bool
             Verbose mode
         kwargs : dict
@@ -1682,7 +1670,7 @@ class HolE(ComplEx):
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
-                         model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
+                         verbose=verbose, **kwargs)
 
     def _fn(self, e_s, e_p, e_o):
         """The Hole scoring function.
