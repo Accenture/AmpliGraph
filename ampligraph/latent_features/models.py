@@ -81,7 +81,7 @@ class EmbeddingModel(abc.ABC):
                  optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
-                 verbose=False, **kwargs):
+                 verbose=False):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -143,8 +143,6 @@ class EmbeddingModel(abc.ABC):
 
         verbose : bool
             Verbose mode
-        kwargs : dict
-            Additional inputs, if any
         """
         # Store for restoring later.
         self.all_params = \
@@ -1084,7 +1082,7 @@ class TransE(EmbeddingModel):
                  optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
-                 verbose=False, **kwargs):
+                 verbose=False):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -1156,15 +1154,13 @@ class TransE(EmbeddingModel):
 
         verbose : bool
             Verbose mode
-        kwargs : dict
-            Additional inputs, if any
         """
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
                          embedding_model_params=embedding_model_params,
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
-                         verbose=verbose, **kwargs)
+                         verbose=verbose)
 
     def _fn(self, e_s, e_p, e_o):
         """The TransE scoring function.
@@ -1311,7 +1307,7 @@ class DistMult(EmbeddingModel):
                  optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
-                 verbose=False, **kwargs):
+                 verbose=False):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -1379,15 +1375,13 @@ class DistMult(EmbeddingModel):
 
         verbose : bool
             Verbose mode
-        kwargs : dict
-            Additional inputs, if any
         """
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
                          embedding_model_params=embedding_model_params,
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
-                         verbose=verbose, **kwargs)
+                         verbose=verbose)
 
     def _fn(self, e_s, e_p, e_o):
         """DistMult
@@ -1537,7 +1531,7 @@ class ComplEx(EmbeddingModel):
                  optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
-                 verbose=False, **kwargs):
+                 verbose=False):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -1599,15 +1593,13 @@ class ComplEx(EmbeddingModel):
             Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
         verbose : bool
             Verbose mode
-        kwargs : dict
-            Additional inputs, if any
         """
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
                          embedding_model_params=embedding_model_params,
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
-                         verbose=verbose, **kwargs)
+                         verbose=verbose)
 
     def _initialize_parameters(self):
         """ Initialize the complex embeddings.
@@ -1773,7 +1765,7 @@ class HolE(ComplEx):
                  optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
                  loss='nll', loss_params={},
                  regularizer=None, regularizer_params={},
-                 verbose=False, **kwargs):
+                 verbose=False):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -1835,15 +1827,13 @@ class HolE(ComplEx):
             Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
         verbose : bool
             Verbose mode
-        kwargs : dict
-            Additional inputs, if any
         """
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
                          embedding_model_params=embedding_model_params,
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
-                         verbose=verbose, **kwargs)
+                         verbose=verbose)
 
     def _fn(self, e_s, e_p, e_o):
         """The Hole scoring function.
