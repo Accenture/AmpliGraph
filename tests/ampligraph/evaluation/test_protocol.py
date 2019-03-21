@@ -211,15 +211,15 @@ def test_generate_corruptions_for_fit_corrupt_side_so():
     with tf.Session() as sess:
         all_ent = tf.squeeze(tf.constant(list(ent_to_idx.values()), dtype=tf.int32))
         dataset = tf.constant(X, dtype=tf.int32)
-        X_corr = sess.run(generate_corruptions_for_fit(dataset, all_ent, eta, corrupt_side='s+o', rnd=0))
-
+        X_corr = sess.run(generate_corruptions_for_fit(dataset, eta=eta, corrupt_side='s+o', entities_size=len(X), rnd=0))
+        print(X_corr)
     # these values occur when seed=0
 
     X_corr_exp = [[0, 0, 1],
-                  [2, 0, 5],
-                  [6, 0, 5],
-                  [1, 1, 5],
-                  [0, 1, 1]]
+                  [2, 0, 3],
+                  [3, 0, 5],
+                  [1, 1, 0],
+                  [0, 1, 3]]
 
     np.testing.assert_array_equal(X_corr, X_corr_exp)
 
@@ -236,15 +236,16 @@ def test_generate_corruptions_for_fit_curropt_side_s():
     with tf.Session() as sess:
         all_ent = tf.squeeze(tf.constant(list(ent_to_idx.values()), dtype=tf.int32))
         dataset = tf.constant(X, dtype=tf.int32)
-        X_corr = sess.run(generate_corruptions_for_fit(dataset, all_ent, eta, corrupt_side='s', rnd=0))
+        X_corr = sess.run(generate_corruptions_for_fit(dataset, eta=eta, corrupt_side='s', entities_size=len(X), rnd=0))
+        print(X_corr)
 
     # these values occur when seed=0
 
     X_corr_exp = [[1, 0, 1],
-                  [5, 0, 3],
-                  [6, 0, 5],
-                  [5, 1, 6],
-                  [1, 1, 7]]
+                  [3, 0, 3],
+                  [3, 0, 5],
+                  [0, 1, 6],
+                  [3, 1, 7]]
 
     np.testing.assert_array_equal(X_corr, X_corr_exp)
 
@@ -261,13 +262,13 @@ def test_generate_corruptions_for_fit_curropt_side_o():
     with tf.Session() as sess:
         all_ent = tf.squeeze(tf.constant(list(ent_to_idx.values()), dtype=tf.int32))
         dataset = tf.constant(X, dtype=tf.int32)
-        X_corr = sess.run(generate_corruptions_for_fit(dataset, all_ent, eta, corrupt_side='o', rnd=0))
-
+        X_corr = sess.run(generate_corruptions_for_fit(dataset, eta=eta, corrupt_side='o', entities_size=len(X), rnd=0))
+        print(X_corr)
     # these values occur when seed=0
 
     X_corr_exp = [[0, 0, 1],
-                  [2, 0, 5],
-                  [4, 0, 6],
-                  [1, 1, 5],
-                  [0, 1, 1]]
+                  [2, 0, 3],
+                  [4, 0, 3],
+                  [1, 1, 0],
+                  [0, 1, 3]]
     np.testing.assert_array_equal(X_corr, X_corr_exp)

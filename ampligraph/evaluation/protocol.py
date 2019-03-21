@@ -210,7 +210,7 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
     return out, out_prime
 
 
-def generate_corruptions_for_fit(X, all_entities, eta=1, corrupt_side='s+o', rnd=None):
+def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o', entities_size=0, rnd=None):
     """Generate corruptions for training.
 
         Creates corrupted triples for each statement in an array of statements,
@@ -219,15 +219,21 @@ def generate_corruptions_for_fit(X, all_entities, eta=1, corrupt_side='s+o', rnd
         .. note::
             Collisions are not checked, as this will be computationally expensive :cite:`trouillon2016complex`.
             That means that some corruptions *may* result in being positive statements (i.e. *unfiltered* settings).
+            
+            If ``entities_list==None`` and ``entities_size==-1`` then the entities in the batch would be used 
+            for generating corruption.
 
     Parameters
     ----------
     X : Tensor, shape [n, 3]
         An array of positive triples that will be used to create corruptions.
-    all_entities : dict
-        The entity-tointernal-IDs mappings
+    entities_list : list
+        List of entities to be used for generating corruptions. (default:None)
     eta : int
         The number of corruptions per triple that must be generated.
+    entities_size: int
+        Size of entities to be used while generating corruptions. It assumes entity id's start from 0 and are continuous.
+        (default:0)
     rnd: numpy.random.RandomState
         A random number generator.
 
@@ -260,8 +266,24 @@ def generate_corruptions_for_fit(X, all_entities, eta=1, corrupt_side='s+o', rnd
     keep_obj_mask = tf.cast(keep_obj_mask, tf.int32)
 
     logger.debug('Created corruption masks.')
-    replacements = tf.random_uniform([tf.shape(dataset)[0]], 0, tf.shape(all_entities)[0], dtype=tf.int32, seed=rnd)
+    
+    if entities_size != 0:    
+        replacements = tf.random_uniform([tf.shape(dataset)[0]], 0, entities_size, dtype=tf.int32, seed=rnd)
+    else:
+        if entities_list is None:
+            #use entities in the batch
+            entities_list, _ = tf.unique(tf.squeeze(
+                                            tf.concat([tf.slice(X, [0, 0], [tf.shape(X)[0], 1]), 
+                                                       tf.slice(X, [0, 2], [tf.shape(X)[0], 1])],
+                                                      0)))
 
+        random_indices = tf.squeeze(tf.multinomial(tf.expand_dims(tf.zeros(tf.shape(entities_list)[0]), 0), 
+                                                        num_samples=tf.shape(dataset)[0], 
+                                                        seed=rnd))
+        
+
+        replacements = tf.gather(entities_list, random_indices)
+            
     subjects = tf.math.add(tf.math.multiply(keep_subj_mask, dataset[:, 0]),
                            tf.math.multiply(keep_obj_mask, replacements))
     logger.debug('Created corrupted subjects.')
