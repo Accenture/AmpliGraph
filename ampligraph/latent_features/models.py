@@ -97,40 +97,48 @@ class EmbeddingModel(abc.ABC):
         seed : int
             The seed used by the internal random numbers generator.
         embedding_model_params : dict
-            Parameter values of embedding model specific hyperparams 
-            
-            (Refer documentation of specific embedding models for more details)
-        optimizer : string
-            The optimizer used to minimize the loss function. Choose between ``sgd``,
-            ``adagrad``, ``adam``, ``momentum``.
-        optimizer_params : dict    
-            Parameters values specific to the optimizer.Currently supported:
+            Model-specific hyperparams, passed to the model as a dictionary.
+            Refer to model-specific documentation for details.
 
-            - **lr** - learning rate (used by all the optimizers)
-            - **momentum** - learning momentum (used by momentum optimizer)
-            
+        optimizer : string
+            The optimizer used to minimize the loss function. Choose between 'sgd',
+            'adagrad', 'adam', 'momentum'.
+        optimizer_params : dict
+            Arguments specific to the optimizer, passed as a dictionary.
+
+            Supported keys:
+
+            - **'lr'** (float): learning rate (used by all the optimizers). Default: 0.1.
+            - **'momentum'** (float): learning momentum (only used when ``optimizer=momentum``). Default: 0.9.
+
+            Example: ``optimizer_params={'lr': 0.01}``
+
         loss : string
-            The type of loss function to use during training. 
-            
-            - ``pairwise``  the model will use pairwise margin-based loss function.
-            - ``nll`` the model will use negative loss likelihood.
-            - ``absolute_margin`` the model will use absolute margin likelihood.
-            - ``self_adversarial`` the model will use adversarial sampling loss function.
-            
+            The type of loss function to use during training.
+
+            - 'pairwise'  the model will use pairwise margin-based loss function.
+            - 'nll' the model will use negative loss likelihood.
+            - 'absolute_margin' the model will use absolute margin likelihood.
+            - 'self_adversarial' the model will use adversarial sampling loss function.
+
         loss_params : dict
-            Parameters dictionary specific to the loss. 
-            
-            (Refer documentation of specific loss functions for more details)
+            Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
+            documentation for additional details.
+
+            Example: ``optimizer_params={'lr': 0.01}`` if ``loss='pairwise'``.
+
         regularizer : string
-            The regularization strategy to use with the loss function. 
-            
-            - ``LP`` the model will use L1, L2 or L3 based on the value passed to param p.
-            - ``None`` the model will not use any regularizer
-            
+            The regularization strategy to use with the loss function.
+
+            - ``None``: the model will not use any regularizer (default)
+            - 'LP': the model will use L1, L2 or L3 based on the value of ``regularizer_params['p']`` (see below).
+
         regularizer_params : dict
-            Parameters dictionary specific to the regularizer. 
-            
-            (Refer documentation of regularizer for more details)
+            Dictionary of regularizer-specific hyperparameters. See the :ref:`regularizers <ref-reg>`
+            documentation for additional details.
+
+            Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
+
         verbose : bool
             Verbose mode
         kwargs : dict
@@ -294,7 +302,8 @@ class EmbeddingModel(abc.ABC):
             The entities (or relations) of interest. Element of the vector must be the original string literals, and
             not internal IDs.
         type : string
-            If 'entity', will consider input as KG entities. If `relation`, they will be treated as KG predicates.
+            If 'entity', the ``entities`` argument will be considered as a list of knowledge graph entities (i.e. nodes).
+            If set to 'relation', they will be treated as relation types instead (i.e. predicates).
 
         Returns
         -------
@@ -495,16 +504,19 @@ class EmbeddingModel(abc.ABC):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping (default:False)
+            Flag to enable early stopping (default:``False``)
         early_stopping_params: dictionary
-            Dictionary of parameters for early stopping. Following keys are supported: 
-            
-                - **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
-                - **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
-                - **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
-                - **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
-                - **check_interval**: int : Early stopping interval after burn-in (default:10).
-                - **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
+            Dictionary of hyperparameters for the early stopping heuristics.
+            The following string keys are supported:
+
+                - **'x_valid'**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **'criteria'**: string : criteria for early stopping 'hits10', 'hits3', 'hits1' or 'mrr'(default).
+                - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr'). Note this will affect training time (no filter by default).
+                - **'burn_in'**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                - **check_interval'**: int : Early stopping interval after burn-in (default:10).
+                - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
+
+                Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
         """
         if type(X) != np.ndarray:
@@ -747,27 +759,39 @@ class EmbeddingModel(abc.ABC):
         self.eval_config = {}
 
     def predict(self, X, from_idx=False, get_ranks=False):
-        """Predict the score of triples using a trained embedding model.
+        """Predict the scores of triples using a trained embedding model.
 
-            The function returns raw scores generated by the model.
-            To obtain probability estimates, use a logistic sigmoid function.
+             The function returns raw scores generated by the model.
 
-        Parameters
-        ----------
-        X : ndarray, shape [n, 3]
-            The triples to score.
-        from_idx : bool
-            If True, will skip conversion to internal IDs. (default: False).
-        get_ranks : bool
-            Flag to compute ranks by scoring against corruptions (default: False).
+             .. note::
 
-        Returns
-        -------
-        scores : ndarray, shape [n]
-            The predicted scores for input triples X.
-            
-        ranks : ndarray, shape [n]
-            Rank of the triple
+                 To obtain probability estimates, use a logistic sigmoid: ::
+
+                     >>> model.fit(X)
+                     >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+                     >>> print(y_pred)
+                     array([1.2052395, 1.5818497], dtype=float32)
+                     >>> from scipy.special import expit
+                     >>> expit(y_pred)
+                     array([0.7694556 , 0.82946634], dtype=float32)
+
+
+         Parameters
+         ----------
+         X : ndarray, shape [n, 3]
+             The triples to score.
+         from_idx : bool
+             If True, will skip conversion to internal IDs. (default: False).
+         get_ranks : bool
+             Flag to compute ranks by scoring against corruptions (default: False).
+
+         Returns
+         -------
+         scores_predict : ndarray, shape [n]
+             The predicted scores for input triples X.
+
+         rank : ndarray, shape [n]
+             Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
 
@@ -1057,7 +1081,6 @@ class TransE(EmbeddingModel):
 
             Example: ``optimizer_params={'lr': 0.01}`` if ``loss='pairwise'``.
 
-
         regularizer : string
             The regularization strategy to use with the loss function. 
             
@@ -1119,42 +1142,57 @@ class TransE(EmbeddingModel):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping(default:False)
+            Flag to enable early stopping (default:``False``)
         early_stopping_params: dictionary
-            Dictionary of parameters for early stopping. Following keys are supported: 
-            
-                - **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
-                - **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
-                - **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
-                - **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
-                - **check_interval**: int : Early stopping interval after burn-in (default:10).
-                - **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
+            Dictionary of hyperparameters for the early stopping heuristics.
+            The following string keys are supported:
+
+                - **'x_valid'**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **'criteria'**: string : criteria for early stopping 'hits10', 'hits3', 'hits1' or 'mrr'(default).
+                - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr'). Note this will affect training time (no filter by default).
+                - **'burn_in'**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                - **check_interval'**: int : Early stopping interval after burn-in (default:10).
+                - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
+
+                Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
         """
         super().fit(X, early_stopping, early_stopping_params)
 
     def predict(self, X, from_idx=False, get_ranks=False):
-        """Predict the score of triples using a trained embedding model.
+        """Predict the scores of triples using a trained embedding model.
 
-            The function returns raw scores generated by the model.
-            To obtain probability estimates, use a logistic sigmoid.
+             The function returns raw scores generated by the model.
 
-        Parameters
-        ----------
-        X : ndarray, shape [n, 3]
-            The triples to score.
-        from_idx : bool
-            If True, will skip conversion to internal IDs. (default: False).
-        get_ranks : bool
-            Flag to compute ranks by scoring against corruptions (default: False).
+             .. note::
 
-        Returns
-        -------
-        scores_predict : ndarray, shape [n]
-            The predicted scores for input triples X.
-            
-        rank : ndarray, shape [n]
-            Rank of the triple
+                 To obtain probability estimates, use a logistic sigmoid: ::
+
+                     >>> model.fit(X)
+                     >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+                     >>> print(y_pred)
+                     array([1.2052395, 1.5818497], dtype=float32)
+                     >>> from scipy.special import expit
+                     >>> expit(y_pred)
+                     array([0.7694556 , 0.82946634], dtype=float32)
+
+
+         Parameters
+         ----------
+         X : ndarray, shape [n, 3]
+             The triples to score.
+         from_idx : bool
+             If True, will skip conversion to internal IDs. (default: False).
+         get_ranks : bool
+             Flag to compute ranks by scoring against corruptions (default: False).
+
+         Returns
+         -------
+         scores_predict : ndarray, shape [n]
+             The predicted scores for input triples X.
+
+         rank : ndarray, shape [n]
+             Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
         return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
@@ -1225,41 +1263,53 @@ class DistMult(EmbeddingModel):
         seed : int
             The seed used by the internal random numbers generator.
         embedding_model_params : dict
-            DistMult-specific hyperparams:
-            
-            - **normalize_ent_emb** - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
-            
-        optimizer : string
-            The optimizer used to minimize the loss function. Choose between ``sgd``,
-            ``adagrad``, ``adam``, ``momentum``.
-        optimizer_params : dict
-            Parameters values specific to the optimizer. Currently supported:
+            DistMult-specific hyperparams, passed to the model as a dictionary.
 
-            - **lr** - learning rate (used by all the optimizers)
-            - **momentum** - learning momentum (used by momentum optimizer)
-            
+            Supported keys:
+
+            - **'normalize_ent_emb'** (bool): flag to indicate whether to normalize entity embeddings after each batch update (default: False).
+
+            Example: ``embedding_model_params={'norm': 1, 'normalize_ent_emb': False}``
+
+        optimizer : string
+            The optimizer used to minimize the loss function. Choose between 'sgd',
+            'adagrad', 'adam', 'momentum'.
+        optimizer_params : dict
+            Arguments specific to the optimizer, passed as a dictionary.
+
+            Supported keys:
+
+            - **'lr'** (float): learning rate (used by all the optimizers). Default: 0.1.
+            - **'momentum'** (float): learning momentum (only used when ``optimizer=momentum``). Default: 0.9.
+
+            Example: ``optimizer_params={'lr': 0.01}``
+
         loss : string
             The type of loss function to use during training.
 
-            - ``pairwise``  the model will use pairwise margin-based loss function.
-            - ``nll`` the model will use negative loss likelihood.
-            - ``absolute_margin`` the model will use absolute margin likelihood.
-            - ``self_adversarial`` the model will use adversarial sampling loss function.
-            
+            - 'pairwise'  the model will use pairwise margin-based loss function.
+            - 'nll' the model will use negative loss likelihood.
+            - 'absolute_margin' the model will use absolute margin likelihood.
+            - 'self_adversarial' the model will use adversarial sampling loss function.
+
         loss_params : dict
-            Parameters dictionary specific to the loss.
+            Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
+            documentation for additional details.
 
-            (Refer documentation of specific loss functions for more details)
+            Example: ``optimizer_params={'lr': 0.01}`` if ``loss='pairwise'``.
+
         regularizer : string
-            The regularization strategy to use with the loss function. 
-            
-            - ``LP`` the model will use L1, L2 or L3 based on the value passed to param p.
-            - ``None`` the model will not use any regularizer
-            
-        regularizer_params : dict
-            Parameters dictionary specific to the regularizer.
+            The regularization strategy to use with the loss function.
 
-            (Refer documentation of regularizer for more details)
+            - ``None``: the model will not use any regularizer (default)
+            - 'LP': the model will use L1, L2 or L3 based on the value of ``regularizer_params['p']`` (see below).
+
+        regularizer_params : dict
+            Dictionary of regularizer-specific hyperparameters. See the :ref:`regularizers <ref-reg>`
+            documentation for additional details.
+
+            Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
+
         verbose : bool
             Verbose mode
         kwargs : dict
@@ -1309,25 +1359,40 @@ class DistMult(EmbeddingModel):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping(default:False)
+            Flag to enable early stopping (default:``False``)
         early_stopping_params: dictionary
-            Dictionary of parameters for early stopping. Following keys are supported: 
-            
-                - **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
-                - **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
-                - **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
-                - **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
-                - **check_interval**: int : Early stopping interval after burn-in (default:10).
-                - **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
+            Dictionary of hyperparameters for the early stopping heuristics.
+            The following string keys are supported:
+
+                - **'x_valid'**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **'criteria'**: string : criteria for early stopping 'hits10', 'hits3', 'hits1' or 'mrr'(default).
+                - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr'). Note this will affect training time (no filter by default).
+                - **'burn_in'**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                - **check_interval'**: int : Early stopping interval after burn-in (default:10).
+                - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
+
+                Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
         """
         super().fit(X, early_stopping, early_stopping_params)
 
     def predict(self, X, from_idx=False, get_ranks=False):
-        """Predict the score of triples using a trained embedding model.
+        """Predict the scores of triples using a trained embedding model.
 
             The function returns raw scores generated by the model.
-            To obtain probability estimates, use a logistic sigmoid.
+
+            .. note::
+
+                To obtain probability estimates, use a logistic sigmoid: ::
+
+                    >>> model.fit(X)
+                    >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+                    >>> print(y_pred)
+                    array([1.2052395, 1.5818497], dtype=float32)
+                    >>> from scipy.special import expit
+                    >>> expit(y_pred)
+                    array([0.7694556 , 0.82946634], dtype=float32)
+
 
         Parameters
         ----------
@@ -1344,7 +1409,7 @@ class DistMult(EmbeddingModel):
             The predicted scores for input triples X.
             
         rank : ndarray, shape [n]
-            Rank of the triple
+            Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
         return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
@@ -1420,38 +1485,45 @@ class ComplEx(EmbeddingModel):
         seed : int
             The seed used by the internal random numbers generator.
         embedding_model_params : dict
-            ComplEx-specific hyperparams: Currently ComplEx does not require any hyperparameters.
+            ComplEx-specific hyperparams: unused: currently ComplEx does not require any hyperparameters.
         optimizer : string
-            The optimizer used to minimize the loss function. Choose between ``sgd``,
-            ``adagrad``, ``adam``, ``momentum``.
+            The optimizer used to minimize the loss function. Choose between 'sgd',
+            'adagrad', 'adam', 'momentum'.
         optimizer_params : dict
-            Parameters values specific to the optimizer. Currently supported:
-            
-            - **lr** - learning rate (used by all the optimizers)
-            - **momentum** - learning momentum (used by momentum optimizer)
-            
+            Arguments specific to the optimizer, passed as a dictionary.
+
+            Supported keys:
+
+            - **'lr'** (float): learning rate (used by all the optimizers). Default: 0.1.
+            - **'momentum'** (float): learning momentum (only used when ``optimizer=momentum``). Default: 0.9.
+
+            Example: ``optimizer_params={'lr': 0.01}``
+
         loss : string
             The type of loss function to use during training.
 
-            - ``pairwise``  the model will use pairwise margin-based loss function.
-            - ``nll`` the model will use negative loss likelihood.
-            - ``absolute_margin`` the model will use absolute margin likelihood.
-            - ``self_adversarial`` the model will use adversarial sampling loss function.
-            
+            - 'pairwise'  the model will use pairwise margin-based loss function.
+            - 'nll' the model will use negative loss likelihood.
+            - 'absolute_margin' the model will use absolute margin likelihood.
+            - 'self_adversarial' the model will use adversarial sampling loss function.
+
         loss_params : dict
-            Parameters dictionary specific to the loss.
+            Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
+            documentation for additional details.
 
-            (Refer documentation of specific loss functions for more details)
+            Example: ``optimizer_params={'lr': 0.01}`` if ``loss='pairwise'``.
+
         regularizer : string
-            The regularization strategy to use with the loss function. 
-            
-            - ``LP`` the model will use L1, L2 or L3 based on the value passed to param p.
-            - ``None`` the model will not use any regularizer
-            
-        regularizer_params : dict
-            Parameters dictionary specific to the regularizer.
+            The regularization strategy to use with the loss function.
 
-            (Refer documentation of regularizer for more details)
+            - ``None``: the model will not use any regularizer (default)
+            - 'LP': the model will use L1, L2 or L3 based on the value of ``regularizer_params['p']`` (see below).
+
+        regularizer_params : dict
+            Dictionary of regularizer-specific hyperparameters. See the :ref:`regularizers <ref-reg>`
+            documentation for additional details.
+
+            Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
         verbose : bool
             Verbose mode
         kwargs : dict
@@ -1520,42 +1592,57 @@ class ComplEx(EmbeddingModel):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping(default:False)
+            Flag to enable early stopping (default:``False``)
         early_stopping_params: dictionary
-            Dictionary of parameters for early stopping. Following keys are supported: 
+            Dictionary of hyperparameters for the early stopping heuristics.
+            The following string keys are supported:
             
-                - **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
-                - **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
-                - **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
-                - **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
-                - **check_interval**: int : Early stopping interval after burn-in (default:10).
-                - **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
+                - **'x_valid'**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **'criteria'**: string : criteria for early stopping 'hits10', 'hits3', 'hits1' or 'mrr'(default).
+                - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr'). Note this will affect training time (no filter by default).
+                - **'burn_in'**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                - **check_interval'**: int : Early stopping interval after burn-in (default:10).
+                - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
+
+                Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
         """
         super().fit(X, early_stopping, early_stopping_params)
 
     def predict(self, X, from_idx=False, get_ranks=False):
-        """Predict the score of triples using a trained embedding model.
+        """Predict the scores of triples using a trained embedding model.
 
-            The function returns raw scores generated by the model.
-            To obtain probability estimates, use a logistic sigmoid.
+             The function returns raw scores generated by the model.
 
-        Parameters
-        ----------
-        X : ndarray, shape [n, 3]
-            The triples to score.
-        from_idx : bool
-            If True, will skip conversion to internal IDs. (default: False).
-        get_ranks : bool
-            Flag to compute ranks by scoring against corruptions (default: False).
+             .. note::
 
-        Returns
-        -------
-        scores_predict : ndarray, shape [n]
-            The predicted scores for input triples X.
-            
-        rank : ndarray, shape [n]
-            Rank of the triple
+                 To obtain probability estimates, use a logistic sigmoid: ::
+
+                     >>> model.fit(X)
+                     >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+                     >>> print(y_pred)
+                     array([1.2052395, 1.5818497], dtype=float32)
+                     >>> from scipy.special import expit
+                     >>> expit(y_pred)
+                     array([0.7694556 , 0.82946634], dtype=float32)
+
+
+         Parameters
+         ----------
+         X : ndarray, shape [n, 3]
+             The triples to score.
+         from_idx : bool
+             If True, will skip conversion to internal IDs. (default: False).
+         get_ranks : bool
+             Flag to compute ranks by scoring against corruptions (default: False).
+
+         Returns
+         -------
+         scores_predict : ndarray, shape [n]
+             The predicted scores for input triples X.
+
+         rank : ndarray, shape [n]
+             Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
         return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
@@ -1630,36 +1717,43 @@ class HolE(ComplEx):
         embedding_model_params : dict
             HolE-specific hyperparams: Currently HolE does not require any hyperparameters.
         optimizer : string
-            The optimizer used to minimize the loss function. Choose between ``sgd``,
-            ``adagrad``, ``adam``, ``momentum``.
+            The optimizer used to minimize the loss function. Choose between 'sgd',
+            'adagrad', 'adam', 'momentum'.
         optimizer_params : dict
-            Parameters values specific to the optimizer. Currently supported:
+            Arguments specific to the optimizer, passed as a dictionary.
 
-            - **lr** - learning rate (used by all the optimizers)
-            - **momentum** - learning momentum (used by momentum optimizer)
-            
+            Supported keys:
+
+            - **'lr'** (float): learning rate (used by all the optimizers). Default: 0.1.
+            - **'momentum'** (float): learning momentum (only used when ``optimizer=momentum``). Default: 0.9.
+
+            Example: ``optimizer_params={'lr': 0.01}``
+
         loss : string
             The type of loss function to use during training.
 
-            - ``pairwise``  the model will use pairwise margin-based loss function.
-            - ``nll`` the model will use negative loss likelihood.
-            - ``absolute_margin`` the model will use absolute margin likelihood.
-            - ``self_adversarial`` the model will use adversarial sampling loss function.
-            
+            - 'pairwise'  the model will use pairwise margin-based loss function.
+            - 'nll' the model will use negative loss likelihood.
+            - 'absolute_margin' the model will use absolute margin likelihood.
+            - 'self_adversarial' the model will use adversarial sampling loss function.
+
         loss_params : dict
-            Parameters dictionary specific to the loss.
+            Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
+            documentation for additional details.
 
-            (Refer documentation of specific loss functions for more details)
+            Example: ``optimizer_params={'lr': 0.01}`` if ``loss='pairwise'``.
+
         regularizer : string
-            The regularization strategy to use with the loss function. 
-            
-            - ``LP`` the model will use L1, L2 or L3 based on the value passed to param p.
-            - ``None`` the model will not use any regularizer
-            
-        regularizer_params : dict
-            Parameters dictionary specific to the regularizer.
+            The regularization strategy to use with the loss function.
 
-            (Refer documentation of regularizer for more details)
+            - ``None``: the model will not use any regularizer (default)
+            - 'LP': the model will use L1, L2 or L3 based on the value of ``regularizer_params['p']`` (see below).
+
+        regularizer_params : dict
+            Dictionary of regularizer-specific hyperparameters. See the :ref:`regularizers <ref-reg>`
+            documentation for additional details.
+
+            Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
         verbose : bool
             Verbose mode
         kwargs : dict
@@ -1710,42 +1804,57 @@ class HolE(ComplEx):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping(default:False)
+            Flag to enable early stopping (default:``False``)
         early_stopping_params: dictionary
-            Dictionary of parameters for early stopping. Following keys are supported: 
-            
-                - **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
-                - **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
-                - **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
-                - **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
-                - **check_interval**: int : Early stopping interval after burn-in (default:10).
-                - **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
+            Dictionary of hyperparameters for the early stopping heuristics.
+            The following string keys are supported:
+
+                - **'x_valid'**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **'criteria'**: string : criteria for early stopping 'hits10', 'hits3', 'hits1' or 'mrr'(default).
+                - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr'). Note this will affect training time (no filter by default).
+                - **'burn_in'**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                - **check_interval'**: int : Early stopping interval after burn-in (default:10).
+                - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
+
+                Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
         """
         super().fit(X, early_stopping, early_stopping_params)
 
     def predict(self, X, from_idx=False, get_ranks=False):
-        """Predict the score of triples using a trained embedding model.
+        """Predict the scores of triples using a trained embedding model.
 
-            The function returns raw scores generated by the model.
-            To obtain probability estimates, use a logistic sigmoid.
+             The function returns raw scores generated by the model.
 
-        Parameters
-        ----------
-        X : ndarray, shape [n, 3]
-            The triples to score.
-        from_idx : bool
-            If True, will skip conversion to internal IDs. (default: False).
-        get_ranks : bool
-            Flag to compute ranks by scoring against corruptions (default: False).
+             .. note::
 
-        Returns
-        -------
-        scores_predict : ndarray, shape [n]
-            The predicted scores for input triples X.
-            
-        rank : ndarray, shape [n]
-            Rank of the triple
+                 To obtain probability estimates, use a logistic sigmoid: ::
+
+                     >>> model.fit(X)
+                     >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+                     >>> print(y_pred)
+                     array([1.2052395, 1.5818497], dtype=float32)
+                     >>> from scipy.special import expit
+                     >>> expit(y_pred)
+                     array([0.7694556 , 0.82946634], dtype=float32)
+
+
+         Parameters
+         ----------
+         X : ndarray, shape [n, 3]
+             The triples to score.
+         from_idx : bool
+             If True, will skip conversion to internal IDs. (default: False).
+         get_ranks : bool
+             Flag to compute ranks by scoring against corruptions (default: False).
+
+         Returns
+         -------
+         scores_predict : ndarray, shape [n]
+             The predicted scores for input triples X.
+
+         rank : ndarray, shape [n]
+             Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
         return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
