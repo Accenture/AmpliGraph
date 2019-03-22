@@ -1,6 +1,5 @@
 {
     "CUDA_VISIBLE_DEVICES": "0",
-    "DATASET_WITH_UNSEEN_ENTITIES": ["WN18RR", "FB15K-237"],
     "load_function_map": {
         "WN18": "load_wn18",
         "FB15K": "load_fb15k",
