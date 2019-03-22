@@ -101,7 +101,7 @@ def test_retrain():
 
 def test_fit_predict_wn18_TransE():
     X = load_wn18()
-    model = TransE(batches_count=1, seed=555, epochs=5, k=100, norm=1, loss='pairwise', loss_params={'margin': 5},
+    model = TransE(batches_count=1, seed=555, epochs=5, k=100, loss='pairwise', loss_params={'margin': 5},
                    verbose=True)
     model.fit(X['train'])
     y, _ = model.predict(X['test'][:1], get_ranks=True)
