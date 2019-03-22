@@ -20,7 +20,7 @@ import os
 # If not specified, following defaults will be used at respective locations
 
 # Default learning rate for the optimizers
-DEFAULT_LR = 0.1
+DEFAULT_LR = 0.0005
 
 # Default momentum for the optimizers
 DEFAULT_MOMENTUM = 0.9
@@ -54,8 +54,36 @@ INITIAL_EARLY_STOPPING_CRITERIA_VALUE = 0
 # Uses all entities
 DEFAULT_CORRUPTION_ENTITIES = 'all'
 
-# Threshold (on number of unique entities) to categorize the data as Huge Dataset 
-HUGE_DATA_THRESHOLD = 5e5
+# Threshold (on number of unique entities) to categorize the data as Huge Dataset (to warn user)
+ENTITY_WARN_THRESHOLD = 5e5
+
+# Default value for k (embedding size)
+DEFAULT_EMBEDDING_SIZE = 100
+
+# Default value for eta (number of corrputions to be generated for training)
+DEFAULT_ETA = 2
+
+# Default value for number of epochs
+DEFAULT_EPOCH = 100
+
+# Default value for batch count
+DEFAULT_BATCH_COUNT = 100
+
+# Default value for seed
+DEFAULT_SEED = 0
+
+# Default value for optimizer
+DEFAULT_OPTIM = "adam"
+
+# Default value for loss type
+DEFAULT_LOSS = "nll"
+
+# Default value for regularizer type 
+DEFAULT_REGULARIZER = None
+
+# Default value for verbose
+DEFAULT_VERBOSE = False
+
 #######################################################################################################
 
 def register_model(name, external_params=[], class_params={}):
@@ -76,12 +104,20 @@ class EmbeddingModel(abc.ABC):
 
     """
 
-    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
+    def __init__(self, 
+                 k=DEFAULT_EMBEDDING_SIZE, 
+                 eta=DEFAULT_ETA, 
+                 epochs=DEFAULT_EPOCH, 
+                 batches_count=DEFAULT_BATCH_COUNT, 
+                 seed=DEFAULT_SEED,
                  embedding_model_params={},
-                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
-                 loss='nll', loss_params={},
-                 regularizer=None, regularizer_params={},
-                 verbose=False):
+                 optimizer=DEFAULT_OPTIM, 
+                 optimizer_params={'lr':DEFAULT_LR},
+                 loss=DEFAULT_LOSS, 
+                 loss_params={},
+                 regularizer=DEFAULT_REGULARIZER, 
+                 regularizer_params={},
+                 verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -552,7 +588,7 @@ class EmbeddingModel(abc.ABC):
         #  convert training set into internal IDs
         X = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
         
-        if len(self.ent_to_idx) > HUGE_DATA_THRESHOLD:
+        if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
             logger.warn('Number of unique entities are large: {} entities'.format(len(self.ent_to_idx)))
             logger.warn("If you get memory issues don't using early stopping or use reduced set for 'corruption_entities' for early stopping corruption generation!!!")
             
@@ -925,7 +961,7 @@ class RandomBaseline(EmbeddingModel):
         [0.5488135039273248, 0.7151893663724195]
     """
 
-    def __init__(self, seed=0):
+    def __init__(self, seed=DEFAULT_SEED):
         """ Initialize the model
         
         Parameters
@@ -1075,14 +1111,22 @@ class TransE(EmbeddingModel):
 
     """
 
-    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
+    def __init__(self, 
+                 k=DEFAULT_EMBEDDING_SIZE, 
+                 eta=DEFAULT_ETA, 
+                 epochs=DEFAULT_EPOCH, 
+                 batches_count=DEFAULT_BATCH_COUNT, 
+                 seed=DEFAULT_SEED,
                  embedding_model_params={'norm':DEFAULT_NORM_TRANSE, 
                                          'normalize_ent_emb':DEFAULT_NORMALIZE_EMBEDDINGS,
                                          'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
-                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
-                 loss='nll', loss_params={},
-                 regularizer=None, regularizer_params={},
-                 verbose=False):
+                 optimizer=DEFAULT_OPTIM, 
+                 optimizer_params={'lr':DEFAULT_LR},
+                 loss=DEFAULT_LOSS, 
+                 loss_params={},
+                 regularizer=DEFAULT_REGULARIZER, 
+                 regularizer_params={},
+                 verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -1301,13 +1345,21 @@ class DistMult(EmbeddingModel):
 
     """
 
-    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
+    def __init__(self, 
+                 k=DEFAULT_EMBEDDING_SIZE, 
+                 eta=DEFAULT_ETA, 
+                 epochs=DEFAULT_EPOCH, 
+                 batches_count=DEFAULT_BATCH_COUNT, 
+                 seed=DEFAULT_SEED,
                  embedding_model_params={'normalize_ent_emb':DEFAULT_NORMALIZE_EMBEDDINGS,
                                          'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
-                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
-                 loss='nll', loss_params={},
-                 regularizer=None, regularizer_params={},
-                 verbose=False):
+                 optimizer=DEFAULT_OPTIM, 
+                 optimizer_params={'lr':DEFAULT_LR},
+                 loss=DEFAULT_LOSS, 
+                 loss_params={},
+                 regularizer=DEFAULT_REGULARIZER, 
+                 regularizer_params={},
+                 verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -1525,13 +1577,20 @@ class ComplEx(EmbeddingModel):
         dtype=float32)
 
     """
-
-    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
+    def __init__(self, 
+                 k=DEFAULT_EMBEDDING_SIZE, 
+                 eta=DEFAULT_ETA, 
+                 epochs=DEFAULT_EPOCH, 
+                 batches_count=DEFAULT_BATCH_COUNT, 
+                 seed=DEFAULT_SEED,
                  embedding_model_params={'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
-                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
-                 loss='nll', loss_params={},
-                 regularizer=None, regularizer_params={},
-                 verbose=False):
+                 optimizer=DEFAULT_OPTIM, 
+                 optimizer_params={'lr':DEFAULT_LR},
+                 loss=DEFAULT_LOSS, 
+                 loss_params={},
+                 regularizer=DEFAULT_REGULARIZER, 
+                 regularizer_params={},
+                 verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -1757,13 +1816,20 @@ class HolE(ComplEx):
     dtype=float32)
 
     """
-
-    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
+    def __init__(self, 
+                 k=DEFAULT_EMBEDDING_SIZE, 
+                 eta=DEFAULT_ETA, 
+                 epochs=DEFAULT_EPOCH, 
+                 batches_count=DEFAULT_BATCH_COUNT, 
+                 seed=DEFAULT_SEED,
                  embedding_model_params={'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
-                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
-                 loss='nll', loss_params={},
-                 regularizer=None, regularizer_params={},
-                 verbose=False):
+                 optimizer=DEFAULT_OPTIM, 
+                 optimizer_params={'lr':DEFAULT_LR},
+                 loss=DEFAULT_LOSS, 
+                 loss_params={},
+                 regularizer=DEFAULT_REGULARIZER, 
+                 regularizer_params={},
+                 verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.

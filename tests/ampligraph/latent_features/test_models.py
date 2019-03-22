@@ -13,7 +13,8 @@ import shutil
 
 
 def test_fit_predict_transE():
-    model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5})
+    model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5}, 
+                   optimizer='adagrad', optimizer_params={'lr':0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -29,7 +30,8 @@ def test_fit_predict_transE():
 
 
 def test_fit_predict_DistMult():
-    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5})
+    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5}, 
+                     optimizer='adagrad', optimizer_params={'lr':0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -47,7 +49,8 @@ def test_fit_predict_DistMult():
 def test_fit_predict_CompleEx():
     model = ComplEx(batches_count=1, seed=555, epochs=20, k=10,
                     loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                    regularizer_params={'lambda': 0.1, 'p': 2})
+                    regularizer_params={'lambda': 0.1, 'p': 2}, 
+                    optimizer='adagrad', optimizer_params={'lr':0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -65,7 +68,8 @@ def test_fit_predict_CompleEx():
 def test_fit_predict_HolE():
     model = HolE(batches_count=1, seed=555, epochs=20, k=10,
                  loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                 regularizer_params={'lambda': 0.1, 'p': 2})
+                 regularizer_params={'lambda': 0.1, 'p': 2}, 
+                 optimizer='adagrad', optimizer_params={'lr':0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -83,7 +87,8 @@ def test_fit_predict_HolE():
 def test_retrain():
     model = ComplEx(batches_count=1, seed=555, epochs=20, k=10,
                     loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                    regularizer_params={'lambda': 0.1, 'p': 2})
+                    regularizer_params={'lambda': 0.1, 'p': 2}, 
+                    optimizer='adagrad', optimizer_params={'lr':0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -102,7 +107,7 @@ def test_retrain():
 def test_fit_predict_wn18_TransE():
     X = load_wn18()
     model = TransE(batches_count=1, seed=555, epochs=5, k=100, loss='pairwise', loss_params={'margin': 5},
-                   verbose=True)
+                   verbose=True, optimizer='adagrad', optimizer_params={'lr':0.1})
     model.fit(X['train'])
     y, _ = model.predict(X['test'][:1], get_ranks=True)
 
@@ -113,14 +118,16 @@ def test_fit_predict_wn18_ComplEx():
     X = load_wn18()
     model = ComplEx(batches_count=1, seed=555, epochs=5, k=100,
                     loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                    regularizer_params={'lambda': 0.1, 'p': 2})
+                    regularizer_params={'lambda': 0.1, 'p': 2}, 
+                    optimizer='adagrad', optimizer_params={'lr':0.1})
     model.fit(X['train'])
     y = model.predict(X['test'][:1], get_ranks=True)
     print(y)
 
 
 def test_lookup_embeddings():
-    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5})
+    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5}, 
+                     optimizer='adagrad', optimizer_params={'lr':0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -143,7 +150,8 @@ def test_save_and_restore_model():
 
         class_ = getattr(module, model_name)
 
-        model = class_(batches_count=2, seed=555, epochs=20, k=10)
+        model = class_(batches_count=2, seed=555, epochs=20, k=10, 
+                       optimizer='adagrad', optimizer_params={'lr':0.1})
 
         X = np.array([['a', 'y', 'b'],
                       ['b', 'y', 'a'],
