@@ -159,6 +159,12 @@ WN18RR
 FB15K
 -----
 
+
+.. warning::
+    The dataset includes a large number of inverse relations, and its use in experiments has been deprecated.
+    Use FB15k-237 instead.
+
+
 ========== ======== ====== ======== ======== ========== ========================
   Model       MR     MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
 ========== ======== ====== ======== ======== ========== ========================
@@ -224,6 +230,11 @@ FB15K
 
 WN18
 ----
+
+.. warning::
+    The dataset includes a large number of inverse relations, and its use in experiments has been deprecated.
+    Use WN18RR instead.
+
 
 ========== ======== ====== ======== ======== ========== ========================
   Model       MR     MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters

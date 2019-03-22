@@ -231,6 +231,10 @@ def load_wn18():
     ========= ========= ======= ======= ============ ===========
 
 
+    .. warning::
+        The dataset includes a large number of inverse relations, and its use in experiments has been deprecated.
+        Use WN18RR instead.
+
 
     Returns
     -------
@@ -320,6 +324,11 @@ def load_fb15k():
     ========= ========= ======= ======= ============ ===========
     FB15K     483,142   50,000  59,071  14,951        1,345
     ========= ========= ======= ======= ============ ===========
+
+
+    .. warning::
+        The dataset includes a large number of inverse relations, and its use in experiments has been deprecated.
+        Use FB15k-237 instead.
 
     Returns
     -------

@@ -454,11 +454,11 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
             **Execution Time:** This method takes ~20 minutes on FB15K using ComplEx
             (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
 
-        .. warning::
+        .. hint::
             When ``rank_against_ent=None``, the method will use all distinct entities in the knowledge graph ``X``
             to generate negatives to rank against. If ``X`` includes more than 1 million unique
             entities and relations, the method will return a runtime error.
-            To solve the problem, it is recommended to pass the deired entities to use to generate corruptions
+            To solve the problem, it is recommended to pass the desired entities to use to generate corruptions
             to ``rank_against_ent``. Besides, trying to rank a positive against an extremely large number of negatives
             may be overkilling. As a reference, the popular FB15k-237 dataset has ~15k distinct entities. The evaluation
             protocol ranks each positives against 15k corruptions per side.

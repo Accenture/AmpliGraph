@@ -51,6 +51,11 @@ YAGO3-10  1,079,040 5,000   5,000   123,182       37
 ========= ========= ======= ======= ============ ===========
 
 
+.. hint::
+    WN18 and FB15k include a large number of inverse relations, and its use in experiments has been deprecated.
+    **Use WN18RR and FB15K-237 instead**.
+
+
 .. warning:: FB15K-237's validation set contains 8 unseen entities over 9 triples. The test set has 29 unseen entities,
         distributed over 28 triples. WN18RR's validation set contains 198 unseen entities over 210 triples. The test set
         has 209 unseen entities, distributed over 210 triples.
