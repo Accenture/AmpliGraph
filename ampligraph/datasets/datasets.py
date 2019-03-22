@@ -19,6 +19,78 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
+
+def _clean_data(X, throw_valid=False):
+    train = X["train"]
+    valid = X["valid"]
+    test = X["test"]
+
+    train_ent = set(train.flatten())
+    valid_ent = set(valid.flatten())
+    test_ent = set(test.flatten())
+
+    # not throwing the unseen entities in validation set
+    if not throw_valid:
+        train_valid_ent = set(train.flatten()) | set(valid.flatten())
+        ent_test_diff_train_valid = test_ent - train_valid_ent
+        idxs_test = []
+
+        if len(ent_test_diff_train_valid) > 0:
+            count_test = 0
+            c_if = 0
+            for row in test:
+                tmp = set(row)
+                if len(tmp & ent_test_diff_train_valid) != 0:
+                    idxs_test.append(count_test)
+                    c_if += 1
+                count_test = count_test + 1
+        filtered_test = np.delete(test, idxs_test, axis=0)
+        logging.debug("fit validation case: shape test: {0} \
+                      -  filtered test: {1}: {2} triples \
+                      with unseen entties removed" \
+                      .format(test.shape, filtered_test.shape, c_if))
+        return {'train': train, 'valid': valid, 'test': filtered_test}
+        
+    # throwing the unseen entities in validation set
+    else:
+        # for valid
+        ent_valid_diff_train = valid_ent - train_ent
+        idxs_valid = []
+        if len(ent_valid_diff_train) > 0:
+            count_valid = 0
+            c_if = 0
+            for row in valid:
+                tmp = set(row)
+                if len(tmp & ent_valid_diff_train) != 0:
+                    idxs_valid.append(count_valid)
+                    c_if += 1
+                count_valid = count_valid + 1
+        filtered_valid = np.delete(valid, idxs_valid, axis=0)
+        logging.debug("not fitting validation case: shape valid: {0} \
+                      -  filtered valid: {1}: {2} triples \
+                      with unseen entties removed" \
+                      .format(valid.shape, filtered_valid.shape, c_if))
+        # for test 
+        ent_test_diff_train = test_ent - train_ent
+        idxs_test = []
+        if len(ent_test_diff_train) > 0:
+            count_test = 0
+            c_if = 0
+            for row in test:
+                tmp = set(row)
+                if len(tmp & ent_test_diff_train) != 0:
+                    idxs_test.append(count_test)
+                    c_if += 1
+                count_test = count_test + 1
+        filtered_test = np.delete(test, idxs_test, axis=0)
+        logging.debug("not fitting validation case: shape test: {0}  \
+                      -  filtered test: {1}: {2} triples \
+                      with unseen entties removed" \
+                      .format(test.shape, filtered_test.shape, c_if))
+        
+        return {'train': train, 'valid': filtered_valid, 'test': filtered_test}
+        
+
 def _get_data_home(data_home=None):
     """Get to location of the dataset folder to use.
 
@@ -256,7 +328,7 @@ def load_wn18():
     return _load_core_dataset('WN18', data_home=None)
 
 
-def load_wn18rr():
+def load_wn18rr(clean_unseen=True):
     """ Load the WN18RR dataset
 
     The dataset is described in :cite:`DettmersMS018`.
@@ -299,7 +371,7 @@ def load_wn18rr():
     
     """
 
-    return _load_core_dataset('WN18RR', data_home=None)
+    return _clean_data(_load_core_dataset('WN18RR', data_home=None), throw_valid=True)
 
 
 def load_fb15k():
@@ -398,7 +470,7 @@ def load_fb15k_237():
       dtype=object)
     """
 
-    return _load_core_dataset('FB15K_237', data_home=None)
+    return _clean_data(_load_core_dataset('FB15K_237', data_home=None), throw_valid=True)
 
 
 def load_yago3_10():

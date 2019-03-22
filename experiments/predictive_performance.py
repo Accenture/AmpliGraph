@@ -1,6 +1,6 @@
 import ampligraph.datasets
 import ampligraph.latent_features
-from ampligraph.evaluation import hits_at_n_score, mr_score, evaluate_performance, mrr_score, clean_data
+from ampligraph.evaluation import hits_at_n_score, mr_score, evaluate_performance, mrr_score
 
 import argparse
 import os
@@ -81,15 +81,6 @@ def run_single_exp(config, dataset, model):
                         config["load_function_map"][dataset])
     X = load_func()
     # logging.debug("Loaded...{0}...".format(dataset))
-
-    if dataset in config["DATASET_WITH_UNSEEN_ENTITIES"]:
-        logging.debug("{0} contains unseen entities \
-                      in test dataset, we cleaned them..." \
-                      .format(dataset))
-        X["valid"], X["test"] = clean_data(X["train"],
-                                           X["valid"],
-                                           X["test"],
-                                           throw_valid=True)
 
     # load model
     model_class = getattr(ampligraph.latent_features,
