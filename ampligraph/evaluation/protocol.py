@@ -76,7 +76,8 @@ def clean_data(train, valid, test, throw_valid=False):
                       with unseen entties removed" \
                       .format(test.shape, filtered_test.shape, c_if))
         return filtered_valid, filtered_test
-    
+
+
 def train_test_split_no_unseen(X, test_size=5000, seed=0):
     """Split into train and test sets.
 
@@ -165,10 +166,11 @@ def create_mappings(X):
 
 
 def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o', table_entity_lookup_left=None,
-                                  table_entity_lookup_right=None, table_reln_lookup=None, rnd=None):
+                                  table_entity_lookup_right=None, table_reln_lookup=None):
     """Generate corruptions for evaluation.
 
-        Create all possible corruptions (subject and object) for a given triple x, in compliance with the LCWA.
+        Create corruptions (subject and object) for a given triple x, in compliance with the
+        local closed world assumption (LCWA), as described in :cite:`nickel2016review`.
 
     Parameters
     ----------
@@ -187,8 +189,6 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
         Hash table of object entities mapped to unique prime numbers
     table_reln_lookup : tf.HashTable
         Hash table of relations mapped to unique prime numbers
-    rnd: numpy.random.RandomState
-        A random number generator.
 
     Returns
     -------
@@ -281,26 +281,40 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
     """Generate corruptions for training.
 
         Creates corrupted triples for each statement in an array of statements,
-        as described by ::cite:`trouillon2016complex`.
+        as described by :cite:`trouillon2016complex`.
 
         .. note::
             Collisions are not checked, as this will be computationally expensive :cite:`trouillon2016complex`.
             That means that some corruptions *may* result in being positive statements (i.e. *unfiltered* settings).
-            
-            If ``entities_list==None`` and ``entities_size==-1`` then the entities in the batch would be used 
-            for generating corruption.
+
+        .. note::
+            When processing large knowledge graphs, it may be useful to generate corruptions only using entities from
+            a single batch.
+            This also brings the benefit of creating more meaningful negatives, as entities used to corrupt are
+            sourced locally.
+            The function can be configured to generate corruptions *only* using the entities from the current batch.
+            You can enable such behaviour be setting ``entities_size==-1``. In such case, if ``entities_list=None``
+            all entities from the *current batch* will be used to generate corruptions.
 
     Parameters
     ----------
     X : Tensor, shape [n, 3]
         An array of positive triples that will be used to create corruptions.
     entities_list : list
-        List of entities to be used for generating corruptions. (default:None)
+        List of entities to be used for generating corruptions. (default:None).
+        if ``entities_list=None``, all entities will be used to generate corruptions (default behaviour).
     eta : int
         The number of corruptions per triple that must be generated.
     entities_size: int
-        Size of entities to be used while generating corruptions. It assumes entity id's start from 0 and are continuous.
-        (default:0)
+        Size of entities to be used while generating corruptions. It assumes entity id's start from 0 and are
+        continuous. (default: 0).
+        When processing large knowledge graphs, it may be useful to generate corruptions only using entities from
+        a single batch.
+        This also brings the benefit of creating more meaningful negatives, as entities used to corrupt are
+        sourced locally.
+        The function can be configured to generate corruptions *only* using the entities from the current batch.
+        You can enable such behaviour be setting ``entities_size==-1``. In such case, if ``entities_list=None``
+        all entities from the *current batch* will be used to generate corruptions.
     rnd: numpy.random.RandomState
         A random number generator.
 
@@ -333,24 +347,23 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
     keep_obj_mask = tf.cast(keep_obj_mask, tf.int32)
 
     logger.debug('Created corruption masks.')
-    
-    if entities_size != 0:    
+
+    if entities_size != 0:
         replacements = tf.random_uniform([tf.shape(dataset)[0]], 0, entities_size, dtype=tf.int32, seed=rnd)
     else:
         if entities_list is None:
-            #use entities in the batch
+            # use entities in the batch
             entities_list, _ = tf.unique(tf.squeeze(
-                                            tf.concat([tf.slice(X, [0, 0], [tf.shape(X)[0], 1]), 
-                                                       tf.slice(X, [0, 2], [tf.shape(X)[0], 1])],
-                                                      0)))
+                tf.concat([tf.slice(X, [0, 0], [tf.shape(X)[0], 1]),
+                           tf.slice(X, [0, 2], [tf.shape(X)[0], 1])],
+                          0)))
 
-        random_indices = tf.squeeze(tf.multinomial(tf.expand_dims(tf.zeros(tf.shape(entities_list)[0]), 0), 
-                                                        num_samples=tf.shape(dataset)[0], 
-                                                        seed=rnd))
-        
+        random_indices = tf.squeeze(tf.multinomial(tf.expand_dims(tf.zeros(tf.shape(entities_list)[0]), 0),
+                                                   num_samples=tf.shape(dataset)[0],
+                                                   seed=rnd))
 
         replacements = tf.gather(entities_list, random_indices)
-            
+
     subjects = tf.math.add(tf.math.multiply(keep_subj_mask, dataset[:, 0]),
                            tf.math.multiply(keep_obj_mask, replacements))
     logger.debug('Created corrupted subjects.')
@@ -492,22 +505,22 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     X_test = filter_unseen_entities(X, model, verbose=verbose, strict=True)
 
     X_test = to_idx(X_test, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
-    
+
     if filter_triples is not None:
         logger.debug('Getting filtered triples.')
         filter_triples = to_idx(filter_triples, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
-    
+
     if use_default_protocol:
         corruption_sides = ['s', 'o']
     else:
         corruption_sides = [corrupt_side]
-        
+
     eval_dict = {}
 
     if rank_against_ent is not None:
         idx_entities = np.asarray([idx for uri, idx in model.ent_to_idx.items() if uri in rank_against_ent])
         eval_dict['corruption_entities'] = idx_entities
-    
+
     ranks = []
     for side in corruption_sides:
         logger.debug('Evaluating the test set by corrupting side : {}'.format(side))
@@ -522,11 +535,9 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
             ranks.append(rank)
         model.end_evaluation()
         logger.debug('Ending Evaluation')
-        
+
     logger.info('Returning ranks of positive test triples obtained by corrupting {}.'.format(corruption_sides))
     return ranks
-      
-    
 
 
 def filter_unseen_entities(X, model, verbose=False, strict=True):
@@ -683,7 +694,7 @@ def gridsearch_next_hyperparam(model_name, in_dict):
                                                 out_dict["regularizer_params"][reg_params[idx]] = reg_param_values[idx]
                                             for idx in range(len(model_params)):
                                                 out_dict["embedding_model_params"][model_params[idx]] = \
-                                                model_param_values[idx]
+                                                    model_param_values[idx]
 
                                             yield (out_dict)
     except KeyError as e:
@@ -852,12 +863,11 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
         model = model_class(**model_params)
         model.fit(X['train'], early_stopping, early_stopping_params)
 
-
-        ranks = evaluate_performance(selection_dataset, model=model, 
-                                         filter_triples=X_filter, verbose=verbose,
-                                         rank_against_ent=rank_against_ent, 
-                                         use_default_protocol=use_default_protocol,
-                                         corrupt_side=corrupt_side)
+        ranks = evaluate_performance(selection_dataset, model=model,
+                                     filter_triples=X_filter, verbose=verbose,
+                                     rank_against_ent=rank_against_ent,
+                                     use_default_protocol=use_default_protocol,
+                                     corrupt_side=corrupt_side)
 
         curr_mrr = mrr_score(ranks)
         mr = mr_score(ranks)
@@ -880,12 +890,11 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
     # Retraining
     best_model.fit(np.concatenate((X['train'], X['valid'])))
 
-
-    ranks_test = evaluate_performance(X['test'], model=best_model, 
-                                          filter_triples=X_filter, verbose=verbose,
-                                          rank_against_ent=rank_against_ent, 
-                                          use_default_protocol=use_default_protocol, 
-                                          corrupt_side=corrupt_side)
+    ranks_test = evaluate_performance(X['test'], model=best_model,
+                                      filter_triples=X_filter, verbose=verbose,
+                                      rank_against_ent=rank_against_ent,
+                                      use_default_protocol=use_default_protocol,
+                                      corrupt_side=corrupt_side)
 
     mrr_test = mrr_score(ranks_test)
 
