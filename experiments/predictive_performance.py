@@ -32,7 +32,7 @@ def display_scores(scores):
         output_rst[obj["dataset"]].set_style(BeautifulTable.STYLE_RST)
         output_rst[obj["dataset"]].column_headers = \
             ["Model", "MR", "MRR", "Hits@1", \
-             "Hits@3", "Hits\@10", "Hyperparameters"]
+             "Hits@3", "Hits@10", "Hyperparameters"]
 
     for obj in scores:
         try:
@@ -60,73 +60,6 @@ def display_scores(scores):
         print(value)
 
 
-# clean datasets with unseen entities
-def clean_data(train, valid, test, throw_valid=False):
-    train_ent = set(train.flatten())
-    valid_ent = set(valid.flatten())
-    test_ent = set(test.flatten())
-
-    # not throwing the unseen entities in validation set
-    if not throw_valid:
-        train_valid_ent = set(train.flatten()) | set(valid.flatten())
-        ent_test_diff_train_valid = test_ent - train_valid_ent
-        idxs_test = []
-
-        if len(ent_test_diff_train_valid) > 0:
-            count_test = 0
-            c_if = 0
-            for row in test:
-                tmp = set(row)
-                if len(tmp & ent_test_diff_train_valid) != 0:
-                    idxs_test.append(count_test)
-                    c_if += 1
-                count_test = count_test + 1
-        filtered_test = np.delete(test, idxs_test, axis=0)
-        logging.debug("fit validation case: shape test: {0} \
-                      -  filtered test: {1}: {2} triples \
-                      with unseen entties removed" \
-                      .format(test.shape, filtered_test.shape, c_if))
-        return valid, filtered_test
-
-    # throwing the unseen entities in validation set
-    else:
-        # for valid
-        ent_valid_diff_train = valid_ent - train_ent
-        idxs_valid = []
-        if len(ent_valid_diff_train) > 0:
-            count_valid = 0
-            c_if = 0
-            for row in valid:
-                tmp = set(row)
-                if len(tmp & ent_valid_diff_train) != 0:
-                    idxs_valid.append(count_valid)
-                    c_if += 1
-                count_valid = count_valid + 1
-        filtered_valid = np.delete(valid, idxs_valid, axis=0)
-        logging.debug("not fitting validation case: shape valid: {0} \
-                      -  filtered valid: {1}: {2} triples \
-                      with unseen entties removed" \
-                      .format(valid.shape, filtered_valid.shape, c_if))
-        # for test 
-        ent_test_diff_train = test_ent - train_ent
-        idxs_test = []
-        if len(ent_test_diff_train) > 0:
-            count_test = 0
-            c_if = 0
-            for row in test:
-                tmp = set(row)
-                if len(tmp & ent_test_diff_train) != 0:
-                    idxs_test.append(count_test)
-                    c_if += 1
-                count_test = count_test + 1
-        filtered_test = np.delete(test, idxs_test, axis=0)
-        logging.debug("not fitting validation case: shape test: {0}  \
-                      -  filtered test: {1}: {2} triples \
-                      with unseen entties removed" \
-                      .format(test.shape, filtered_test.shape, c_if))
-        return filtered_valid, filtered_test
-
-
 def run_single_exp(config, dataset, model):
     hyperparams = config["hyperparams"][dataset][model]
     if hyperparams is None:
@@ -148,15 +81,6 @@ def run_single_exp(config, dataset, model):
                         config["load_function_map"][dataset])
     X = load_func()
     # logging.debug("Loaded...{0}...".format(dataset))
-
-    if dataset in config["DATASET_WITH_UNSEEN_ENTITIES"]:
-        logging.debug("{0} contains unseen entities \
-                      in test dataset, we cleaned them..." \
-                      .format(dataset))
-        X["valid"], X["test"] = clean_data(X["train"],
-                                           X["valid"],
-                                           X["test"],
-                                           throw_valid=True)
 
     # load model
     model_class = getattr(ampligraph.latent_features,
@@ -187,14 +111,7 @@ def run_single_exp(config, dataset, model):
     ranks = evaluate_performance(X['test'],
                                  model,
                                  filter,
-                                 verbose=False,
-                                 corrupt_side='s')
-    ranks2 = evaluate_performance(X['test'],
-                                  model,
-                                  filter,
-                                  verbose=False,
-                                  corrupt_side='o')
-    ranks.extend(ranks2)
+                                 verbose=False)
 
     # compute and print metrics:
     mr = mr_score(ranks)

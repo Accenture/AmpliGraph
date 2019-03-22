@@ -174,19 +174,21 @@ class PairwiseLoss(Loss):
 
     """
 
-    def __init__(self, eta, hyperparam_dict={'margin': DEFAULT_MARGIN}, verbose=False):
+    def __init__(self, eta, loss_params={'margin': DEFAULT_MARGIN}, verbose=False):
         """Initialize Loss.
 
         Parameters
         ----------
         eta: int
             number of negatives
-        hyperparam_dict : dict
-            dictionary of hyperparams.
+        loss_params : dict
+            Dictionary of loss-specific hyperparams:
 
-            - **margin**: float. Margin to be used in pairwise loss computation (default:1)
+            - **'margin'**: (float). Margin to be used in pairwise loss computation (default: 1)
+
+            Example: ``loss_params={'margin': 1}``
         """
-        super().__init__(eta, hyperparam_dict, verbose)
+        super().__init__(eta, loss_params, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparameters needed by the algorithm.
@@ -228,24 +230,24 @@ class NLLLoss(Loss):
 
     .. math::
 
-        \mathcal{L}(\Theta) = \sum_{t \in \mathcal{G} \cup \mathcal{C}}log(1 + exp(-yf_{model}(t;\Theta)))
+        \mathcal{L}(\Theta) = \sum_{t \in \mathcal{G} \cup \mathcal{C}}log(1 + exp(-y \, f_{model}(t;\Theta)))
 
-    where :math:`y` is the label of the statement :math:` \in [-1, 1]`, :math:`\mathcal{G}` is the set of positives,
+    where :math:`y \in {-1, 1}` is the label of the statement, :math:`\mathcal{G}` is the set of positives,
     :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
     """
 
-    def __init__(self, eta, hyperparam_dict={}, verbose=False):
+    def __init__(self, eta, loss_params={}, verbose=False):
         """Initialize Loss.
 
         Parameters
         ----------
         eta: int
             number of negatives
-        hyperparam_dict : dict
+        loss_params : dict
             dictionary of hyperparams. No hyperparameters are required for this loss.
         """
-        super().__init__(eta, hyperparam_dict, verbose)
+        super().__init__(eta, loss_params, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.
@@ -291,19 +293,21 @@ class AbsoluteMarginLoss(Loss):
 
     """
 
-    def __init__(self, eta, hyperparam_dict={'margin': DEFAULT_MARGIN}, verbose=False):
+    def __init__(self, eta, loss_params={'margin': DEFAULT_MARGIN}, verbose=False):
         """Initialize Loss
 
         Parameters
         ----------
         eta: int
             number of negatives
-        hyperparam_dict : dict
-            dictionary of hyperparams.
+        loss_params : dict
+            Dictionary of loss-specific hyperparams:
 
-            - **margin**: float. Margin to be used in loss computation (default:1)
+            - **'margin'**: float. Margin to be used in pairwise loss computation (default:1)
+
+            Example: ``loss_params={'margin': 1}``
         """
-        super().__init__(eta, hyperparam_dict, verbose)
+        super().__init__(eta, loss_params, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.
@@ -349,13 +353,23 @@ class SelfAdversarialLoss(Loss):
 
        .. math::
 
-           \mathcal{L} = -log \sigma(\gamma - d_r (h,t)) - \sum_{i=1}^{n} p(h_{i}^{'}, r, t_{i}^{'} ) \ log \ \sigma(d_r (h_{i}^{'},t_{i}^{'}) - \gamma)
+           \mathcal{L} = -log\, \sigma(\gamma + f_{model} (\mathbf{s},\mathbf{o})) - \sum_{i=1}^{n} p(h_{i}^{'}, r, t_{i}^{'} ) \ log \ \sigma(-f_{model}(\mathbf{s}_{i}^{'},\mathbf{o}_{i}^{'}) - \gamma)
 
-       where :math:`\gamma` is the margin, and :math:`p(h_{i}^{'}, r, t_{i}^{'} )` is the sampling proportion
+       where :math:`\mathbf{s}, \mathbf{o} \in \mathcal{R}^k` are the embeddings of the subject
+       and object of a triple :math:`t=(s,r,o)`, :math:`\gamma` is the margin, :math:`\sigma` the sigmoid function,
+       and :math:`p(s_{i}^{'}, r, o_{i}^{'} )` is the negatives sampling distribution which is defined as:
+
+       .. math::
+
+           p(s'_j, r, o'_j | \{(s_i, r_i, o_i)\}) = \\frac{\exp \\alpha \, f_{model}(\mathbf{s'_j}, \mathbf{o'_j})}{\sum_i \exp \\alpha \, f_{model}(\mathbf{s'_i}, \mathbf{o'_i})}
+
+       where :math:`\\alpha` is the temperature of sampling, :math:`f_{model}` is the scoring function of
+       the desired embeddings model.
+
 
     """
 
-    def __init__(self, eta, hyperparam_dict={'margin': DEFAULT_MARGIN_ADVERSARIAL,
+    def __init__(self, eta, loss_params={'margin': DEFAULT_MARGIN_ADVERSARIAL,
                                              'alpha': DEFAULT_ALPHA_ADVERSARIAL}, verbose=False):
         """Initialize Loss
 
@@ -363,13 +377,17 @@ class SelfAdversarialLoss(Loss):
         ----------
         eta: int
             number of negatives
-        hyperparam_dict : dict
-            dictionary of hyperparams.
+        loss_params : dict
+        loss_params : dict
+            Dictionary of loss-specific hyperparams:
 
-            - **margin**: float. Margin to be used in adversarial loss computation (default:3)
-            - **alpha** : float. Temperature of sampling (default:0.5)
+            - **'margin'**: (float). Margin to be used for loss computation (default: 1)
+            - **'alpha'** : (float). Temperature of sampling (default:0.5)
+
+            Example: ``loss_params={'margin': 1, 'alpha': 0.5}``
+
         """
-        super().__init__(eta, hyperparam_dict, verbose)
+        super().__init__(eta, loss_params, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.

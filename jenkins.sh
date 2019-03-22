@@ -11,7 +11,9 @@ conda create --name ampligraph python=3.6
 source activate ampligraph
 
 # Install library
-pip install .[cpu] -v
+pip install tensorflow==1.12.0
+
+pip install . -v
 
 # configure dataset location
 export AMPLIGRAPH_DATA_HOME=/var/datasets
@@ -22,9 +24,6 @@ pytest tests
 # build documentation
 cd docs
 make clean autogen html
-
-# mode docs to dubaldeweb001 web server
-scp -r _build/html/* jenkinsuser@dubaldeweb001.techlabs.accenture.com:/var/www/html/docs/ampligraph/dev
 
 # cleanup: remove conda env
 source deactivate

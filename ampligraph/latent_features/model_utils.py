@@ -36,10 +36,11 @@ def save_model(model, loc):
 
         Parameters
         ----------
-        model: trained model
-            A trained neural knowledge graph embedding model, the model must be an instance of TransE, DistMult or ComplEx classes.
+        model: EmbeddingModel
+            A trained neural knowledge graph embedding model, the model must be an instance of TransE,
+            DistMult, ComplEx, or HolE.
         loc: string
-            Directory into which user expects to save the model
+            Directory where the model will be saved.
 
     """
     logger.debug('Saving model {}.'.format(model.__class__.__name__))
@@ -80,12 +81,12 @@ def restore_model(loc):
         Parameters
         ----------
         loc: string
-            Directory containing the saved model
+            Directory where the saved model is located.
 
         Returns
         -------
-        model: trained model
-            a neural knowledge graph embedding model
+        model: EmbeddingModel
+            the neural knowledge graph embedding model restored from disk.
         
     """
     restore_loc = os.path.join(loc, SAVED_MODEL_FILE_NAME)

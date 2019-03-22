@@ -1,6 +1,5 @@
 {
     "CUDA_VISIBLE_DEVICES": "0",
-    "DATASET_WITH_UNSEEN_ENTITIES": ["WN18RR", "FB15K-237"],
     "load_function_map": {
         "WN18": "load_wn18",
         "FB15K": "load_fb15k",
@@ -40,5 +39,5 @@
             "HOLE": {"batches_count":50,"seed":0,"epochs":4000,"k":350,"eta":30,"loss": "self_adversarial", "loss_params": {"margin": 0.5, "alpha": 1},"optimizer":"adam","optimizer_params":{"lr":0.0001},"verbose":false}
         }    
     },
-    "no_early_stopping": ["FB15K_TRANSE"]
+    "no_early_stopping": ["FB15K_TRANSE", "WN18_TRANSE"]
 }

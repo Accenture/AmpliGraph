@@ -12,7 +12,8 @@ def hits_at_n_score(ranks, n):
 
     The function computes how many elements of a vector of rankings ``ranks`` make it to the top ``n`` positions.
 
-    It is used in conjunction with the learning to rank evaluation protocol of ``evaluation.evaluate_performance``.
+    It can be used in conjunction with the learning to rank evaluation protocol of
+    :meth:`ampligraph.evaluation.evaluate_performance`.
 
     It is formally defined as follows:
 
@@ -79,7 +80,8 @@ def mrr_score(ranks):
 
     The function computes the mean of the reciprocal of elements of a vector of rankings ``ranks``.
 
-    It is used in conjunction with the learning to rank evaluation protocol of ``evaluation.evaluate_performance``.
+    It is used in conjunction with the learning to rank evaluation protocol of
+    :meth:`ampligraph.evaluation.evaluate_performance`.
 
     It is formally defined as follows:
 
@@ -90,8 +92,8 @@ def mrr_score(ranks):
     where :math:`Q` is a set of triples and :math:`(s, p, o)` is a triple :math:`\in Q`.
 
     .. note::
-        This metric is similar to mean rank (MR) ``metrics.mr``. Instead of averaging ranks it averages their
-        reciprocals. This is done to obtain a metric which is more robust to outliers.
+        This metric is similar to mean rank (MR) :meth:`ampligraph.evaluation.mr_score`. Instead of averaging ranks,
+        it averages their reciprocals. This is done to obtain a metric which is more robust to outliers.
 
 
     Consider the following example. Each of the two positive triples identified by ``*`` are ranked
@@ -191,7 +193,8 @@ def mr_score(ranks):
 
     The function computes the mean of of a vector of rankings ``ranks``.
 
-    It is used in conjunction with the learning to rank evaluation protocol of ``evaluation.evaluate_performance``.
+    It can be used in conjunction with the learning to rank evaluation protocol of
+    :meth:`ampligraph.evaluation.evaluate_performance`.
 
     It is formally defined as follows:
 
@@ -201,7 +204,8 @@ def mr_score(ranks):
     where :math:`Q` is a set of triples and :math:`(s, p, o)` is a triple :math:`\in Q`.
 
     .. note::
-        This metric is not robust to outliers. It is usually used in conjunction  with MRR ``metrics.mrr``.
+        This metric is not robust to outliers.
+        It is usually presented along the more reliable MRR :meth:`ampligraph.evaluation.mrr_score`.
 
     Consider the following example. Each of the two positive triples identified by ``*`` are ranked
     against four corruptions each. When scored by an embedding model, the first triple ranks 2nd, and the other triple

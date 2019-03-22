@@ -1,6 +1,7 @@
 # AmpliGraph
 
-[![DOI](https://zenodo.org/badge/164881995.svg)](https://zenodo.org/badge/latestdoi/164881995)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2595043.svg)](https://doi.org/10.5281/zenodo.2595043)
+
 [![Documentation Status](https://readthedocs.org/projects/ampligraph/badge/?version=latest)](http://ampligraph.readthedocs.io/?badge=latest)
 
 
@@ -113,7 +114,7 @@ pip install -e .
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'1.0-dev'
+'1.0.1'
 ```
 
 
@@ -121,7 +122,7 @@ pip install -e .
 
 |          |FB15k |WN18   |WN18RR |FB15K-237|
 |----------|------|-------|-------|---------|
-| TransE   | 0.55 | 0.50  | 0.23  | 0.32    |
+| TransE   | 0.55 | 0.50  | 0.23  | 0.31    |
 | DistMult | 0.79 | 0.83  | 0.44  | 0.29    |
 | ComplEx  | 0.79 | 0.94  | 0.44  | 0.30    |
 | HolE     | 0.80 | 0.94  | 0.47  | 0.28    |
@@ -147,7 +148,7 @@ See [guidelines](http://docs.ampligraph.org) from AmpliGraph documentation.
 
 If you like AmpliGraph and you use it in your project, why not starring the project on GitHub!
 
-[![GitHub stars](https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/Accenture/AmpliGraph/stargazers/)
+[![GitHub stars](https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=3600)](https://GitHub.com/Accenture/AmpliGraph/stargazers/)
 
 
 If you instead use AmpliGraph in an academic publication, cite as:
@@ -162,8 +163,8 @@ If you instead use AmpliGraph in an academic publication, cite as:
  title = {{AmpliGraph: a Library for Representation Learning on Knowledge Graphs}},
  month = mar,
  year  = 2019,
- doi   = {10.5281/zenodo.2595049},
- url   = {https://doi.org/10.5281/zenodo.2595049}
+ doi   = {10.5281/zenodo.2595043},
+ url   = {https://doi.org/10.5281/zenodo.2595043}
 }
 ```
 

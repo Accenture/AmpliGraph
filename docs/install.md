@@ -50,12 +50,13 @@ Install the latest stable release from pip:
 pip install ampligraph
 ```
 
+
 If instead you want the most recent development version, you can clone the repository
-and install from source (your local working copy will be on the latest commit on the `develop` branch).
-The code snippet below will install the library in editable mode (`-e`):
+and install from source as: See the [How to Contribute guide](dev.md) for details.
 
 ```
 git clone https://github.com/Accenture/AmpliGraph.git
+git checkout develop
 cd AmpliGraph
 pip install -e .
 ```
@@ -65,5 +66,5 @@ pip install -e .
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'1.0.0'
+'1.0.1'
 ```

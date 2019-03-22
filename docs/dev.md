@@ -1,7 +1,7 @@
 # How to Contribute
 
 ## Git Repo and Issue Tracking
-[![GitHub stars](https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/Accenture/AmpliGraph/stargazers/)
+[![GitHub stars](https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=3600)](https://GitHub.com/Accenture/AmpliGraph/stargazers/)
 
 AmpliGraph [repository is available on GitHub](https://innersource.accenture.com/projects/DL/repos/xai-link-prediction/).
 
@@ -33,7 +33,17 @@ You can add your own model by raising a pull request.
 To get started, [read the documentation on how current models have been implemented](ampligraph.latent_features.html#anatomy-of-a-model).
 
 
+## Clone and Install in editable mode
 
+Clone the repository and checkout the `develop` branch.
+Install from source with pip. use the `-e` flag to enable [editable mode](https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs):
+
+```
+git clone https://github.com/Accenture/AmpliGraph.git
+git checkout develop
+cd AmpliGraph
+pip install -e .
+```
 
 
 ## Unit Tests

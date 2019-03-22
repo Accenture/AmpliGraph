@@ -20,7 +20,7 @@ import os
 # If not specified, following defaults will be used at respective locations
 
 # Default learning rate for the optimizers
-DEFAULT_LR = 0.1
+DEFAULT_LR = 0.0005
 
 # Default momentum for the optimizers
 DEFAULT_MOMENTUM = 0.9
@@ -40,9 +40,6 @@ DEFAULT_CRITERIA_EARLY_STOPPING = 'mrr'
 # default value which indicates whether to normalize the embeddings after each batch update
 DEFAULT_NORMALIZE_EMBEDDINGS = False
 
-# default value for list of corruption entities to be used
-# If None, it uses all the entities in the dataset
-DEFAULT_CORRUPTION_ENTITIES = None
 
 # Default side to corrupt for evaluation
 DEFAULT_CORRUPT_SIDE = 's+o'
@@ -53,6 +50,39 @@ DEFAULT_NORM_TRANSE = 1
 # initial value for criteria in early stopping
 INITIAL_EARLY_STOPPING_CRITERIA_VALUE = 0
 
+# default value for the way in which the corruptions are to be generated while training/testing.
+# Uses all entities
+DEFAULT_CORRUPTION_ENTITIES = 'all'
+
+# Threshold (on number of unique entities) to categorize the data as Huge Dataset (to warn user)
+ENTITY_WARN_THRESHOLD = 5e5
+
+# Default value for k (embedding size)
+DEFAULT_EMBEDDING_SIZE = 100
+
+# Default value for eta (number of corrputions to be generated for training)
+DEFAULT_ETA = 2
+
+# Default value for number of epochs
+DEFAULT_EPOCH = 100
+
+# Default value for batch count
+DEFAULT_BATCH_COUNT = 100
+
+# Default value for seed
+DEFAULT_SEED = 0
+
+# Default value for optimizer
+DEFAULT_OPTIM = "adam"
+
+# Default value for loss type
+DEFAULT_LOSS = "nll"
+
+# Default value for regularizer type 
+DEFAULT_REGULARIZER = None
+
+# Default value for verbose
+DEFAULT_VERBOSE = False
 
 #######################################################################################################
 
@@ -74,12 +104,20 @@ class EmbeddingModel(abc.ABC):
 
     """
 
-    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
+    def __init__(self, 
+                 k=DEFAULT_EMBEDDING_SIZE, 
+                 eta=DEFAULT_ETA, 
+                 epochs=DEFAULT_EPOCH, 
+                 batches_count=DEFAULT_BATCH_COUNT, 
+                 seed=DEFAULT_SEED,
                  embedding_model_params={},
-                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
-                 loss='nll', loss_params={},
-                 regularizer=None, regularizer_params={},
-                 model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+                 optimizer=DEFAULT_OPTIM, 
+                 optimizer_params={'lr':DEFAULT_LR},
+                 loss=DEFAULT_LOSS, 
+                 loss_params={},
+                 regularizer=DEFAULT_REGULARIZER, 
+                 regularizer_params={},
+                 verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -97,46 +135,50 @@ class EmbeddingModel(abc.ABC):
         seed : int
             The seed used by the internal random numbers generator.
         embedding_model_params : dict
-            Parameter values of embedding model specific hyperparams 
-            
-            (Refer documentation of specific embedding models for more details)
-        optimizer : string
-            The optimizer used to minimize the loss function. Choose between ``sgd``,
-            ``adagrad``, ``adam``, ``momentum``.
-        optimizer_params : dict    
-            Parameters values specific to the optimizer.Currently supported:
+            Model-specific hyperparams, passed to the model as a dictionary.
+            Refer to model-specific documentation for details.
 
-            - **lr** - learning rate (used by all the optimizers)
-            - **momentum** - learning momentum (used by momentum optimizer)
-            
+        optimizer : string
+            The optimizer used to minimize the loss function. Choose between 'sgd',
+            'adagrad', 'adam', 'momentum'.
+        optimizer_params : dict
+            Arguments specific to the optimizer, passed as a dictionary.
+
+            Supported keys:
+
+            - **'lr'** (float): learning rate (used by all the optimizers). Default: 0.1.
+            - **'momentum'** (float): learning momentum (only used when ``optimizer=momentum``). Default: 0.9.
+
+            Example: ``optimizer_params={'lr': 0.01}``
+
         loss : string
-            The type of loss function to use during training. 
-            
-            - ``pairwise``  the model will use pairwise margin-based loss function.
-            - ``nll`` the model will use negative loss likelihood.
-            - ``absolute_margin`` the model will use absolute margin likelihood.
-            - ``self_adversarial`` the model will use adversarial sampling loss function.
-            
+            The type of loss function to use during training.
+
+            - 'pairwise'  the model will use pairwise margin-based loss function.
+            - 'nll' the model will use negative loss likelihood.
+            - 'absolute_margin' the model will use absolute margin likelihood.
+            - 'self_adversarial' the model will use adversarial sampling loss function.
+
         loss_params : dict
-            Parameters dictionary specific to the loss. 
-            
-            (Refer documentation of specific loss functions for more details)
+            Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
+            documentation for additional details.
+
+            Example: ``optimizer_params={'lr': 0.01}`` if ``loss='pairwise'``.
+
         regularizer : string
-            The regularization strategy to use with the loss function. 
-            
-            - ``LP`` the model will use L1, L2 or L3 based on the value passed to param p.
-            - ``None`` the model will not use any regularizer
-            
+            The regularization strategy to use with the loss function.
+
+            - ``None``: the model will not use any regularizer (default)
+            - 'LP': the model will use L1, L2 or L3 based on the value of ``regularizer_params['p']`` (see below).
+
         regularizer_params : dict
-            Parameters dictionary specific to the regularizer. 
-            
-            (Refer documentation of regularizer for more details)
-        model_checkpoint_path: string
-            Path to save the model.
+            Dictionary of regularizer-specific hyperparameters. See the :ref:`regularizers <ref-reg>`
+            documentation for additional details.
+
+            Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
+
         verbose : bool
             Verbose mode
-        kwargs : dict
-            Additional inputs, if any
         """
         # Store for restoring later.
         self.all_params = \
@@ -153,7 +195,6 @@ class EmbeddingModel(abc.ABC):
                 'loss_params': loss_params,
                 'regularizer': regularizer,
                 'regularizer_params': regularizer_params,
-                'model_checkpoint_path': model_checkpoint_path,
                 'verbose': verbose
 
             }
@@ -222,7 +263,6 @@ class EmbeddingModel(abc.ABC):
         self.trained_model_params = []
         self.is_fitted = False
         self.eval_config = {}
-        self.model_checkpoint_path = model_checkpoint_path
 
     @abc.abstractmethod
     def _fn(self, e_s, e_p, e_o):
@@ -298,7 +338,8 @@ class EmbeddingModel(abc.ABC):
             The entities (or relations) of interest. Element of the vector must be the original string literals, and
             not internal IDs.
         type : string
-            If 'entity', will consider input as KG entities. If `relation`, they will be treated as KG predicates.
+            If 'entity', the ``entities`` argument will be considered as a list of knowledge graph entities (i.e. nodes).
+            If set to 'relation', they will be treated as relation types instead (i.e. predicates).
 
         Returns
         -------
@@ -408,6 +449,10 @@ class EmbeddingModel(abc.ABC):
             msg = 'Unsupported early stopping criteria.'
             logger.error(msg)
             raise ValueError(msg)
+            
+        self.eval_config['corruption_entities'] = self.early_stopping_params.get('corruption_entities', 
+                                                                                 DEFAULT_CORRUPTION_ENTITIES)
+        self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', DEFAULT_CORRUPT_SIDE)
 
         self.early_stopping_best_value = INITIAL_EARLY_STOPPING_CRITERIA_VALUE
         self.early_stopping_stop_counter = 0
@@ -462,9 +507,6 @@ class EmbeddingModel(abc.ABC):
                     if self.early_stopping_best_value == INITIAL_EARLY_STOPPING_CRITERIA_VALUE:
                         self._save_trained_params()
 
-                    # Reset this variable as it is reused during evaluation phase
-                    self.is_filtered = False
-                    self.eval_config = {}
                     if self.verbose:
                         msg = 'Early stopping at epoch:{}'.format(epoch)
                         logger.info(msg)
@@ -487,6 +529,20 @@ class EmbeddingModel(abc.ABC):
                 print(msg)
 
         return False
+    
+    def _end_training(self):
+        """Perform clean up tasks after training.
+        """
+        # Reset this variable as it is reused during evaluation phase
+        self.is_filtered = False
+        self.eval_config = {}
+        
+        #close the tf session
+        self.sess_train.close()
+        
+        #set is_fitted to true to indicate that the model fitting is completed
+        self.is_fitted = True
+        
 
     def fit(self, X, early_stopping=False, early_stopping_params={}):
         """Train an EmbeddingModel (with optional early stopping).
@@ -499,16 +555,22 @@ class EmbeddingModel(abc.ABC):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping (default:False)
+            Flag to enable early stopping (default:``False``)
         early_stopping_params: dictionary
-            Dictionary of parameters for early stopping. Following keys are supported: 
-            
-                - **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
-                - **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
-                - **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
-                - **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
-                - **check_interval**: int : Early stopping interval after burn-in (default:10).
-                - **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
+            Dictionary of hyperparameters for the early stopping heuristics.
+
+            The following string keys are supported:
+
+                - **'x_valid'**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **'criteria'**: string : criteria for early stopping 'hits10', 'hits3', 'hits1' or 'mrr'(default).
+                - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr'). Note this will affect training time (no filter by default).
+                - **'burn_in'**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                - **check_interval'**: int : Early stopping interval after burn-in (default:10).
+                - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
+                - **'corruption_entities'**: List of entities to be used for corruptions. If 'all', it uses all entities (default: 'all')
+                - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o' (default)
+
+                Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
         """
         if type(X) != np.ndarray:
@@ -525,6 +587,11 @@ class EmbeddingModel(abc.ABC):
         self.rel_to_idx, self.ent_to_idx = create_mappings(X)
         #  convert training set into internal IDs
         X = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+        
+        if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
+            logger.warn('Number of unique entities are large: {} entities'.format(len(self.ent_to_idx)))
+            logger.warn("If you get memory issues don't using early stopping or use reduced set for 'corruption_entities' for early stopping corruption generation!!!")
+            
 
         # This is useful when we re-fit the same model (e.g. retraining in model selection)
         if self.is_fitted:
@@ -541,9 +608,35 @@ class EmbeddingModel(abc.ABC):
 
         # training input placeholder
         x_pos_tf = tf.cast(dataset_iterator.get_next(), tf.int32)
-        all_ent_tf = tf.squeeze(tf.constant(list(self.ent_to_idx.values()), dtype=tf.int32))
+        
+        #all_ent_tf = tf.squeeze(tf.constant(list(self.ent_to_idx.values()), dtype=tf.int32))
+        
+        entities_size = 0
+        entities_list = None
+        
+        negative_corruption_entities = self.embedding_model_params.get('negative_corruption_entities',
+                                                                       DEFAULT_CORRUPTION_ENTITIES)
+        
+        if negative_corruption_entities=='all':
+            logger.info('Using all entities for generation of corruptions')
+            entities_size = len(self.ent_to_idx)
+        elif negative_corruption_entities=='batch':
+            #default is batch (entities_size=0 and entities_list=None)
+            logger.info('Using batch entities for generation of corruptions')
+        elif isinstance(negative_corruption_entities, list):
+            logger.info('Using the supplied entities for generation of corruptions')
+            entities_list=tf.squeeze(tf.constant(negative_corruption_entities, dtype=tf.int32))
+        elif isinstance(negative_corruption_entities, int):
+            logger.info('Using first {} entities for generation of corruptions'.format(negative_corruption_entities))
+            entities_size = negative_corruption_entities
+        
         # generate negatives
-        x_neg_tf = generate_corruptions_for_fit(x_pos_tf, all_ent_tf, self.eta, rnd=self.seed)
+        x_neg_tf = generate_corruptions_for_fit(x_pos_tf, 
+                                                entities_list=entities_list, 
+                                                eta=self.eta, 
+                                                entities_size=entities_size, 
+                                                rnd=self.seed)
+        
         if self.loss.get_state('require_same_size_pos_neg'):
             logger.debug('Requires the same size of postive and negative')
             x_pos = tf.reshape(tf.tile(tf.reshape(x_pos_tf, [-1]), [self.eta]), [tf.shape(x_pos_tf)[0] * self.eta, 3])
@@ -584,7 +677,6 @@ class EmbeddingModel(abc.ABC):
         for epoch in tqdm(range(1, self.epochs + 1), disable=(not self.verbose), unit='epoch'):
             losses = []
             for batch in range(1, self.batches_count + 1):
-
                 loss_batch, _ = self.sess_train.run([loss, train])
 
                 if np.isnan(loss_batch) or np.isinf(loss_batch):
@@ -601,14 +693,13 @@ class EmbeddingModel(abc.ABC):
                 tqdm.write(msg)
 
             if early_stopping:
-                self.is_fitted = self._perform_early_stopping_test(epoch)
-                if self.is_fitted:
-                    self.sess_train.close()
+                if self._perform_early_stopping_test(epoch):
+                    self._end_training()
                     return
 
         self._save_trained_params()
-        self.sess_train.close()
-        self.is_fitted = True
+        self._end_training()
+        
 
     def set_filter_for_eval(self, x_filter):
         """Set the filter to be used during evaluation (filtered_corruption = corruptions - filter).
@@ -672,7 +763,7 @@ class EmbeddingModel(abc.ABC):
         config : dictionary
             Dictionary of parameters for evaluation configuration. Can contain following keys:
             
-            - **corruption_entities**: Entities to be used for corruptions. If None, it uses all entities (default: None)
+            - **corruption_entities**: List of entities to be used for corruptions. If ``all``, it uses all entities (default: ``all``)
             - **corrupt_side**: Specifies which side to corrupt. ``s``, ``o``, ``s+o`` (default)
             
         """
@@ -689,10 +780,10 @@ class EmbeddingModel(abc.ABC):
         self.table_entity_lookup_right = None
         self.table_reln_lookup = None
 
-        all_entities_np = np.int64(np.array(list(self.ent_to_idx.values())))
+        all_entities_np = np.int64(np.arange(len(self.ent_to_idx)))
 
         if self.is_filtered:
-            all_reln_np = np.int64(np.array(list(self.rel_to_idx.values())))
+            all_reln_np = np.int64(np.arange(len(self.rel_to_idx)))
             self.table_entity_lookup_left = tf.contrib.lookup.HashTable(
                 tf.contrib.lookup.KeyValueTensorInitializer(all_entities_np,
                                                             np.array(self.entity_primes_left, dtype=np.int64))
@@ -714,8 +805,14 @@ class EmbeddingModel(abc.ABC):
 
         corruption_entities = self.eval_config.get('corruption_entities', DEFAULT_CORRUPTION_ENTITIES)
 
-        if corruption_entities is None:
+        if corruption_entities == 'all':
             corruption_entities = all_entities_np
+        elif isinstance(corruption_entities, list):
+            corruption_entities = corruption_entities
+        else:
+            msg = 'Invalid type for corruption entities!!!'
+            logger.error(msg)
+            raise ValueError(msg)
 
         self.corruption_entities_tf = tf.constant(corruption_entities, dtype=tf.int64)
 
@@ -751,27 +848,39 @@ class EmbeddingModel(abc.ABC):
         self.eval_config = {}
 
     def predict(self, X, from_idx=False, get_ranks=False):
-        """Predict the score of triples using a trained embedding model.
+        """Predict the scores of triples using a trained embedding model.
 
-            The function returns raw scores generated by the model.
-            To obtain probability estimates, use a logistic sigmoid function.
+             The function returns raw scores generated by the model.
 
-        Parameters
-        ----------
-        X : ndarray, shape [n, 3]
-            The triples to score.
-        from_idx : bool
-            If True, will skip conversion to internal IDs. (default: False).
-        get_ranks : bool
-            Flag to compute ranks by scoring against corruptions (default: False).
+             .. note::
 
-        Returns
-        -------
-        scores : ndarray, shape [n]
-            The predicted scores for input triples X.
-            
-        ranks : ndarray, shape [n]
-            Rank of the triple
+                 To obtain probability estimates, use a logistic sigmoid: ::
+
+                     >>> model.fit(X)
+                     >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+                     >>> print(y_pred)
+                     array([1.2052395, 1.5818497], dtype=float32)
+                     >>> from scipy.special import expit
+                     >>> expit(y_pred)
+                     array([0.7694556 , 0.82946634], dtype=float32)
+
+
+         Parameters
+         ----------
+         X : ndarray, shape [n, 3]
+             The triples to score.
+         from_idx : bool
+             If True, will skip conversion to internal IDs. (default: False).
+         get_ranks : bool
+             Flag to compute ranks by scoring against corruptions (default: False).
+
+         Returns
+         -------
+         scores_predict : ndarray, shape [n]
+             The predicted scores for input triples X.
+
+         rank : ndarray, shape [n]
+             Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
 
@@ -825,14 +934,14 @@ class EmbeddingModel(abc.ABC):
 class RandomBaseline(EmbeddingModel):
     """Random baseline
 
-        A dummy model that assigns a pseud-random score included between 0 and 1,
-        and drawn from a uniform distribution.
+        A dummy model that assigns a pseudo-random score included between 0 and 1,
+        drawn from a uniform distribution.
 
-        A dummy random model is useful whenever you need to compare the performance of
+        The model is useful whenever you need to compare the performance of
         another model on a custom knowledge graph, and no other baseline is available. 
         
-        .. note:: Although the model still requires invoking the `fit()` method,
-            no training will be carried out.
+        .. note:: Although the model still requires invoking the ``fit()`` method,
+            no actual training will be carried out.
 
         Examples
         --------
@@ -852,8 +961,8 @@ class RandomBaseline(EmbeddingModel):
         [0.5488135039273248, 0.7151893663724195]
     """
 
-    def __init__(self, seed=0):
-        """ Initialize RandomBaseline model
+    def __init__(self, seed=DEFAULT_SEED):
+        """ Initialize the model
         
         Parameters
         ----------
@@ -956,16 +1065,26 @@ class RandomBaseline(EmbeddingModel):
         return positive_scores
 
 
-@register_model("TransE", ["norm", "normalize_ent_emb"])
+@register_model("TransE", ["norm", "normalize_ent_emb", "negative_corruption_entities"])
 class TransE(EmbeddingModel):
     """Translating Embeddings (TransE)
 
         The model as described in :cite:`bordes2013translating`.
 
+
+        The scoring function of TransE computes a similarity between the embedding of the subject
+        :math:`\mathbf{e}_{sub}` translated by the embedding of the predicate :math:`\mathbf{e}_{pred}`
+        and the embedding of the object :math:`\mathbf{e}_{obj}`,
+        using the :math:`L_1` or :math:`L_2` norm :math:`||\cdot||`:
+
         .. math::
 
-            f_{TransE}=-||(\mathbf{e}_s + \mathbf{r}_p) - \mathbf{e}_o||_n
-            
+            f_{TransE}=-||\mathbf{e}_{sub} + \mathbf{e}_{pred} - \mathbf{e}_{obj}||_n
+
+
+        Such scoring function is then used on positive and negative triples :math:`t^+, t^-` in the loss function.
+
+
         Examples
         --------
         >>> import numpy as np
@@ -992,12 +1111,22 @@ class TransE(EmbeddingModel):
 
     """
 
-    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
-                 embedding_model_params={'norm':DEFAULT_NORM_TRANSE, 'normalize_ent_emb':DEFAULT_NORMALIZE_EMBEDDINGS},
-                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
-                 loss='nll', loss_params={},
-                 regularizer=None, regularizer_params={},
-                 model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+    def __init__(self, 
+                 k=DEFAULT_EMBEDDING_SIZE, 
+                 eta=DEFAULT_ETA, 
+                 epochs=DEFAULT_EPOCH, 
+                 batches_count=DEFAULT_BATCH_COUNT, 
+                 seed=DEFAULT_SEED,
+                 embedding_model_params={'norm':DEFAULT_NORM_TRANSE, 
+                                         'normalize_ent_emb':DEFAULT_NORMALIZE_EMBEDDINGS,
+                                         'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
+                 optimizer=DEFAULT_OPTIM, 
+                 optimizer_params={'lr':DEFAULT_LR},
+                 loss=DEFAULT_LOSS, 
+                 loss_params={},
+                 regularizer=DEFAULT_REGULARIZER, 
+                 regularizer_params={},
+                 verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -1015,55 +1144,67 @@ class TransE(EmbeddingModel):
         seed : int
             The seed used by the internal random numbers generator.
         embedding_model_params : dict
-            TransE-specific hyperparams:
+            TransE-specific hyperparams, passed to the model as a dictionary.
 
-            - **norm** - type of norm to be used in scoring function (1 or 2 norm - default:1)
-            - **normalize_ent_emb** - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
+            Supported keys:
+
+            - **'norm'** (int): the norm to be used in the scoring function (1 or 2-norm - default: 1).
+            - **'normalize_ent_emb'** (bool): flag to indicate whether to normalize entity embeddings after each batch update (default: False).
+            - **negative_corruption_entities** : entities to be used for generation of corruptions while training. It can take the following values : ``all`` (default: all entities), ``batch`` (entities present in each batch), list of entities or an int (which indicates how many entities that should be used for corruption generation).
+
+            Example: ``embedding_model_params={'norm': 1, 'normalize_ent_emb': False}``
+
+
+            
             
         optimizer : string
-            The optimizer used to minimize the loss function. Choose between ``sgd``,
-            ``adagrad``, ``adam``, ``momentum``.
+            The optimizer used to minimize the loss function. Choose between 'sgd',
+            'adagrad', 'adam', 'momentum'.
         optimizer_params : dict
-            Parameters values specific to the optimizer.Currently supported:
+            Arguments specific to the optimizer, passed as a dictionary.
 
-            - **lr** - learning rate (used by all the optimizers)
-            - **momentum** - learning momentum (used by momentum optimizer)
+            Supported keys:
+
+            - **'lr'** (float): learning rate (used by all the optimizers). Default: 0.1.
+            - **'momentum'** (float): learning momentum (only used when ``optimizer=momentum``). Default: 0.9.
+
+            Example: ``optimizer_params={'lr': 0.01}``
             
         loss : string
             The type of loss function to use during training.
 
-            - ``pairwise``  the model will use pairwise margin-based loss function.
-            - ``nll`` the model will use negative loss likelihood.
-            - ``absolute_margin`` the model will use absolute margin likelihood.
-            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            - 'pairwise'  the model will use pairwise margin-based loss function.
+            - 'nll' the model will use negative loss likelihood.
+            - 'absolute_margin' the model will use absolute margin likelihood.
+            - 'self_adversarial' the model will use adversarial sampling loss function.
             
         loss_params : dict
-            Parameters dictionary specific to the loss.
+            Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
+            documentation for additional details.
 
-            (Refer documentation of specific loss functions for more details)
+            Example: ``optimizer_params={'lr': 0.01}`` if ``loss='pairwise'``.
+
         regularizer : string
             The regularization strategy to use with the loss function. 
             
-            - ``LP`` the model will use L1, L2 or L3 based on the value passed to param p.
-            - ``None`` the model will not use any regularizer
-            
-        regularizer_params : dict
-            Parameters dictionary specific to the regularizer.
+            - ``None``: the model will not use any regularizer (default)
+            - 'LP': the model will use L1, L2 or L3 based on the value of ``regularizer_params['p']`` (see below).
 
-            (Refer documentation of regularizer for more details)
-        model_checkpoint_path: string
-            Path to save the model.
+        regularizer_params : dict
+            Dictionary of regularizer-specific hyperparameters. See the :ref:`regularizers <ref-reg>`
+            documentation for additional details.
+
+            Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
+
         verbose : bool
             Verbose mode
-        kwargs : dict
-            Additional inputs, if any
         """
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
                          embedding_model_params=embedding_model_params,
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
-                         model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
+                         verbose=verbose)
 
     def _fn(self, e_s, e_p, e_o):
         """The TransE scoring function.
@@ -1102,63 +1243,88 @@ class TransE(EmbeddingModel):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping(default:False)
+            Flag to enable early stopping (default:``False``)
         early_stopping_params: dictionary
-            Dictionary of parameters for early stopping. Following keys are supported: 
-            
-                - **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
-                - **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
-                - **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
-                - **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
-                - **check_interval**: int : Early stopping interval after burn-in (default:10).
-                - **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
+            Dictionary of hyperparameters for the early stopping heuristics.
+
+            The following string keys are supported:
+
+                - **'x_valid'**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **'criteria'**: string : criteria for early stopping 'hits10', 'hits3', 'hits1' or 'mrr'(default).
+                - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr'). Note this will affect training time (no filter by default).
+                - **'burn_in'**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                - **check_interval'**: int : Early stopping interval after burn-in (default:10).
+                - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
+                - **'corruption_entities'**: List of entities to be used for corruptions. If 'all', it uses all entities (default: 'all')
+                - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o' (default)
+
+                Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
+
 
         """
         super().fit(X, early_stopping, early_stopping_params)
 
     def predict(self, X, from_idx=False, get_ranks=False):
-        """Predict the score of triples using a trained embedding model.
+        """Predict the scores of triples using a trained embedding model.
 
-            The function returns raw scores generated by the model.
-            To obtain probability estimates, use a logistic sigmoid.
+             The function returns raw scores generated by the model.
 
-        Parameters
-        ----------
-        X : ndarray, shape [n, 3]
-            The triples to score.
-        from_idx : bool
-            If True, will skip conversion to internal IDs. (default: False).
-        get_ranks : bool
-            Flag to compute ranks by scoring against corruptions (default: False).
+             .. note::
 
-        Returns
-        -------
-        scores_predict : ndarray, shape [n]
-            The predicted scores for input triples X.
-            
-        rank : ndarray, shape [n]
-            Rank of the triple
+                 To obtain probability estimates, use a logistic sigmoid: ::
+
+                     >>> model.fit(X)
+                     >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+                     >>> print(y_pred)
+                     array([1.2052395, 1.5818497], dtype=float32)
+                     >>> from scipy.special import expit
+                     >>> expit(y_pred)
+                     array([0.7694556 , 0.82946634], dtype=float32)
+
+
+         Parameters
+         ----------
+         X : ndarray, shape [n, 3]
+             The triples to score.
+         from_idx : bool
+             If True, will skip conversion to internal IDs. (default: False).
+         get_ranks : bool
+             Flag to compute ranks by scoring against corruptions (default: False).
+
+         Returns
+         -------
+         scores_predict : ndarray, shape [n]
+             The predicted scores for input triples X.
+
+         rank : ndarray, shape [n]
+             Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
         return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
 
 
-@register_model("DistMult", ["normalize_ent_emb"])
+@register_model("DistMult", ["normalize_ent_emb", "negative_corruption_entities"])
 class DistMult(EmbeddingModel):
     """The DistMult model
 
         The model as described in :cite:`yang2014embedding`.
 
+        The bilinear diagonal DistMult model uses the trilinear dot product as scoring function:
+
         .. math::
 
             f_{DistMult}=\langle \mathbf{r}_p, \mathbf{e}_s, \mathbf{e}_o \\rangle
-            
+
+        where :math:`\mathbf{e}_{s}` is the embedding of the subject, :math:`\mathbf{r}_{p}` the embedding
+        of the predicate and :math:`\mathbf{e}_{o}` the embedding of the object.
+
 
         Examples
         --------
         >>> import numpy as np
         >>> from ampligraph.latent_features import DistMult
-        >>> model = DistMult(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin':5})
+        >>> model = DistMult(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise',
+        >>>         loss_params={'margin':5})
         >>> X = np.array([['a', 'y', 'b'],
         >>>               ['b', 'y', 'a'],
         >>>               ['a', 'y', 'c'],
@@ -1179,12 +1345,21 @@ class DistMult(EmbeddingModel):
 
     """
 
-    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
-                 embedding_model_params={'normalize_ent_emb':DEFAULT_NORMALIZE_EMBEDDINGS},
-                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
-                 loss='nll', loss_params={},
-                 regularizer=None, regularizer_params={},
-                 model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+    def __init__(self, 
+                 k=DEFAULT_EMBEDDING_SIZE, 
+                 eta=DEFAULT_ETA, 
+                 epochs=DEFAULT_EPOCH, 
+                 batches_count=DEFAULT_BATCH_COUNT, 
+                 seed=DEFAULT_SEED,
+                 embedding_model_params={'normalize_ent_emb':DEFAULT_NORMALIZE_EMBEDDINGS,
+                                         'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
+                 optimizer=DEFAULT_OPTIM, 
+                 optimizer_params={'lr':DEFAULT_LR},
+                 loss=DEFAULT_LOSS, 
+                 loss_params={},
+                 regularizer=DEFAULT_REGULARIZER, 
+                 regularizer_params={},
+                 verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -1202,54 +1377,63 @@ class DistMult(EmbeddingModel):
         seed : int
             The seed used by the internal random numbers generator.
         embedding_model_params : dict
-            DistMult-specific hyperparams:
-            
-            - **normalize_ent_emb** - Flag to indicate whether to normalize entity embeddings after each batch update (default:False)
-            
-        optimizer : string
-            The optimizer used to minimize the loss function. Choose between ``sgd``,
-            ``adagrad``, ``adam``, ``momentum``.
-        optimizer_params : dict
-            Parameters values specific to the optimizer. Currently supported:
+            DistMult-specific hyperparams, passed to the model as a dictionary.
 
-            - **lr** - learning rate (used by all the optimizers)
-            - **momentum** - learning momentum (used by momentum optimizer)
-            
+            Supported keys:
+
+            - **'normalize_ent_emb'** (bool): flag to indicate whether to normalize entity embeddings after each batch update (default: False).
+            - **'negative_corruption_entities'** - Entities to be used for generation of corruptions while training. It can take the following values : ``all`` (default: all entities), ``batch`` (entities present in each batch), list of entities or an int (which indicates how many entities that should be used for corruption generation).
+
+            Example: ``embedding_model_params={'norm': 1, 'normalize_ent_emb': False}``
+
+        optimizer : string
+            The optimizer used to minimize the loss function. Choose between 'sgd',
+            'adagrad', 'adam', 'momentum'.
+        optimizer_params : dict
+            Arguments specific to the optimizer, passed as a dictionary.
+
+            Supported keys:
+
+            - **'lr'** (float): learning rate (used by all the optimizers). Default: 0.1.
+            - **'momentum'** (float): learning momentum (only used when ``optimizer=momentum``). Default: 0.9.
+
+            Example: ``optimizer_params={'lr': 0.01}``
+
         loss : string
             The type of loss function to use during training.
 
-            - ``pairwise``  the model will use pairwise margin-based loss function.
-            - ``nll`` the model will use negative loss likelihood.
-            - ``absolute_margin`` the model will use absolute margin likelihood.
-            - ``self_adversarial`` the model will use adversarial sampling loss function.
-            
+            - 'pairwise'  the model will use pairwise margin-based loss function.
+            - 'nll' the model will use negative loss likelihood.
+            - 'absolute_margin' the model will use absolute margin likelihood.
+            - 'self_adversarial' the model will use adversarial sampling loss function.
+
         loss_params : dict
-            Parameters dictionary specific to the loss.
+            Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
+            documentation for additional details.
 
-            (Refer documentation of specific loss functions for more details)
+            Example: ``optimizer_params={'lr': 0.01}`` if ``loss='pairwise'``.
+
         regularizer : string
-            The regularization strategy to use with the loss function. 
-            
-            - ``LP`` the model will use L1, L2 or L3 based on the value passed to param p.
-            - ``None`` the model will not use any regularizer
-            
-        regularizer_params : dict
-            Parameters dictionary specific to the regularizer.
+            The regularization strategy to use with the loss function.
 
-            (Refer documentation of regularizer for more details)
-        model_checkpoint_path: string
-            Path to save the model.
+            - ``None``: the model will not use any regularizer (default)
+            - 'LP': the model will use L1, L2 or L3 based on the value of ``regularizer_params['p']`` (see below).
+
+        regularizer_params : dict
+            Dictionary of regularizer-specific hyperparameters. See the :ref:`regularizers <ref-reg>`
+            documentation for additional details.
+
+            Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
+
         verbose : bool
             Verbose mode
-        kwargs : dict
-            Additional inputs, if any
         """
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
                          embedding_model_params=embedding_model_params,
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
-                         model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
+                         verbose=verbose)
 
     def _fn(self, e_s, e_p, e_o):
         """DistMult
@@ -1288,25 +1472,43 @@ class DistMult(EmbeddingModel):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping(default:False)
+            Flag to enable early stopping (default:``False``)
         early_stopping_params: dictionary
-            Dictionary of parameters for early stopping. Following keys are supported: 
-            
-                - **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
-                - **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
-                - **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
-                - **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
-                - **check_interval**: int : Early stopping interval after burn-in (default:10).
-                - **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
+            Dictionary of hyperparameters for the early stopping heuristics.
+
+            The following string keys are supported:
+
+                - **'x_valid'**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **'criteria'**: string : criteria for early stopping 'hits10', 'hits3', 'hits1' or 'mrr'(default).
+                - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr'). Note this will affect training time (no filter by default).
+                - **'burn_in'**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                - **check_interval'**: int : Early stopping interval after burn-in (default:10).
+                - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
+                - **'corruption_entities'**: List of entities to be used for corruptions. If 'all', it uses all entities (default: 'all')
+                - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o' (default)
+
+                Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
         """
         super().fit(X, early_stopping, early_stopping_params)
 
     def predict(self, X, from_idx=False, get_ranks=False):
-        """Predict the score of triples using a trained embedding model.
+        """Predict the scores of triples using a trained embedding model.
 
             The function returns raw scores generated by the model.
-            To obtain probability estimates, use a logistic sigmoid.
+
+            .. note::
+
+                To obtain probability estimates, use a logistic sigmoid: ::
+
+                    >>> model.fit(X)
+                    >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+                    >>> print(y_pred)
+                    array([1.2052395, 1.5818497], dtype=float32)
+                    >>> from scipy.special import expit
+                    >>> expit(y_pred)
+                    array([0.7694556 , 0.82946634], dtype=float32)
+
 
         Parameters
         ----------
@@ -1323,24 +1525,26 @@ class DistMult(EmbeddingModel):
             The predicted scores for input triples X.
             
         rank : ndarray, shape [n]
-            Rank of the triple
+            Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
         return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
 
 
-@register_model("ComplEx")
+@register_model("ComplEx", ["negative_corruption_entities"])
 class ComplEx(EmbeddingModel):
     """ Complex embeddings (ComplEx)
 
-        The ComplEx model :cite:`trouillon2016complex` is an extension of the :class:`ampligraph.latent_features.DistMult` bilinear diagonal model
+        The ComplEx model :cite:`trouillon2016complex` is an extension of
+        the :class:`ampligraph.latent_features.DistMult` bilinear diagonal model
         . ComplEx scoring function is based on the trilinear Hermitian dot product in :math:`\mathcal{C}`:
 
         .. math::
 
             f_{ComplEx}=Re(\langle \mathbf{r}_p, \mathbf{e}_s, \overline{\mathbf{e}_o}  \\rangle)
 
-        Note that because embeddings are in :math:`\mathcal{C}`, ComplEx uses twice as many parameters as its counterpart in :math:`\mathcal{R}` DistMult.
+        Note that because embeddings are in :math:`\mathcal{C}`, ComplEx uses twice as many parameters as
+        :class:`ampligraph.latent_features.DistMult`.
 
         Examples
         --------
@@ -1373,13 +1577,20 @@ class ComplEx(EmbeddingModel):
         dtype=float32)
 
     """
-
-    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
-                 embedding_model_params={},
-                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
-                 loss='nll', loss_params={},
-                 regularizer=None, regularizer_params={},
-                 model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+    def __init__(self, 
+                 k=DEFAULT_EMBEDDING_SIZE, 
+                 eta=DEFAULT_ETA, 
+                 epochs=DEFAULT_EPOCH, 
+                 batches_count=DEFAULT_BATCH_COUNT, 
+                 seed=DEFAULT_SEED,
+                 embedding_model_params={'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
+                 optimizer=DEFAULT_OPTIM, 
+                 optimizer_params={'lr':DEFAULT_LR},
+                 loss=DEFAULT_LOSS, 
+                 loss_params={},
+                 regularizer=DEFAULT_REGULARIZER, 
+                 regularizer_params={},
+                 verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -1397,51 +1608,57 @@ class ComplEx(EmbeddingModel):
         seed : int
             The seed used by the internal random numbers generator.
         embedding_model_params : dict
-            ComplEx-specific hyperparams: Currently ComplEx does not require any hyperparameters.
+            ComplEx-specific hyperparams:
+            
+            - **'negative_corruption_entities'** - Entities to be used for generation of corruptions while training. It can take the following values : ``all`` (default: all entities), ``batch`` (entities present in each batch), list of entities or an int (which indicates how many entities that should be used for corruption generation).
+
         optimizer : string
-            The optimizer used to minimize the loss function. Choose between ``sgd``,
-            ``adagrad``, ``adam``, ``momentum``.
+            The optimizer used to minimize the loss function. Choose between 'sgd',
+            'adagrad', 'adam', 'momentum'.
         optimizer_params : dict
-            Parameters values specific to the optimizer. Currently supported:
-            
-            - **lr** - learning rate (used by all the optimizers)
-            - **momentum** - learning momentum (used by momentum optimizer)
-            
+            Arguments specific to the optimizer, passed as a dictionary.
+
+            Supported keys:
+
+            - **'lr'** (float): learning rate (used by all the optimizers). Default: 0.1.
+            - **'momentum'** (float): learning momentum (only used when ``optimizer=momentum``). Default: 0.9.
+
+            Example: ``optimizer_params={'lr': 0.01}``
+
         loss : string
             The type of loss function to use during training.
 
-            - ``pairwise``  the model will use pairwise margin-based loss function.
-            - ``nll`` the model will use negative loss likelihood.
-            - ``absolute_margin`` the model will use absolute margin likelihood.
-            - ``self_adversarial`` the model will use adversarial sampling loss function.
-            
+            - 'pairwise'  the model will use pairwise margin-based loss function.
+            - 'nll' the model will use negative loss likelihood.
+            - 'absolute_margin' the model will use absolute margin likelihood.
+            - 'self_adversarial' the model will use adversarial sampling loss function.
+
         loss_params : dict
-            Parameters dictionary specific to the loss.
+            Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
+            documentation for additional details.
 
-            (Refer documentation of specific loss functions for more details)
+            Example: ``optimizer_params={'lr': 0.01}`` if ``loss='pairwise'``.
+
         regularizer : string
-            The regularization strategy to use with the loss function. 
-            
-            - ``LP`` the model will use L1, L2 or L3 based on the value passed to param p.
-            - ``None`` the model will not use any regularizer
-            
-        regularizer_params : dict
-            Parameters dictionary specific to the regularizer.
+            The regularization strategy to use with the loss function.
 
-            (Refer documentation of regularizer for more details)
-        model_checkpoint_path: string
-            Path to save the model.
+            - ``None``: the model will not use any regularizer (default)
+            - 'LP': the model will use L1, L2 or L3 based on the value of ``regularizer_params['p']`` (see below).
+
+        regularizer_params : dict
+            Dictionary of regularizer-specific hyperparameters. See the :ref:`regularizers <ref-reg>`
+            documentation for additional details.
+
+            Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
         verbose : bool
             Verbose mode
-        kwargs : dict
-            Additional inputs, if any
         """
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
                          embedding_model_params=embedding_model_params,
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
-                         model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
+                         verbose=verbose)
 
     def _initialize_parameters(self):
         """ Initialize the complex embeddings.
@@ -1499,58 +1716,74 @@ class ComplEx(EmbeddingModel):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping(default:False)
+            Flag to enable early stopping (default:``False``)
         early_stopping_params: dictionary
-            Dictionary of parameters for early stopping. Following keys are supported: 
-            
-                - **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
-                - **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
-                - **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
-                - **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
-                - **check_interval**: int : Early stopping interval after burn-in (default:10).
-                - **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
+            Dictionary of hyperparameters for the early stopping heuristics.
+
+            The following string keys are supported:
+
+                - **'x_valid'**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **'criteria'**: string : criteria for early stopping 'hits10', 'hits3', 'hits1' or 'mrr'(default).
+                - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr'). Note this will affect training time (no filter by default).
+                - **'burn_in'**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                - **check_interval'**: int : Early stopping interval after burn-in (default:10).
+                - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
+                - **'corruption_entities'**: List of entities to be used for corruptions. If 'all', it uses all entities (default: 'all')
+                - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o' (default)
+
+                Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
         """
         super().fit(X, early_stopping, early_stopping_params)
 
     def predict(self, X, from_idx=False, get_ranks=False):
-        """Predict the score of triples using a trained embedding model.
+        """Predict the scores of triples using a trained embedding model.
 
-            The function returns raw scores generated by the model.
-            To obtain probability estimates, use a logistic sigmoid.
+             The function returns raw scores generated by the model.
 
-        Parameters
-        ----------
-        X : ndarray, shape [n, 3]
-            The triples to score.
-        from_idx : bool
-            If True, will skip conversion to internal IDs. (default: False).
-        get_ranks : bool
-            Flag to compute ranks by scoring against corruptions (default: False).
+             .. note::
 
-        Returns
-        -------
-        scores_predict : ndarray, shape [n]
-            The predicted scores for input triples X.
-            
-        rank : ndarray, shape [n]
-            Rank of the triple
+                 To obtain probability estimates, use a logistic sigmoid: ::
+
+                     >>> model.fit(X)
+                     >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+                     >>> print(y_pred)
+                     array([1.2052395, 1.5818497], dtype=float32)
+                     >>> from scipy.special import expit
+                     >>> expit(y_pred)
+                     array([0.7694556 , 0.82946634], dtype=float32)
+
+
+         Parameters
+         ----------
+         X : ndarray, shape [n, 3]
+             The triples to score.
+         from_idx : bool
+             If True, will skip conversion to internal IDs. (default: False).
+         get_ranks : bool
+             Flag to compute ranks by scoring against corruptions (default: False).
+
+         Returns
+         -------
+         scores_predict : ndarray, shape [n]
+             The predicted scores for input triples X.
+
+         rank : ndarray, shape [n]
+             Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
         return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
 
 
-@register_model("HolE")
+@register_model("HolE", ["negative_corruption_entities"])
 class HolE(ComplEx):
     """ Holographic Embeddings
 
-    The HolE model :cite:`nickel2016holographic` as re-defined by :cite:`HayashiS17`.
-
-    Hayashi et al. :cite:`HayashiS17` redifine the original HolE scoring function as:
+    The HolE model :cite:`nickel2016holographic` as re-defined by Hayashi et al. :cite:`HayashiS17`:
 
     .. math::
 
-        f_{HolE}= 2 / n * f_{ComplEx}
+        f_{HolE}= \\frac{2}{n} \, f_{ComplEx}
 
     Examples
     --------
@@ -1583,13 +1816,20 @@ class HolE(ComplEx):
     dtype=float32)
 
     """
-
-    def __init__(self, k=100, eta=2, epochs=100, batches_count=100, seed=0,
-                 embedding_model_params={},
-                 optimizer="adagrad", optimizer_params={'lr':DEFAULT_LR},
-                 loss='nll', loss_params={},
-                 regularizer=None, regularizer_params={},
-                 model_checkpoint_path='saved_model/', verbose=False, **kwargs):
+    def __init__(self, 
+                 k=DEFAULT_EMBEDDING_SIZE, 
+                 eta=DEFAULT_ETA, 
+                 epochs=DEFAULT_EPOCH, 
+                 batches_count=DEFAULT_BATCH_COUNT, 
+                 seed=DEFAULT_SEED,
+                 embedding_model_params={'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
+                 optimizer=DEFAULT_OPTIM, 
+                 optimizer_params={'lr':DEFAULT_LR},
+                 loss=DEFAULT_LOSS, 
+                 loss_params={},
+                 regularizer=DEFAULT_REGULARIZER, 
+                 regularizer_params={},
+                 verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
             Also creates a new Tensorflow session for training.
@@ -1607,51 +1847,57 @@ class HolE(ComplEx):
         seed : int
             The seed used by the internal random numbers generator.
         embedding_model_params : dict
-            HolE-specific hyperparams: Currently HolE does not require any hyperparameters.
-        optimizer : string
-            The optimizer used to minimize the loss function. Choose between ``sgd``,
-            ``adagrad``, ``adam``, ``momentum``.
-        optimizer_params : dict
-            Parameters values specific to the optimizer. Currently supported:
-
-            - **lr** - learning rate (used by all the optimizers)
-            - **momentum** - learning momentum (used by momentum optimizer)
+            HolE-specific hyperparams: 
             
+            - **negative_corruption_entities** - Entities to be used for generation of corruptions while training. It can take the following values : ``all`` (default: all entities), ``batch`` (entities present in each batch), list of entities or an int (which indicates how many entities that should be used for corruption generation).
+            
+        optimizer : string
+            The optimizer used to minimize the loss function. Choose between 'sgd',
+            'adagrad', 'adam', 'momentum'.
+        optimizer_params : dict
+            Arguments specific to the optimizer, passed as a dictionary.
+
+            Supported keys:
+
+            - **'lr'** (float): learning rate (used by all the optimizers). Default: 0.1.
+            - **'momentum'** (float): learning momentum (only used when ``optimizer=momentum``). Default: 0.9.
+
+            Example: ``optimizer_params={'lr': 0.01}``
+
         loss : string
             The type of loss function to use during training.
 
-            - ``pairwise``  the model will use pairwise margin-based loss function.
-            - ``nll`` the model will use negative loss likelihood.
-            - ``absolute_margin`` the model will use absolute margin likelihood.
-            - ``self_adversarial`` the model will use adversarial sampling loss function.
-            
+            - 'pairwise'  the model will use pairwise margin-based loss function.
+            - 'nll' the model will use negative loss likelihood.
+            - 'absolute_margin' the model will use absolute margin likelihood.
+            - 'self_adversarial' the model will use adversarial sampling loss function.
+
         loss_params : dict
-            Parameters dictionary specific to the loss.
+            Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
+            documentation for additional details.
 
-            (Refer documentation of specific loss functions for more details)
+            Example: ``optimizer_params={'lr': 0.01}`` if ``loss='pairwise'``.
+
         regularizer : string
-            The regularization strategy to use with the loss function. 
-            
-            - ``LP`` the model will use L1, L2 or L3 based on the value passed to param p.
-            - ``None`` the model will not use any regularizer
-            
-        regularizer_params : dict
-            Parameters dictionary specific to the regularizer.
+            The regularization strategy to use with the loss function.
 
-            (Refer documentation of regularizer for more details)
-        model_checkpoint_path: string
-            Path to save the model.
+            - ``None``: the model will not use any regularizer (default)
+            - 'LP': the model will use L1, L2 or L3 based on the value of ``regularizer_params['p']`` (see below).
+
+        regularizer_params : dict
+            Dictionary of regularizer-specific hyperparameters. See the :ref:`regularizers <ref-reg>`
+            documentation for additional details.
+
+            Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
         verbose : bool
             Verbose mode
-        kwargs : dict
-            Additional inputs, if any
         """
         super().__init__(k=k, eta=eta, epochs=epochs, batches_count=batches_count, seed=seed,
                          embedding_model_params=embedding_model_params,
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
-                         model_checkpoint_path=model_checkpoint_path, verbose=verbose, **kwargs)
+                         verbose=verbose)
 
     def _fn(self, e_s, e_p, e_o):
         """The Hole scoring function.
@@ -1691,42 +1937,60 @@ class HolE(ComplEx):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping(default:False)
+            Flag to enable early stopping (default:``False``)
         early_stopping_params: dictionary
-            Dictionary of parameters for early stopping. Following keys are supported: 
-            
-                - **x_valid**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
-                - **criteria**: string : criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default).
-                - **x_filter**: ndarray, shape [n, 3] : Filter to be used (no filter by default).
-                - **burn_in**: int : Number of epochs to pass before kicking in early stopping (default: 100).
-                - **check_interval**: int : Early stopping interval after burn-in (default:10).
-                - **stop_interval**: int : Stop if criteria is performing worse over n consecutive checks (default: 3).
+            Dictionary of hyperparameters for the early stopping heuristics.
+
+            The following string keys are supported:
+
+                - **'x_valid'**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **'criteria'**: string : criteria for early stopping 'hits10', 'hits3', 'hits1' or 'mrr'(default).
+                - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr'). Note this will affect training time (no filter by default).
+                - **'burn_in'**: int : Number of epochs to pass before kicking in early stopping (default: 100).
+                - **check_interval'**: int : Early stopping interval after burn-in (default:10).
+                - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
+                - **'corruption_entities'**: List of entities to be used for corruptions. If 'all', it uses all entities (default: 'all')
+                - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o' (default)
+
+                Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
         """
         super().fit(X, early_stopping, early_stopping_params)
 
     def predict(self, X, from_idx=False, get_ranks=False):
-        """Predict the score of triples using a trained embedding model.
+        """Predict the scores of triples using a trained embedding model.
 
-            The function returns raw scores generated by the model.
-            To obtain probability estimates, use a logistic sigmoid.
+             The function returns raw scores generated by the model.
 
-        Parameters
-        ----------
-        X : ndarray, shape [n, 3]
-            The triples to score.
-        from_idx : bool
-            If True, will skip conversion to internal IDs. (default: False).
-        get_ranks : bool
-            Flag to compute ranks by scoring against corruptions (default: False).
+             .. note::
 
-        Returns
-        -------
-        scores_predict : ndarray, shape [n]
-            The predicted scores for input triples X.
-            
-        rank : ndarray, shape [n]
-            Rank of the triple
+                 To obtain probability estimates, use a logistic sigmoid: ::
+
+                     >>> model.fit(X)
+                     >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+                     >>> print(y_pred)
+                     array([1.2052395, 1.5818497], dtype=float32)
+                     >>> from scipy.special import expit
+                     >>> expit(y_pred)
+                     array([0.7694556 , 0.82946634], dtype=float32)
+
+
+         Parameters
+         ----------
+         X : ndarray, shape [n, 3]
+             The triples to score.
+         from_idx : bool
+             If True, will skip conversion to internal IDs. (default: False).
+         get_ranks : bool
+             Flag to compute ranks by scoring against corruptions (default: False).
+
+         Returns
+         -------
+         scores_predict : ndarray, shape [n]
+             The predicted scores for input triples X.
+
+         rank : ndarray, shape [n]
+             Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
         return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
