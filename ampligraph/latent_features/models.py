@@ -1110,7 +1110,7 @@ class TransE(EmbeddingModel):
             - **'normalize_ent_emb'** (bool): flag to indicate whether to normalize entity embeddings after each batch update (default: False).
             - **negative_corruption_entities** : entities to be used for generation of corruptions while training. It can take the following values : ``all`` (default: all entities), ``batch`` (entities present in each batch), list of entities or an int (which indicates how many entities that should be used for corruption generation).
 
-            Example: ``embedding_model_params={'norm': 1, 'normalize_ent_emb': False, 'negative_corruption_entities':'all'}``
+            Example: ``embedding_model_params={'norm': 1, 'normalize_ent_emb': False}``
 
 
             
@@ -1728,13 +1728,11 @@ class ComplEx(EmbeddingModel):
 class HolE(ComplEx):
     """ Holographic Embeddings
 
-    The HolE model :cite:`nickel2016holographic` as re-defined by :cite:`HayashiS17`.
-
-    Hayashi et al. :cite:`HayashiS17` redifine the original HolE scoring function as:
+    The HolE model :cite:`nickel2016holographic` as re-defined by Hayashi et al. :cite:`HayashiS17`:
 
     .. math::
 
-        f_{HolE}= 2 / n * f_{ComplEx}
+        f_{HolE}= \\frac{2}{n} \, f_{ComplEx}
 
     Examples
     --------
