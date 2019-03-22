@@ -35,12 +35,14 @@ def main():
               early_stopping = True,
               early_stopping_params = \
                       {
-                          'x_valid': X['valid'], # validation set
-                          'criteria':'hits10',   # Uses hits10 criteria for early stopping
-                          'burn_in': 100,        # early stopping kicks in after 100 epochs
-                          'check_interval':20,   # validates every 20th epoch
-                          'stop_interval':5,     # stops if 5 successive validation checks are bad.
-                          'x_filter': filter     # Use filter for filtering out positives 
+                          'x_valid': X['valid'],       # validation set
+                          'criteria':'hits10',         # Uses hits10 criteria for early stopping
+                          'burn_in': 100,              # early stopping kicks in after 100 epochs
+                          'check_interval':20,         # validates every 20th epoch
+                          'stop_interval':5,           # stops if 5 successive validation checks are bad.
+                          'x_filter': filter,          # Use filter for filtering out positives 
+                          'corruption_entities':'all', # corrupt using all entities
+                          'corrupt_side':'s+o'         # corrupt subject and object (but not at once)
                       }
               )
 
@@ -52,17 +54,8 @@ def main():
     ranks = evaluate_performance(X['test'], 
                                  model=model, 
                                  filter_triples=filter,
-                                 corrupt_side='s', # corrupt only the subject side
+                                 use_default_protocol=True, # corrupt subj and obj separately while evaluating
                                  verbose=True)
-    
-    ranks_obj = evaluate_performance(X['test'], 
-                                 model=model, 
-                                 filter_triples=filter,
-                                 corrupt_side='o', # corrupt only the object side
-                                 verbose=True)
-    
-    # merge the ranks before computing test statistics
-    ranks.extend(ranks_obj) 
 
     # compute and print metrics:
     mrr = mrr_score(ranks)
@@ -106,7 +99,8 @@ def main():
                          "alpha": [0.5]
                      },
                      "embedding_model_params": {
- 
+                         # generate corruption using all entities during training
+                         "negative_corruption_entities":"all"
                      },
                      "regularizer": [None, "LP"],
                      "regularizer_params": {
