@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-
 def _clean_data(X, throw_valid=False):
     train = X["train"]
     valid = X["valid"]
@@ -355,6 +354,11 @@ def load_wn18rr(clean_unseen=True):
     .. warning:: WN18RR's validation set contains 198 unseen entities over 210 triples.
         The test set has 209 unseen entities, distributed over 210 triples.
 
+    Parameters
+    ----------
+    clean_unseen : bool
+        If ``True``, filters triples in validation and test sets that include entities not present in the training set.
+
     Returns
     -------
     
@@ -371,7 +375,10 @@ def load_wn18rr(clean_unseen=True):
     
     """
 
-    return _clean_data(_load_core_dataset('WN18RR', data_home=None), throw_valid=True)
+    if clean_unseen:
+        return _clean_data(_load_core_dataset('WN18RR', data_home=None), throw_valid=True)
+    else:
+        _load_core_dataset('WN18RR', data_home=None)
 
 
 def load_fb15k():
@@ -427,7 +434,7 @@ def load_fb15k():
     return _load_core_dataset('FB15K', data_home=None)
 
 
-def load_fb15k_237():
+def load_fb15k_237(clean_unseen=True):
     """Load the FB15k-237 dataset
 
     FB15k-237 is a reduced version of FB15K. It was first proposed by :cite:`toutanova2015representing`.
@@ -453,6 +460,10 @@ def load_fb15k_237():
     .. warning:: FB15K-237's validation set contains 8 unseen entities over 9 triples. The test set has 29 unseen entities,
         distributed over 28 triples.
 
+    Parameters
+    ----------
+    clean_unseen : bool
+        If ``True``, filters triples in validation and test sets that include entities not present in the training set.
 
     Returns
     -------
@@ -470,7 +481,10 @@ def load_fb15k_237():
       dtype=object)
     """
 
-    return _clean_data(_load_core_dataset('FB15K_237', data_home=None), throw_valid=True)
+    if clean_unseen:
+        return _clean_data(_load_core_dataset('FB15K_237', data_home=None), throw_valid=True)
+    else:
+        _load_core_dataset('FB15K_237', data_home=None)
 
 
 def load_yago3_10():
