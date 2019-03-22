@@ -435,19 +435,19 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
             * We assign unique prime numbers for entities (unique for subject and object separately) and for relations
               and create three separate hash tables.
 
-            * For each triplet in ``filter_triples``, we get the prime numbers associated with subject, relation
+            * For each triple in ``filter_triples``, we get the prime numbers associated with subject, relation
               and object by mapping to their respective hash tables. We then compute the **prime product for the
-              filter triplet**. We store this triplet product.
+              filter triple**. We store this triple product.
 
             * Since the numbers assigned to subjects, relations and objects are unique, their prime product is also
-              unique. i.e. a triple :math`(a, b, c)` would have a different product compared to triple :math:`(c, b, a)`
+              unique. i.e. a triple :math:`(a, b, c)` would have a different product compared to triple :math:`(c, b, a)`
               as :math:`a, c` of subject have different primes compared to :math:`a, c` of object.
 
             * While generating corruptions for evaluation, we hash the triple's entities and relations and get
               the associated prime number and compute the **prime product for the corrupted triple**.
 
             * If this product is present in the products stored for the filter set, then we remove the corresponding
-              corrupted triplet (as it is a duplicate i.e. the corruption triplet is present in ``filter_triples``)
+              corrupted triple (as it is a duplicate i.e. the corruption triple is present in ``filter_triples``)
 
             * Using this approach we generate filtered corruptions for evaluation.
 
@@ -455,11 +455,13 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
             (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
 
         .. warning::
-            Currently we are using the first million primes taken from
-            `primes.utm.edu <http://primes.utm.edu>`_.
-            If the dataset being used is too sparse, with millions of unique entities and relations,
-            the method will return a runtime error
-            There is also a problem of overflow if the prime product goes beyond the range of long.
+            When ``rank_against_ent=None``, the method will use all distinct entities in the knowledge graph ``X``
+            to generate negatives to rank against. If ``X`` includes more than 1 million unique
+            entities and relations, the method will return a runtime error.
+            To solve the problem, it is recommended to pass the deired entities to use to generate corruptions
+            to ``rank_against_ent``. Besides, trying to rank a positive against an extremely large number of negatives
+            may be overkilling. As a reference, the popular FB15k-237 dataset has ~15k distinct entities. The evaluation
+            protocol ranks each positives against 15k corruptions per side.
 
     Parameters
     ----------
@@ -603,7 +605,7 @@ def filter_unseen_entities(X, model, verbose=False, strict=True):
 
 def yield_all_permutations(registry, category_type, category_type_params):
     """Yields all the permutation of category type with their respective hyperparams
-    
+
     Parameters
     ----------
     registry: dictionary
@@ -639,12 +641,12 @@ def yield_all_permutations(registry, category_type, category_type_params):
 
 def gridsearch_next_hyperparam(model_name, in_dict):
     """Performs grid search on hyperparams
-    
+
     Parameters
     ----------
     model_name: string
         name of the embedding model
-    in_dict: dictionary 
+    in_dict: dictionary
         dictionary of all the parameters and the list of values to be searched
 
     Returns:
@@ -746,34 +748,34 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
         Flag to enable early stopping(default:False)
     early_stopping_params: dict
         Dictionary of parameters for early stopping.
-        
-        The following keys are supported: 
-        
+
+        The following keys are supported:
+
             x_valid: ndarray, shape [n, 3] : Validation set to be used for early stopping. Uses X['valid'] by default.
-            
+
             criteria: criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr``. (default)
-            
+
             x_filter: ndarray, shape [n, 3] : Filter to be used(no filter by default)
-            
+
             burn_in: Number of epochs to pass before kicking in early stopping(default: 100)
-            
+
             check_interval: Early stopping interval after burn-in(default:10)
-            
+
             stop_interval: Stop if criteria is performing worse over n consecutive checks (default: 3)
-    
+
     use_test_for_selection:bool
-        Use test set for model selection. If False, uses validation set. Default(True)        
+        Use test set for model selection. If False, uses validation set. Default(True)
     rank_against_ent: array-like
         List of entities to use for corruptions. If None, will generate corruptions
         using all distinct entities. Default is None.
     corrupt_side: string
-        Specifies which side to corrupt the entities. 
+        Specifies which side to corrupt the entities.
         ``s`` is to corrupt only subject.
         ``o`` is to corrupt only object
         ``s+o`` is to corrupt both subject and object
     use_default_protocol: bool
         Flag to indicate whether to evaluate head and tail corruptions separately(default:False).
-        If this is set to true, it will ignore corrupt_side argument and corrupt both head and tail separately and rank triplets.
+        If this is set to true, it will ignore corrupt_side argument and corrupt both head and tail separately and rank triples.
     verbose : bool
         Verbose mode during evaluation of trained model
 
