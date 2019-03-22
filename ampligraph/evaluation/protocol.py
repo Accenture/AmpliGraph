@@ -81,7 +81,7 @@ def clean_data(train, valid, test, throw_valid=False):
 def train_test_split_no_unseen(X, test_size=5000, seed=0):
     """Split into train and test sets.
 
-     Test set contains only entities and relations which also occur
+     This function carves out a test set that contains only entities and relations which also occur
      in the training set.
 
     Parameters
@@ -179,10 +179,11 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
     entities_for_corruption : Tensor
         All the entity IDs which are to be used for generation of corruptions
     corrupt_side: string
-        Specifies which side to corrupt the entities. 
-        ``s`` is to corrupt only subject.
-        ``o`` is to corrupt only object
-        ``s+o`` is to corrupt both subject and object
+        Specifies which side of the triple to corrupt:
+
+        - 's': corrupt only subject.
+        - 'o': corrupt only object
+        - 's+o': corrupt both subject and object
     table_entity_lookup_left : tf.HashTable
         Hash table of subject entities mapped to unique prime numbers
     table_entity_lookup_right : tf.HashTable
@@ -305,6 +306,12 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
         if ``entities_list=None``, all entities will be used to generate corruptions (default behaviour).
     eta : int
         The number of corruptions per triple that must be generated.
+    corrupt_side: string
+        Specifies which side of the triple to corrupt:
+
+        - 's': corrupt only subject.
+        - 'o': corrupt only object
+        - 's+o': corrupt both subject and object
     entities_size: int
         Size of entities to be used while generating corruptions. It assumes entity id's start from 0 and are
         continuous. (default: 0).
@@ -415,45 +422,50 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
         Run the relational learning evaluation protocol defined in :cite:`bordes2013translating`.
 
-        It computes the mean reciprocal rank, by assessing the ranking of each positive triple against all
-        possible negatives created in compliance with the local closed world assumption (LCWA) :cite:`nickel2016review`.
+        It computes the ranks of each positive triple against all possible negatives created in compliance with
+        the local closed world assumption (LCWA), as described in :cite:`nickel2016review`.
         
-        For filtering, we use a hashing based strategy to speed up the computation (i.e. to solve the set difference problem).
-        This strategy is as described below:
-        
-        * We compute unique entities and relations in our dataset
-        
-        * We assign unique prime numbers for entities (unique for subject and object separately) and for relations 
-          and create 3 hash tables.
-        
-        * For each triplet in the filter_triples, we get the prime numbers associated with subject, relation 
-          and object by mapping to their respective hash tables; and we compute the **prime product for the
-          filter triplet**. We store this triplet product. 
-        
-        * Since the numbers assigned to subjects, relations and objects are unique, their prime product is also 
-          unique. i.e. a triplet [a, b, c] would have a different product compared to triplet [c, b, a] as a, c of 
-          subject have different primes compared to a, c of object.
-        
-        * While generating corruptions for evaluation, we hash the triplet entities and relations and get 
-          the associated prime number and compute the **prime product for the corruption triplet**. 
-        
-        * If this product is present in the products stored for the filter set, then we remove the corresponding corruption 
-          triplet (as it is a duplicate i.e. the corruption triplet is present in filter_triples)
-          
-        * Using this approach we generate filtered corruptions for evaluation.
-        
-        **Benefits:** Initially, we had a python loop based set difference computation. This method used to take
-        around 3 hours with fb15k test set evaluation. With the new hashing strategy, it has now reduced to less than 10 minutes.
-        
-        **Warning:** Currently we are using the first million primes taken from primes.utm.edu. 
-        If the dataset being used is too sparse, with millions of unique entities and relations, this method wouldn't work.
-        There is also a problem of overflow if the prime product goes beyond the range of long.
+        .. note::
+            When *filtered* mode is enabled (i.e. `filtered_triples` is not ``None``),
+            to speed up the procedure, we adopt a hashing-based strategy to handle the set difference problem.
+            This strategy is as described below:
+
+            * We compute unique entities and relations in our dataset.
+
+            * We assign unique prime numbers for entities (unique for subject and object separately) and for relations
+              and create three separate hash tables.
+
+            * For each triplet in ``filter_triples``, we get the prime numbers associated with subject, relation
+              and object by mapping to their respective hash tables. We then compute the **prime product for the
+              filter triplet**. We store this triplet product.
+
+            * Since the numbers assigned to subjects, relations and objects are unique, their prime product is also
+              unique. i.e. a triple :math`(a, b, c)` would have a different product compared to triple :math:`(c, b, a)`
+              as :math:`a, c` of subject have different primes compared to :math:`a, c` of object.
+
+            * While generating corruptions for evaluation, we hash the triple's entities and relations and get
+              the associated prime number and compute the **prime product for the corrupted triple**.
+
+            * If this product is present in the products stored for the filter set, then we remove the corresponding
+              corrupted triplet (as it is a duplicate i.e. the corruption triplet is present in ``filter_triples``)
+
+            * Using this approach we generate filtered corruptions for evaluation.
+
+            **Execution Time:** This method takes ~20 minutes on FB15K using ComplEx
+            (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
+
+        .. warning::
+            Currently we are using the first million primes taken from
+            `primes.utm.edu <http://primes.utm.edu>`_.
+            If the dataset being used is too sparse, with millions of unique entities and relations,
+            the method will return a runtime error
+            There is also a problem of overflow if the prime product goes beyond the range of long.
 
     Parameters
     ----------
     X : ndarray, shape [n, 3]
         An array of test triples.
-    model : ampligraph.latent_features.EmbeddingModel
+    model : EmbeddingModel
         A knowledge graph embedding model
     filter_triples : ndarray of shape [n, 3] or None
         The triples used to filter negatives.
@@ -466,13 +478,15 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         List of entities to use for corruptions. If None, will generate corruptions
         using all distinct entities. Default is None.
     corrupt_side: string
-        Specifies which side to corrupt the entities. 
-        ``s`` is to corrupt only subject.
-        ``o`` is to corrupt only object
-        ``s+o`` is to corrupt both subject and object
+        Specifies which side of the triple to corrupt:
+
+        - 's': corrupt only subject.
+        - 'o': corrupt only object
+        - 's+o': corrupt both subject and object
     use_default_protocol: bool
-        Flag to indicate whether to evaluate head and tail corruptions separately(default:True).
-        If this is set to true, it will ignore corrupt_side argument and corrupt both head and tail separately and rank triplets.
+        Flag to indicate whether to evaluate head and tail corruptions separately (default: True).
+        If this is set to true, it will also ignore the ``corrupt_side`` argument and corrupt both head and tail
+        separately and rank triples.
     Returns
     -------
     ranks : ndarray, shape [n]
@@ -502,7 +516,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     """
 
     logger.debug('Evaluating the performance of the embedding model.')
-    X_test = filter_unseen_entities(X, model, verbose=verbose, strict=True)
+    X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
 
     X_test = to_idx(X_test, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
 
@@ -709,7 +723,7 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
     """Model selection routine for embedding models.
 
         .. note::
-            Model selection done with raw MRR for better runtime performance.
+            By default, model selection is done with raw MRR for better runtime performance (``use_filter=False``).
 
         The function also retrains the best performing model on the concatenation of training and validation sets.
 

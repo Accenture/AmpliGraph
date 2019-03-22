@@ -141,7 +141,13 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None):
 
     .. note::
         The function filters duplicated statements.
-    
+
+    .. note::
+        It is recommended to use :meth:`ampligraph.evaluation.train_test_split_no_unseen` to split custom
+        knowledge graphs into train, validation, and test sets. Using this function will lead to validation, test sets
+        that do not include triples with entities that do not occur in the training set.
+
+
     Parameters
     ----------
     
@@ -449,6 +455,11 @@ def load_from_rdf(folder_name, file_name, format='nt', data_home=None):
     .. warning::
         Large RDF graphs should be serialized to ntriples beforehand and loaded with ``load_from_ntriples()`` instead.
 
+    .. note::
+        It is recommended to use :meth:`ampligraph.evaluation.train_test_split_no_unseen` to split custom
+        knowledge graphs into train, validation, and test sets. Using this function will lead to validation, test sets
+        that do not include triples with entities that do not occur in the training set.
+
 
     Parameters
     ----------
@@ -487,6 +498,12 @@ def load_from_ntriples(folder_name, file_name, data_home=None):
 
         _:alice <http://xmlns.com/foaf/0.1/knows> _:bob .
         _:bob <http://xmlns.com/foaf/0.1/knows> _:alice .
+
+    .. note::
+        It is recommended to use :meth:`ampligraph.evaluation.train_test_split_no_unseen` to split custom
+        knowledge graphs into train, validation, and test sets. Using this function will lead to validation, test sets
+        that do not include triples with entities that do not occur in the training set.
+
 
     Parameters
     ----------
