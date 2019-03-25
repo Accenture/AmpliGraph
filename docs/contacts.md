@@ -13,7 +13,7 @@ You can contact us by email at [about@ampligraph.org](mailto:about@ampligraph.or
 
 If you like AmpliGraph and you use it in your project, why not starring the project on GitHub!
 
-[![GitHub stars](https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=3600)](https://GitHub.com/Accenture/AmpliGraph/stargazers/)
+[![](https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=3600)](https://GitHub.com/Accenture/AmpliGraph/stargazers/)
 
 
 If you instead use AmpliGraph in an academic publication, cite as:
@@ -32,7 +32,7 @@ If you instead use AmpliGraph in an academic publication, cite as:
  url   = {https://doi.org/10.5281/zenodo.2595043}
 }
 ```
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2595043.svg)](https://doi.org/10.5281/zenodo.2595043)
+[![](https://zenodo.org/badge/DOI/10.5281/zenodo.2595043.svg)](https://doi.org/10.5281/zenodo.2595043)
 
 
 ## Contributors

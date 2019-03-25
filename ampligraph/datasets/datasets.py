@@ -16,6 +16,77 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
+def _clean_data(X, throw_valid=False):
+    train = X["train"]
+    valid = X["valid"]
+    test = X["test"]
+
+    train_ent = set(train.flatten())
+    valid_ent = set(valid.flatten())
+    test_ent = set(test.flatten())
+
+    # not throwing the unseen entities in validation set
+    if not throw_valid:
+        train_valid_ent = set(train.flatten()) | set(valid.flatten())
+        ent_test_diff_train_valid = test_ent - train_valid_ent
+        idxs_test = []
+
+        if len(ent_test_diff_train_valid) > 0:
+            count_test = 0
+            c_if = 0
+            for row in test:
+                tmp = set(row)
+                if len(tmp & ent_test_diff_train_valid) != 0:
+                    idxs_test.append(count_test)
+                    c_if += 1
+                count_test = count_test + 1
+        filtered_test = np.delete(test, idxs_test, axis=0)
+        logging.debug("fit validation case: shape test: {0} \
+                      -  filtered test: {1}: {2} triples \
+                      with unseen entties removed" \
+                      .format(test.shape, filtered_test.shape, c_if))
+        return {'train': train, 'valid': valid, 'test': filtered_test}
+        
+    # throwing the unseen entities in validation set
+    else:
+        # for valid
+        ent_valid_diff_train = valid_ent - train_ent
+        idxs_valid = []
+        if len(ent_valid_diff_train) > 0:
+            count_valid = 0
+            c_if = 0
+            for row in valid:
+                tmp = set(row)
+                if len(tmp & ent_valid_diff_train) != 0:
+                    idxs_valid.append(count_valid)
+                    c_if += 1
+                count_valid = count_valid + 1
+        filtered_valid = np.delete(valid, idxs_valid, axis=0)
+        logging.debug("not fitting validation case: shape valid: {0} \
+                      -  filtered valid: {1}: {2} triples \
+                      with unseen entties removed" \
+                      .format(valid.shape, filtered_valid.shape, c_if))
+        # for test 
+        ent_test_diff_train = test_ent - train_ent
+        idxs_test = []
+        if len(ent_test_diff_train) > 0:
+            count_test = 0
+            c_if = 0
+            for row in test:
+                tmp = set(row)
+                if len(tmp & ent_test_diff_train) != 0:
+                    idxs_test.append(count_test)
+                    c_if += 1
+                count_test = count_test + 1
+        filtered_test = np.delete(test, idxs_test, axis=0)
+        logging.debug("not fitting validation case: shape test: {0}  \
+                      -  filtered test: {1}: {2} triples \
+                      with unseen entties removed" \
+                      .format(test.shape, filtered_test.shape, c_if))
+        
+        return {'train': train, 'valid': filtered_valid, 'test': filtered_test}
+        
+
 def _get_data_home(data_home=None):
     """Get to location of the dataset folder to use.
 
@@ -157,7 +228,13 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None):
 
     .. note::
         The function filters duplicated statements.
-    
+
+    .. note::
+        It is recommended to use :meth:`ampligraph.evaluation.train_test_split_no_unseen` to split custom
+        knowledge graphs into train, validation, and test sets. Using this function will lead to validation, test sets
+        that do not include triples with entities that do not occur in the training set.
+
+
     Parameters
     ----------
     
@@ -217,6 +294,7 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False):
     check_md5hash : boolean
         If true check the md4hash of the files after they are downloaded.
     """
+    
     if dataset_metadata.dataset_name is None:
         if dataset_metadata.url is None:
             raise ValueError('The dataset name or url must be provided to load a dataset.')
@@ -253,6 +331,10 @@ def load_wn18(check_md5hash=False):
     ========= ========= ======= ======= ============ ===========
 
 
+    .. warning::
+        The dataset includes a large number of inverse relations, and its use in experiments has been deprecated.
+        Use WN18RR instead.
+
 
     Returns
     -------
@@ -270,6 +352,7 @@ def load_wn18(check_md5hash=False):
            ['10217831', '_hyponym', '10682169']], dtype=object)
 
     """
+    
     WN18 = DatasetMetadata(dataset_name='wn18', filename='wn18.zip', url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wn18.zip', 
                 train_name='train.txt', valid_name='valid.txt', test_name='test.txt',
                 train_checksum='7d68324d293837ac165c3441a6c8b0eb', valid_checksum='f4f66fec0ca83b5ebe7ad7003404e61d', 
@@ -278,7 +361,7 @@ def load_wn18(check_md5hash=False):
     return _load_dataset(WN18, data_home=None, check_md5hash=check_md5hash)
 
 
-def load_wn18rr(check_md5hash=False):
+def load_wn18rr(check_md5hash=False, clean_unseen=True):
     """ Load the WN18RR dataset
 
     The dataset is described in :cite:`DettmersMS018`.
@@ -305,6 +388,11 @@ def load_wn18rr(check_md5hash=False):
     .. warning:: WN18RR's validation set contains 198 unseen entities over 210 triples.
         The test set has 209 unseen entities, distributed over 210 triples.
 
+    Parameters
+    ----------
+    clean_unseen : bool
+        If ``True``, filters triples in validation and test sets that include entities not present in the training set.
+
     Returns
     -------
     
@@ -320,12 +408,15 @@ def load_wn18rr(check_md5hash=False):
     array(['02174461', '_hypernym', '02176268'], dtype=object)
     
     """
+    
     WN18RR = DatasetMetadata(dataset_name='wn18RR', filename='wn18RR.zip', url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wn18RR.zip', 
                 train_name='train.txt', valid_name='valid.txt', test_name='test.txt',
                 train_checksum='35e81af3ae233327c52a87f23b30ad3c', valid_checksum='74a2ee9eca9a8d31f1a7d4d95b5e0887', 
                 test_checksum='2b45ba1ba436b9d4ff27f1d3511224c9')
-
-    return _load_dataset(WN18RR, data_home=None, check_md5hash=check_md5hash)
+    if clean_unseen:
+        return _clean_data(_load_dataset(WN18RR, data_home=None, check_md5hash=check_md5hash)), throw_valid=True)
+    else:
+        return _load_dataset(WN18RR, data_home=None, check_md5hash=check_md5hash)
 
 
 def load_fb15k(check_md5hash=False):
@@ -351,6 +442,11 @@ def load_fb15k(check_md5hash=False):
     FB15K     483,142   50,000  59,071  14,951        1,345
     ========= ========= ======= ======= ============ ===========
 
+
+    .. warning::
+        The dataset includes a large number of inverse relations, and its use in experiments has been deprecated.
+        Use FB15k-237 instead.
+
     Returns
     -------
     
@@ -372,6 +468,7 @@ def load_fb15k(check_md5hash=False):
             '/m/05lf_']], dtype=object)
 
     """
+    
     FB15K = DatasetMetadata(dataset_name='fb15k', filename='fb15k.zip', url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/fb15k.zip', 
                 train_name='train.txt', valid_name='valid.txt', test_name='test.txt',
                 train_checksum='5a87195e68d7797af00e137a7f6929f2', valid_checksum='275835062bb86a86477a3c402d20b814', 
@@ -380,7 +477,7 @@ def load_fb15k(check_md5hash=False):
     return _load_dataset(FB15K, data_home=None, check_md5hash=False)
 
 
-def load_fb15k_237(check_md5hash=False):
+def load_fb15k_237(check_md5hash=False, clean_unseen=True):
     """Load the FB15k-237 dataset
 
     FB15k-237 is a reduced version of FB15K. It was first proposed by :cite:`toutanova2015representing`.
@@ -406,6 +503,10 @@ def load_fb15k_237(check_md5hash=False):
     .. warning:: FB15K-237's validation set contains 8 unseen entities over 9 triples. The test set has 29 unseen entities,
         distributed over 28 triples.
 
+    Parameters
+    ----------
+    clean_unseen : bool
+        If ``True``, filters triples in validation and test sets that include entities not present in the training set.
 
     Returns
     -------
@@ -422,12 +523,16 @@ def load_fb15k_237(check_md5hash=False):
     array(['/m/07s9rl0', '/media_common/netflix_genre/titles', '/m/0170z3'],
       dtype=object)
     """
+
     FB15K_237 = DatasetMetadata(dataset_name='fb15k-237', filename='fb15k-237.zip', url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/fb15k-237.zip', 
                 train_name='train.txt', valid_name='valid.txt', test_name='test.txt',
                 train_checksum='c05b87b9ac00f41901e016a2092d7837', valid_checksum='6a94efd530e5f43fcf84f50bc6d37b69', 
                 test_checksum='f5bdf63db39f455dec0ed259bb6f8628')
 
-    return _load_dataset(FB15K_237, data_home=None, check_md5hash=check_md5hash)
+    if clean_unseen:
+        return _clean_data(_load_core_dataset(FB15K_237, data_home=None, check_md5hash=check_md5hash), throw_valid=True)
+    else:
+        return _load_dataset(FB15K_237, data_home=None, check_md5hash=check_md5hash)
 
 
 def load_yago3_10(check_md5hash=False):
@@ -498,6 +603,11 @@ def load_from_rdf(folder_name, file_name, format='nt', data_home=None):
     .. warning::
         Large RDF graphs should be serialized to ntriples beforehand and loaded with ``load_from_ntriples()`` instead.
 
+    .. note::
+        It is recommended to use :meth:`ampligraph.evaluation.train_test_split_no_unseen` to split custom
+        knowledge graphs into train, validation, and test sets. Using this function will lead to validation, test sets
+        that do not include triples with entities that do not occur in the training set.
+
 
     Parameters
     ----------
@@ -536,6 +646,12 @@ def load_from_ntriples(folder_name, file_name, data_home=None):
 
         _:alice <http://xmlns.com/foaf/0.1/knows> _:bob .
         _:bob <http://xmlns.com/foaf/0.1/knows> _:alice .
+
+    .. note::
+        It is recommended to use :meth:`ampligraph.evaluation.train_test_split_no_unseen` to split custom
+        knowledge graphs into train, validation, and test sets. Using this function will lead to validation, test sets
+        that do not include triples with entities that do not occur in the training set.
+
 
     Parameters
     ----------

@@ -1,7 +1,7 @@
 # How to Contribute
 
 ## Git Repo and Issue Tracking
-[![GitHub stars](https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=3600)](https://GitHub.com/Accenture/AmpliGraph/stargazers/)
+[![](https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=3600)](https://GitHub.com/Accenture/AmpliGraph/stargazers/)
 
 AmpliGraph [repository is available on GitHub](https://innersource.accenture.com/projects/DL/repos/xai-link-prediction/).
 
