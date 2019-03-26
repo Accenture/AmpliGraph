@@ -3,7 +3,7 @@
 ## Git Repo and Issue Tracking
 [![](https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=3600)](https://GitHub.com/Accenture/AmpliGraph/stargazers/)
 
-AmpliGraph [repository is available on GitHub](https://innersource.accenture.com/projects/DL/repos/xai-link-prediction/).
+AmpliGraph [repository is available on GitHub](https://github.com/Accenture/AmpliGraph).
 
 A list of open issues [is available here](https://github.com/Accenture/AmpliGraph/issues).
 
