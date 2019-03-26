@@ -46,5 +46,7 @@ Active contributors (in alphabetical order)
 + [Sumit Pai](http://github.com/sumitpai)
 
 
+## License
 
+AmpliGraph is licensed under the Apache 2.0 License.
 

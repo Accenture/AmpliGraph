@@ -168,6 +168,6 @@ If you instead use AmpliGraph in an academic publication, cite as:
 }
 ```
 
-## Licence
+## License
 
 AmpliGraph is licensed under the Apache 2.0 License.
