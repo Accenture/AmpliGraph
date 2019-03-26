@@ -414,7 +414,7 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True):
                 train_checksum='35e81af3ae233327c52a87f23b30ad3c', valid_checksum='74a2ee9eca9a8d31f1a7d4d95b5e0887', 
                 test_checksum='2b45ba1ba436b9d4ff27f1d3511224c9')
     if clean_unseen:
-        return _clean_data(_load_dataset(WN18RR, data_home=None, check_md5hash=check_md5hash)), throw_valid=True)
+        return _clean_data(_load_dataset(WN18RR, data_home=None, check_md5hash=check_md5hash), throw_valid=True)
     else:
         return _load_dataset(WN18RR, data_home=None, check_md5hash=check_md5hash)
 
@@ -530,7 +530,7 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True):
                 test_checksum='f5bdf63db39f455dec0ed259bb6f8628')
 
     if clean_unseen:
-        return _clean_data(_load_core_dataset(FB15K_237, data_home=None, check_md5hash=check_md5hash), throw_valid=True)
+        return _clean_data(_load_dataset(FB15K_237, data_home=None, check_md5hash=check_md5hash), throw_valid=True)
     else:
         return _load_dataset(FB15K_237, data_home=None, check_md5hash=check_md5hash)
 
