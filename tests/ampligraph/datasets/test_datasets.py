@@ -51,13 +51,17 @@ def test_load_fb15k_237():
 
 def test_yago_3_10():
     yago_3_10 = load_yago3_10()
-    assert len(yago_3_10['train']) == 1079040
-    assert len(yago_3_10['valid']) == 5000
-    assert len(yago_3_10['test']) == 5000
+    assert len(yago_3_10['train']) == 1079040 
+    assert len(yago_3_10['valid']) == 5000 - 22
+    assert len(yago_3_10['test']) == 5000 - 18
 
     # ent_train = np.union1d(np.unique(yago_3_10["train"][:,0]), np.unique(yago_3_10["train"][:,2]))
     # ent_valid = np.union1d(np.unique(yago_3_10["valid"][:,0]), np.unique(yago_3_10["valid"][:,2]))
     # ent_test = np.union1d(np.unique(yago_3_10["test"][:,0]), np.unique(yago_3_10["test"][:,2]))
+
+    # assert len(set(ent_valid) - set(ent_train)) == 22
+    # assert len (set(ent_test) - ((set(ent_valid) & set(ent_train)) | set(ent_train))) == 18
+
     # distinct_ent = np.union1d(np.union1d(ent_train, ent_valid), ent_test)
     # distinct_rel = np.union1d(np.union1d(np.unique(yago_3_10["train"][:,1]), np.unique(yago_3_10["train"][:,1])), np.unique(yago_3_10["train"][:,1]))
 

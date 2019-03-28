@@ -535,7 +535,7 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True):
         return _load_dataset(FB15K_237, data_home=None, check_md5hash=check_md5hash)
 
 
-def load_yago3_10(check_md5hash=False):
+def load_yago3_10(check_md5hash=False, clean_unseen = True):
     """ Load the YAGO3-10 dataset
    
     The dataset is a split of YAGO3 :cite:`mahdisoltani2013yago3`, and has been first presented in :cite:`DettmersMS018`.
@@ -574,14 +574,16 @@ def load_yago3_10(check_md5hash=False):
     array(['Mikheil_Khutsishvili', 'playsFor', 'FC_Merani_Tbilisi'], dtype=object)    
     
     """
-
     YAGO3_10 = DatasetMetadata(dataset_name='YAGO3-10', filename='YAGO3-10.zip', url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/YAGO3-10.zip', 
                 train_name='train.txt', valid_name='valid.txt', test_name='test.txt',
                 train_checksum='a9da8f583ec3920570eeccf07199229a', valid_checksum='2d679a906f2b1ac29d74d5c948c1ad09', 
                 test_checksum='14bf97890b2fee774dbce5f326acd189')
 
-    return _load_dataset(YAGO3_10, data_home=None, check_md5hash=check_md5hash)
-
+    if clean_unseen:
+        return _clean_data(_load_dataset(YAGO3_10, data_home=None, check_md5hash=check_md5hash), throw_valid=True)
+    else:
+        return _load_dataset(YAGO3_10, data_home=None, check_md5hash=check_md5hash)
+    
 
 def load_all_datasets(check_md5hash=False):
     load_wn18(check_md5hash)
