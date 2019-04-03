@@ -214,8 +214,7 @@ class EmbeddingModel(abc.ABC):
         if batches_count == 1:
             logger.warn(
                 'batches_count=1. All triples will be processed in the same batch. This may introduce memory issues.')
-            print('WARN: when batches_count=1 all triples will be processed in the same batch. '
-                  'This may introduce memory issues.')
+
 
         try:
             self.loss = LOSS_REGISTRY[loss](self.eta, self.loss_params, verbose=verbose)
@@ -452,6 +451,13 @@ class EmbeddingModel(abc.ABC):
             
         self.eval_config['corruption_entities'] = self.early_stopping_params.get('corruption_entities', 
                                                                                  DEFAULT_CORRUPTION_ENTITIES)
+        
+        
+        if isinstance(self.eval_config['corruption_entities'], list):
+            #convert from list of raw triples to entity indices
+            self.eval_config['corruption_entities'] = np.asarray([idx for uri, idx in self.ent_to_idx.items() if uri in self.eval_config['corruption_entities']])
+        
+            
         self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', DEFAULT_CORRUPT_SIDE)
 
         self.early_stopping_best_value = INITIAL_EARLY_STOPPING_CRITERIA_VALUE
@@ -510,10 +516,8 @@ class EmbeddingModel(abc.ABC):
                     if self.verbose:
                         msg = 'Early stopping at epoch:{}'.format(epoch)
                         logger.info(msg)
-                        print(msg)
                         msg = 'Best {}: {:10f}'.format(self.early_stopping_criteria, self.early_stopping_best_value)
                         logger.info(msg)
-                        print(msg)
                     return True
             else:
                 self.early_stopping_best_value = current_test_value
@@ -523,10 +527,8 @@ class EmbeddingModel(abc.ABC):
             if self.verbose:
                 msg = 'Current best:{}'.format(self.early_stopping_best_value)
                 logger.info(msg)
-                print(msg)
                 msg = 'Current:{}'.format(current_test_value)
                 logger.info(msg)
-                print(msg)
 
         return False
     
@@ -734,23 +736,32 @@ class EmbeddingModel(abc.ABC):
                 first_million_primes_list.extend([np.int64(x) for x in p_nums_line if x != '' and x != '\n'])
                 if len(first_million_primes_list) > (2 * entity_size + reln_size):
                     break
-
-        # subject
-        self.entity_primes_left = first_million_primes_list[:entity_size]
-        # obj
-        self.entity_primes_right = first_million_primes_list[entity_size:2 * entity_size]
+        #Assign first to relations - as these are dense - it would reduce the overflows in the product computation
         # reln
-        self.relation_primes = first_million_primes_list[2 * entity_size:(2 * entity_size + reln_size)]
+        self.relation_primes = np.array(first_million_primes_list[:reln_size], dtype=np.int64)
+        # subject
+        self.entity_primes_left = np.array(first_million_primes_list[reln_size:(entity_size+reln_size)], dtype=np.int64)
+        # obj
+        self.entity_primes_right = np.array(first_million_primes_list[(entity_size+reln_size):(2 * entity_size + reln_size)], dtype=np.int64)
+        
+        
 
         self.filter_keys = []
-        # subject
-        self.filter_keys = [self.entity_primes_left[self.x_filter[i, 0]] for i in range(self.x_filter.shape[0])]
-        # obj
-        self.filter_keys = [self.filter_keys[i] * self.entity_primes_right[self.x_filter[i, 2]]
-                            for i in range(self.x_filter.shape[0])]
-        # reln
-        self.filter_keys = [self.filter_keys[i] * self.relation_primes[self.x_filter[i, 1]]
-                            for i in range(self.x_filter.shape[0])]
+        try:
+            # subject
+            self.filter_keys = [self.entity_primes_left[self.x_filter[i, 0]] for i in range(self.x_filter.shape[0])]
+            # obj
+            self.filter_keys = [self.filter_keys[i] * self.entity_primes_right[self.x_filter[i, 2]]
+                                for i in range(self.x_filter.shape[0])]
+            # reln
+            self.filter_keys = [self.filter_keys[i] * self.relation_primes[self.x_filter[i, 1]]
+                                for i in range(self.x_filter.shape[0])]
+            
+            self.filter_keys = np.array(self.filter_keys, dtype=np.int64)
+        except IndexError:
+            msg = 'Number of entities are high. Please extend the prime numbers list to have at least {} primes!!!'.format(2 * entity_size + reln_size)
+            logger.error(msg)
+            raise ValueError(msg)
 
         self.is_filtered = True
 
@@ -786,20 +797,20 @@ class EmbeddingModel(abc.ABC):
             all_reln_np = np.int64(np.arange(len(self.rel_to_idx)))
             self.table_entity_lookup_left = tf.contrib.lookup.HashTable(
                 tf.contrib.lookup.KeyValueTensorInitializer(all_entities_np,
-                                                            np.array(self.entity_primes_left, dtype=np.int64))
+                                                            self.entity_primes_left)
                 , 0)
             self.table_entity_lookup_right = tf.contrib.lookup.HashTable(
                 tf.contrib.lookup.KeyValueTensorInitializer(all_entities_np,
-                                                            np.array(self.entity_primes_right, dtype=np.int64))
+                                                            self.entity_primes_right)
                 , 0)
             self.table_reln_lookup = tf.contrib.lookup.HashTable(
                 tf.contrib.lookup.KeyValueTensorInitializer(all_reln_np,
-                                                            np.array(self.relation_primes, dtype=np.int64))
+                                                            self.relation_primes)
                 , 0)
 
             # Create table to store train+test+valid triplet prime values(product)
             self.table_filter_lookup = tf.contrib.lookup.HashTable(
-                tf.contrib.lookup.KeyValueTensorInitializer(np.array(self.filter_keys, dtype=np.int64),
+                tf.contrib.lookup.KeyValueTensorInitializer(self.filter_keys,
                                                             np.zeros(len(self.filter_keys), dtype=np.int64))
                 , 1)
 
@@ -807,7 +818,7 @@ class EmbeddingModel(abc.ABC):
 
         if corruption_entities == 'all':
             corruption_entities = all_entities_np
-        elif isinstance(corruption_entities, list):
+        elif isinstance(corruption_entities, np.ndarray):
             corruption_entities = corruption_entities
         else:
             msg = 'Invalid type for corruption entities!!!'
