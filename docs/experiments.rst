@@ -175,7 +175,8 @@ TransE   574      0.24   0.15     0.26     0.41       batches_count: 150;
                                                       optimizer: adam;
                                                       optimizer_params:
                                                       lr: 0.0001;
-                                                      seed: 0
+                                                      seed: 0;
+                                                      normalize_ent_emb: false
 
 DistMult 4903     0.49   0.41     0.54     0.63       batches_count: 100;
                                                       epochs: 4000;
@@ -192,7 +193,8 @@ DistMult 4903     0.49   0.41     0.54     0.63       batches_count: 100;
                                                       regularizer_params:
                                                       lambda: 0.0001;
                                                       p: 2;
-                                                      seed: 0
+                                                      seed: 0;
+                                                      normalize_ent_emb: false
 
 ComplEx  7266     0.50   0.42     0.55     0.65       batches_count: 100;
                                                       epochs: 4000;
