@@ -151,7 +151,7 @@ X = np.array([['a', 'y', 'b'],
               ['b', 'y', 'c'],
               ['f', 'y', 'e']])
 model.fit(X)
-model.get_embeddings(['f','e'], type='entity')
+model.get_embeddings(['f','e'], type_='entity')
 ```
 
 ## Save and restore a model
