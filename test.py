@@ -31,7 +31,7 @@ print("MRR: %f, Hits@10: %f" % (mrr, hits_10))
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 
-embs = model.get_embeddings(embs_labels, type_='entity')
+embs = model.get_embeddings(embs_labels, embedding_type='entity')
 embs_2d = TSNE(n_components=2).fit_transform(embs)
 
 fig, ax = plt.subplots()
