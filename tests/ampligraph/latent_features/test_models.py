@@ -137,7 +137,7 @@ def test_lookup_embeddings():
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
     model.fit(X)
-    model.get_embeddings(['a', 'b'], type='entity')
+    model.get_embeddings(['a', 'b'], type_='entity')
 
 
 def test_save_and_restore_model():
@@ -181,7 +181,7 @@ def test_save_and_restore_model():
         y_pred_after, _ = loaded_model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
         npt.assert_array_equal(y_pred_after, y_pred_before)
 
-        npt.assert_array_equal(loaded_model.get_embeddings(['a', 'b'], type='entity'),
-                               model.get_embeddings(['a', 'b'], type='entity'))
+        npt.assert_array_equal(loaded_model.get_embeddings(['a', 'b'], type_='entity'),
+                               model.get_embeddings(['a', 'b'], type_='entity'))
 
         shutil.rmtree(EXAMPLE_LOC)

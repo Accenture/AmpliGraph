@@ -329,7 +329,7 @@ class EmbeddingModel(abc.ABC):
         self.ent_emb = tf.constant(self.trained_model_params[0])
         self.rel_emb = tf.constant(self.trained_model_params[1])
 
-    def get_embeddings(self, entities, type='entity'):
+    def get_embeddings(self, entities, type_='entity'):
         """Get the embeddings of entities or relations.
 
         Parameters
@@ -337,7 +337,7 @@ class EmbeddingModel(abc.ABC):
         entities : array-like, dtype=int, shape=[n]
             The entities (or relations) of interest. Element of the vector must be the original string literals, and
             not internal IDs.
-        type : string
+        type_ : string
             If 'entity', the ``entities`` argument will be considered as a list of knowledge graph entities (i.e. nodes).
             If set to 'relation', they will be treated as relation types instead (i.e. predicates).
 
@@ -347,20 +347,19 @@ class EmbeddingModel(abc.ABC):
             An array of k-dimensional embeddings.
 
         """
-        # TODO - Rename type with something else. This is masking the built-in function "type" #44
         if not self.is_fitted:
             msg = 'Model has not been fitted.'
             logger.error(msg)
             raise RuntimeError(msg)
 
-        if type is 'entity':
+        if type_ is 'entity':
             emb_list = self.trained_model_params[0]
             lookup_dict = self.ent_to_idx
-        elif type is 'relation':
+        elif type_ is 'relation':
             emb_list = self.trained_model_params[1]
             lookup_dict = self.rel_to_idx
         else:
-            msg = 'Invalid entity type: {}'.format(type)
+            msg = 'Invalid entity type: {}'.format(type_)
             logger.error(msg)
             raise ValueError(msg)
 
@@ -1102,7 +1101,7 @@ class TransE(EmbeddingModel):
         >>> model.fit(X)
         >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
         [-2.219729, -3.9848995]
-        >>> model.get_embeddings(['f','e'], type='entity')
+        >>> model.get_embeddings(['f','e'], type_='entity')
         array([[-0.65229136, -0.50060457,  1.2316223 ,  0.23738968,  0.29145557,
         -0.20187911, -0.3053819 , -0.6947149 ,  0.9377473 ,  0.12985024],
         [-1.1272118 ,  0.10723944,  0.79431695,  0.6795645 , -0.14428931,
@@ -1336,7 +1335,7 @@ class DistMult(EmbeddingModel):
         >>> model.fit(X)
         >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
         [3.29703, -3.543957]
-        >>> model.get_embeddings(['f','e'], type='entity')
+        >>> model.get_embeddings(['f','e'], type_='entity')
         array([[-0.7101061 , -0.35752687,  0.5337027 , -0.612499  , -0.34532365,
         -0.7219143 , -0.07083285,  0.19323194,  1.0108972 ,  0.42850104],
         [-1.2280471 , -0.22018537,  0.17179069,  0.757755  , -0.05845603,
@@ -1565,7 +1564,7 @@ class ComplEx(EmbeddingModel):
         >>> model.fit(X)
         >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
         [0.96325016, -0.17629346]
-        >>> model.get_embeddings(['f','e'], type='entity')
+        >>> model.get_embeddings(['f','e'], type_='entity')
         array([[-0.11257   , -0.09226837,  0.2829331 , -0.02094189,  0.02826234,
         -0.3068198 , -0.41022655, -0.23714773, -0.00084166,  0.22521858,
         -0.48155236,  0.29627186,  0.29841757,  0.16540456,  0.45836073,
@@ -1804,7 +1803,7 @@ class HolE(ComplEx):
     >>> model.fit(X)
     >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
     [0.3046168, -0.0379385]
-    >>> model.get_embeddings(['f','e'], type='entity')
+    >>> model.get_embeddings(['f','e'], type_='entity')
     array([[-0.2704807 , -0.05434025,  0.13363852,  0.04879733,  0.00184516,
     -0.1149573 , -0.1177371 , -0.20798951,  0.01935115,  0.13033926,
     -0.81528974,  0.22864424,  0.2045117 ,  0.1145515 ,  0.248952  ,
