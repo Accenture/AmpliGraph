@@ -352,10 +352,10 @@ class EmbeddingModel(abc.ABC):
             logger.error(msg)
             raise RuntimeError(msg)
 
-        if embedding_type is 'entity':
+        if embedding_type == 'entity':
             emb_list = self.trained_model_params[0]
             lookup_dict = self.ent_to_idx
-        elif embedding_type is 'relation':
+        elif embedding_type == 'relation':
             emb_list = self.trained_model_params[1]
             lookup_dict = self.rel_to_idx
         else:
