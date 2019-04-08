@@ -563,7 +563,7 @@ def yield_all_permutations(registry, category_type, category_type_params):
                 try:
                     present_params_vals.append(category_type_params[param])
                     present_params.append(param)
-                except KeyErrori as e:
+                except KeyError as e:
                     logger.debug('Key not found {}'.format(e))
                     pass
         for val in itertools.product(*present_params_vals):
