@@ -46,7 +46,7 @@ def train_test_split_no_unseen(X, test_size=5000, seed=0):
     dict_objs = dict(zip(objs, objs_cnt))
     dict_rels = dict(zip(rels, rels_cnt))
 
-    idx_test = []
+    idx_test = set()
     logger.debug('Selecting test cases using random search.')
     while len(idx_test) < test_size:
         i = rnd.randint(len(X))
@@ -54,7 +54,8 @@ def train_test_split_no_unseen(X, test_size=5000, seed=0):
             dict_subs[X[i, 0]] -= 1
             dict_objs[X[i, 2]] -= 1
             dict_rels[X[i, 1]] -= 1
-            idx_test.append(i)
+            idx_test.add(i)
+    idx_test = list(idx_test)
     logger.debug('Completed random search.')
     idx = np.arange(len(X))
     idx_train = np.setdiff1d(idx, idx_test)
