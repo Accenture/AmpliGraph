@@ -2,6 +2,9 @@ import os
 import pickle
 import importlib
 import logging
+import tensorflow as tf
+from tensorflow.contrib.tensorboard.plugins import projector
+import pandas as pd
 
 SAVED_MODEL_FILE_NAME = 'model.pickle'
 
@@ -108,3 +111,86 @@ def restore_model(loc):
     else:
         logger.debug('No model found.')
     return model
+
+
+
+def create_tensorboard_visualizations(model, loc, labels=None):
+    """ Create Tensorboard visualization files.
+
+        Parameters
+        ----------
+        model: EmbeddingModel
+            A trained neural knowledge graph embedding model, the model must be an instance of TransE,
+            DistMult, ComplEx, or HolE.
+        loc: string
+            Directory where the files are written.
+        labels: pd.DataFrame
+            Label(s) for each embedding point in the Tensorboard visualization.
+            Default behaviour is to use the embeddings labels included in the model.
+
+    """
+
+    # Create loc if it doesn't exist
+    if not os.path.exists(loc):
+        os.mkdir(loc)
+
+    if not model.is_fitted:
+        raise ValueError('Cannot write embeddings if model is not fitted.')
+
+    # If no label data supplied, use model ent_to_idx keys as labels
+    if labels is None:
+        labels = list(model.ent_to_idx.keys())
+    else:
+        if len(labels) != len(model.ent_to_idx):
+            raise ValueError('Label data rows must equal number of embeddings.')
+
+    write_metadata_tsv(loc, labels)
+
+    checkpoint_path = os.path.join(loc, 'graph_embedding.ckpt')
+
+    # Create embeddings Variable
+    embedding_var = tf.Variable(model.trained_model_params[0], name='graph_embedding')
+
+    with tf.Session() as sess:
+        saver = tf.train.Saver([embedding_var])
+
+        sess.run(embedding_var.initializer)
+
+        saver.save(sess, checkpoint_path)
+
+        config = projector.ProjectorConfig()
+
+        # One can add multiple embeddings.
+        embedding = config.embeddings.add()
+        embedding.tensor_name = embedding_var.name
+
+        # Link this tensor to its metadata file (e.g. labels).
+        embedding.metadata_path = 'metadata.tsv'
+
+        # Saves a config file that TensorBoard will read during startup.
+        projector.visualize_embeddings(tf.summary.FileWriter(loc), config)
+
+
+def write_metadata_tsv(loc, data):
+    """ Write Tensorboard metadata.tsv file.
+
+        Parameters
+        ----------
+        loc: string
+            Directory where the file is written.
+        data: list of strings, or pd.DataFrame
+            Label(s) for each embedding point in the Tensorboard visualization.
+            If data is a list of strings then no header will be written. If it is a pandas DataFrame with multiple
+            columns then headers will be written.
+    """
+
+    # Write metadata.tsv
+    metadata_path = os.path.join(loc, 'metadata.tsv')
+
+    if isinstance(data, list):
+        with open(metadata_path, 'w+', encoding='utf8') as metadata_file:
+            for row in data:
+                metadata_file.write('%s\n' % row)
+
+    elif isinstance(data, pd.DataFrame):
+        data.to_csv(metadata_path, sep='\t', index=False)

@@ -209,6 +209,7 @@ def _fetch_dataset(remote, data_home=None, check_md5hash=False):
             msg = 'No dataset at {} and no url provided.'.format(dataset_dir)
             logger.error(msg)
             raise Exception(msg)
+
         _fetch_remote_data(remote, dataset_dir, data_home, check_md5hash)
     return dataset_dir
 
