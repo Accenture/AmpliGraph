@@ -5,9 +5,10 @@ from ampligraph.evaluation import evaluate_performance, generate_corruptions_for
     generate_corruptions_for_fit, to_idx, create_mappings, mrr_score, hits_at_n_score, select_best_model_ranking, \
     filter_unseen_entities
 
-from ampligraph.datasets import load_wn18
+from ampligraph.datasets import load_wn18, load_fb15k
 import tensorflow as tf
 
+from ampligraph.evaluation import train_test_split_no_unseen
 
 @pytest.mark.skip(reason="Speeding up jenkins")
 def test_select_best_model_ranking():
@@ -272,3 +273,30 @@ def test_generate_corruptions_for_fit_curropt_side_o():
                   [1, 1, 0],
                   [0, 1, 3]]
     np.testing.assert_array_equal(X_corr, X_corr_exp)
+
+
+
+def test_train_test_split():
+
+    # Graph
+    X = np.array([['a', 'y', 'b'],
+                  ['a', 'y', 'c'],
+                  ['c', 'y', 'a'],
+                  ['d', 'y', 'e'],
+                  ['e', 'y', 'f'],
+                  ['f', 'y', 'c'],
+                  ['f', 'y', 'c']])
+
+    expected_X_train = np.array([['a', 'y', 'b'],
+                                ['c', 'y', 'a'],
+                                ['d', 'y', 'e'],
+                                ['e', 'y', 'f'],
+                                ['f', 'y', 'c']])
+    
+    expected_X_test = np.array([['a', 'y', 'c'],
+                                ['f', 'y', 'c']])
+
+    X_train, X_test = train_test_split_no_unseen(X, test_size = 2, seed = 0)
+
+    np.testing.assert_array_equal(X_train, expected_X_train)
+    np.testing.assert_array_equal(X_test, expected_X_test)

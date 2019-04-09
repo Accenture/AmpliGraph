@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def train_test_split_no_unseen(X, test_size=5000, seed=0):
+def train_test_split_no_unseen(X, test_size=5000, seed=0, allow_duplication = False):
     """Split into train and test sets.
 
      This function carves out a test set that contains only entities and relations which also occur
@@ -23,6 +23,9 @@ def train_test_split_no_unseen(X, test_size=5000, seed=0):
         If int, the number of triples in the test set. If float, the percentage of total triples.
     seed : int
         A random seed used to split the dataset.
+    
+    allow_duplication: boolean
+        Flag to indicate if the test set can contain duplicated triples. 
 
     Returns
     -------
@@ -46,22 +49,38 @@ def train_test_split_no_unseen(X, test_size=5000, seed=0):
     dict_objs = dict(zip(objs, objs_cnt))
     dict_rels = dict(zip(rels, rels_cnt))
 
-    idx_test = set()
+    idx_test = np.array([], dtype=int)
     logger.debug('Selecting test cases using random search.')
-    while len(idx_test) < test_size:
+
+    loop_count = 0
+    tolerance = len(X) * 10
+    while idx_test.shape[0] < test_size:
         i = rnd.randint(len(X))
         if dict_subs[X[i, 0]] > 1 and dict_objs[X[i, 2]] > 1 and dict_rels[X[i, 1]] > 1:
             dict_subs[X[i, 0]] -= 1
             dict_objs[X[i, 2]] -= 1
             dict_rels[X[i, 1]] -= 1
-            idx_test.add(i)
-    idx_test = list(idx_test)
+            if allow_duplication:
+                idx_test = np.append(idx_test, i)
+            else:
+                idx_test = np.unique(np.append(idx_test, i))
+        
+        loop_count += 1
+        
+        # in case can't find solution
+        if loop_count == tolerance:
+            if allow_duplication:
+                raise Exception("Not possible to split the dataset...")
+            else:
+                raise Exception("Not possible to split the dataset. Maybe set allow_duplication = True can help...")
+
     logger.debug('Completed random search.')
+    
     idx = np.arange(len(X))
     idx_train = np.setdiff1d(idx, idx_test)
     logger.debug('Train test split completed.')
-    return X[idx_train, :], X[idx_test, :]
 
+    return X[idx_train, :], X[idx_test, :]
 
 def _create_unique_mappings(unique_obj, unique_rel):
     obj_count = len(unique_obj)
