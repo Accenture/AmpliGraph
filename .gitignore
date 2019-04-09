@@ -122,3 +122,5 @@ experiments/playground.py
 experiments/fb237.txt
 
 .pytest_cache
+
+playground

@@ -5,17 +5,19 @@ import logging
 import tensorflow as tf
 from tensorflow.contrib.tensorboard.plugins import projector
 import pandas as pd
-
-SAVED_MODEL_FILE_NAME = 'model.pickle'
+from time import gmtime, strftime
+import glob, os
 
 """This module contains utility functions for neural knowledge graph embedding models.
 """
+
+DEFAULT_MODEL_NAMES = "{0}.model.pkl"
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def save_model(model, loc):
+def save_model(model, model_name_path = None):
     """ Save a trained model to disk.
     
         Examples
@@ -32,8 +34,8 @@ def save_model(model, loc):
         >>>               ['f', 'y', 'e']])
         >>> model.fit(X)
         >>> y_pred_before = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-        >>> EXAMPLE_LOC = 'saved_models'
-        >>> save_model(model, EXAMPLE_LOC)
+        >>> EXAMPLE_NAME = 'helloworld.pkl'
+        >>> save_model(model, model_name_path = EXAMPLE_NAME)
         >>> print(y_pred_before)
         [1.261404, -1.324778]
 
@@ -42,16 +44,11 @@ def save_model(model, loc):
         model: EmbeddingModel
             A trained neural knowledge graph embedding model, the model must be an instance of TransE,
             DistMult, ComplEx, or HolE.
-        loc: string
-            Directory where the model will be saved.
+        model_name_path: string
+            The name of the model to be saved. If not specified, a default name model with current datetime is named and saved to the working directory
 
     """
     logger.debug('Saving model {}.'.format(model.__class__.__name__))
-    if not os.path.exists(loc):
-        logger.debug('Creating path to {}.'.format(loc))
-        os.makedirs(loc)
-
-    hyperParamPath = os.path.join(loc, SAVED_MODEL_FILE_NAME)
 
     obj = {
         'class_name': model.__class__.__name__,
@@ -60,31 +57,35 @@ def save_model(model, loc):
         'ent_to_idx': model.ent_to_idx,
         'rel_to_idx': model.rel_to_idx,
     }
-    model.get_embedding_model_params(obj)
-    logger.debug('Saving parameters: hyperparams:{}\n\tis_fitted:{}'.format(model.all_params, model.is_fitted))
-    with open(hyperParamPath, 'wb') as fw:
-        pickle.dump(obj, fw)
 
+    model.get_embedding_model_params(obj)
+    
+    logger.debug('Saving parameters: hyperparams:{}\n\tis_fitted:{}'.format(model.all_params, model.is_fitted))
+
+    if model_name_path is None:
+        model_name_path = DEFAULT_MODEL_NAMES.format(strftime("%Y_%m_%d_%H:%M:%S", gmtime()))
+
+    with open(model_name_path, 'wb') as fw:
+        pickle.dump(obj, fw)
         # dump model tf
 
-
-def restore_model(loc):
+def restore_model(model_name_path = None):
     """ Restore a saved model from disk.
     
         Examples
         --------
         >>> from ampligraph.latent_features import restore_model
         >>> import numpy as np
-        >>> EXAMPLE_LOC = 'saved_models' # Assuming that the model is present at this location
-        >>> restored_model = restore_model(EXAMPLE_LOC)
+        >>> EXAMPLE_NAME = 'helloworld.pkl'
+        >>> restored_model = restore_model(model_name_path = EXAMPLE_NAME)
         >>> y_pred_after = restored_model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
         >>> print(y_pred_after)
         [1.261404, -1.324778]
 
         Parameters
         ----------
-        loc: string
-            Directory where the saved model is located.
+        model_name_path: string
+            The name of saved model to be restored. If not specified, the library will try to find the default model in the working directory.
 
         Returns
         -------
@@ -92,15 +93,24 @@ def restore_model(loc):
             the neural knowledge graph embedding model restored from disk.
         
     """
-    restore_loc = os.path.join(loc, SAVED_MODEL_FILE_NAME)
+    if model_name_path is None:
+        logger.warn("There is no model name specified. We will try to lookup the latest default saved model...")
+        default_models = glob.glob("*.model.pkl")
+        if len(default_models) == 0:    
+            raise Exception("No default model found. Please specify model_name_path...")
+        else:
+            model_name_path = default_models[len(default_models) - 1]
+            logger.info("Will will load the model: {0} in your current dir...".format(model_name_path))
+        
     model = None
-    logger.debug('Loading model from {}.'.format(loc))
+    logger.info('Will load model {}.'.format(model_name_path))
     restored_obj = None
-    with open(restore_loc, 'rb') as fr:
+    
+    with open(model_name_path, 'rb') as fr:
         restored_obj = pickle.load(fr)
 
     if restored_obj:
-        logger.debug('Restoring model.')
+        logger.debug('Restoring model...')
         module = importlib.import_module("ampligraph.latent_features.models")
         class_ = getattr(module, restored_obj['class_name'])
         model = class_(**restored_obj['hyperparams'])
