@@ -16,13 +16,24 @@ DEFAULT_ALPHA_ADVERSARIAL = 0.5
 # Default margin used by margin based adversarial loss
 DEFAULT_MARGIN_ADVERSARIAL = 3
 
+DEFAULT_SIDE_MULTICLASS = ['s', 'o']
 
-def register_loss(name, external_params=[], class_params={'require_same_size_pos_neg': True, }):
+DEFAULT_CLASS_PARAMS = {'require_same_size_pos_neg': True, 'corrupt_side':['s+o'], }
+
+def register_loss(name, external_params=[], class_params=DEFAULT_CLASS_PARAMS):
+    def populate_class_params():
+        LOSS_REGISTRY[name].class_params = {}
+        LOSS_REGISTRY[name].class_params['require_same_size_pos_neg'] = class_params.get('require_same_size_pos_neg', 
+                                                                               DEFAULT_CLASS_PARAMS['require_same_size_pos_neg'])
+        LOSS_REGISTRY[name].class_params['corrupt_side'] = class_params.get('corrupt_side', 
+                                                                               DEFAULT_CLASS_PARAMS['corrupt_side'])
+        
+    
     def insert_in_registry(class_handle):
         LOSS_REGISTRY[name] = class_handle
         class_handle.name = name
         LOSS_REGISTRY[name].external_params = external_params
-        LOSS_REGISTRY[name].class_params = class_params
+        populate_class_params()
         return class_handle
 
     return insert_in_registry
@@ -431,4 +442,51 @@ class SelfAdversarialLoss(Loss):
         loss = tf.reduce_sum(-tf.log(tf.nn.sigmoid(margin - tf.negative(scores_pos)))) - \
                tf.reduce_sum(tf.multiply(p_neg,
                                          tf.log(tf.nn.sigmoid(tf.negative(scores_neg_reshaped) - margin))))
+        return loss
+    
+    
+@register_loss("multiclass_nll", ['corrupt_side'], {'require_same_size_pos_neg':False, 'corrupt_side':DEFAULT_SIDE_MULTICLASS})   
+class NLLMulticlass(Loss):
+    """ Multiclass NLL Loss
+    
+        Introduced in :cite: `chen2015`
+    """
+    def __init__(self, eta, hyperparam_dict, verbose=False):
+        super().__init__(eta, hyperparam_dict, verbose)
+    
+    def _init_hyperparams(self, hyperparam_dict):
+        """ Verifies and stores the hyperparameters needed by the algorithm.
+        
+        Parameters
+        ----------
+        hyperparam_dict : dictionary
+            Consists of key value pairs. The Loss will check the keys to get the corresponding params
+        """
+        self._loss_parameters['corrupt_side'] = hyperparam_dict.get('corrupt_side', DEFAULT_SIDE_MULTICLASS)
+        NLLMulticlass.class_params['corrupt_side'] = self._loss_parameters['corrupt_side']
+        
+    
+    
+    def _apply(self, scores_pos, scores_neg):
+        """ Apply the loss function.
+
+       Parameters
+       ----------
+       scores_pos : tf.Tensor, shape [n, 1]
+           A tensor of scores assigned to positive statements.
+       scores_neg : tf.Tensor, shape [n*negative_count, 1]
+           A tensor of scores assigned to negative statements.
+
+       Returns
+       -------
+       loss : float
+           The loss value that must be minimized.
+
+       """
+        scores_neg_reshaped = tf.reshape(scores_neg, [self._loss_parameters['eta'], tf.shape(scores_pos)[0]])
+        neg_exp = tf.exp(scores_neg_reshaped)
+        pos_exp = tf.exp(scores_pos)
+        softmax_score = pos_exp/(tf.reduce_sum(neg_exp, axis = 0) + pos_exp)
+        
+        loss = -tf.reduce_sum(tf.log(softmax_score))
         return loss

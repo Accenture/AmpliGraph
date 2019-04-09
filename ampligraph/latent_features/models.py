@@ -397,30 +397,72 @@ class EmbeddingModel(abc.ABC):
                                        initializer=self.initializer)
         self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
                                        initializer=self.initializer)
-
-    def _get_model_loss(self, scores_pos, scores_neg):
-        """ Get the current batch loss including loss due to regularization.
+        
+    def _get_model_loss(self, dataset_iterator):
+        """ Get the current loss including loss due to regularization.
             This function must be overridden if the model uses combination of different losses(eg: VAE) 
             
         Parameters
         ----------
-        scores_pos : tf.Tensor
-            A tensor of scores assigned to positive statements.
-        scores_neg : tf.Tensor
-            A tensor of scores assigned to negative statements.
+        dataset_iterator : tf.data.Iterator
+            Dataset iterator
             
         Returns
         -------
         loss : tf.Tensor
             The loss value that must be minimized.    
         """
+        # training input placeholder
+        x_pos_tf = tf.cast(dataset_iterator.get_next(), tf.int32)
+        
+        entities_size = 0
+        entities_list = None
+        
+        negative_corruption_entities = self.embedding_model_params.get('negative_corruption_entities',
+                                                                       DEFAULT_CORRUPTION_ENTITIES)
+        
+        if negative_corruption_entities=='all':
+            logger.info('Using all entities for generation of corruptions')
+            entities_size = len(self.ent_to_idx)
+        elif negative_corruption_entities=='batch':
+            #default is batch (entities_size=0 and entities_list=None)
+            logger.info('Using batch entities for generation of corruptions')
+        elif isinstance(negative_corruption_entities, list):
+            logger.info('Using the supplied entities for generation of corruptions')
+            entities_list=tf.squeeze(tf.constant(negative_corruption_entities, dtype=tf.int32))
+        elif isinstance(negative_corruption_entities, int):
+            logger.info('Using first {} entities for generation of corruptions'.format(negative_corruption_entities))
+            entities_size = negative_corruption_entities
+            
 
-        if self.regularizer is not None:
-            return self.loss.apply(scores_pos, scores_neg) + \
-                   self.regularizer.apply([self.ent_emb, self.rel_emb])
+        if self.loss.get_state('require_same_size_pos_neg'):
+            logger.debug('Requires the same size of postive and negative')
+            x_pos = tf.reshape(tf.tile(tf.reshape(x_pos_tf, [-1]), [self.eta]), [tf.shape(x_pos_tf)[0] * self.eta, 3])
         else:
-            return self.loss.apply(scores_pos, scores_neg)
-
+            x_pos = x_pos_tf
+        # look up embeddings from input training triples
+        e_s_pos, e_p_pos, e_o_pos = self._lookup_embeddings(x_pos)
+        scores_pos = self._fn(e_s_pos, e_p_pos, e_o_pos)
+        
+        loss = 0
+        print(self.loss.get_state('corrupt_side'))
+        
+        for side in self.loss.get_state('corrupt_side'):
+            x_neg_tf = generate_corruptions_for_fit(x_pos_tf, 
+                                                    entities_list=entities_list, 
+                                                    eta=self.eta, 
+                                                    corrupt_side=side, 
+                                                    entities_size=entities_size, 
+                                                    rnd=self.seed)
+            e_s_neg, e_p_neg, e_o_neg = self._lookup_embeddings(x_neg_tf)
+            scores_neg = self._fn(e_s_neg, e_p_neg, e_o_neg)
+            loss += self.loss.apply(scores_pos, scores_neg)
+            
+        if self.regularizer is not None:
+            loss += self.regularizer.apply([self.ent_emb, self.rel_emb])
+            
+        return loss
+        
     def _initialize_early_stopping(self):
         """ Initializes and creates evaluation graph for early stopping
         """
@@ -607,52 +649,11 @@ class EmbeddingModel(abc.ABC):
         # init variables (model parameters to be learned - i.e. the embeddings)
         self._initialize_parameters()
 
-        # training input placeholder
-        x_pos_tf = tf.cast(dataset_iterator.get_next(), tf.int32)
-        
-        #all_ent_tf = tf.squeeze(tf.constant(list(self.ent_to_idx.values()), dtype=tf.int32))
-        
-        entities_size = 0
-        entities_list = None
-        
-        negative_corruption_entities = self.embedding_model_params.get('negative_corruption_entities',
-                                                                       DEFAULT_CORRUPTION_ENTITIES)
-        
-        if negative_corruption_entities=='all':
-            logger.info('Using all entities for generation of corruptions')
-            entities_size = len(self.ent_to_idx)
-        elif negative_corruption_entities=='batch':
-            #default is batch (entities_size=0 and entities_list=None)
-            logger.info('Using batch entities for generation of corruptions')
-        elif isinstance(negative_corruption_entities, list):
-            logger.info('Using the supplied entities for generation of corruptions')
-            entities_list=tf.squeeze(tf.constant(negative_corruption_entities, dtype=tf.int32))
-        elif isinstance(negative_corruption_entities, int):
-            logger.info('Using first {} entities for generation of corruptions'.format(negative_corruption_entities))
-            entities_size = negative_corruption_entities
-        
-        # generate negatives
-        x_neg_tf = generate_corruptions_for_fit(x_pos_tf, 
-                                                entities_list=entities_list, 
-                                                eta=self.eta, 
-                                                entities_size=entities_size, 
-                                                rnd=self.seed)
-        
         if self.loss.get_state('require_same_size_pos_neg'):
-            logger.debug('Requires the same size of postive and negative')
-            x_pos = tf.reshape(tf.tile(tf.reshape(x_pos_tf, [-1]), [self.eta]), [tf.shape(x_pos_tf)[0] * self.eta, 3])
             batch_size = batch_size * self.eta
-        else:
-            x_pos = x_pos_tf
-        # look up embeddings from input training triples
-        e_s_pos, e_p_pos, e_o_pos = self._lookup_embeddings(x_pos)
-        e_s_neg, e_p_neg, e_o_neg = self._lookup_embeddings(x_neg_tf)
-
-        scores_neg = self._fn(e_s_neg, e_p_neg, e_o_neg)
-        scores_pos = self._fn(e_s_pos, e_p_pos, e_o_pos)
-
-        loss = self._get_model_loss(scores_pos, scores_neg)
-
+            
+        loss = self._get_model_loss(dataset_iterator)
+            
         train = self.optimizer.minimize(loss)
 
         # Entity embeddings normalization
