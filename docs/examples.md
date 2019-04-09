@@ -156,7 +156,6 @@ model.get_embeddings(['f','e'], embedding_type='entity')
 
 ## Save and restore a model
 ```python
-
 import numpy as np
 
 from ampligraph.latent_features import ComplEx, save_model, restore_model
@@ -174,22 +173,18 @@ X = np.array([['a', 'y', 'b'],
 
 model.fit(X)
 
-EXAMPLE_LOC = 'saved_models'
-
-# Use the trained model to predict 
+#  Use the trained model to predict 
 y_pred_before = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
 print(y_pred_before)
 
 # Save the model
-save_model(model, EXAMPLE_LOC)
+save_model(model, model_name_path = "helloworld.pkl")
 
 # Restore the model
-restored_model = restore_model(EXAMPLE_LOC)
+restored_model = restore_model(model_name_path = "helloworld.pkl")
 
 # Use the restored model to predict
 y_pred_after = restored_model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
 print(y_pred_after)
 
-# Assert that the before and after values are same
-assert(y_pred_before==y_pred_after)
 ```

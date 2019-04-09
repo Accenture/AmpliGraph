@@ -9,7 +9,7 @@ from ampligraph.latent_features import save_model, restore_model
 import importlib
 import tensorflow as tf
 
-import shutil
+import os
 
 
 def test_fit_predict_transE():
@@ -164,9 +164,11 @@ def test_save_and_restore_model():
 
         model.fit(X)
 
-        EXAMPLE_LOC = 'unittest_save_and_restore_models'
-        save_model(model, EXAMPLE_LOC)
-        loaded_model = restore_model(EXAMPLE_LOC)
+        example_name = 'helloworld.pkl'
+
+        save_model(model, model_name_path = example_name)
+
+        loaded_model = restore_model(model_name_path = example_name)
 
         assert loaded_model != None
         assert loaded_model.all_params == model.all_params
@@ -184,4 +186,4 @@ def test_save_and_restore_model():
         npt.assert_array_equal(loaded_model.get_embeddings(['a', 'b'], embedding_type='entity'),
                                model.get_embeddings(['a', 'b'], embedding_type='entity'))
 
-        shutil.rmtree(EXAMPLE_LOC)
+        os.remove(example_name)
