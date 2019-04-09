@@ -1,7 +1,6 @@
 import numpy as np
 from ampligraph.latent_features.misc import get_entity_triples
 
-
 def test_get_entity_triples():
 
     # Graph
@@ -25,3 +24,4 @@ def test_get_entity_triples():
     N = get_entity_triples(u, X)
 
     assert(np.all(N == XN))
+
