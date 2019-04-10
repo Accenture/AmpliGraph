@@ -856,18 +856,21 @@ class EmbeddingModel(abc.ABC):
         e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
         self.score_positive = self._fn(e_s, e_p, e_o)
         
-        if corrupt_side == 's+o':
+        if corrupt_side == 's+o' and self.is_filtered:
+            #get the number of filtered corruptions present for object and subject
             self.presense_mask = tf.reshape(self.presense_mask, (2, -1))
             self.presense_count = tf.reduce_sum(self.presense_mask, 1)
             
-            subj_corruption_scores = tf.slice(self.scores_predict,
+            #Get the corresponding corruption triple scores
+            obj_corruption_scores = tf.slice(self.scores_predict,
                                               [0], 
                                               [tf.gather(self.presense_count, 0)])
             
-            obj_corruption_scores = tf.slice(self.scores_predict, 
+            sub_corruption_scores = tf.slice(self.scores_predict, 
                                              [tf.gather(self.presense_count, 0)], 
                                              [tf.gather(self.presense_count, 1)])
             
+            #rank them against the positive
             self.rank = tf.stack([tf.reduce_sum(tf.cast(subj_corruption_scores >= self.score_positive, tf.int32))+1,
                                   tf.reduce_sum(tf.cast(obj_corruption_scores >= self.score_positive, tf.int32))+1], 0)
                                               
@@ -948,18 +951,17 @@ class EmbeddingModel(abc.ABC):
         ranks = []
         if X.ndim > 1:
             for x in X:
-                all_scores = self.sess_predict.run(self.scores_predict, feed_dict={self.X_test_tf: [x]})
-                scores.append(all_scores[0])
+                all_scores = self.sess_predict.run(self.score_positive, feed_dict={self.X_test_tf: [x]})
+                scores.append(all_scores)
 
                 if get_ranks:
                     rank = self.sess_predict.run(self.rank, feed_dict={self.X_test_tf: [x]})
                     ranks.append(rank)
         else:
-            all_scores = self.sess_predict.run(self.scores_predict, feed_dict={self.X_test_tf: [X]})
-            scores = all_scores[0]
+            all_scores = self.sess_predict.run(self.score_positive, feed_dict={self.X_test_tf: [X]})
+            scores = all_scores
             if get_ranks:
                 ranks = self.sess_predict.run(self.rank, feed_dict={self.X_test_tf: [X]})
-        
         #print(ranks)
         if get_ranks:
             return scores, ranks
