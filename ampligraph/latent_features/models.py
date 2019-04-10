@@ -532,9 +532,15 @@ class EmbeddingModel(abc.ABC):
             ranks = []
 
             for x_test_triple in self.x_valid:
-                rank_triple = self.sess_train.run([self.rank], feed_dict={self.X_test_tf: [x_test_triple]})
+                #pc = self.sess_train.run([self.presense_count], feed_dict={self.X_test_tf: [x_test_triple]})
+                #print('count:', pc)
+                #pc = self.sess_train.run([self.scores_predict], feed_dict={self.X_test_tf: [x_test_triple]})
+                #print('scores:', len(pc))
+                #print('scores:', pc[0].shape)
+                rank_triple = self.sess_train.run(self.rank, feed_dict={self.X_test_tf: [x_test_triple]})
+                if self.eval_config['corrupt_side'] == 's+o':
+                    rank_triple = np.sum(rank_triple)-1
                 ranks.append(rank_triple)
-
             if self.early_stopping_criteria == 'hits10':
                 current_test_value = hits_at_n_score(ranks, 10)
             elif self.early_stopping_criteria == 'hits3':
@@ -827,10 +833,10 @@ class EmbeddingModel(abc.ABC):
 
         self.corruption_entities_tf = tf.constant(corruption_entities, dtype=tf.int64)
 
+        corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE)
         self.out_corr, self.out_corr_prime = generate_corruptions_for_eval(self.X_test_tf,
                                                                            self.corruption_entities_tf,
-                                                                           self.eval_config.get('corrupt_side',
-                                                                                                DEFAULT_CORRUPT_SIDE),
+                                                                           corrupt_side,
                                                                            self.table_entity_lookup_left,
                                                                            self.table_entity_lookup_right,
                                                                            self.table_reln_lookup)
@@ -841,13 +847,32 @@ class EmbeddingModel(abc.ABC):
             self.filtered_corruptions = tf.boolean_mask(self.out_corr, self.presense_mask)
         else:
             self.filtered_corruptions = self.out_corr
-
-        self.concatinated_set = tf.concat([self.X_test_tf, self.filtered_corruptions], 0)
-
-        e_s, e_p, e_o = self._lookup_embeddings(self.concatinated_set)
+        
+        #Compute scores for negatives
+        e_s, e_p, e_o = self._lookup_embeddings(self.filtered_corruptions)
         self.scores_predict = self._fn(e_s, e_p, e_o)
-        self.score_positive = tf.gather(self.scores_predict, 0)
-        self.rank = tf.reduce_sum(tf.cast(self.scores_predict >= self.score_positive, tf.int32))
+        
+        #Compute scores for positive
+        e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
+        self.score_positive = self._fn(e_s, e_p, e_o)
+        
+        if corrupt_side == 's+o':
+            self.presense_mask = tf.reshape(self.presense_mask, (2, -1))
+            self.presense_count = tf.reduce_sum(self.presense_mask, 1)
+            
+            subj_corruption_scores = tf.slice(self.scores_predict,
+                                              [0], 
+                                              [tf.gather(self.presense_count, 0)])
+            
+            obj_corruption_scores = tf.slice(self.scores_predict, 
+                                             [tf.gather(self.presense_count, 0)], 
+                                             [tf.gather(self.presense_count, 1)])
+            
+            self.rank = tf.stack([tf.reduce_sum(tf.cast(subj_corruption_scores >= self.score_positive, tf.int32))+1,
+                                  tf.reduce_sum(tf.cast(obj_corruption_scores >= self.score_positive, tf.int32))+1], 0)
+                                              
+        else:
+            self.rank = tf.reduce_sum(tf.cast(self.scores_predict >= self.score_positive, tf.int32))+1
 
     def end_evaluation(self):
         """End the evaluation and close the Tensorflow session.
@@ -934,7 +959,8 @@ class EmbeddingModel(abc.ABC):
             scores = all_scores[0]
             if get_ranks:
                 ranks = self.sess_predict.run(self.rank, feed_dict={self.X_test_tf: [X]})
-
+        
+        #print(ranks)
         if get_ranks:
             return scores, ranks
 

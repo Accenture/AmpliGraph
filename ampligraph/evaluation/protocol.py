@@ -525,9 +525,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         filter_triples = to_idx(filter_triples, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
 
     if use_default_protocol:
-        corruption_sides = ['s', 'o']
-    else:
-        corruption_sides = [corrupt_side]
+        corrupt_side = 's+o'
 
     eval_dict = {}
 
@@ -536,21 +534,29 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         eval_dict['corruption_entities'] = idx_entities
 
     ranks = []
-    for side in corruption_sides:
-        logger.debug('Evaluating the test set by corrupting side : {}'.format(side))
-        eval_dict['corrupt_side'] = side
-        if filter_triples is not None:
-            model.set_filter_for_eval(filter_triples)
-        logger.debug('Configuring evaluation protocol.')
-        model.configure_evaluation_protocol(eval_dict)
-        logger.debug('Making predictions.')
-        for i in tqdm(range(X_test.shape[0]), disable=(not verbose)):
-            _, rank = model.predict(X_test[i], from_idx=True, get_ranks=True)
-            ranks.append(rank)
-        model.end_evaluation()
-        logger.debug('Ending Evaluation')
 
-    logger.info('Returning ranks of positive test triples obtained by corrupting {}.'.format(corruption_sides))
+    logger.debug('Evaluating the test set by corrupting side : {}'.format(corrupt_side))
+    eval_dict['corrupt_side'] = corrupt_side
+    if filter_triples is not None:
+        model.set_filter_for_eval(filter_triples)
+    logger.debug('Configuring evaluation protocol.')
+    model.configure_evaluation_protocol(eval_dict)
+    logger.debug('Making predictions.')
+    for i in tqdm(range(X_test.shape[0]), disable=(not verbose)):
+        _, rank = model.predict(X_test[i], from_idx=True, get_ranks=True)
+        if use_default_protocol :
+            ranks.extend(list(rank)) 
+            continue
+        elif corrupt_side=='s+o':
+            rank=np.sum(rank)-1
+            
+        ranks.append(rank)
+            
+    print(ranks)
+    model.end_evaluation()
+    logger.debug('Ending Evaluation')
+
+    logger.info('Returning ranks of positive test triples obtained by corrupting {}.'.format(corrupt_side))
     return ranks
 
 
