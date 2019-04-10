@@ -8,7 +8,8 @@ import pandas as pd
 from time import gmtime, strftime
 import glob, os
 
-"""This module contains utility functions for neural knowledge graph embedding models.
+"""This module contains utility functions 
+for neural knowledge graph embedding models.
 """
 
 DEFAULT_MODEL_NAMES = "{0}.model.pkl"
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def save_model(model, model_name_path = None):
+def save_model(model, model_name_path=None):
     """ Save a trained model to disk.
     
         Examples
@@ -42,10 +43,14 @@ def save_model(model, model_name_path = None):
         Parameters
         ----------
         model: EmbeddingModel
-            A trained neural knowledge graph embedding model, the model must be an instance of TransE,
+            A trained neural knowledge graph embedding model, 
+            the model must be an instance of TransE,
             DistMult, ComplEx, or HolE.
         model_name_path: string
-            The name of the model to be saved. If not specified, a default name model with current datetime is named and saved to the working directory
+            The name of the model to be saved. 
+            If not specified, a default name model 
+            with current datetime is named 
+            and saved to the working directory
 
     """
     logger.debug('Saving model {}.'.format(model.__class__.__name__))
@@ -60,7 +65,8 @@ def save_model(model, model_name_path = None):
 
     model.get_embedding_model_params(obj)
     
-    logger.debug('Saving parameters: hyperparams:{}\n\tis_fitted:{}'.format(model.all_params, model.is_fitted))
+    logger.debug('Saving hyperparams:{}\n\tis_fitted: \
+                 {}'.format(model.all_params, model.is_fitted))
 
     if model_name_path is None:
         model_name_path = DEFAULT_MODEL_NAMES.format(strftime("%Y_%m_%d_%H:%M:%S", gmtime()))
@@ -69,7 +75,8 @@ def save_model(model, model_name_path = None):
         pickle.dump(obj, fw)
         # dump model tf
 
-def restore_model(model_name_path = None):
+
+def restore_model(model_name_path=None):
     """ Restore a saved model from disk.
     
         Examples
@@ -85,7 +92,8 @@ def restore_model(model_name_path = None):
         Parameters
         ----------
         model_name_path: string
-            The name of saved model to be restored. If not specified, the library will try to find the default model in the working directory.
+            The name of saved model to be restored. If not specified, 
+            the library will try to find the default model in the working directory.
 
         Returns
         -------
@@ -94,13 +102,17 @@ def restore_model(model_name_path = None):
         
     """
     if model_name_path is None:
-        logger.warn("There is no model name specified. We will try to lookup the latest default saved model...")
+        logger.warn("There is no model name specified. \
+                     We will try to lookup \
+                     the latest default saved model...")
         default_models = glob.glob("*.model.pkl")
         if len(default_models) == 0:    
-            raise Exception("No default model found. Please specify model_name_path...")
+            raise Exception("No default model found. Please specify \
+                             model_name_path...")
         else:
             model_name_path = default_models[len(default_models) - 1]
-            logger.info("Will will load the model: {0} in your current dir...".format(model_name_path))
+            logger.info("Will will load the model: {0} in your \
+                         current dir...".format(model_name_path))
         
     model = None
     logger.info('Will load model {}.'.format(model_name_path))
@@ -121,8 +133,6 @@ def restore_model(model_name_path = None):
     else:
         logger.debug('No model found.')
     return model
-
-
 
 def create_tensorboard_visualizations(model, loc, labels=None):
     """ Create Tensorboard visualization files.

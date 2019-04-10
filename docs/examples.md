@@ -178,13 +178,67 @@ y_pred_before = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
 print(y_pred_before)
 
 # Save the model
-save_model(model, model_name_path = "helloworld.pkl")
+example_name = "helloworld.pkl"
+save_model(model, model_name_path = example_name)
 
 # Restore the model
-restored_model = restore_model(model_name_path = "helloworld.pkl")
+restored_model = restore_model(model_name_path = example_name)
 
 # Use the restored model to predict
 y_pred_after = restored_model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
 print(y_pred_after)
+```
 
+## Split dataset into train/test or train/valid/test 
+```python
+import numpy as np
+from ampligraph.evaluation import train_test_split_no_unseen
+from ampligraph.datasets import load_from_csv
+
+# assume we have a dataset in csv format in folder dataset
+# a,y,b
+# f,y,e
+# b,y,a
+# a,y,c
+# c,y,a
+# a,y,d
+# c,y,d
+# b,y,c
+# f,y,e
+# then load it
+X = load_from_csv('dataset', 'dataset.csv', sep=',')
+# array([['a', 'y', 'b'],
+#        ['f', 'y', 'e'],
+#        ['b', 'y', 'a'],
+#        ['a', 'y', 'c'],
+#        ['c', 'y', 'a'],
+#        ['a', 'y', 'd'],
+#        ['c', 'y', 'd'],
+#        ['b', 'y', 'c'],
+#        ['f', 'y', 'e']], dtype='<U1')
+
+# if you want to split into train/test datasets
+X_train, X_test = train_test_split_no_unseen(X, test_size=2)
+# X_train:  [['a' 'y' 'b']
+#  ['f' 'y' 'e']
+#  ['b' 'y' 'a']
+#  ['c' 'y' 'a']
+#  ['c' 'y' 'd']
+#  ['b' 'y' 'c']
+#  ['f' 'y' 'e']]
+# X_test:  [['a' 'y' 'c']
+#  ['a' 'y' 'd']]
+
+# if you want to split into train/valid/test datasets, call it 2 times
+X_train_valid, X_test = train_test_split_no_unseen(X, test_size=2)
+X_train, X_valid = train_test_split_no_unseen(X_train_valid, test_size=2)
+# X_train:  [['a' 'y' 'b']
+#  ['b' 'y' 'a']
+#  ['c' 'y' 'd']
+#  ['b' 'y' 'c']
+#  ['f' 'y' 'e']]
+# X_valid:  [['f' 'y' 'e']
+#  ['c' 'y' 'a']]
+# X_test:  [['a' 'y' 'c']
+#  ['a' 'y' 'd']]
 ```

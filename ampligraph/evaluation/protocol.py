@@ -9,18 +9,20 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def train_test_split_no_unseen(X, test_size=5000, seed=0, allow_duplication = False):
+
+def train_test_split_no_unseen(X, test_size=5000, seed=0, allow_duplication=False):
     """Split into train and test sets.
 
-     This function carves out a test set that contains only entities and relations which also occur
-     in the training set.
+     This function carves out a test set that contains only entities 
+     and relations which also occur in the training set.
 
     Parameters
     ----------
     X : ndarray, size[n, 3]
         The dataset to split.
     test_size : int, float
-        If int, the number of triples in the test set. If float, the percentage of total triples.
+        If int, the number of triples in the test set. 
+        If float, the percentage of total triples.
     seed : int
         A random seed used to split the dataset.
     
@@ -34,7 +36,51 @@ def train_test_split_no_unseen(X, test_size=5000, seed=0, allow_duplication = Fa
     X_test : ndarray, size[n, 3]
         The test set
 
+    Examples
+    --------
+
+    >>> import numpy as np
+    >>> from ampligraph.evaluation import train_test_split_no_unseen
+    >>> # load your dataset to X
+    >>> X = np.array([['a', 'y', 'b'],
+    >>>               ['f', 'y', 'e'],
+    >>>               ['b', 'y', 'a'],
+    >>>               ['a', 'y', 'c'],
+    >>>               ['c', 'y', 'a'],
+    >>>               ['a', 'y', 'd'],
+    >>>               ['c', 'y', 'd'],
+    >>>               ['b', 'y', 'c'],
+    >>>               ['f', 'y', 'e']])
+    >>> # if you want to split into train/test datasets
+    >>> X_train, X_test = train_test_split_no_unseen(X, test_size=2)
+    >>> X_train
+    array([['a', 'y', 'b'],
+        ['f', 'y', 'e'],
+        ['b', 'y', 'a'],
+        ['c', 'y', 'a'],
+        ['c', 'y', 'd'],
+        ['b', 'y', 'c'],
+        ['f', 'y', 'e']], dtype='<U1')
+    >>> X_test
+    array([['a', 'y', 'c'],
+        ['a', 'y', 'd']], dtype='<U1')
+    >>> # if you want to split into train/valid/test datasets, call it 2 times
+    >>> X_train_valid, X_test = train_test_split_no_unseen(X, test_size=2)
+    >>> X_train, X_valid = train_test_split_no_unseen(X_train_valid, test_size=2)
+    >>> X_train
+    array([['a', 'y', 'b'],
+        ['b', 'y', 'a'],
+        ['c', 'y', 'd'],
+        ['b', 'y', 'c'],
+        ['f', 'y', 'e']], dtype='<U1')
+    >>> X_valid
+    array([['f', 'y', 'e'],
+        ['c', 'y', 'a']], dtype='<U1')
+    >>> X_test
+    array([['a', 'y', 'c'],
+        ['a', 'y', 'd']], dtype='<U1')
     """
+
     logger.debug('Creating train test split.')
     if type(test_size) is float:
         logger.debug('Test size is of type float. Converting to int.')
@@ -56,7 +102,7 @@ def train_test_split_no_unseen(X, test_size=5000, seed=0, allow_duplication = Fa
     tolerance = len(X) * 10
     while idx_test.shape[0] < test_size:
         i = rnd.randint(len(X))
-        if dict_subs[X[i, 0]] > 1 and dict_objs[X[i, 2]] > 1 and dict_rels[X[i, 1]] > 1:
+        if dict_subs[X[i, 0]] > 1 and dict_objs[X[i, 2]] > 1 and dict_rels[X[i,1]] > 1:
             dict_subs[X[i, 0]] -= 1
             dict_objs[X[i, 2]] -= 1
             dict_rels[X[i, 1]] -= 1
@@ -72,7 +118,8 @@ def train_test_split_no_unseen(X, test_size=5000, seed=0, allow_duplication = Fa
             if allow_duplication:
                 raise Exception("Not possible to split the dataset...")
             else:
-                raise Exception("Not possible to split the dataset. Maybe set allow_duplication = True can help...")
+                raise Exception("Not possible to split the dataset. \
+                                Maybe set allow_duplication = True can help...")
 
     logger.debug('Completed random search.')
     
