@@ -42,23 +42,37 @@ def test_select_best_model_ranking():
     assert best_params['k'] == 150
 
 
-@pytest.mark.skip(reason="Speeding up jenkins")
-def test_evaluate_performance():
+
+def test_evaluate_performance_default_protocol():
     X = load_wn18()
-    model = ComplEx(batches_count=10, seed=0, epochs=10, k=150, eta=10, loss='pairwise', loss_params={'margin': 5},
+    model = TransE(batches_count=10, seed=0, epochs=5, k=50, eta=10, loss='pairwise', loss_params={'margin': 5},
                     regularizer=None, optimizer='adagrad', optimizer_params={'lr': 0.1}, verbose=True)
-    model.fit(np.concatenate((X['train'], X['valid'])))
+    model.fit(X['train'])
 
     filter = np.concatenate((X['train'], X['valid'], X['test']))
-    ranks = evaluate_performance(X['test'][:200], model=model, filter_triples=filter, verbose=True)
+    ranks = evaluate_performance(X['test'][:200], model=model, filter_triples=filter, verbose=True, use_default_protocol=True)
+    mrr = mrr_score(ranks)
+    hits_10 = hits_at_n_score(ranks, n=10)
+    print("ranks: %s" % ranks)
+    print("MRR: %f" % mrr)
+    print("Hits@10: %f" % hits_10)
+    
+    
+def test_evaluate_performance_subj_side_corruptions():
+    X = load_wn18()
+    model = TransE(batches_count=10, seed=0, epochs=5, k=50, eta=10, loss='pairwise', loss_params={'margin': 5},
+                    regularizer=None, optimizer='adagrad', optimizer_params={'lr': 0.1}, verbose=True)
+    model.fit(X['train'])
 
+    filter = np.concatenate((X['train'], X['valid'], X['test']))
+    ranks = evaluate_performance(X['test'][:200], model=model, filter_triples=filter, verbose=True, 
+                                 use_default_protocol=False, corrupt_side='s')
     mrr = mrr_score(ranks)
     hits_10 = hits_at_n_score(ranks, n=10)
     print("ranks: %s" % ranks)
     print("MRR: %f" % mrr)
     print("Hits@10: %f" % hits_10)
 
-    # TODO: add test condition (MRR raw for WN18 and TransE should be ~ 0.335 - check papers)
 
 
 @pytest.mark.skip(reason="Speeding up jenkins")
@@ -86,7 +100,9 @@ def test_evaluate_performance_TransE():
     model.fit(np.concatenate((X['train'], X['valid'])))
 
     filter = np.concatenate((X['train'], X['valid'], X['test']))
-    ranks = evaluate_performance(X['test'][:200], model=model, filter_triples=filter, splits=1)
+    ranks = evaluate_performance(X['test'][:200], model=model, filter_triples=filter, verbose=True)
+    
+    
     # ranks = evaluate_performance(X['test'][:200], model=model)
 
     mrr = mrr_score(ranks)

@@ -866,7 +866,7 @@ class EmbeddingModel(abc.ABC):
                                               [0], 
                                               [tf.gather(self.presense_count, 0)])
             
-            sub_corruption_scores = tf.slice(self.scores_predict, 
+            subj_corruption_scores = tf.slice(self.scores_predict, 
                                              [tf.gather(self.presense_count, 0)], 
                                              [tf.gather(self.presense_count, 1)])
             

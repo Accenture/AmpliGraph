@@ -11,6 +11,35 @@ import tensorflow as tf
 
 import os
 
+def test_fit_predict_TransE_early_stopping_with_filter():
+    X = load_wn18()
+    model = TransE(batches_count=1, seed=555, epochs=7, k=50, loss='pairwise', loss_params={'margin': 5},
+                   verbose=True, optimizer='adagrad', optimizer_params={'lr':0.1})
+    X_filter = np.concatenate((X['train'], X['valid'], X['test']))
+    model.fit(X['train'], True, {'x_valid': X['valid'][::100], 
+                                 'criteria':'mrr', 
+                                 'x_filter':X_filter,
+                                 'stop_interval': 2, 
+                                 'burn_in':1, 
+                                 'check_interval':2})
+    
+    y, _ = model.predict(X['test'][:1], get_ranks=True)
+    print(y)
+    
+
+def test_fit_predict_TransE_early_stopping_without_filter():
+    X = load_wn18()
+    model = TransE(batches_count=1, seed=555, epochs=7, k=50, loss='pairwise', loss_params={'margin': 5},
+                   verbose=True, optimizer='adagrad', optimizer_params={'lr':0.1})
+    model.fit(X['train'], True, {'x_valid': X['valid'][::100], 
+                                 'criteria':'mrr',
+                                 'stop_interval': 2, 
+                                 'burn_in':1, 
+                                 'check_interval':2})
+    
+    y, _ = model.predict(X['test'][:1], get_ranks=True)
+    print(y)
+
 
 def test_fit_predict_transE():
     model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5}, 
