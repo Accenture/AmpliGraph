@@ -447,7 +447,6 @@ class EmbeddingModel(abc.ABC):
         scores_pos = self._fn(e_s_pos, e_p_pos, e_o_pos)
         
         loss = 0
-        print(self.loss.get_state('corrupt_side'))
         
         for side in self.loss.get_state('corrupt_side'):
             x_neg_tf = generate_corruptions_for_fit(x_pos_tf, 

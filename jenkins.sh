@@ -1,6 +1,4 @@
-#Make sure gcc is installed
-source /etc/profile 
-gcc --version
+#Make sure gcc is installed 
 conda --version
 pip --version
 # Cleanup old env (if any)
@@ -11,7 +9,7 @@ conda create --name ampligraph python=3.6
 source activate ampligraph
 
 # Install library
-pip install tensorflow==1.12.0
+conda install tensorflow-gpu==1.12.0
 
 pip install . -v
 
