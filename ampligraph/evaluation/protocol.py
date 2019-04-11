@@ -523,11 +523,13 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     if filter_triples is not None:
         logger.debug('Getting filtered triples.')
         filter_triples = to_idx(filter_triples, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
-
+        
+    eval_dict = {}
+    eval_dict['default_protocol'] = False
+    
     if use_default_protocol:
         corrupt_side = 's+o'
-
-    eval_dict = {}
+        eval_dict['default_protocol'] = True
 
     if rank_against_ent is not None:
         idx_entities = np.asarray([idx for uri, idx in model.ent_to_idx.items() if uri in rank_against_ent])
@@ -547,12 +549,9 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         if use_default_protocol :
             ranks.extend(list(rank)) 
             continue
-        elif corrupt_side=='s+o':
-            rank=np.sum(rank)-1
             
         ranks.append(rank)
             
-    print(ranks)
     model.end_evaluation()
     logger.debug('Ending Evaluation')
 

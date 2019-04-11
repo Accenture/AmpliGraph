@@ -84,6 +84,8 @@ DEFAULT_REGULARIZER = None
 # Default value for verbose
 DEFAULT_VERBOSE = False
 
+# Flag to indicate whether to use default protocol for eval - for faster evaluation
+DEFAULT_PROTOCOL_EVAL = False
 #######################################################################################################
 
 def register_model(name, external_params=[], class_params={}):
@@ -532,14 +534,7 @@ class EmbeddingModel(abc.ABC):
             ranks = []
 
             for x_test_triple in self.x_valid:
-                #pc = self.sess_train.run([self.presense_count], feed_dict={self.X_test_tf: [x_test_triple]})
-                #print('count:', pc)
-                #pc = self.sess_train.run([self.scores_predict], feed_dict={self.X_test_tf: [x_test_triple]})
-                #print('scores:', len(pc))
-                #print('scores:', pc[0].shape)
                 rank_triple = self.sess_train.run(self.rank, feed_dict={self.X_test_tf: [x_test_triple]})
-                if self.eval_config['corrupt_side'] == 's+o':
-                    rank_triple = np.sum(rank_triple)-1
                 ranks.append(rank_triple)
             if self.early_stopping_criteria == 'hits10':
                 current_test_value = hits_at_n_score(ranks, 10)
@@ -772,7 +767,8 @@ class EmbeddingModel(abc.ABC):
         self.is_filtered = True
 
     def configure_evaluation_protocol(self, config={'corruption_entities': DEFAULT_CORRUPTION_ENTITIES, \
-                                                    'corrupt_side':DEFAULT_CORRUPT_SIDE}):
+                                                    'corrupt_side':DEFAULT_CORRUPT_SIDE,
+                                                    'default_protocol':DEFAULT_PROTOCOL_EVAL}):
         """ Set the configuration for evaluation
         
         Parameters
@@ -783,6 +779,7 @@ class EmbeddingModel(abc.ABC):
             - **corruption_entities**: List of entities to be used for corruptions. If ``all``, it uses all entities (default: ``all``)
             - **corrupt_side**: Specifies which side to corrupt. ``s``, ``o``, ``s+o`` (default)
             
+            - **default_protocol**: Boolean flag to indicate whether to use default protocol for evaluation. This computes scores for corruptions of subjects and objects and ranks them separately. This could have been done by evaluating s and o separately and then ranking but it slows down the performance. Hence this mode is used where s+o corruptions are generated at once but ranked separately for speed up.(default: False)
         """
         self.eval_config = config
 
@@ -856,10 +853,17 @@ class EmbeddingModel(abc.ABC):
         e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
         self.score_positive = self._fn(e_s, e_p, e_o)
         
-        if corrupt_side == 's+o' and self.is_filtered:
-            #get the number of filtered corruptions present for object and subject
-            self.presense_mask = tf.reshape(self.presense_mask, (2, -1))
-            self.presense_count = tf.reduce_sum(self.presense_mask, 1)
+        if self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL):
+            #For default protocol, the corrupt side is always s+o
+            corrupt_side == 's+o' 
+            
+            if self.is_filtered: 
+                #get the number of filtered corruptions present for object and subject
+                self.presense_mask = tf.reshape(self.presense_mask, (2, -1))
+                self.presense_count = tf.reduce_sum(self.presense_mask, 1)
+            else:
+                self.presense_count = tf.stack([tf.shape(self.scores_predict)[0]//2,
+                                                tf.shape(self.scores_predict)[0]//2])
             
             #Get the corresponding corruption triple scores
             obj_corruption_scores = tf.slice(self.scores_predict,
