@@ -16,17 +16,13 @@ DEFAULT_ALPHA_ADVERSARIAL = 0.5
 # Default margin used by margin based adversarial loss
 DEFAULT_MARGIN_ADVERSARIAL = 3
 
-DEFAULT_SIDE_MULTICLASS = ['s', 'o']
-
-DEFAULT_CLASS_PARAMS = {'require_same_size_pos_neg': True, 'corrupt_side':['s+o'], }
+DEFAULT_CLASS_PARAMS = {'require_same_size_pos_neg': True, }
 
 def register_loss(name, external_params=[], class_params=DEFAULT_CLASS_PARAMS):
     def populate_class_params():
         LOSS_REGISTRY[name].class_params = {}
         LOSS_REGISTRY[name].class_params['require_same_size_pos_neg'] = class_params.get('require_same_size_pos_neg', 
                                                                                DEFAULT_CLASS_PARAMS['require_same_size_pos_neg'])
-        LOSS_REGISTRY[name].class_params['corrupt_side'] = class_params.get('corrupt_side', 
-                                                                               DEFAULT_CLASS_PARAMS['corrupt_side'])
         
     
     def insert_in_registry(class_handle):
@@ -385,7 +381,6 @@ class SelfAdversarialLoss(Loss):
         eta: int
             number of negatives
         loss_params : dict
-        loss_params : dict
             Dictionary of loss-specific hyperparams:
 
             - **'margin'**: (float). Margin to be used for loss computation (default: 1)
@@ -441,14 +436,29 @@ class SelfAdversarialLoss(Loss):
         return loss
     
     
-@register_loss("multiclass_nll", ['corrupt_side'], {'require_same_size_pos_neg':False, 'corrupt_side':DEFAULT_SIDE_MULTICLASS})   
+@register_loss("multiclass_nll", [], {'require_same_size_pos_neg':False})   
 class NLLMulticlass(Loss):
     """ Multiclass NLL Loss
     
-        Introduced in :cite: `chen2015`
+        Introduced in :cite: `chen2015` where both the subject and objects are corrupted (to use it in this way pass corrupt_sides = ['s', 'o'] to embedding_model_params) . 
+        This loss was re-engineered in :cite: `kadlecBK17` where only the object was corrupted to get improved performance. (to use it in this way pass corrupt_sides = 'o' to embedding_model_params)
+        
+        ..math::
+        
+            \mathcal{L(X)} = -\sum_{x_{e_1,e_2,r_k} \in X} log\,p(e_2|e_1,r_k) -\sum_{x_{e_1,e_2,r_k} \in X} log\,p(e_1|r_k, e_2)
     """
-    def __init__(self, eta, hyperparam_dict, verbose=False):
-        super().__init__(eta, hyperparam_dict, verbose)
+    def __init__(self, eta, loss_params={}, verbose=False):
+        """Initialize Loss
+
+        Parameters
+        ----------
+        eta: int
+            number of negatives
+        loss_params : dict
+            Dictionary of loss-specific hyperparams:
+
+        """
+        super().__init__(eta, loss_params, verbose)
     
     def _init_hyperparams(self, hyperparam_dict):
         """ Verifies and stores the hyperparameters needed by the algorithm.
@@ -458,10 +468,8 @@ class NLLMulticlass(Loss):
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
         """
-        self._loss_parameters['corrupt_side'] = hyperparam_dict.get('corrupt_side', DEFAULT_SIDE_MULTICLASS)
-        NLLMulticlass.class_params['corrupt_side'] = self._loss_parameters['corrupt_side']
+        pass
         
-    
     
     def _apply(self, scores_pos, scores_neg):
         """ Apply the loss function.

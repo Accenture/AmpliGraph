@@ -42,7 +42,7 @@ DEFAULT_NORMALIZE_EMBEDDINGS = False
 
 
 # Default side to corrupt for evaluation
-DEFAULT_CORRUPT_SIDE = 's+o'
+DEFAULT_CORRUPT_SIDE_EVAL = 's+o'
 
 # default hyperparameter for transE
 DEFAULT_NORM_TRANSE = 1
@@ -86,6 +86,9 @@ DEFAULT_VERBOSE = False
 
 # Flag to indicate whether to use default protocol for eval - for faster evaluation
 DEFAULT_PROTOCOL_EVAL = False
+
+# Specifies how to generate corruptions for training - default does s and o together and applies the loss
+DEFAULT_CORRUPT_SIDE_TRAIN = ['s+o']
 #######################################################################################################
 
 def register_model(name, external_params=[], class_params={}):
@@ -455,7 +458,11 @@ class EmbeddingModel(abc.ABC):
         
         loss = 0
         
-        for side in self.loss.get_state('corrupt_side'):
+        corruption_sides = self.embedding_model_params.get('corrupt_sides', DEFAULT_CORRUPT_SIDE_TRAIN)
+        if not isinstance(corruption_sides, list):
+            corruption_sides = [corruption_sides]
+            
+        for side in corruption_sides:
             x_neg_tf = generate_corruptions_for_fit(x_pos_tf, 
                                                     entities_list=entities_list, 
                                                     eta=self.eta, 
@@ -507,7 +514,7 @@ class EmbeddingModel(abc.ABC):
             self.eval_config['corruption_entities'] = np.asarray([idx for uri, idx in self.ent_to_idx.items() if uri in self.eval_config['corruption_entities']])
         
             
-        self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', DEFAULT_CORRUPT_SIDE)
+        self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
 
         self.early_stopping_best_value = INITIAL_EARLY_STOPPING_CRITERIA_VALUE
         self.early_stopping_stop_counter = 0
@@ -640,7 +647,7 @@ class EmbeddingModel(abc.ABC):
         
         if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
             logger.warn('Number of unique entities are large: {} entities'.format(len(self.ent_to_idx)))
-            logger.warn("If you get memory issues don't using early stopping or use reduced set for 'corruption_entities' for early stopping corruption generation!!!")
+            logger.warn("If you get memory issues don't using early stopping or use reduced set for 'corruption_entities' for early stopping corruption generation!")
             
 
         # This is useful when we re-fit the same model (e.g. retraining in model selection)
@@ -690,7 +697,7 @@ class EmbeddingModel(abc.ABC):
                 loss_batch, _ = self.sess_train.run([loss, train])
 
                 if np.isnan(loss_batch) or np.isinf(loss_batch):
-                    msg = 'Loss is {}. Please change the hyperparameters!!!'.format(loss_batch)
+                    msg = 'Loss is {}. Please change the hyperparameters.'.format(loss_batch)
                     logger.error(msg)
                     raise ValueError(msg)
 
@@ -774,7 +781,7 @@ class EmbeddingModel(abc.ABC):
         self.is_filtered = True
 
     def configure_evaluation_protocol(self, config={'corruption_entities': DEFAULT_CORRUPTION_ENTITIES, \
-                                                    'corrupt_side':DEFAULT_CORRUPT_SIDE,
+                                                    'corrupt_side':DEFAULT_CORRUPT_SIDE_EVAL,
                                                     'default_protocol':DEFAULT_PROTOCOL_EVAL}):
         """ Set the configuration for evaluation
         
@@ -837,7 +844,7 @@ class EmbeddingModel(abc.ABC):
 
         self.corruption_entities_tf = tf.constant(corruption_entities, dtype=tf.int64)
 
-        corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE)
+        corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
         self.out_corr, self.out_corr_prime = generate_corruptions_for_eval(self.X_test_tf,
                                                                            self.corruption_entities_tf,
                                                                            corrupt_side,
@@ -1096,7 +1103,7 @@ class RandomBaseline(EmbeddingModel):
             else:
                 corruption_length = len(corruption_entities)
 
-            corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE)
+            corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
             if corrupt_side == 's+o':
                 # since we are corrupting both subject and object
                 corruption_length *= 2
@@ -1169,7 +1176,8 @@ class TransE(EmbeddingModel):
                  seed=DEFAULT_SEED,
                  embedding_model_params={'norm':DEFAULT_NORM_TRANSE, 
                                          'normalize_ent_emb':DEFAULT_NORMALIZE_EMBEDDINGS,
-                                         'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
+                                         'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES,
+                                         'corrupt_sides': DEFAULT_CORRUPT_SIDE_TRAIN},
                  optimizer=DEFAULT_OPTIM, 
                  optimizer_params={'lr':DEFAULT_LR},
                  loss=DEFAULT_LOSS, 
@@ -1201,7 +1209,7 @@ class TransE(EmbeddingModel):
             - **'norm'** (int): the norm to be used in the scoring function (1 or 2-norm - default: 1).
             - **'normalize_ent_emb'** (bool): flag to indicate whether to normalize entity embeddings after each batch update (default: False).
             - **negative_corruption_entities** : entities to be used for generation of corruptions while training. It can take the following values : ``all`` (default: all entities), ``batch`` (entities present in each batch), list of entities or an int (which indicates how many entities that should be used for corruption generation).
-
+            - **corrupt_sides** : Specifies how to generate corruptions for training. Takes values `s`, `o`, `s+o` or any combination passed as a list
             Example: ``embedding_model_params={'norm': 1, 'normalize_ent_emb': False}``
 
 
@@ -1402,7 +1410,8 @@ class DistMult(EmbeddingModel):
                  batches_count=DEFAULT_BATCH_COUNT, 
                  seed=DEFAULT_SEED,
                  embedding_model_params={'normalize_ent_emb':DEFAULT_NORMALIZE_EMBEDDINGS,
-                                         'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
+                                         'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES,
+                                         'corrupt_sides': DEFAULT_CORRUPT_SIDE_TRAIN},
                  optimizer=DEFAULT_OPTIM, 
                  optimizer_params={'lr':DEFAULT_LR},
                  loss=DEFAULT_LOSS, 
@@ -1433,8 +1442,9 @@ class DistMult(EmbeddingModel):
 
             - **'normalize_ent_emb'** (bool): flag to indicate whether to normalize entity embeddings after each batch update (default: False).
             - **'negative_corruption_entities'** - Entities to be used for generation of corruptions while training. It can take the following values : ``all`` (default: all entities), ``batch`` (entities present in each batch), list of entities or an int (which indicates how many entities that should be used for corruption generation).
+            - **corrupt_sides** : Specifies how to generate corruptions for training. Takes values `s`, `o`, `s+o` or any combination passed as a list
 
-            Example: ``embedding_model_params={'norm': 1, 'normalize_ent_emb': False}``
+            Example: ``embedding_model_params={'normalize_ent_emb': False}``
 
         optimizer : string
             The optimizer used to minimize the loss function. Choose between 'sgd',
@@ -1633,7 +1643,8 @@ class ComplEx(EmbeddingModel):
                  epochs=DEFAULT_EPOCH, 
                  batches_count=DEFAULT_BATCH_COUNT, 
                  seed=DEFAULT_SEED,
-                 embedding_model_params={'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
+                 embedding_model_params={'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES,
+                                         'corrupt_sides': DEFAULT_CORRUPT_SIDE_TRAIN},
                  optimizer=DEFAULT_OPTIM, 
                  optimizer_params={'lr':DEFAULT_LR},
                  loss=DEFAULT_LOSS, 
@@ -1661,6 +1672,7 @@ class ComplEx(EmbeddingModel):
             ComplEx-specific hyperparams:
             
             - **'negative_corruption_entities'** - Entities to be used for generation of corruptions while training. It can take the following values : ``all`` (default: all entities), ``batch`` (entities present in each batch), list of entities or an int (which indicates how many entities that should be used for corruption generation).
+            - **corrupt_sides** : Specifies how to generate corruptions for training. Takes values `s`, `o`, `s+o` or any combination passed as a list
 
         optimizer : string
             The optimizer used to minimize the loss function. Choose between 'sgd',
@@ -1872,7 +1884,8 @@ class HolE(ComplEx):
                  epochs=DEFAULT_EPOCH, 
                  batches_count=DEFAULT_BATCH_COUNT, 
                  seed=DEFAULT_SEED,
-                 embedding_model_params={'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
+                 embedding_model_params={'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES,
+                                         'corrupt_sides': DEFAULT_CORRUPT_SIDE_TRAIN},
                  optimizer=DEFAULT_OPTIM, 
                  optimizer_params={'lr':DEFAULT_LR},
                  loss=DEFAULT_LOSS, 
@@ -1900,6 +1913,7 @@ class HolE(ComplEx):
             HolE-specific hyperparams: 
             
             - **negative_corruption_entities** - Entities to be used for generation of corruptions while training. It can take the following values : ``all`` (default: all entities), ``batch`` (entities present in each batch), list of entities or an int (which indicates how many entities that should be used for corruption generation).
+            - **corrupt_sides** : Specifies how to generate corruptions for training. Takes values `s`, `o`, `s+o` or any combination passed as a list
             
         optimizer : string
             The optimizer used to minimize the loss function. Choose between 'sgd',
