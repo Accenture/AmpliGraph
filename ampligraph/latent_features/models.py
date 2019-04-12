@@ -236,6 +236,12 @@ class EmbeddingModel(abc.ABC):
             raise ValueError(msg)
 
         self.optimizer_params = optimizer_params
+        
+        if verbose:
+            logger.info('\n------- Optimizer ------')
+            logger.info('Name : {}'.format(optimizer))
+            logger.info('Learning rate : {}'.format(self.optimizer_params.get('lr', DEFAULT_LR)))
+        
         if optimizer == "adagrad":
             self.optimizer = tf.train.AdagradOptimizer(learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
         elif optimizer == "adam":
@@ -247,6 +253,7 @@ class EmbeddingModel(abc.ABC):
             self.optimizer = tf.train.MomentumOptimizer(learning_rate=self.optimizer_params.get('lr', DEFAULT_LR),
                                                         momentum=self.optimizer_params.get('momentum',
                                                                                            DEFAULT_MOMENTUM))
+            logger.info('Momentum : {}'.format(self.optimizer_params.get('momentum', DEFAULT_MOMENTUM)))
         else:
             msg = 'Unsupported optimizer: {}'.format(optimizer)
             logger.error(msg)
@@ -424,16 +431,16 @@ class EmbeddingModel(abc.ABC):
                                                                        DEFAULT_CORRUPTION_ENTITIES)
         
         if negative_corruption_entities=='all':
-            logger.info('Using all entities for generation of corruptions')
+            logger.debug('Using all entities for generation of corruptions')
             entities_size = len(self.ent_to_idx)
         elif negative_corruption_entities=='batch':
             #default is batch (entities_size=0 and entities_list=None)
-            logger.info('Using batch entities for generation of corruptions')
+            logger.debug('Using batch entities for generation of corruptions')
         elif isinstance(negative_corruption_entities, list):
-            logger.info('Using the supplied entities for generation of corruptions')
+            logger.debug('Using the supplied entities for generation of corruptions')
             entities_list=tf.squeeze(tf.constant(negative_corruption_entities, dtype=tf.int32))
         elif isinstance(negative_corruption_entities, int):
-            logger.info('Using first {} entities for generation of corruptions'.format(negative_corruption_entities))
+            logger.debug('Using first {} entities for generation of corruptions'.format(negative_corruption_entities))
             entities_size = negative_corruption_entities
             
 
@@ -567,9 +574,9 @@ class EmbeddingModel(abc.ABC):
 
             if self.verbose:
                 msg = 'Current best:{}'.format(self.early_stopping_best_value)
-                logger.info(msg)
+                logger.debug(msg)
                 msg = 'Current:{}'.format(current_test_value)
-                logger.info(msg)
+                logger.debug(msg)
 
         return False
     
@@ -676,7 +683,8 @@ class EmbeddingModel(abc.ABC):
             self.sess_train.run(normalize_rel_emb_op)
             self.sess_train.run(normalize_ent_emb_op)
 
-        for epoch in tqdm(range(1, self.epochs + 1), disable=(not self.verbose), unit='epoch'):
+        epoch_iterator_with_progress = tqdm(range(1, self.epochs + 1), disable=(not self.verbose), unit='epoch')
+        for epoch in epoch_iterator_with_progress:
             losses = []
             for batch in range(1, self.batches_count + 1):
                 loss_batch, _ = self.sess_train.run([loss, train])
@@ -690,9 +698,9 @@ class EmbeddingModel(abc.ABC):
                 if self.embedding_model_params.get('normalize_ent_emb', DEFAULT_NORMALIZE_EMBEDDINGS):
                     self.sess_train.run(normalize_ent_emb_op)
             if self.verbose:
-                msg = 'epoch: {}: mean loss: {:10f}'.format(epoch, sum(losses) / (batch_size * self.batches_count))
-                logger.info(msg)
-                tqdm.write(msg)
+                msg = 'Average Loss: {:10f}'.format(sum(losses) / (batch_size * self.batches_count))
+                logger.debug(msg)
+                epoch_iterator_with_progress.set_description(msg)
 
             if early_stopping:
                 if self._perform_early_stopping_test(epoch):

@@ -66,14 +66,10 @@ class Loss(abc.ABC):
             self._loss_parameters['eta'] = eta
             self._init_hyperparams(hyperparam_dict)
             if verbose:
-                print('------ Loss-----')
-                logger.info('Name:{}'.format(self.name))
-                print('Name:', self.name)
-                logger.info('Parameters:')
-                print('Parameters:')
+                logger.info('\n--------- Loss ---------')
+                logger.info('Name : {}'.format(self.name))
                 for key, value in self._loss_parameters.items():
-                    logger.info('\t{}: '.format(key, value))
-                    print("  ", key, ": ", value)
+                    logger.info('{} : {}'.format(key, value))
         except KeyError as e:
             msg = 'Some of the hyperparams for loss were not passed to the loss function.\n{}'.format(e)
             logger.error(msg)
