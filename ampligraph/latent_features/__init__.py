@@ -12,12 +12,11 @@ from .loss_functions import Loss, AbsoluteMarginLoss, SelfAdversarialLoss, NLLLo
     NLLMulticlass, LOSS_REGISTRY
 from .regularizers import Regularizer, LPRegularizer, REGULARIZER_REGISTRY
 from .misc import get_entity_triples
-from .model_utils import save_model, restore_model, create_tensorboard_visualizations
-
+from ..utils import save_model, restore_model
 
 __all__ = ['LOSS_REGISTRY', 'REGULARIZER_REGISTRY', 'MODEL_REGISTRY',
            'EmbeddingModel', 'TransE', 'DistMult', 'ComplEx', 'HolE', 'RandomBaseline',
            'Loss', 'AbsoluteMarginLoss', 'SelfAdversarialLoss', 'NLLLoss', 'PairwiseLoss', 'NLLMulticlass',
-           'Regularizer', 'LPRegularizer', 'get_entity_triples','save_model', 'restore_model']
+           'Regularizer', 'LPRegularizer', 'get_entity_triples', 'save_model', 'restore_model']
 
 
