@@ -70,7 +70,7 @@ def save_model(model, model_name_path=None):
                  {}'.format(model.all_params, model.is_fitted))
 
     if model_name_path is None:
-        model_name_path = DEFAULT_MODEL_NAMES.format(strftime("%Y_%m_%d_%H:%M:%S", gmtime()))
+        model_name_path = DEFAULT_MODEL_NAMES.format(strftime("%Y_%m_%d-%H_%M_%S", gmtime()))
 
     with open(model_name_path, 'wb') as fw:
         pickle.dump(obj, fw)
