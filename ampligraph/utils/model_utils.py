@@ -24,7 +24,7 @@ def save_model(model, model_name_path=None):
         Examples
         --------
         >>> import numpy as np
-        >>> from ampligraph.latent_features import ComplEx, save_model, restore_model
+        >>> from ampligraph.utils import ComplEx, save_model, restore_model
         >>> X = np.array([['a', 'y', 'b'],
         >>>               ['b', 'y', 'a'],
         >>>               ['a', 'y', 'c'],
@@ -82,7 +82,7 @@ def restore_model(model_name_path=None):
 
         Examples
         --------
-        >>> from ampligraph.latent_features import restore_model
+        >>> from ampligraph.utils import restore_model
         >>> import numpy as np
         >>> EXAMPLE_NAME = 'helloworld.pkl'
         >>> restored_model = restore_model(model_name_path = EXAMPLE_NAME)
