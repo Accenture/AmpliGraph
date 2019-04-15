@@ -159,10 +159,11 @@ class EmbeddingModel(abc.ABC):
         loss : string
             The type of loss function to use during training.
 
-            - 'pairwise'  the model will use pairwise margin-based loss function.
-            - 'nll' the model will use negative loss likelihood.
-            - 'absolute_margin' the model will use absolute margin likelihood.
-            - 'self_adversarial' the model will use adversarial sampling loss function.
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            - ``multiclass_nll`` the model will use multiclass nll loss. Switch to multiclass loss defined in :cite:`chen2015` by passing 'corrupt_sides' as ['s','o'] to embedding_model_params. To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params
 
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
@@ -1229,10 +1230,11 @@ class TransE(EmbeddingModel):
         loss : string
             The type of loss function to use during training.
 
-            - 'pairwise'  the model will use pairwise margin-based loss function.
-            - 'nll' the model will use negative loss likelihood.
-            - 'absolute_margin' the model will use absolute margin likelihood.
-            - 'self_adversarial' the model will use adversarial sampling loss function.
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            - ``multiclass_nll`` the model will use multiclass nll loss. Switch to multiclass loss defined in :cite:`chen2015` by passing 'corrupt_sides' as ['s','o'] to embedding_model_params. To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params
             
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
@@ -1460,11 +1462,12 @@ class DistMult(EmbeddingModel):
         loss : string
             The type of loss function to use during training.
 
-            - 'pairwise'  the model will use pairwise margin-based loss function.
-            - 'nll' the model will use negative loss likelihood.
-            - 'absolute_margin' the model will use absolute margin likelihood.
-            - 'self_adversarial' the model will use adversarial sampling loss function.
-
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            - ``multiclass_nll`` the model will use multiclass nll loss. Switch to multiclass loss defined in :cite:`chen2015` by passing 'corrupt_sides' as ['s','o'] to embedding_model_params. To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params
+            
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
             documentation for additional details.
@@ -1688,11 +1691,12 @@ class ComplEx(EmbeddingModel):
         loss : string
             The type of loss function to use during training.
 
-            - 'pairwise'  the model will use pairwise margin-based loss function.
-            - 'nll' the model will use negative loss likelihood.
-            - 'absolute_margin' the model will use absolute margin likelihood.
-            - 'self_adversarial' the model will use adversarial sampling loss function.
-
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            - ``multiclass_nll`` the model will use multiclass nll loss. Switch to multiclass loss defined in :cite:`chen2015` by passing 'corrupt_sides' as ['s','o'] to embedding_model_params. To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params
+            
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
             documentation for additional details.
@@ -1929,11 +1933,12 @@ class HolE(ComplEx):
         loss : string
             The type of loss function to use during training.
 
-            - 'pairwise'  the model will use pairwise margin-based loss function.
-            - 'nll' the model will use negative loss likelihood.
-            - 'absolute_margin' the model will use absolute margin likelihood.
-            - 'self_adversarial' the model will use adversarial sampling loss function.
-
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            - ``multiclass_nll`` the model will use multiclass nll loss. Switch to multiclass loss defined in :cite:`chen2015` by passing 'corrupt_sides' as ['s','o'] to embedding_model_params. To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params
+            
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
             documentation for additional details.
