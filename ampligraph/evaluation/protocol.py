@@ -385,10 +385,17 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
 
 
 def _convert_to_idx(X, ent_to_idx, rel_to_idx, obj_to_idx):
-    x_idx_s = np.vectorize(ent_to_idx.get)(X[:, 0])
-    x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
-    x_idx_o = np.vectorize(obj_to_idx.get)(X[:, 2])
-    logger.debug('Returning ids.')
+    try:
+        x_idx_s = np.vectorize(ent_to_idx.get)(X[:, 0])
+        x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
+        x_idx_o = np.vectorize(obj_to_idx.get)(X[:, 2])
+        logger.debug('Returning ids.')
+    except TypeError:
+        msg='Unseen entities found in test/validation set. Please filter the data using filter_unseen_entities function.'
+        logger.error(msg)
+        raise TypeError(msg)
+        
+        
     return np.dstack([x_idx_s, x_idx_p, x_idx_o]).reshape((-1, 3))
 
 
@@ -555,7 +562,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     model.end_evaluation()
     logger.debug('Ending Evaluation')
 
-    logger.info('Returning ranks of positive test triples obtained by corrupting {}.'.format(corrupt_side))
+    logger.debug('Returning ranks of positive test triples obtained by corrupting {}.'.format(corrupt_side))
     return ranks
 
 
@@ -600,8 +607,7 @@ def filter_unseen_entities(X, model, verbose=False, strict=True):
 
             msg = 'Removing {} triples containing unseen entities. '.format(np.sum(mask_unseen))
             if verbose:
-                logger.info(msg)
-                print(msg)
+                logger.debug(msg)
             logger.debug(msg)
             return X[~mask_unseen]
 
@@ -879,42 +885,52 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
         selection_dataset = X['valid']
 
     for model_params in tqdm(model_params_combinations, disable=(not verbose)):
-        model = model_class(**model_params)
-        model.fit(X['train'], early_stopping, early_stopping_params)
+        try:
+            model = model_class(**model_params)
+            model.fit(X['train'], early_stopping, early_stopping_params)
 
-        ranks = evaluate_performance(selection_dataset, model=model,
-                                     filter_triples=X_filter, verbose=verbose,
-                                     rank_against_ent=rank_against_ent,
-                                     use_default_protocol=use_default_protocol,
-                                     corrupt_side=corrupt_side)
+            ranks = evaluate_performance(selection_dataset, model=model,
+                                         filter_triples=X_filter, verbose=verbose,
+                                         rank_against_ent=rank_against_ent,
+                                         use_default_protocol=use_default_protocol,
+                                         corrupt_side=corrupt_side)
 
-        curr_mrr = mrr_score(ranks)
-        mr = mr_score(ranks)
-        hits_1 = hits_at_n_score(ranks, n=1)
-        hits_3 = hits_at_n_score(ranks, n=3)
-        hits_10 = hits_at_n_score(ranks, n=10)
-        info = 'mr:{} mrr: {} hits 1: {} hits 3: {} hits 10: {}, model: {}, params: {}'.format(mr, curr_mrr, hits_1,
-                                                                                               hits_3, hits_10,
-                                                                                               type(model).__name__,
-                                                                                               model_params)
-        logger.debug(info)
-        if verbose:
-            logger.info(info)
+            curr_mrr = mrr_score(ranks)
+            mr = mr_score(ranks)
+            hits_1 = hits_at_n_score(ranks, n=1)
+            hits_3 = hits_at_n_score(ranks, n=3)
+            hits_10 = hits_at_n_score(ranks, n=10)
+            info = 'mr:{} mrr: {} hits 1: {} hits 3: {} hits 10: {}, model: {}, params: {}'.format(mr, curr_mrr, hits_1,
+                                                                                                   hits_3, hits_10,
+                                                                                                   type(model).__name__,
+                                                                                                   model_params)
+            logger.debug(info)
+            if verbose:
+                logger.info(info)
 
-        if curr_mrr > best_mrr_train:
-            best_mrr_train = curr_mrr
-            best_model = model
-            best_params = model_params
+            if curr_mrr > best_mrr_train:
+                best_mrr_train = curr_mrr
+                best_model = model
+                best_params = model_params
+        except Exception as e:
+            if verbose:
+                logger.error('Exception occured for parameters:{}'.format(model_params))
+                logger.error(str(e))
+            else:
+                pass
+    
+    ranks_test =[]
+    mrr_test = 0
+    if best_model is not None:
+        # Retraining
+        best_model.fit(np.concatenate((X['train'], X['valid'])))
 
-    # Retraining
-    best_model.fit(np.concatenate((X['train'], X['valid'])))
+        ranks_test = evaluate_performance(X['test'], model=best_model,
+                                          filter_triples=X_filter, verbose=verbose,
+                                          rank_against_ent=rank_against_ent,
+                                          use_default_protocol=use_default_protocol,
+                                          corrupt_side=corrupt_side)
 
-    ranks_test = evaluate_performance(X['test'], model=best_model,
-                                      filter_triples=X_filter, verbose=verbose,
-                                      rank_against_ent=rank_against_ent,
-                                      use_default_protocol=use_default_protocol,
-                                      corrupt_side=corrupt_side)
-
-    mrr_test = mrr_score(ranks_test)
+        mrr_test = mrr_score(ranks_test)
 
     return best_model, best_params, best_mrr_train, ranks_test, mrr_test

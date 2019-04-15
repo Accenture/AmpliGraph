@@ -50,15 +50,10 @@ class Regularizer(abc.ABC):
         try:
             self._init_hyperparams(hyperparam_dict)
             if verbose:
-                print('------ Regularizer-----')
-                logger.info('------ Regularizer-----')
-                print('Name:', self.name)
-                logger.info('Name:{}'.format(self.name))
-                print('Parameters:')
-                logger.info('Parameters:')
+                logger.info('\n------ Regularizer -----')
+                logger.info('Name : {}'.format(self.name))
                 for key, value in self._regularizer_parameters.items():
-                    logger.info('\t{}:{}\n'.format(key, value))
-                    print("  ", key, ": ", value)
+                    logger.info('{} : {}'.format(key, value))
 
         except KeyError as e:
             msg = 'Some of the hyperparams for regularizer were not passed.\n{}'.format(e)

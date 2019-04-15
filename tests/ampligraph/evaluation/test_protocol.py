@@ -34,15 +34,44 @@ def test_select_best_model_ranking():
             "lr": [0.1, 0.01, 0.001]
         }
     }
-    best_model, best_params, best_mrr_train, ranks_test, mrr_test = select_best_model_ranking(model_class, X,
-                                                                                              param_grid,
-                                                                                              filter_retrain=True,
-                                                                                              eval_splits=50)
+    best_model, best_params, best_mrr_train, ranks_test, mrr_test = select_best_model_ranking(model_class, 
+                                                                                              X,
+                                                                                              param_grid)
     print(type(best_model).__name__, best_params, best_mrr_train, mrr_test)
     assert best_params['k'] == 150
 
 
+def test_select_best_model_ranking_inf_skip():
+    X = load_wn18()
+    X['test'] = X['test'][::1000]
+    model_class = ComplEx
+    param_grid = in_dict = {
+        "batches_count": [10],
+        "seed": 0,
+        "epochs": [1],
+        "k": [150],
+        "eta": [10],
+        "loss": ["self_adversarial"],
+        "loss_params": {
+            
+        },
+        "embedding_model_params": {
+        },
+        "regularizer": [None],
 
+        "regularizer_params": {
+        },
+        "optimizer": ["adagrad"],
+        "optimizer_params": {
+            "lr": [1000, 0.1]
+        },
+        'verbose':True
+    }
+    best_model, best_params, best_mrr_train, ranks_test, mrr_test = select_best_model_ranking(model_class, 
+                                                                                              X,
+                                                                                              param_grid)
+    assert(best_params["optimizer_params"]["lr"] == 0.1)
+    
 def test_evaluate_performance_default_protocol_without_filter():
     wn18 = load_wn18()
 
