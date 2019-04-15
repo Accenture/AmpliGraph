@@ -1210,11 +1210,9 @@ class TransE(EmbeddingModel):
             - **'normalize_ent_emb'** (bool): flag to indicate whether to normalize entity embeddings after each batch update (default: False).
             - **negative_corruption_entities** : entities to be used for generation of corruptions while training. It can take the following values : ``all`` (default: all entities), ``batch`` (entities present in each batch), list of entities or an int (which indicates how many entities that should be used for corruption generation).
             - **corrupt_sides** : Specifies how to generate corruptions for training. Takes values `s`, `o`, `s+o` or any combination passed as a list
+            
             Example: ``embedding_model_params={'norm': 1, 'normalize_ent_emb': False}``
 
-
-            
-            
         optimizer : string
             The optimizer used to minimize the loss function. Choose between 'sgd',
             'adagrad', 'adam', 'momentum'.

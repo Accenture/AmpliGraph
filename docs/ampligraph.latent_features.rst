@@ -100,6 +100,7 @@ and they can be thus used :ref:`during model selection <eval>`.
     NLLLoss
     AbsoluteMarginLoss
     SelfAdversarialLoss
+    NLLMulticlass
     
 .. _ref-reg:
 
