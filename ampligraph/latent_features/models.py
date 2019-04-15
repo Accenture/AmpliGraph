@@ -218,8 +218,9 @@ class EmbeddingModel(abc.ABC):
         self.regularizer_params = regularizer_params
         self.batches_count = batches_count
         if batches_count == 1:
-            logger.warn(
-                'batches_count=1. All triples will be processed in the same batch. This may introduce memory issues.')
+            logger.warning(
+                'All triples will be processed in the same batch (batches_count=1). '
+                'This is likely to introduce memory issues when processing large graphs.')
 
 
         try:
@@ -438,7 +439,7 @@ class EmbeddingModel(abc.ABC):
             logger.debug('Using all entities for generation of corruptions')
             entities_size = len(self.ent_to_idx)
         elif negative_corruption_entities=='batch':
-            #default is batch (entities_size=0 and entities_list=None)
+            # default is batch (entities_size=0 and entities_list=None)
             logger.debug('Using batch entities for generation of corruptions')
         elif isinstance(negative_corruption_entities, list):
             logger.debug('Using the supplied entities for generation of corruptions')
@@ -446,7 +447,6 @@ class EmbeddingModel(abc.ABC):
         elif isinstance(negative_corruption_entities, int):
             logger.debug('Using first {} entities for generation of corruptions'.format(negative_corruption_entities))
             entities_size = negative_corruption_entities
-            
 
         if self.loss.get_state('require_same_size_pos_neg'):
             logger.debug('Requires the same size of postive and negative')
@@ -601,7 +601,6 @@ class EmbeddingModel(abc.ABC):
         #set is_fitted to true to indicate that the model fitting is completed
         self.is_fitted = True
         
-
     def fit(self, X, early_stopping=False, early_stopping_params={}):
         """Train an EmbeddingModel (with optional early stopping).
 
@@ -621,11 +620,14 @@ class EmbeddingModel(abc.ABC):
 
                 - **'x_valid'**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
                 - **'criteria'**: string : criteria for early stopping 'hits10', 'hits3', 'hits1' or 'mrr'(default).
-                - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr'). Note this will affect training time (no filter by default).
+                - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early
+                                  stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr').
+                                  Note this will affect training time (no filter by default).
                 - **'burn_in'**: int : Number of epochs to pass before kicking in early stopping (default: 100).
                 - **check_interval'**: int : Early stopping interval after burn-in (default:10).
                 - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
-                - **'corruption_entities'**: List of entities to be used for corruptions. If 'all', it uses all entities (default: 'all')
+                - **'corruption_entities'**: List of entities to be used for corruptions. If 'all',
+                                             it uses all entities (default: 'all')
                 - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o' (default)
 
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
@@ -647,10 +649,14 @@ class EmbeddingModel(abc.ABC):
         X = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
         
         if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
-            logger.warn('Number of unique entities are large: {} entities'.format(len(self.ent_to_idx)))
-            logger.warn("If you get memory issues don't using early stopping or use reduced set for 'corruption_entities' for early stopping corruption generation!")
+            logger.warning('Your graph has a large number of distinct entities. '
+                           'Found {} distinct entities'.format(len(self.ent_to_idx)))
+            if early_stopping:
+                logger.warning("Early stopping may introduce memory issues when many distinct entities are present."
+                               " Disable early stopping with `early_stopping_params={'early_stopping'=False}` or set "
+                               "`corruption_entities` to a reduced set of distinct entities to save memory "
+                               "when generating corruptions.")
             
-
         # This is useful when we re-fit the same model (e.g. retraining in model selection)
         if self.is_fitted:
             tf.reset_default_graph()
@@ -718,7 +724,6 @@ class EmbeddingModel(abc.ABC):
         self._save_trained_params()
         self._end_training()
         
-
     def set_filter_for_eval(self, x_filter):
         """Set the filter to be used during evaluation (filtered_corruption = corruptions - filter).
        
@@ -752,7 +757,7 @@ class EmbeddingModel(abc.ABC):
                 first_million_primes_list.extend([np.int64(x) for x in p_nums_line if x != '' and x != '\n'])
                 if len(first_million_primes_list) > (2 * entity_size + reln_size):
                     break
-        #Assign first to relations - as these are dense - it would reduce the overflows in the product computation
+        # Assign first to relations - as these are dense - it would reduce the overflows in the product computation
         # reln
         self.relation_primes = np.array(first_million_primes_list[:reln_size], dtype=np.int64)
         # subject
@@ -760,8 +765,6 @@ class EmbeddingModel(abc.ABC):
         # obj
         self.entity_primes_right = np.array(first_million_primes_list[(entity_size+reln_size):(2 * entity_size + reln_size)], dtype=np.int64)
         
-        
-
         self.filter_keys = []
         try:
             # subject
@@ -775,15 +778,16 @@ class EmbeddingModel(abc.ABC):
             
             self.filter_keys = np.array(self.filter_keys, dtype=np.int64)
         except IndexError:
-            msg = 'Number of entities are high. Please extend the prime numbers list to have at least {} primes!!!'.format(2 * entity_size + reln_size)
+            msg = 'The graph has too many distinct entities. ' \
+                  'Please extend the prime numbers list to have at least {} primes.'.format(2 * entity_size + reln_size)
             logger.error(msg)
             raise ValueError(msg)
 
         self.is_filtered = True
 
-    def configure_evaluation_protocol(self, config={'corruption_entities': DEFAULT_CORRUPTION_ENTITIES, \
-                                                    'corrupt_side':DEFAULT_CORRUPT_SIDE_EVAL,
-                                                    'default_protocol':DEFAULT_PROTOCOL_EVAL}):
+    def configure_evaluation_protocol(self, config={'corruption_entities': DEFAULT_CORRUPTION_ENTITIES,
+                                                    'corrupt_side': DEFAULT_CORRUPT_SIDE_EVAL,
+                                                    'default_protocol': DEFAULT_PROTOCOL_EVAL}):
         """ Set the configuration for evaluation
         
         Parameters
@@ -839,7 +843,7 @@ class EmbeddingModel(abc.ABC):
         elif isinstance(corruption_entities, np.ndarray):
             corruption_entities = corruption_entities
         else:
-            msg = 'Invalid type for corruption entities!!!'
+            msg = 'Invalid type for corruption entities.'
             logger.error(msg)
             raise ValueError(msg)
 
@@ -860,36 +864,36 @@ class EmbeddingModel(abc.ABC):
         else:
             self.filtered_corruptions = self.out_corr
         
-        #Compute scores for negatives
+        # Compute scores for negatives
         e_s, e_p, e_o = self._lookup_embeddings(self.filtered_corruptions)
         self.scores_predict = self._fn(e_s, e_p, e_o)
         
-        #Compute scores for positive
+        # Compute scores for positive
         e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
         self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
         
         if self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL):
-            #For default protocol, the corrupt side is always s+o
+            # For default protocol, the corrupt side is always s+o
             corrupt_side == 's+o' 
             
             if self.is_filtered: 
-                #get the number of filtered corruptions present for object and subject
+                # get the number of filtered corruptions present for object and subject
                 self.presense_mask = tf.reshape(self.presense_mask, (2, -1))
                 self.presense_count = tf.reduce_sum(self.presense_mask, 1)
             else:
                 self.presense_count = tf.stack([tf.shape(self.scores_predict)[0]//2,
                                                 tf.shape(self.scores_predict)[0]//2])
             
-            #Get the corresponding corruption triple scores
+            # Get the corresponding corruption triple scores
             obj_corruption_scores = tf.slice(self.scores_predict,
-                                              [0], 
-                                              [tf.gather(self.presense_count, 0)])
+                                             [0],
+                                             [tf.gather(self.presense_count, 0)])
+
+            subj_corruption_scores = tf.slice(self.scores_predict,
+                                              [tf.gather(self.presense_count, 0)],
+                                              [tf.gather(self.presense_count, 1)])
             
-            subj_corruption_scores = tf.slice(self.scores_predict, 
-                                             [tf.gather(self.presense_count, 0)], 
-                                             [tf.gather(self.presense_count, 1)])
-            
-            #rank them against the positive
+            # rank them against the positive
             self.rank = tf.stack([tf.reduce_sum(tf.cast(subj_corruption_scores >= self.score_positive, tf.int32))+1,
                                   tf.reduce_sum(tf.cast(obj_corruption_scores >= self.score_positive, tf.int32))+1], 0)
                                               
@@ -1180,7 +1184,7 @@ class TransE(EmbeddingModel):
                                          'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES,
                                          'corrupt_sides': DEFAULT_CORRUPT_SIDE_TRAIN},
                  optimizer=DEFAULT_OPTIM, 
-                 optimizer_params={'lr':DEFAULT_LR},
+                 optimizer_params={'lr': DEFAULT_LR},
                  loss=DEFAULT_LOSS, 
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER, 
@@ -1644,10 +1648,10 @@ class ComplEx(EmbeddingModel):
                  epochs=DEFAULT_EPOCH, 
                  batches_count=DEFAULT_BATCH_COUNT, 
                  seed=DEFAULT_SEED,
-                 embedding_model_params={'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES,
+                 embedding_model_params={'negative_corruption_entities': DEFAULT_CORRUPTION_ENTITIES,
                                          'corrupt_sides': DEFAULT_CORRUPT_SIDE_TRAIN},
                  optimizer=DEFAULT_OPTIM, 
-                 optimizer_params={'lr':DEFAULT_LR},
+                 optimizer_params={'lr': DEFAULT_LR},
                  loss=DEFAULT_LOSS, 
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER, 
