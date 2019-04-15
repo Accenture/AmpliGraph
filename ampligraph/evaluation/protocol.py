@@ -169,6 +169,34 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
 
         Create corruptions (subject and object) for a given triple x, in compliance with the
         local closed world assumption (LCWA), as described in :cite:`nickel2016review`.
+        
+        .. note::
+            For filtering the corruptions, we adopt a hashing-based strategy to handle the set difference problem.
+            This strategy is as described below:
+
+            * We compute unique entities and relations in our dataset.
+
+            * We assign unique prime numbers for entities (unique for subject and object separately) and for relations
+              and create three separate hash tables. (these hash maps are input to this function)
+
+            * For each triple in filter_triples, we get the prime numbers associated with subject, relation
+              and object by mapping to their respective hash tables. We then compute the **prime product for the
+              filter triple**. We store this triple product.
+
+            * Since the numbers assigned to subjects, relations and objects are unique, their prime product is also
+              unique. i.e. a triple :math:`(a, b, c)` would have a different product compared to triple :math:`(c, b, a)`
+              as :math:`a, c` of subject have different primes compared to :math:`a, c` of object.
+
+            * While generating corruptions for evaluation, we hash the triple's entities and relations and get
+              the associated prime number and compute the **prime product for the corrupted triple**.
+
+            * If this product is present in the products stored for the filter set, then we remove the corresponding
+              corrupted triple (as it is a duplicate i.e. the corruption triple is present in filter_triples)
+
+            * Using this approach we generate filtered corruptions for evaluation.
+
+            **Execution Time:** This method takes ~20 minutes on FB15K using ComplEx
+            (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
 
     Parameters
     ----------
