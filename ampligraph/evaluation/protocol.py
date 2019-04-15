@@ -385,10 +385,17 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
 
 
 def _convert_to_idx(X, ent_to_idx, rel_to_idx, obj_to_idx):
-    x_idx_s = np.vectorize(ent_to_idx.get)(X[:, 0])
-    x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
-    x_idx_o = np.vectorize(obj_to_idx.get)(X[:, 2])
-    logger.debug('Returning ids.')
+    try:
+        x_idx_s = np.vectorize(ent_to_idx.get)(X[:, 0])
+        x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
+        x_idx_o = np.vectorize(obj_to_idx.get)(X[:, 2])
+        logger.debug('Returning ids.')
+    except TypeError:
+        msg='Unseen entities found in test/validation set. Please filter the data using filter_unseen_entities function.'
+        logger.error(msg)
+        raise TypeError(msg)
+        
+        
     return np.dstack([x_idx_s, x_idx_p, x_idx_o]).reshape((-1, 3))
 
 

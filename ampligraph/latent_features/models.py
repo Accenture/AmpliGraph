@@ -865,7 +865,7 @@ class EmbeddingModel(abc.ABC):
         
         #Compute scores for positive
         e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
-        self.score_positive = self._fn(e_s, e_p, e_o)
+        self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
         
         if self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL):
             #For default protocol, the corrupt side is always s+o
@@ -980,7 +980,7 @@ class EmbeddingModel(abc.ABC):
             scores = all_scores
             if get_ranks:
                 ranks = self.sess_predict.run(self.rank, feed_dict={self.X_test_tf: [X]})
-        #print(ranks)
+
         if get_ranks:
             return scores, ranks
 
