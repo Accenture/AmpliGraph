@@ -9,7 +9,7 @@ conda create --name ampligraph python=3.6
 source activate ampligraph
 
 # Install library
-conda install tensorflow-gpu==1.12.0
+pip install tensorflow==1.12.0
 
 pip install . -v
 
