@@ -91,6 +91,7 @@ DEFAULT_PROTOCOL_EVAL = False
 DEFAULT_CORRUPT_SIDE_TRAIN = ['s+o']
 #######################################################################################################
 
+
 def register_model(name, external_params=[], class_params={}):
     def insert_in_registry(class_handle):
         MODEL_REGISTRY[name] = class_handle
@@ -105,7 +106,7 @@ def register_model(name, external_params=[], class_params={}):
 class EmbeddingModel(abc.ABC):
     """Abstract class for embedding models
 
-    AmpliGraph neural knowledge graph embeddings models extend this class and its functionalities.
+    AmpliGraph neural knowledge graph embeddings models extend this class and its core methods.
 
     """
 
@@ -117,7 +118,7 @@ class EmbeddingModel(abc.ABC):
                  seed=DEFAULT_SEED,
                  embedding_model_params={},
                  optimizer=DEFAULT_OPTIM, 
-                 optimizer_params={'lr':DEFAULT_LR},
+                 optimizer_params={'lr': DEFAULT_LR},
                  loss=DEFAULT_LOSS, 
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER, 
@@ -220,7 +221,7 @@ class EmbeddingModel(abc.ABC):
         if batches_count == 1:
             logger.warning(
                 'All triples will be processed in the same batch (batches_count=1). '
-                'This is likely to introduce memory issues when processing large graphs.')
+                'When processing large graphs it is recommended to batch the input knowledge graph instead.')
 
 
         try:
@@ -595,10 +596,10 @@ class EmbeddingModel(abc.ABC):
         self.is_filtered = False
         self.eval_config = {}
         
-        #close the tf session
+        # close the tf session
         self.sess_train.close()
         
-        #set is_fitted to true to indicate that the model fitting is completed
+        # set is_fitted to true to indicate that the model fitting is completed
         self.is_fitted = True
         
     def fit(self, X, early_stopping=False, early_stopping_params={}):
@@ -817,6 +818,7 @@ class EmbeddingModel(abc.ABC):
 
         if self.is_filtered:
             all_reln_np = np.int64(np.arange(len(self.rel_to_idx)))
+            
             self.table_entity_lookup_left = tf.contrib.lookup.HashTable(
                 tf.contrib.lookup.KeyValueTensorInitializer(all_entities_np,
                                                             self.entity_primes_left)
@@ -946,10 +948,13 @@ class EmbeddingModel(abc.ABC):
 
         """
 
-        if type(X) != np.ndarray:
-            msg = 'Invalid type for input X. Expected ndarray, got {}'.format(type(X))
+        if not isinstance(X, (list, tuple, np.ndarray)):
+            msg = 'Invalid type for input X. Expected ndarray, list, or tuple. Got {}'.format(type(X))
             logger.error(msg)
             raise ValueError(msg)
+
+        if isinstance(X, (list, tuple)):
+            X = np.asarray(X)
 
         if not self.is_fitted:
             msg = 'Model has not been fitted.'
@@ -1762,12 +1767,12 @@ class ComplEx(EmbeddingModel):
         """
 
         # Assume each embedding is made of an img and real component.
-        # (These components are actually real numbers, see [Trouillon17].
+        # (These components are actually real numbers, see [trouillon2016complex].
         e_s_real, e_s_img = tf.split(e_s, 2, axis=1)
         e_p_real, e_p_img = tf.split(e_p, 2, axis=1)
         e_o_real, e_o_img = tf.split(e_o, 2, axis=1)
 
-        # See Eq. 9 [Trouillon17):
+        # See Eq. 9 [trouillon2016complex):
         return tf.reduce_sum(e_p_real * e_s_real * e_o_real, axis=1) + \
                tf.reduce_sum(e_p_real * e_s_img * e_o_img, axis=1) + \
                tf.reduce_sum(e_p_img * e_s_real * e_o_img, axis=1) - \
