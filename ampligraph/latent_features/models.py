@@ -437,16 +437,16 @@ class EmbeddingModel(abc.ABC):
                                                                        DEFAULT_CORRUPTION_ENTITIES)
         
         if negative_corruption_entities=='all':
-            logger.debug('Using all entities for generation of corruptions')
+            logger.debug('Using all entities for generation of corruptions during training')
             entities_size = len(self.ent_to_idx)
         elif negative_corruption_entities=='batch':
             # default is batch (entities_size=0 and entities_list=None)
-            logger.debug('Using batch entities for generation of corruptions')
+            logger.debug('Using batch entities for generation of corruptions during training')
         elif isinstance(negative_corruption_entities, list):
-            logger.debug('Using the supplied entities for generation of corruptions')
+            logger.debug('Using the supplied entities for generation of corruptions during training')
             entities_list=tf.squeeze(tf.constant(negative_corruption_entities, dtype=tf.int32))
         elif isinstance(negative_corruption_entities, int):
-            logger.debug('Using first {} entities for generation of corruptions'.format(negative_corruption_entities))
+            logger.debug('Using first {} entities for generation of corruptions during training'.format(negative_corruption_entities))
             entities_size = negative_corruption_entities
 
         if self.loss.get_state('require_same_size_pos_neg'):
@@ -513,7 +513,12 @@ class EmbeddingModel(abc.ABC):
         
         if isinstance(self.eval_config['corruption_entities'], list):
             #convert from list of raw triples to entity indices
+            logger.debug('Using the supplied entities for generation of corruptions for early stopping')
             self.eval_config['corruption_entities'] = np.asarray([idx for uri, idx in self.ent_to_idx.items() if uri in self.eval_config['corruption_entities']])
+        elif self.eval_config['corruption_entities']=='all':
+            logger.debug('Using all entities for generation of corruptions for early stopping')
+        elif self.eval_config['corruption_entities']=='batch':
+            logger.debug('Using batch entities for generation of corruptions for early stopping')
         
             
         self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
