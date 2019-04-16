@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE
 from ampligraph.datasets import load_wn18
@@ -129,11 +130,31 @@ def test_retrain():
 def test_fit_predict_wn18_TransE():
     X = load_wn18()
     model = TransE(batches_count=1, seed=555, epochs=5, k=100, loss='pairwise', loss_params={'margin': 5},
-                   verbose=True, optimizer='adagrad', optimizer_params={'lr':0.1})
+                   verbose=True, optimizer='adagrad', optimizer_params={'lr': 0.1})
     model.fit(X['train'])
     y, _ = model.predict(X['test'][:1], get_ranks=True)
 
     print(y)
+
+
+def test_missing_entity_ComplEx():
+
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'y', 'a'],
+                  ['a', 'y', 'd'],
+                  ['c', 'y', 'd'],
+                  ['b', 'y', 'c'],
+                  ['f', 'y', 'e']])
+    model = ComplEx(batches_count=1, seed=555, epochs=2, k=5)
+    model.fit(X)
+    with pytest.raises(ValueError):
+        model.predict(['a', 'y', 'zzzzzzzzzzz'])
+    with pytest.raises(ValueError):
+        model.predict(['a', 'xxxxxxxxxx', 'e'])
+    with pytest.raises(ValueError):
+        model.predict(['zzzzzzzz', 'y', 'e'])
 
 
 def test_fit_predict_wn18_ComplEx():
