@@ -417,7 +417,7 @@ def _convert_to_idx(X, ent_to_idx, rel_to_idx, obj_to_idx):
     x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
     x_idx_o = np.vectorize(obj_to_idx.get)(X[:, 2])
 
-    if None in x_idx_s or None in x_idx_s:
+    if None in x_idx_s or None in x_idx_o:
         msg = 'Input triples include one or more entities not present in the training set. ' \
               'Please filter X using evaluation.filter_unseen_entities(), or retrain the model on a training set ' \
               'that includes all the desired distinct entities.'
