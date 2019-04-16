@@ -9,7 +9,15 @@ conda create --name ampligraph python=3.6
 source activate ampligraph
 
 # Install library
-pip install tensorflow==1.12.0
+if [[ $# -eq 0 ]] ; then
+    echo "install tensorflow CPU mode"
+    pip install tensorflow==1.12.0
+else 
+    if [[ $1 == "gpu" ]] ; then
+        echo "install tensorflow GPU mode"
+        conda install tensorflow-gpu==1.12.0
+    fi
+fi
 
 pip install . -v
 
