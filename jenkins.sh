@@ -11,6 +11,8 @@ source activate ampligraph
 # Install library
 conda install tensorflow-gpu==1.12.0
 
+git checkout develop
+
 pip install . -v
 
 # configure dataset location
