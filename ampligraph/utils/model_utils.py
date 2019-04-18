@@ -25,7 +25,7 @@ def save_model(model, model_name_path=None):
         --------
         >>> import numpy as np
         >>> from ampligraph.latent_features import ComplEx
-        >>> from ampligraph.utils import save_model, restore_model
+        >>> from ampligraph.utils import save_model
         >>> model = ComplEx(batches_count=2, seed=555, epochs=20, k=10)
         >>> X = np.array([['a', 'y', 'b'],
         >>>               ['b', 'y', 'a'],
