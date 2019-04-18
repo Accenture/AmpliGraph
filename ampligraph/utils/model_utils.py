@@ -141,6 +141,18 @@ def restore_model(model_name_path=None):
 def create_tensorboard_visualizations(model, loc, labels=None):
     """ Create Tensorboard visualization files.
 
+        Note: this will create all the files required by Tensorboard to visualize embeddings,
+        but you must run Tensorboard yourself.
+
+        Examples
+        --------
+        >>> from ampligraph.utils import create_tensorboard_visualizations, restore_model
+        >>> import numpy as np
+        >>> example_name = 'helloworld.pkl'
+        >>> restored_model = restore_model(model_name_path = example_name)
+        >>> output_path = 'model_tensorboard/'
+        >>> create_tensorboard_visualizations(restored_model, output_path)
+
         Parameters
         ----------
         model: EmbeddingModel
