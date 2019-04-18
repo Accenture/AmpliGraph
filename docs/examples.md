@@ -197,50 +197,71 @@ import numpy as np
 from ampligraph.evaluation import train_test_split_no_unseen
 from ampligraph.datasets import load_from_csv
 
-# assume we have a dataset in csv format in folder dataset
-# a,y,b
-# f,y,e
-# b,y,a
-# a,y,c
-# c,y,a
-# a,y,d
-# c,y,d
-# b,y,c
-# f,y,e
-# then load it
-X = load_from_csv('dataset', 'dataset.csv', sep=',')
-# array([['a', 'y', 'b'],
-#        ['f', 'y', 'e'],
-#        ['b', 'y', 'a'],
-#        ['a', 'y', 'c'],
-#        ['c', 'y', 'a'],
-#        ['a', 'y', 'd'],
-#        ['c', 'y', 'd'],
-#        ['b', 'y', 'c'],
-#        ['f', 'y', 'e']], dtype='<U1')
+'''
+Assume we have a knowledge graph stored in my_folder/my_graph.csv,
+and that the content of such file is:
 
-# if you want to split into train/test datasets
+a,y,b
+f,y,e
+b,y,a
+a,y,c
+c,y,a
+a,y,d
+c,y,d
+b,y,c
+f,y,e
+'''
+
+# Load the graph in memory
+X = load_from_csv('my_folder', 'my_graph.csv', sep=',')
+
+# To split the graph in train and test sets:
+# (In this toy example the test set will include only two triples)
 X_train, X_test = train_test_split_no_unseen(X, test_size=2)
-# X_train:  [['a' 'y' 'b']
-#  ['f' 'y' 'e']
-#  ['b' 'y' 'a']
-#  ['c' 'y' 'a']
-#  ['c' 'y' 'd']
-#  ['b' 'y' 'c']
-#  ['f' 'y' 'e']]
-# X_test:  [['a' 'y' 'c']
-#  ['a' 'y' 'd']]
 
-# if you want to split into train/valid/test datasets, call it 2 times
+print(X_train)
+
+'''
+X_train:[['a' 'y' 'b']
+         ['f' 'y' 'e']
+         ['b' 'y' 'a']
+         ['c' 'y' 'a']
+         ['c' 'y' 'd']
+         ['b' 'y' 'c']
+         ['f' 'y' 'e']]
+'''
+
+print(X_test)
+
+'''
+X_test: [['a' 'y' 'c']
+         ['a' 'y' 'd']]
+'''
+
+
+# To split the graph in train, validation, and test the method must be called twice:
 X_train_valid, X_test = train_test_split_no_unseen(X, test_size=2)
 X_train, X_valid = train_test_split_no_unseen(X_train_valid, test_size=2)
-# X_train:  [['a' 'y' 'b']
-#  ['b' 'y' 'a']
-#  ['c' 'y' 'd']
-#  ['b' 'y' 'c']
-#  ['f' 'y' 'e']]
-# X_valid:  [['f' 'y' 'e']
-#  ['c' 'y' 'a']]
-# X_test:  [['a' 'y' 'c']
-#  ['a' 'y' 'd']]
+
+print(X_train)
+'''
+X_train:  [['a' 'y' 'b']
+           ['b' 'y' 'a']
+           ['c' 'y' 'd']
+           ['b' 'y' 'c']
+           ['f' 'y' 'e']]
+'''
+
+print(X_valid)
+'''
+X_valid:  [['f' 'y' 'e']
+           ['c' 'y' 'a']]
+'''
+
+print(X_test)
+'''
+X_test:  [['a' 'y' 'c']
+          ['a' 'y' 'd']]
+'''
+
 ```

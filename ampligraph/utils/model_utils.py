@@ -82,6 +82,8 @@ def save_model(model, model_name_path=None):
 def restore_model(model_name_path=None):
     """ Restore a saved model from disk.
 
+        See also :meth:`save_model`.
+
         Examples
         --------
         >>> from ampligraph.utils import restore_model
