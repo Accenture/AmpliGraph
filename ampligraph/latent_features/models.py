@@ -1315,7 +1315,35 @@ class TransE(EmbeddingModel):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping (default:``False``)
+            Flag to enable early stopping (default:False).
+
+            If set to ``True``, the training loop adopts the following early stopping heuristic:
+
+            - The model will be trained regardless of early stopping for ``burn_in`` epochs.
+            - Every ``check_interval`` epochs the method will compute the metric specified in ``criteria``.
+
+            If such metric decreases for ``stop_interval`` checks, we stop training early.
+
+            Note the metric is computed on ``x_valid``. This is usually a validation set that you held out.
+
+            Also, because ``criteria`` is a ranking metric, it requires generating negatives.
+            Entities used to generate corruptions can be specified, as long as the side(s) of a triple to corrupt.
+            The method supports filtered metrics, by passing an array of positives to ``x_filter``. This will be used to
+            filter the negatives generated on the fly (i.e. the corruptions).
+
+            .. note::
+
+                Keep in mind the early stopping criteria may introduce a certain overhead
+                (caused by the metric computation).
+                The goal is to strike a good trade-off between such overhead and saving training epochs.
+
+                A common approach is to use MRR unfiltered: ::
+
+                    early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}
+
+                Note the size of validation set also contributes to such overhead.
+                In most cases a smaller validation set would be enough.
+
         early_stopping_params: dictionary
             Dictionary of hyperparameters for the early stopping heuristics.
 
@@ -1547,7 +1575,35 @@ class DistMult(EmbeddingModel):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping (default:``False``)
+            Flag to enable early stopping (default:False).
+
+            If set to ``True``, the training loop adopts the following early stopping heuristic:
+
+            - The model will be trained regardless of early stopping for ``burn_in`` epochs.
+            - Every ``check_interval`` epochs the method will compute the metric specified in ``criteria``.
+
+            If such metric decreases for ``stop_interval`` checks, we stop training early.
+
+            Note the metric is computed on ``x_valid``. This is usually a validation set that you held out.
+
+            Also, because ``criteria`` is a ranking metric, it requires generating negatives.
+            Entities used to generate corruptions can be specified, as long as the side(s) of a triple to corrupt.
+            The method supports filtered metrics, by passing an array of positives to ``x_filter``. This will be used to
+            filter the negatives generated on the fly (i.e. the corruptions).
+
+            .. note::
+
+                Keep in mind the early stopping criteria may introduce a certain overhead
+                (caused by the metric computation).
+                The goal is to strike a good trade-off between such overhead and saving training epochs.
+
+                A common approach is to use MRR unfiltered: ::
+
+                    early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}
+
+                Note the size of validation set also contributes to such overhead.
+                In most cases a smaller validation set would be enough.
+
         early_stopping_params: dictionary
             Dictionary of hyperparameters for the early stopping heuristics.
 
@@ -1794,7 +1850,35 @@ class ComplEx(EmbeddingModel):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping (default:``False``)
+            Flag to enable early stopping (default:False).
+
+            If set to ``True``, the training loop adopts the following early stopping heuristic:
+
+            - The model will be trained regardless of early stopping for ``burn_in`` epochs.
+            - Every ``check_interval`` epochs the method will compute the metric specified in ``criteria``.
+
+            If such metric decreases for ``stop_interval`` checks, we stop training early.
+
+            Note the metric is computed on ``x_valid``. This is usually a validation set that you held out.
+
+            Also, because ``criteria`` is a ranking metric, it requires generating negatives.
+            Entities used to generate corruptions can be specified, as long as the side(s) of a triple to corrupt.
+            The method supports filtered metrics, by passing an array of positives to ``x_filter``. This will be used to
+            filter the negatives generated on the fly (i.e. the corruptions).
+
+            .. note::
+
+                Keep in mind the early stopping criteria may introduce a certain overhead
+                (caused by the metric computation).
+                The goal is to strike a good trade-off between such overhead and saving training epochs.
+
+                A common approach is to use MRR unfiltered: ::
+
+                    early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}
+
+                Note the size of validation set also contributes to such overhead.
+                In most cases a smaller validation set would be enough.
+
         early_stopping_params: dictionary
             Dictionary of hyperparameters for the early stopping heuristics.
 
@@ -2018,7 +2102,35 @@ class HolE(ComplEx):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping (default:``False``)
+            Flag to enable early stopping (default:False).
+
+            If set to ``True``, the training loop adopts the following early stopping heuristic:
+
+            - The model will be trained regardless of early stopping for ``burn_in`` epochs.
+            - Every ``check_interval`` epochs the method will compute the metric specified in ``criteria``.
+
+            If such metric decreases for ``stop_interval`` checks, we stop training early.
+
+            Note the metric is computed on ``x_valid``. This is usually a validation set that you held out.
+
+            Also, because ``criteria`` is a ranking metric, it requires generating negatives.
+            Entities used to generate corruptions can be specified, as long as the side(s) of a triple to corrupt.
+            The method supports filtered metrics, by passing an array of positives to ``x_filter``. This will be used to
+            filter the negatives generated on the fly (i.e. the corruptions).
+
+            .. note::
+
+                Keep in mind the early stopping criteria may introduce a certain overhead
+                (caused by the metric computation).
+                The goal is to strike a good trade-off between such overhead and saving training epochs.
+
+                A common approach is to use MRR unfiltered: ::
+
+                    early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}
+
+                Note the size of validation set also contributes to such overhead.
+                In most cases a smaller validation set would be enough.
+
         early_stopping_params: dictionary
             Dictionary of hyperparameters for the early stopping heuristics.
 
