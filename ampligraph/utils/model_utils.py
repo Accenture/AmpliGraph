@@ -24,7 +24,9 @@ def save_model(model, model_name_path=None):
         Examples
         --------
         >>> import numpy as np
-        >>> from ampligraph.utils import ComplEx, save_model, restore_model
+        >>> from ampligraph.latent_features import ComplEx
+        >>> from ampligraph.utils import save_model, restore_model
+        >>> model = ComplEx(batches_count=2, seed=555, epochs=20, k=10)
         >>> X = np.array([['a', 'y', 'b'],
         >>>               ['b', 'y', 'a'],
         >>>               ['a', 'y', 'c'],
@@ -35,10 +37,10 @@ def save_model(model, model_name_path=None):
         >>>               ['f', 'y', 'e']])
         >>> model.fit(X)
         >>> y_pred_before = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-        >>> EXAMPLE_NAME = 'helloworld.pkl'
-        >>> save_model(model, model_name_path = EXAMPLE_NAME)
+        >>> example_name = 'helloworld.pkl'
+        >>> save_model(model, model_name_path = example_name)
         >>> print(y_pred_before)
-        [1.261404, -1.324778]
+        [-0.29721245, 0.07865551]
 
         Parameters
         ----------
@@ -84,11 +86,11 @@ def restore_model(model_name_path=None):
         --------
         >>> from ampligraph.utils import restore_model
         >>> import numpy as np
-        >>> EXAMPLE_NAME = 'helloworld.pkl'
-        >>> restored_model = restore_model(model_name_path = EXAMPLE_NAME)
+        >>> example_name = 'helloworld.pkl'
+        >>> restored_model = restore_model(model_name_path = example_name)
         >>> y_pred_after = restored_model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
         >>> print(y_pred_after)
-        [1.261404, -1.324778]
+        [-0.29721245, 0.07865551]
 
         Parameters
         ----------

@@ -157,8 +157,8 @@ model.get_embeddings(['f','e'], embedding_type='entity')
 ## Save and restore a model
 ```python
 import numpy as np
-
-from ampligraph.latent_features import ComplEx, save_model, restore_model
+from ampligraph.latent_features import ComplEx
+from ampligraph.utils import save_model, restore_model
 
 model = ComplEx(batches_count=2, seed=555, epochs=20, k=10)
 
@@ -176,6 +176,7 @@ model.fit(X)
 #  Use the trained model to predict 
 y_pred_before = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
 print(y_pred_before)
+#[-0.29721245, 0.07865551]
 
 # Save the model
 example_name = "helloworld.pkl"
@@ -187,6 +188,7 @@ restored_model = restore_model(model_name_path = example_name)
 # Use the restored model to predict
 y_pred_after = restored_model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
 print(y_pred_after)
+# [-0.29721245, 0.07865551]
 ```
 
 ## Split dataset into train/test or train/valid/test 
