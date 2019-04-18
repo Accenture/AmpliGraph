@@ -22,7 +22,7 @@ Models can be saved and restored from disk. This is useful to avoid re-training 
 Visualization
 -------------
 
-Functions to visualize embeddings.
+Functions to visualize embeddings. 
 
 .. autosummary::
     :toctree: generated
