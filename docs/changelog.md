@@ -16,7 +16,6 @@
 - Addressed issue of ambiguous dataset loaders (#59)
 - Renamed ‘type’ parameter in models.get_embeddings  to fix masking built-in function
 - Updated String comparison to use equality instead of identity.
-- Added tutorial notebook (includes nations.csv dataset)
 - Moved save_model and restore_model to ampligraph.utils (but existing API will remain for several releases).
 - Other minor issues (#63, #64, #65, #66)
 
