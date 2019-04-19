@@ -97,9 +97,9 @@ and they can be thus used :ref:`during model selection <eval>`.
     :template: class.rst
 
     PairwiseLoss
-    NLLLoss
     AbsoluteMarginLoss
     SelfAdversarialLoss
+    NLLLoss
     NLLMulticlass
     
 .. _ref-reg:

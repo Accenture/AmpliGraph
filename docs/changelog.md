@@ -22,7 +22,7 @@
 
 ## 1.0.1
 - evaluation protocol now ranks object and subjects corruptions separately
-- Corruption generation can now use entites from current batch only
+- Corruption generation can now use entities from current batch only
 - FB15k-237, WN18RR loaders filter out unseen triples by default
 - Removed some unused arguments
 - Improved documentation
