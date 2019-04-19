@@ -114,18 +114,18 @@ pip install -e .
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'1.0.1'
+'1.0.2'
 ```
 
 
 ## Predictive Power Evaluation (MRR Filtered)
 
-|          |FB15k |WN18   |WN18RR |FB15K-237|
-|----------|------|-------|-------|---------|
-| TransE   | 0.55 | 0.50  | 0.23  | 0.31    |
-| DistMult | 0.79 | 0.83  | 0.44  | 0.29    |
-| ComplEx  | 0.79 | 0.94  | 0.44  | 0.30    |
-| HolE     | 0.80 | 0.94  | 0.47  | 0.28    |
+|          |FB15k |WN18   |WN18RR |FB15K-237|YAGO3-10 |
+|----------|------|-------|-------|---------|---------|
+| TransE   | 0.55 | 0.50  | 0.23  | 0.31    | 0.24    |
+| DistMult | 0.79 | 0.83  | 0.44  | 0.29    | 0.49    |
+| ComplEx  | 0.79 | 0.94  | 0.44  | 0.30    | 0.50    |
+| HolE     | 0.80 | 0.94  | 0.47  | 0.28    | 0.50    |
 
 
 ## Documentation
@@ -159,7 +159,7 @@ If you instead use AmpliGraph in an academic publication, cite as:
           Sumit Pai and
           Chan Le Van and
           Rory McGrath and
-          Nick McCarthy},
+          Nicholas McCarthy},
  title = {{AmpliGraph: a Library for Representation Learning on Knowledge Graphs}},
  month = mar,
  year  = 2019,
@@ -168,6 +168,6 @@ If you instead use AmpliGraph in an academic publication, cite as:
 }
 ```
 
-## Licence
+## License
 
 AmpliGraph is licensed under the Apache 2.0 License.

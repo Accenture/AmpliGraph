@@ -19,7 +19,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 warnings.simplefilter(action="ignore", category=Warning)
 
-SUPPORT_DATASETS = ["fb15k", "fb15k-237", "wn18", "wn18rr"]
+SUPPORT_DATASETS = ["fb15k", "fb15k-237", "wn18", "wn18rr", "yago310"]
 SUPPOORT_MODELS = ["complex", "transe", "distmult", "hole"]
 
 

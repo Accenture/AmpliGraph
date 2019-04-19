@@ -16,13 +16,21 @@ DEFAULT_ALPHA_ADVERSARIAL = 0.5
 # Default margin used by margin based adversarial loss
 DEFAULT_MARGIN_ADVERSARIAL = 3
 
+DEFAULT_CLASS_PARAMS = {'require_same_size_pos_neg': True, }
 
-def register_loss(name, external_params=[], class_params={'require_same_size_pos_neg': True, }):
+
+def register_loss(name, external_params=[], class_params=DEFAULT_CLASS_PARAMS):
+    def populate_class_params():
+        LOSS_REGISTRY[name].class_params = {}
+        LOSS_REGISTRY[name].class_params['require_same_size_pos_neg'] = class_params.get('require_same_size_pos_neg',
+                                                                               DEFAULT_CLASS_PARAMS['require_same_size_pos_neg'])
+
+
     def insert_in_registry(class_handle):
         LOSS_REGISTRY[name] = class_handle
         class_handle.name = name
         LOSS_REGISTRY[name].external_params = external_params
-        LOSS_REGISTRY[name].class_params = class_params
+        populate_class_params()
         return class_handle
 
     return insert_in_registry
@@ -55,14 +63,10 @@ class Loss(abc.ABC):
             self._loss_parameters['eta'] = eta
             self._init_hyperparams(hyperparam_dict)
             if verbose:
-                print('------ Loss-----')
-                logger.info('Name:{}'.format(self.name))
-                print('Name:', self.name)
-                logger.info('Parameters:')
-                print('Parameters:')
+                logger.info('\n--------- Loss ---------')
+                logger.info('Name : {}'.format(self.name))
                 for key, value in self._loss_parameters.items():
-                    logger.info('\t{}: '.format(key, value))
-                    print("  ", key, ": ", value)
+                    logger.info('{} : {}'.format(key, value))
         except KeyError as e:
             msg = 'Some of the hyperparams for loss were not passed to the loss function.\n{}'.format(e)
             logger.error(msg)
@@ -370,14 +374,13 @@ class SelfAdversarialLoss(Loss):
     """
 
     def __init__(self, eta, loss_params={'margin': DEFAULT_MARGIN_ADVERSARIAL,
-                                             'alpha': DEFAULT_ALPHA_ADVERSARIAL}, verbose=False):
+                                         'alpha': DEFAULT_ALPHA_ADVERSARIAL}, verbose=False):
         """Initialize Loss
 
         Parameters
         ----------
         eta: int
             number of negatives
-        loss_params : dict
         loss_params : dict
             Dictionary of loss-specific hyperparams:
 
@@ -431,4 +434,77 @@ class SelfAdversarialLoss(Loss):
         loss = tf.reduce_sum(-tf.log(tf.nn.sigmoid(margin - tf.negative(scores_pos)))) - \
                tf.reduce_sum(tf.multiply(p_neg,
                                          tf.log(tf.nn.sigmoid(tf.negative(scores_neg_reshaped) - margin))))
+        return loss
+    
+    
+@register_loss("multiclass_nll", [], {'require_same_size_pos_neg': False})
+class NLLMulticlass(Loss):
+    """ Multiclass NLL Loss.
+    
+        Introduced in :cite:`chen2015` where both the subject and objects are corrupted (to use it in this way pass
+        corrupt_sides = ['s', 'o'] to embedding_model_params) .
+        
+        This loss was re-engineered in :cite:`kadlecBK17` where only the object was corrupted to get improved
+        performance (to use it in this way pass corrupt_sides = 'o' to embedding_model_params).
+
+        .. math::
+        
+            \mathcal{L(X)} = -\sum_{x_{e_1,e_2,r_k} \in X} log\,p(e_2|e_1,r_k) -\sum_{x_{e_1,e_2,r_k} \in X} log\,p(e_1|r_k, e_2)
+       
+       
+        
+        Examples
+        -------- 
+        >>> from ampligraph.latent_features import TransE
+        >>> model = TransE(batches_count=1, seed=555, epochs=20, k=10, 
+        >>>                embedding_model_params={'corrupt_sides':['s', 'o']},
+        >>>                loss='multiclass_nll', loss_params={})
+        
+         
+    """
+    def __init__(self, eta, loss_params={}, verbose=False):
+        """Initialize Loss
+
+        Parameters
+        ----------
+        eta: int
+            number of negatives
+        loss_params : dict
+            Dictionary of loss-specific hyperparams:
+
+        """
+        super().__init__(eta, loss_params, verbose)
+    
+    def _init_hyperparams(self, hyperparam_dict):
+        """ Verifies and stores the hyperparameters needed by the algorithm.
+        
+        Parameters
+        ----------
+        hyperparam_dict : dictionary
+            Consists of key value pairs. The Loss will check the keys to get the corresponding params
+        """
+        pass
+
+    def _apply(self, scores_pos, scores_neg):
+        """ Apply the loss function.
+
+       Parameters
+       ----------
+       scores_pos : tf.Tensor, shape [n, 1]
+           A tensor of scores assigned to positive statements.
+       scores_neg : tf.Tensor, shape [n*negative_count, 1]
+           A tensor of scores assigned to negative statements.
+
+       Returns
+       -------
+       loss : float
+           The loss value that must be minimized.
+
+       """
+        scores_neg_reshaped = tf.reshape(scores_neg, [self._loss_parameters['eta'], tf.shape(scores_pos)[0]])
+        neg_exp = tf.exp(scores_neg_reshaped)
+        pos_exp = tf.exp(scores_pos)
+        softmax_score = pos_exp/(tf.reduce_sum(neg_exp, axis = 0) + pos_exp)
+        
+        loss = -tf.reduce_sum(tf.log(softmax_score))
         return loss

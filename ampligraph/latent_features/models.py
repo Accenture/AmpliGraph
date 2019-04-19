@@ -42,7 +42,7 @@ DEFAULT_NORMALIZE_EMBEDDINGS = False
 
 
 # Default side to corrupt for evaluation
-DEFAULT_CORRUPT_SIDE = 's+o'
+DEFAULT_CORRUPT_SIDE_EVAL = 's+o'
 
 # default hyperparameter for transE
 DEFAULT_NORM_TRANSE = 1
@@ -84,7 +84,13 @@ DEFAULT_REGULARIZER = None
 # Default value for verbose
 DEFAULT_VERBOSE = False
 
+# Flag to indicate whether to use default protocol for eval - for faster evaluation
+DEFAULT_PROTOCOL_EVAL = False
+
+# Specifies how to generate corruptions for training - default does s and o together and applies the loss
+DEFAULT_CORRUPT_SIDE_TRAIN = ['s+o']
 #######################################################################################################
+
 
 def register_model(name, external_params=[], class_params={}):
     def insert_in_registry(class_handle):
@@ -100,7 +106,7 @@ def register_model(name, external_params=[], class_params={}):
 class EmbeddingModel(abc.ABC):
     """Abstract class for embedding models
 
-    AmpliGraph neural knowledge graph embeddings models extend this class and its functionalities.
+    AmpliGraph neural knowledge graph embeddings models extend this class and its core methods.
 
     """
 
@@ -112,7 +118,7 @@ class EmbeddingModel(abc.ABC):
                  seed=DEFAULT_SEED,
                  embedding_model_params={},
                  optimizer=DEFAULT_OPTIM, 
-                 optimizer_params={'lr':DEFAULT_LR},
+                 optimizer_params={'lr': DEFAULT_LR},
                  loss=DEFAULT_LOSS, 
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER, 
@@ -154,10 +160,11 @@ class EmbeddingModel(abc.ABC):
         loss : string
             The type of loss function to use during training.
 
-            - 'pairwise'  the model will use pairwise margin-based loss function.
-            - 'nll' the model will use negative loss likelihood.
-            - 'absolute_margin' the model will use absolute margin likelihood.
-            - 'self_adversarial' the model will use adversarial sampling loss function.
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            - ``multiclass_nll`` the model will use multiclass nll loss. Switch to multiclass loss defined in :cite:`chen2015` by passing 'corrupt_sides' as ['s','o'] to embedding_model_params. To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params
 
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
@@ -212,10 +219,10 @@ class EmbeddingModel(abc.ABC):
         self.regularizer_params = regularizer_params
         self.batches_count = batches_count
         if batches_count == 1:
-            logger.warn(
-                'batches_count=1. All triples will be processed in the same batch. This may introduce memory issues.')
-            print('WARN: when batches_count=1 all triples will be processed in the same batch. '
-                  'This may introduce memory issues.')
+            logger.warning(
+                'All triples will be processed in the same batch (batches_count=1). '
+                'When processing large graphs it is recommended to batch the input knowledge graph instead.')
+
 
         try:
             self.loss = LOSS_REGISTRY[loss](self.eta, self.loss_params, verbose=verbose)
@@ -235,6 +242,12 @@ class EmbeddingModel(abc.ABC):
             raise ValueError(msg)
 
         self.optimizer_params = optimizer_params
+        
+        if verbose:
+            logger.info('\n------- Optimizer ------')
+            logger.info('Name : {}'.format(optimizer))
+            logger.info('Learning rate : {}'.format(self.optimizer_params.get('lr', DEFAULT_LR)))
+        
         if optimizer == "adagrad":
             self.optimizer = tf.train.AdagradOptimizer(learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
         elif optimizer == "adam":
@@ -246,6 +259,7 @@ class EmbeddingModel(abc.ABC):
             self.optimizer = tf.train.MomentumOptimizer(learning_rate=self.optimizer_params.get('lr', DEFAULT_LR),
                                                         momentum=self.optimizer_params.get('momentum',
                                                                                            DEFAULT_MOMENTUM))
+            logger.info('Momentum : {}'.format(self.optimizer_params.get('momentum', DEFAULT_MOMENTUM)))
         else:
             msg = 'Unsupported optimizer: {}'.format(optimizer)
             logger.error(msg)
@@ -352,10 +366,10 @@ class EmbeddingModel(abc.ABC):
             logger.error(msg)
             raise RuntimeError(msg)
 
-        if embedding_type is 'entity':
+        if embedding_type == 'entity':
             emb_list = self.trained_model_params[0]
             lookup_dict = self.ent_to_idx
-        elif embedding_type is 'relation':
+        elif embedding_type == 'relation':
             emb_list = self.trained_model_params[1]
             lookup_dict = self.rel_to_idx
         else:
@@ -398,30 +412,74 @@ class EmbeddingModel(abc.ABC):
                                        initializer=self.initializer)
         self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
                                        initializer=self.initializer)
-
-    def _get_model_loss(self, scores_pos, scores_neg):
-        """ Get the current batch loss including loss due to regularization.
+        
+    def _get_model_loss(self, dataset_iterator):
+        """ Get the current loss including loss due to regularization.
             This function must be overridden if the model uses combination of different losses(eg: VAE) 
             
         Parameters
         ----------
-        scores_pos : tf.Tensor
-            A tensor of scores assigned to positive statements.
-        scores_neg : tf.Tensor
-            A tensor of scores assigned to negative statements.
+        dataset_iterator : tf.data.Iterator
+            Dataset iterator
             
         Returns
         -------
         loss : tf.Tensor
             The loss value that must be minimized.    
         """
+        # training input placeholder
+        x_pos_tf = tf.cast(dataset_iterator.get_next(), tf.int32)
+        
+        entities_size = 0
+        entities_list = None
+        
+        negative_corruption_entities = self.embedding_model_params.get('negative_corruption_entities',
+                                                                       DEFAULT_CORRUPTION_ENTITIES)
+        
+        if negative_corruption_entities=='all':
+            logger.debug('Using all entities for generation of corruptions during training')
+            entities_size = len(self.ent_to_idx)
+        elif negative_corruption_entities=='batch':
+            # default is batch (entities_size=0 and entities_list=None)
+            logger.debug('Using batch entities for generation of corruptions during training')
+        elif isinstance(negative_corruption_entities, list):
+            logger.debug('Using the supplied entities for generation of corruptions during training')
+            entities_list=tf.squeeze(tf.constant(negative_corruption_entities, dtype=tf.int32))
+        elif isinstance(negative_corruption_entities, int):
+            logger.debug('Using first {} entities for generation of corruptions during training'.format(negative_corruption_entities))
+            entities_size = negative_corruption_entities
 
-        if self.regularizer is not None:
-            return self.loss.apply(scores_pos, scores_neg) + \
-                   self.regularizer.apply([self.ent_emb, self.rel_emb])
+        if self.loss.get_state('require_same_size_pos_neg'):
+            logger.debug('Requires the same size of postive and negative')
+            x_pos = tf.reshape(tf.tile(tf.reshape(x_pos_tf, [-1]), [self.eta]), [tf.shape(x_pos_tf)[0] * self.eta, 3])
         else:
-            return self.loss.apply(scores_pos, scores_neg)
-
+            x_pos = x_pos_tf
+        # look up embeddings from input training triples
+        e_s_pos, e_p_pos, e_o_pos = self._lookup_embeddings(x_pos)
+        scores_pos = self._fn(e_s_pos, e_p_pos, e_o_pos)
+        
+        loss = 0
+        
+        corruption_sides = self.embedding_model_params.get('corrupt_sides', DEFAULT_CORRUPT_SIDE_TRAIN)
+        if not isinstance(corruption_sides, list):
+            corruption_sides = [corruption_sides]
+            
+        for side in corruption_sides:
+            x_neg_tf = generate_corruptions_for_fit(x_pos_tf, 
+                                                    entities_list=entities_list, 
+                                                    eta=self.eta, 
+                                                    corrupt_side=side, 
+                                                    entities_size=entities_size, 
+                                                    rnd=self.seed)
+            e_s_neg, e_p_neg, e_o_neg = self._lookup_embeddings(x_neg_tf)
+            scores_neg = self._fn(e_s_neg, e_p_neg, e_o_neg)
+            loss += self.loss.apply(scores_pos, scores_neg)
+            
+        if self.regularizer is not None:
+            loss += self.regularizer.apply([self.ent_emb, self.rel_emb])
+            
+        return loss
+        
     def _initialize_early_stopping(self):
         """ Initializes and creates evaluation graph for early stopping
         """
@@ -451,7 +509,19 @@ class EmbeddingModel(abc.ABC):
             
         self.eval_config['corruption_entities'] = self.early_stopping_params.get('corruption_entities', 
                                                                                  DEFAULT_CORRUPTION_ENTITIES)
-        self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', DEFAULT_CORRUPT_SIDE)
+        
+        
+        if isinstance(self.eval_config['corruption_entities'], list):
+            #convert from list of raw triples to entity indices
+            logger.debug('Using the supplied entities for generation of corruptions for early stopping')
+            self.eval_config['corruption_entities'] = np.asarray([idx for uri, idx in self.ent_to_idx.items() if uri in self.eval_config['corruption_entities']])
+        elif self.eval_config['corruption_entities']=='all':
+            logger.debug('Using all entities for generation of corruptions for early stopping')
+        elif self.eval_config['corruption_entities']=='batch':
+            logger.debug('Using batch entities for generation of corruptions for early stopping')
+        
+            
+        self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
 
         self.early_stopping_best_value = INITIAL_EARLY_STOPPING_CRITERIA_VALUE
         self.early_stopping_stop_counter = 0
@@ -484,9 +554,8 @@ class EmbeddingModel(abc.ABC):
             ranks = []
 
             for x_test_triple in self.x_valid:
-                rank_triple = self.sess_train.run([self.rank], feed_dict={self.X_test_tf: [x_test_triple]})
+                rank_triple = self.sess_train.run(self.rank, feed_dict={self.X_test_tf: [x_test_triple]})
                 ranks.append(rank_triple)
-
             if self.early_stopping_criteria == 'hits10':
                 current_test_value = hits_at_n_score(ranks, 10)
             elif self.early_stopping_criteria == 'hits3':
@@ -509,10 +578,8 @@ class EmbeddingModel(abc.ABC):
                     if self.verbose:
                         msg = 'Early stopping at epoch:{}'.format(epoch)
                         logger.info(msg)
-                        print(msg)
                         msg = 'Best {}: {:10f}'.format(self.early_stopping_criteria, self.early_stopping_best_value)
                         logger.info(msg)
-                        print(msg)
                     return True
             else:
                 self.early_stopping_best_value = current_test_value
@@ -521,11 +588,9 @@ class EmbeddingModel(abc.ABC):
 
             if self.verbose:
                 msg = 'Current best:{}'.format(self.early_stopping_best_value)
-                logger.info(msg)
-                print(msg)
+                logger.debug(msg)
                 msg = 'Current:{}'.format(current_test_value)
-                logger.info(msg)
-                print(msg)
+                logger.debug(msg)
 
         return False
     
@@ -536,13 +601,12 @@ class EmbeddingModel(abc.ABC):
         self.is_filtered = False
         self.eval_config = {}
         
-        #close the tf session
+        # close the tf session
         self.sess_train.close()
         
-        #set is_fitted to true to indicate that the model fitting is completed
+        # set is_fitted to true to indicate that the model fitting is completed
         self.is_fitted = True
         
-
     def fit(self, X, early_stopping=False, early_stopping_params={}):
         """Train an EmbeddingModel (with optional early stopping).
 
@@ -562,11 +626,14 @@ class EmbeddingModel(abc.ABC):
 
                 - **'x_valid'**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
                 - **'criteria'**: string : criteria for early stopping 'hits10', 'hits3', 'hits1' or 'mrr'(default).
-                - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr'). Note this will affect training time (no filter by default).
+                - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early
+                                  stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr').
+                                  Note this will affect training time (no filter by default).
                 - **'burn_in'**: int : Number of epochs to pass before kicking in early stopping (default: 100).
                 - **check_interval'**: int : Early stopping interval after burn-in (default:10).
                 - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
-                - **'corruption_entities'**: List of entities to be used for corruptions. If 'all', it uses all entities (default: 'all')
+                - **'corruption_entities'**: List of entities to be used for corruptions. If 'all',
+                                             it uses all entities (default: 'all')
                 - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o' (default)
 
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
@@ -588,10 +655,14 @@ class EmbeddingModel(abc.ABC):
         X = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
         
         if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
-            logger.warn('Number of unique entities are large: {} entities'.format(len(self.ent_to_idx)))
-            logger.warn("If you get memory issues don't using early stopping or use reduced set for 'corruption_entities' for early stopping corruption generation!!!")
+            logger.warning('Your graph has a large number of distinct entities. '
+                           'Found {} distinct entities'.format(len(self.ent_to_idx)))
+            if early_stopping:
+                logger.warning("Early stopping may introduce memory issues when many distinct entities are present."
+                               " Disable early stopping with `early_stopping_params={'early_stopping'=False}` or set "
+                               "`corruption_entities` to a reduced set of distinct entities to save memory "
+                               "when generating corruptions.")
             
-
         # This is useful when we re-fit the same model (e.g. retraining in model selection)
         if self.is_fitted:
             tf.reset_default_graph()
@@ -605,52 +676,11 @@ class EmbeddingModel(abc.ABC):
         # init variables (model parameters to be learned - i.e. the embeddings)
         self._initialize_parameters()
 
-        # training input placeholder
-        x_pos_tf = tf.cast(dataset_iterator.get_next(), tf.int32)
-        
-        #all_ent_tf = tf.squeeze(tf.constant(list(self.ent_to_idx.values()), dtype=tf.int32))
-        
-        entities_size = 0
-        entities_list = None
-        
-        negative_corruption_entities = self.embedding_model_params.get('negative_corruption_entities',
-                                                                       DEFAULT_CORRUPTION_ENTITIES)
-        
-        if negative_corruption_entities=='all':
-            logger.info('Using all entities for generation of corruptions')
-            entities_size = len(self.ent_to_idx)
-        elif negative_corruption_entities=='batch':
-            #default is batch (entities_size=0 and entities_list=None)
-            logger.info('Using batch entities for generation of corruptions')
-        elif isinstance(negative_corruption_entities, list):
-            logger.info('Using the supplied entities for generation of corruptions')
-            entities_list=tf.squeeze(tf.constant(negative_corruption_entities, dtype=tf.int32))
-        elif isinstance(negative_corruption_entities, int):
-            logger.info('Using first {} entities for generation of corruptions'.format(negative_corruption_entities))
-            entities_size = negative_corruption_entities
-        
-        # generate negatives
-        x_neg_tf = generate_corruptions_for_fit(x_pos_tf, 
-                                                entities_list=entities_list, 
-                                                eta=self.eta, 
-                                                entities_size=entities_size, 
-                                                rnd=self.seed)
-        
         if self.loss.get_state('require_same_size_pos_neg'):
-            logger.debug('Requires the same size of postive and negative')
-            x_pos = tf.reshape(tf.tile(tf.reshape(x_pos_tf, [-1]), [self.eta]), [tf.shape(x_pos_tf)[0] * self.eta, 3])
             batch_size = batch_size * self.eta
-        else:
-            x_pos = x_pos_tf
-        # look up embeddings from input training triples
-        e_s_pos, e_p_pos, e_o_pos = self._lookup_embeddings(x_pos)
-        e_s_neg, e_p_neg, e_o_neg = self._lookup_embeddings(x_neg_tf)
-
-        scores_neg = self._fn(e_s_neg, e_p_neg, e_o_neg)
-        scores_pos = self._fn(e_s_pos, e_p_pos, e_o_pos)
-
-        loss = self._get_model_loss(scores_pos, scores_neg)
-
+            
+        loss = self._get_model_loss(dataset_iterator)
+            
         train = self.optimizer.minimize(loss)
 
         # Entity embeddings normalization
@@ -673,13 +703,14 @@ class EmbeddingModel(abc.ABC):
             self.sess_train.run(normalize_rel_emb_op)
             self.sess_train.run(normalize_ent_emb_op)
 
-        for epoch in tqdm(range(1, self.epochs + 1), disable=(not self.verbose), unit='epoch'):
+        epoch_iterator_with_progress = tqdm(range(1, self.epochs + 1), disable=(not self.verbose), unit='epoch')
+        for epoch in epoch_iterator_with_progress:
             losses = []
             for batch in range(1, self.batches_count + 1):
                 loss_batch, _ = self.sess_train.run([loss, train])
 
                 if np.isnan(loss_batch) or np.isinf(loss_batch):
-                    msg = 'Loss is {}. Please change the hyperparameters!!!'.format(loss_batch)
+                    msg = 'Loss is {}. Please change the hyperparameters.'.format(loss_batch)
                     logger.error(msg)
                     raise ValueError(msg)
 
@@ -687,9 +718,9 @@ class EmbeddingModel(abc.ABC):
                 if self.embedding_model_params.get('normalize_ent_emb', DEFAULT_NORMALIZE_EMBEDDINGS):
                     self.sess_train.run(normalize_ent_emb_op)
             if self.verbose:
-                msg = 'epoch: {}: mean loss: {:10f}'.format(epoch, sum(losses) / (batch_size * self.batches_count))
-                logger.info(msg)
-                tqdm.write(msg)
+                msg = 'Average Loss: {:10f}'.format(sum(losses) / (batch_size * self.batches_count))
+                logger.debug(msg)
+                epoch_iterator_with_progress.set_description(msg)
 
             if early_stopping:
                 if self._perform_early_stopping_test(epoch):
@@ -699,7 +730,6 @@ class EmbeddingModel(abc.ABC):
         self._save_trained_params()
         self._end_training()
         
-
     def set_filter_for_eval(self, x_filter):
         """Set the filter to be used during evaluation (filtered_corruption = corruptions - filter).
        
@@ -733,28 +763,37 @@ class EmbeddingModel(abc.ABC):
                 first_million_primes_list.extend([np.int64(x) for x in p_nums_line if x != '' and x != '\n'])
                 if len(first_million_primes_list) > (2 * entity_size + reln_size):
                     break
-
-        # subject
-        self.entity_primes_left = first_million_primes_list[:entity_size]
-        # obj
-        self.entity_primes_right = first_million_primes_list[entity_size:2 * entity_size]
+        # Assign first to relations - as these are dense - it would reduce the overflows in the product computation
         # reln
-        self.relation_primes = first_million_primes_list[2 * entity_size:(2 * entity_size + reln_size)]
-
+        self.relation_primes = np.array(first_million_primes_list[:reln_size], dtype=np.int64)
+        # subject
+        self.entity_primes_left = np.array(first_million_primes_list[reln_size:(entity_size+reln_size)], dtype=np.int64)
+        # obj
+        self.entity_primes_right = np.array(first_million_primes_list[(entity_size+reln_size):(2 * entity_size + reln_size)], dtype=np.int64)
+        
         self.filter_keys = []
-        # subject
-        self.filter_keys = [self.entity_primes_left[self.x_filter[i, 0]] for i in range(self.x_filter.shape[0])]
-        # obj
-        self.filter_keys = [self.filter_keys[i] * self.entity_primes_right[self.x_filter[i, 2]]
-                            for i in range(self.x_filter.shape[0])]
-        # reln
-        self.filter_keys = [self.filter_keys[i] * self.relation_primes[self.x_filter[i, 1]]
-                            for i in range(self.x_filter.shape[0])]
+        try:
+            # subject
+            self.filter_keys = [self.entity_primes_left[self.x_filter[i, 0]] for i in range(self.x_filter.shape[0])]
+            # obj
+            self.filter_keys = [self.filter_keys[i] * self.entity_primes_right[self.x_filter[i, 2]]
+                                for i in range(self.x_filter.shape[0])]
+            # reln
+            self.filter_keys = [self.filter_keys[i] * self.relation_primes[self.x_filter[i, 1]]
+                                for i in range(self.x_filter.shape[0])]
+            
+            self.filter_keys = np.array(self.filter_keys, dtype=np.int64)
+        except IndexError:
+            msg = 'The graph has too many distinct entities. ' \
+                  'Please extend the prime numbers list to have at least {} primes.'.format(2 * entity_size + reln_size)
+            logger.error(msg)
+            raise ValueError(msg)
 
         self.is_filtered = True
 
-    def configure_evaluation_protocol(self, config={'corruption_entities': DEFAULT_CORRUPTION_ENTITIES, \
-                                                    'corrupt_side':DEFAULT_CORRUPT_SIDE}):
+    def configure_evaluation_protocol(self, config={'corruption_entities': DEFAULT_CORRUPTION_ENTITIES,
+                                                    'corrupt_side': DEFAULT_CORRUPT_SIDE_EVAL,
+                                                    'default_protocol': DEFAULT_PROTOCOL_EVAL}):
         """ Set the configuration for evaluation
         
         Parameters
@@ -765,6 +804,7 @@ class EmbeddingModel(abc.ABC):
             - **corruption_entities**: List of entities to be used for corruptions. If ``all``, it uses all entities (default: ``all``)
             - **corrupt_side**: Specifies which side to corrupt. ``s``, ``o``, ``s+o`` (default)
             
+            - **default_protocol**: Boolean flag to indicate whether to use default protocol for evaluation. This computes scores for corruptions of subjects and objects and ranks them separately. This could have been done by evaluating s and o separately and then ranking but it slows down the performance. Hence this mode is used where s+o corruptions are generated at once but ranked separately for speed up.(default: False)
         """
         self.eval_config = config
 
@@ -783,22 +823,23 @@ class EmbeddingModel(abc.ABC):
 
         if self.is_filtered:
             all_reln_np = np.int64(np.arange(len(self.rel_to_idx)))
+            
             self.table_entity_lookup_left = tf.contrib.lookup.HashTable(
                 tf.contrib.lookup.KeyValueTensorInitializer(all_entities_np,
-                                                            np.array(self.entity_primes_left, dtype=np.int64))
+                                                            self.entity_primes_left)
                 , 0)
             self.table_entity_lookup_right = tf.contrib.lookup.HashTable(
                 tf.contrib.lookup.KeyValueTensorInitializer(all_entities_np,
-                                                            np.array(self.entity_primes_right, dtype=np.int64))
+                                                            self.entity_primes_right)
                 , 0)
             self.table_reln_lookup = tf.contrib.lookup.HashTable(
                 tf.contrib.lookup.KeyValueTensorInitializer(all_reln_np,
-                                                            np.array(self.relation_primes, dtype=np.int64))
+                                                            self.relation_primes)
                 , 0)
 
             # Create table to store train+test+valid triplet prime values(product)
             self.table_filter_lookup = tf.contrib.lookup.HashTable(
-                tf.contrib.lookup.KeyValueTensorInitializer(np.array(self.filter_keys, dtype=np.int64),
+                tf.contrib.lookup.KeyValueTensorInitializer(self.filter_keys,
                                                             np.zeros(len(self.filter_keys), dtype=np.int64))
                 , 1)
 
@@ -806,19 +847,19 @@ class EmbeddingModel(abc.ABC):
 
         if corruption_entities == 'all':
             corruption_entities = all_entities_np
-        elif isinstance(corruption_entities, list):
+        elif isinstance(corruption_entities, np.ndarray):
             corruption_entities = corruption_entities
         else:
-            msg = 'Invalid type for corruption entities!!!'
+            msg = 'Invalid type for corruption entities.'
             logger.error(msg)
             raise ValueError(msg)
 
         self.corruption_entities_tf = tf.constant(corruption_entities, dtype=tf.int64)
 
+        corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
         self.out_corr, self.out_corr_prime = generate_corruptions_for_eval(self.X_test_tf,
                                                                            self.corruption_entities_tf,
-                                                                           self.eval_config.get('corrupt_side',
-                                                                                                DEFAULT_CORRUPT_SIDE),
+                                                                           corrupt_side,
                                                                            self.table_entity_lookup_left,
                                                                            self.table_entity_lookup_right,
                                                                            self.table_reln_lookup)
@@ -829,13 +870,42 @@ class EmbeddingModel(abc.ABC):
             self.filtered_corruptions = tf.boolean_mask(self.out_corr, self.presense_mask)
         else:
             self.filtered_corruptions = self.out_corr
-
-        self.concatinated_set = tf.concat([self.X_test_tf, self.filtered_corruptions], 0)
-
-        e_s, e_p, e_o = self._lookup_embeddings(self.concatinated_set)
+        
+        # Compute scores for negatives
+        e_s, e_p, e_o = self._lookup_embeddings(self.filtered_corruptions)
         self.scores_predict = self._fn(e_s, e_p, e_o)
-        self.score_positive = tf.gather(self.scores_predict, 0)
-        self.rank = tf.reduce_sum(tf.cast(self.scores_predict >= self.score_positive, tf.int32))
+        
+        # Compute scores for positive
+        e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
+        self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
+        
+        if self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL):
+            # For default protocol, the corrupt side is always s+o
+            corrupt_side == 's+o' 
+            
+            if self.is_filtered: 
+                # get the number of filtered corruptions present for object and subject
+                self.presense_mask = tf.reshape(self.presense_mask, (2, -1))
+                self.presense_count = tf.reduce_sum(self.presense_mask, 1)
+            else:
+                self.presense_count = tf.stack([tf.shape(self.scores_predict)[0]//2,
+                                                tf.shape(self.scores_predict)[0]//2])
+            
+            # Get the corresponding corruption triple scores
+            obj_corruption_scores = tf.slice(self.scores_predict,
+                                             [0],
+                                             [tf.gather(self.presense_count, 0)])
+
+            subj_corruption_scores = tf.slice(self.scores_predict,
+                                              [tf.gather(self.presense_count, 0)],
+                                              [tf.gather(self.presense_count, 1)])
+            
+            # rank them against the positive
+            self.rank = tf.stack([tf.reduce_sum(tf.cast(subj_corruption_scores >= self.score_positive, tf.int32))+1,
+                                  tf.reduce_sum(tf.cast(obj_corruption_scores >= self.score_positive, tf.int32))+1], 0)
+                                              
+        else:
+            self.rank = tf.reduce_sum(tf.cast(self.scores_predict >= self.score_positive, tf.int32))+1
 
     def end_evaluation(self):
         """End the evaluation and close the Tensorflow session.
@@ -883,10 +953,13 @@ class EmbeddingModel(abc.ABC):
 
         """
 
-        if type(X) != np.ndarray:
-            msg = 'Invalid type for input X. Expected ndarray, got {}'.format(type(X))
+        if not isinstance(X, (list, tuple, np.ndarray)):
+            msg = 'Invalid type for input X. Expected ndarray, list, or tuple. Got {}'.format(type(X))
             logger.error(msg)
             raise ValueError(msg)
+
+        if isinstance(X, (list, tuple)):
+            X = np.asarray(X)
 
         if not self.is_fitted:
             msg = 'Model has not been fitted.'
@@ -911,15 +984,15 @@ class EmbeddingModel(abc.ABC):
         ranks = []
         if X.ndim > 1:
             for x in X:
-                all_scores = self.sess_predict.run(self.scores_predict, feed_dict={self.X_test_tf: [x]})
-                scores.append(all_scores[0])
+                all_scores = self.sess_predict.run(self.score_positive, feed_dict={self.X_test_tf: [x]})
+                scores.append(all_scores)
 
                 if get_ranks:
                     rank = self.sess_predict.run(self.rank, feed_dict={self.X_test_tf: [x]})
                     ranks.append(rank)
         else:
-            all_scores = self.sess_predict.run(self.scores_predict, feed_dict={self.X_test_tf: [X]})
-            scores = all_scores[0]
+            all_scores = self.sess_predict.run(self.score_positive, feed_dict={self.X_test_tf: [X]})
+            scores = all_scores
             if get_ranks:
                 ranks = self.sess_predict.run(self.rank, feed_dict={self.X_test_tf: [X]})
 
@@ -1045,7 +1118,7 @@ class RandomBaseline(EmbeddingModel):
             else:
                 corruption_length = len(corruption_entities)
 
-            corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE)
+            corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
             if corrupt_side == 's+o':
                 # since we are corrupting both subject and object
                 corruption_length *= 2
@@ -1100,12 +1173,12 @@ class TransE(EmbeddingModel):
         >>>               ['f', 'y', 'e']])
         >>> model.fit(X)
         >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-        [-2.219729, -3.9848995]
+        [-4.6903257, -3.9047198]
         >>> model.get_embeddings(['f','e'], embedding_type='entity')
-        array([[-0.65229136, -0.50060457,  1.2316223 ,  0.23738968,  0.29145557,
-        -0.20187911, -0.3053819 , -0.6947149 ,  0.9377473 ,  0.12985024],
-        [-1.1272118 ,  0.10723944,  0.79431695,  0.6795645 , -0.14428931,
-        -0.34959725, -0.60184777, -1.1885864 ,  1.0374763 , -0.36612505]],
+        array([[ 0.10673896, -0.28916815,  0.6278883 , -0.1194713 , -0.10372276,
+        -0.37258488,  0.06460134, -0.27879423,  0.25456288,  0.18665907],
+        [-0.64494324, -0.12939683,  0.3181001 ,  0.16745451, -0.03766293,
+         0.24314676, -0.23038973, -0.658638  ,  0.5680542 , -0.05401703]],
         dtype=float32)
 
     """
@@ -1118,9 +1191,10 @@ class TransE(EmbeddingModel):
                  seed=DEFAULT_SEED,
                  embedding_model_params={'norm':DEFAULT_NORM_TRANSE, 
                                          'normalize_ent_emb':DEFAULT_NORMALIZE_EMBEDDINGS,
-                                         'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
+                                         'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES,
+                                         'corrupt_sides': DEFAULT_CORRUPT_SIDE_TRAIN},
                  optimizer=DEFAULT_OPTIM, 
-                 optimizer_params={'lr':DEFAULT_LR},
+                 optimizer_params={'lr': DEFAULT_LR},
                  loss=DEFAULT_LOSS, 
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER, 
@@ -1150,12 +1224,10 @@ class TransE(EmbeddingModel):
             - **'norm'** (int): the norm to be used in the scoring function (1 or 2-norm - default: 1).
             - **'normalize_ent_emb'** (bool): flag to indicate whether to normalize entity embeddings after each batch update (default: False).
             - **negative_corruption_entities** : entities to be used for generation of corruptions while training. It can take the following values : ``all`` (default: all entities), ``batch`` (entities present in each batch), list of entities or an int (which indicates how many entities that should be used for corruption generation).
-
+            - **corrupt_sides** : Specifies how to generate corruptions for training. Takes values `s`, `o`, `s+o` or any combination passed as a list
+            
             Example: ``embedding_model_params={'norm': 1, 'normalize_ent_emb': False}``
 
-
-            
-            
         optimizer : string
             The optimizer used to minimize the loss function. Choose between 'sgd',
             'adagrad', 'adam', 'momentum'.
@@ -1172,10 +1244,11 @@ class TransE(EmbeddingModel):
         loss : string
             The type of loss function to use during training.
 
-            - 'pairwise'  the model will use pairwise margin-based loss function.
-            - 'nll' the model will use negative loss likelihood.
-            - 'absolute_margin' the model will use absolute margin likelihood.
-            - 'self_adversarial' the model will use adversarial sampling loss function.
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            - ``multiclass_nll`` the model will use multiclass nll loss. Switch to multiclass loss defined in :cite:`chen2015` by passing 'corrupt_sides' as ['s','o'] to embedding_model_params. To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params
             
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
@@ -1242,7 +1315,35 @@ class TransE(EmbeddingModel):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping (default:``False``)
+            Flag to enable early stopping (default:False).
+
+            If set to ``True``, the training loop adopts the following early stopping heuristic:
+
+            - The model will be trained regardless of early stopping for ``burn_in`` epochs.
+            - Every ``check_interval`` epochs the method will compute the metric specified in ``criteria``.
+
+            If such metric decreases for ``stop_interval`` checks, we stop training early.
+
+            Note the metric is computed on ``x_valid``. This is usually a validation set that you held out.
+
+            Also, because ``criteria`` is a ranking metric, it requires generating negatives.
+            Entities used to generate corruptions can be specified, as long as the side(s) of a triple to corrupt.
+            The method supports filtered metrics, by passing an array of positives to ``x_filter``. This will be used to
+            filter the negatives generated on the fly (i.e. the corruptions).
+
+            .. note::
+
+                Keep in mind the early stopping criteria may introduce a certain overhead
+                (caused by the metric computation).
+                The goal is to strike a good trade-off between such overhead and saving training epochs.
+
+                A common approach is to use MRR unfiltered: ::
+
+                    early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}
+
+                Note the size of validation set also contributes to such overhead.
+                In most cases a smaller validation set would be enough.
+
         early_stopping_params: dictionary
             Dictionary of hyperparameters for the early stopping heuristics.
 
@@ -1275,10 +1376,10 @@ class TransE(EmbeddingModel):
                      >>> model.fit(X)
                      >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
                      >>> print(y_pred)
-                     array([1.2052395, 1.5818497], dtype=float32)
+                     [-4.6903257, -3.9047198]
                      >>> from scipy.special import expit
                      >>> expit(y_pred)
-                     array([0.7694556 , 0.82946634], dtype=float32)
+                     array([0.00910012, 0.01974873], dtype=float32)
 
 
          Parameters
@@ -1334,12 +1435,12 @@ class DistMult(EmbeddingModel):
         >>>               ['f', 'y', 'e']])
         >>> model.fit(X)
         >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-        [3.29703, -3.543957]
+        [-0.13863425, -0.09917116]
         >>> model.get_embeddings(['f','e'], embedding_type='entity')
-        array([[-0.7101061 , -0.35752687,  0.5337027 , -0.612499  , -0.34532365,
-        -0.7219143 , -0.07083285,  0.19323194,  1.0108972 ,  0.42850104],
-        [-1.2280471 , -0.22018537,  0.17179069,  0.757755  , -0.05845603,
-         0.94373196, -0.14994079, -0.929564  ,  1.0907435 ,  0.20400602]],
+        array([[ 0.10137264, -0.28248304,  0.6153027 , -0.13133956, -0.11675504,
+        -0.37876177,  0.06027773, -0.26390398,  0.254603  ,  0.1888549 ],
+        [-0.6467299 , -0.13729756,  0.3074872 ,  0.16966867, -0.04098966,
+         0.25289047, -0.2212451 , -0.6527815 ,  0.5657673 , -0.03876532]],
         dtype=float32)
 
     """
@@ -1351,7 +1452,8 @@ class DistMult(EmbeddingModel):
                  batches_count=DEFAULT_BATCH_COUNT, 
                  seed=DEFAULT_SEED,
                  embedding_model_params={'normalize_ent_emb':DEFAULT_NORMALIZE_EMBEDDINGS,
-                                         'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
+                                         'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES,
+                                         'corrupt_sides': DEFAULT_CORRUPT_SIDE_TRAIN},
                  optimizer=DEFAULT_OPTIM, 
                  optimizer_params={'lr':DEFAULT_LR},
                  loss=DEFAULT_LOSS, 
@@ -1382,8 +1484,9 @@ class DistMult(EmbeddingModel):
 
             - **'normalize_ent_emb'** (bool): flag to indicate whether to normalize entity embeddings after each batch update (default: False).
             - **'negative_corruption_entities'** - Entities to be used for generation of corruptions while training. It can take the following values : ``all`` (default: all entities), ``batch`` (entities present in each batch), list of entities or an int (which indicates how many entities that should be used for corruption generation).
+            - **corrupt_sides** : Specifies how to generate corruptions for training. Takes values `s`, `o`, `s+o` or any combination passed as a list
 
-            Example: ``embedding_model_params={'norm': 1, 'normalize_ent_emb': False}``
+            Example: ``embedding_model_params={'normalize_ent_emb': False}``
 
         optimizer : string
             The optimizer used to minimize the loss function. Choose between 'sgd',
@@ -1401,11 +1504,12 @@ class DistMult(EmbeddingModel):
         loss : string
             The type of loss function to use during training.
 
-            - 'pairwise'  the model will use pairwise margin-based loss function.
-            - 'nll' the model will use negative loss likelihood.
-            - 'absolute_margin' the model will use absolute margin likelihood.
-            - 'self_adversarial' the model will use adversarial sampling loss function.
-
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            - ``multiclass_nll`` the model will use multiclass nll loss. Switch to multiclass loss defined in :cite:`chen2015` by passing 'corrupt_sides' as ['s','o'] to embedding_model_params. To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params
+            
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
             documentation for additional details.
@@ -1471,7 +1575,35 @@ class DistMult(EmbeddingModel):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping (default:``False``)
+            Flag to enable early stopping (default:False).
+
+            If set to ``True``, the training loop adopts the following early stopping heuristic:
+
+            - The model will be trained regardless of early stopping for ``burn_in`` epochs.
+            - Every ``check_interval`` epochs the method will compute the metric specified in ``criteria``.
+
+            If such metric decreases for ``stop_interval`` checks, we stop training early.
+
+            Note the metric is computed on ``x_valid``. This is usually a validation set that you held out.
+
+            Also, because ``criteria`` is a ranking metric, it requires generating negatives.
+            Entities used to generate corruptions can be specified, as long as the side(s) of a triple to corrupt.
+            The method supports filtered metrics, by passing an array of positives to ``x_filter``. This will be used to
+            filter the negatives generated on the fly (i.e. the corruptions).
+
+            .. note::
+
+                Keep in mind the early stopping criteria may introduce a certain overhead
+                (caused by the metric computation).
+                The goal is to strike a good trade-off between such overhead and saving training epochs.
+
+                A common approach is to use MRR unfiltered: ::
+
+                    early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}
+
+                Note the size of validation set also contributes to such overhead.
+                In most cases a smaller validation set would be enough.
+
         early_stopping_params: dictionary
             Dictionary of hyperparameters for the early stopping heuristics.
 
@@ -1503,10 +1635,10 @@ class DistMult(EmbeddingModel):
                     >>> model.fit(X)
                     >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
                     >>> print(y_pred)
-                    array([1.2052395, 1.5818497], dtype=float32)
+                    [-0.13863425, -0.09917116]
                     >>> from scipy.special import expit
                     >>> expit(y_pred)
-                    array([0.7694556 , 0.82946634], dtype=float32)
+                    array([0.4653968 , 0.47522753], dtype=float32)
 
 
         Parameters
@@ -1563,16 +1695,16 @@ class ComplEx(EmbeddingModel):
         >>>               ['f', 'y', 'e']])
         >>> model.fit(X)
         >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-        [0.96325016, -0.17629346]
+        [-0.31336197, 0.07829369]
         >>> model.get_embeddings(['f','e'], embedding_type='entity')
-        array([[-0.11257   , -0.09226837,  0.2829331 , -0.02094189,  0.02826234,
-        -0.3068198 , -0.41022655, -0.23714773, -0.00084166,  0.22521858,
-        -0.48155236,  0.29627186,  0.29841757,  0.16540456,  0.45836073,
-         0.14025007, -0.03458257, -0.03813137,  0.35438442, -0.4733188 ],
-        [ 0.06088537,  0.13615245, -0.20476362,  0.20391239,  0.22199424,
-         0.5762486 , -0.01087974,  0.39070424, -0.1372974 ,  0.39998057,
-        -0.5944237 ,  0.506474  ,  0.1255992 , -0.06021457, -0.26678884,
-        -0.18713273,  0.36862013,  0.07165384, -0.00845572, -0.16494963]],
+        array([[ 0.17496692,  0.15856805,  0.2549046 ,  0.21418071, -0.00980021,
+        0.06208976, -0.2573946 ,  0.01115128, -0.10728686,  0.40512595,
+        -0.12340491, -0.11021495,  0.28515074,  0.34275156,  0.58547366,
+        0.03383447, -0.37839213,  0.1353071 ,  0.50376487, -0.26477185],
+        [-0.19194135,  0.20568603,  0.04714957,  0.4366147 ,  0.07175589,
+         0.5740745 ,  0.28201544,  0.3266275 , -0.06701915,  0.29062983,
+        -0.21265475,  0.5720126 , -0.05321272,  0.04141249,  0.01574909,
+        -0.11786222,  0.30488515,  0.34970865,  0.23362857, -0.55025095]],
         dtype=float32)
 
     """
@@ -1582,9 +1714,10 @@ class ComplEx(EmbeddingModel):
                  epochs=DEFAULT_EPOCH, 
                  batches_count=DEFAULT_BATCH_COUNT, 
                  seed=DEFAULT_SEED,
-                 embedding_model_params={'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
+                 embedding_model_params={'negative_corruption_entities': DEFAULT_CORRUPTION_ENTITIES,
+                                         'corrupt_sides': DEFAULT_CORRUPT_SIDE_TRAIN},
                  optimizer=DEFAULT_OPTIM, 
-                 optimizer_params={'lr':DEFAULT_LR},
+                 optimizer_params={'lr': DEFAULT_LR},
                  loss=DEFAULT_LOSS, 
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER, 
@@ -1610,6 +1743,7 @@ class ComplEx(EmbeddingModel):
             ComplEx-specific hyperparams:
             
             - **'negative_corruption_entities'** - Entities to be used for generation of corruptions while training. It can take the following values : ``all`` (default: all entities), ``batch`` (entities present in each batch), list of entities or an int (which indicates how many entities that should be used for corruption generation).
+            - **corrupt_sides** : Specifies how to generate corruptions for training. Takes values `s`, `o`, `s+o` or any combination passed as a list
 
         optimizer : string
             The optimizer used to minimize the loss function. Choose between 'sgd',
@@ -1627,11 +1761,12 @@ class ComplEx(EmbeddingModel):
         loss : string
             The type of loss function to use during training.
 
-            - 'pairwise'  the model will use pairwise margin-based loss function.
-            - 'nll' the model will use negative loss likelihood.
-            - 'absolute_margin' the model will use absolute margin likelihood.
-            - 'self_adversarial' the model will use adversarial sampling loss function.
-
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            - ``multiclass_nll`` the model will use multiclass nll loss. Switch to multiclass loss defined in :cite:`chen2015` by passing 'corrupt_sides' as ['s','o'] to embedding_model_params. To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params
+            
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
             documentation for additional details.
@@ -1693,12 +1828,12 @@ class ComplEx(EmbeddingModel):
         """
 
         # Assume each embedding is made of an img and real component.
-        # (These components are actually real numbers, see [Trouillon17].
+        # (These components are actually real numbers, see [trouillon2016complex].
         e_s_real, e_s_img = tf.split(e_s, 2, axis=1)
         e_p_real, e_p_img = tf.split(e_p, 2, axis=1)
         e_o_real, e_o_img = tf.split(e_o, 2, axis=1)
 
-        # See Eq. 9 [Trouillon17):
+        # See Eq. 9 [trouillon2016complex):
         return tf.reduce_sum(e_p_real * e_s_real * e_o_real, axis=1) + \
                tf.reduce_sum(e_p_real * e_s_img * e_o_img, axis=1) + \
                tf.reduce_sum(e_p_img * e_s_real * e_o_img, axis=1) - \
@@ -1715,7 +1850,35 @@ class ComplEx(EmbeddingModel):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping (default:``False``)
+            Flag to enable early stopping (default:False).
+
+            If set to ``True``, the training loop adopts the following early stopping heuristic:
+
+            - The model will be trained regardless of early stopping for ``burn_in`` epochs.
+            - Every ``check_interval`` epochs the method will compute the metric specified in ``criteria``.
+
+            If such metric decreases for ``stop_interval`` checks, we stop training early.
+
+            Note the metric is computed on ``x_valid``. This is usually a validation set that you held out.
+
+            Also, because ``criteria`` is a ranking metric, it requires generating negatives.
+            Entities used to generate corruptions can be specified, as long as the side(s) of a triple to corrupt.
+            The method supports filtered metrics, by passing an array of positives to ``x_filter``. This will be used to
+            filter the negatives generated on the fly (i.e. the corruptions).
+
+            .. note::
+
+                Keep in mind the early stopping criteria may introduce a certain overhead
+                (caused by the metric computation).
+                The goal is to strike a good trade-off between such overhead and saving training epochs.
+
+                A common approach is to use MRR unfiltered: ::
+
+                    early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}
+
+                Note the size of validation set also contributes to such overhead.
+                In most cases a smaller validation set would be enough.
+
         early_stopping_params: dictionary
             Dictionary of hyperparameters for the early stopping heuristics.
 
@@ -1747,10 +1910,10 @@ class ComplEx(EmbeddingModel):
                      >>> model.fit(X)
                      >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
                      >>> print(y_pred)
-                     array([1.2052395, 1.5818497], dtype=float32)
+                     [-0.31336197, 0.07829369]
                      >>> from scipy.special import expit
                      >>> expit(y_pred)
-                     array([0.7694556 , 0.82946634], dtype=float32)
+                     array([0.42229432, 0.51956344], dtype=float32)
 
 
          Parameters
@@ -1802,17 +1965,17 @@ class HolE(ComplEx):
     >>>               ['f', 'y', 'e']])
     >>> model.fit(X)
     >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
-    [0.3046168, -0.0379385]
+    ([-0.06213863, 0.01563319], [13, 3])
     >>> model.get_embeddings(['f','e'], embedding_type='entity')
-    array([[-0.2704807 , -0.05434025,  0.13363852,  0.04879733,  0.00184516,
-    -0.1149573 , -0.1177371 , -0.20798951,  0.01935115,  0.13033926,
-    -0.81528974,  0.22864424,  0.2045117 ,  0.1145515 ,  0.248952  ,
-     0.03513691, -0.08550065, -0.06037813,  0.23231442, -0.39326245],
-    [ 0.204738  ,  0.10758886, -0.11931524,  0.14881928,  0.0929039 ,
-     0.25577265,  0.05722341,  0.2549932 , -0.16462566,  0.43789816,
-    -0.91011846,  0.3533137 ,  0.1144442 ,  0.00359709, -0.09599967,
-    -0.03151475,  0.14198618,  0.16138661,  0.07511608, -0.2465882 ]],
-    dtype=float32)
+        array([[ 0.17335348,  0.15826802,  0.24862595,  0.21404941, -0.00968813,
+         0.06185953, -0.24956754,  0.01114257, -0.1038138 ,  0.40461722,
+        -0.12298391, -0.10997348,  0.28220937,  0.34238952,  0.58363295,
+         0.03315138, -0.37830347,  0.13480346,  0.49922466, -0.26328272],
+        [-0.19098252,  0.20133668,  0.04635337,  0.4364128 ,  0.07014864,
+         0.5713923 ,  0.28131518,  0.31721675, -0.06636801,  0.2848032 ,
+        -0.2121708 ,  0.56917167, -0.05311433,  0.03093261,  0.01571475,
+        -0.11373658,  0.29417998,  0.34896123,  0.22993243, -0.5499186 ]],
+        dtype=float32)
 
     """
     def __init__(self, 
@@ -1821,7 +1984,8 @@ class HolE(ComplEx):
                  epochs=DEFAULT_EPOCH, 
                  batches_count=DEFAULT_BATCH_COUNT, 
                  seed=DEFAULT_SEED,
-                 embedding_model_params={'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES},
+                 embedding_model_params={'negative_corruption_entities':DEFAULT_CORRUPTION_ENTITIES,
+                                         'corrupt_sides': DEFAULT_CORRUPT_SIDE_TRAIN},
                  optimizer=DEFAULT_OPTIM, 
                  optimizer_params={'lr':DEFAULT_LR},
                  loss=DEFAULT_LOSS, 
@@ -1849,6 +2013,7 @@ class HolE(ComplEx):
             HolE-specific hyperparams: 
             
             - **negative_corruption_entities** - Entities to be used for generation of corruptions while training. It can take the following values : ``all`` (default: all entities), ``batch`` (entities present in each batch), list of entities or an int (which indicates how many entities that should be used for corruption generation).
+            - **corrupt_sides** : Specifies how to generate corruptions for training. Takes values `s`, `o`, `s+o` or any combination passed as a list
             
         optimizer : string
             The optimizer used to minimize the loss function. Choose between 'sgd',
@@ -1866,11 +2031,12 @@ class HolE(ComplEx):
         loss : string
             The type of loss function to use during training.
 
-            - 'pairwise'  the model will use pairwise margin-based loss function.
-            - 'nll' the model will use negative loss likelihood.
-            - 'absolute_margin' the model will use absolute margin likelihood.
-            - 'self_adversarial' the model will use adversarial sampling loss function.
-
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            - ``multiclass_nll`` the model will use multiclass nll loss. Switch to multiclass loss defined in :cite:`chen2015` by passing 'corrupt_sides' as ['s','o'] to embedding_model_params. To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params
+            
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
             documentation for additional details.
@@ -1936,7 +2102,35 @@ class HolE(ComplEx):
         X : ndarray, shape [n, 3]
             The training triples
         early_stopping: bool
-            Flag to enable early stopping (default:``False``)
+            Flag to enable early stopping (default:False).
+
+            If set to ``True``, the training loop adopts the following early stopping heuristic:
+
+            - The model will be trained regardless of early stopping for ``burn_in`` epochs.
+            - Every ``check_interval`` epochs the method will compute the metric specified in ``criteria``.
+
+            If such metric decreases for ``stop_interval`` checks, we stop training early.
+
+            Note the metric is computed on ``x_valid``. This is usually a validation set that you held out.
+
+            Also, because ``criteria`` is a ranking metric, it requires generating negatives.
+            Entities used to generate corruptions can be specified, as long as the side(s) of a triple to corrupt.
+            The method supports filtered metrics, by passing an array of positives to ``x_filter``. This will be used to
+            filter the negatives generated on the fly (i.e. the corruptions).
+
+            .. note::
+
+                Keep in mind the early stopping criteria may introduce a certain overhead
+                (caused by the metric computation).
+                The goal is to strike a good trade-off between such overhead and saving training epochs.
+
+                A common approach is to use MRR unfiltered: ::
+
+                    early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}
+
+                Note the size of validation set also contributes to such overhead.
+                In most cases a smaller validation set would be enough.
+
         early_stopping_params: dictionary
             Dictionary of hyperparameters for the early stopping heuristics.
 
@@ -1968,10 +2162,10 @@ class HolE(ComplEx):
                      >>> model.fit(X)
                      >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
                      >>> print(y_pred)
-                     array([1.2052395, 1.5818497], dtype=float32)
+                     [-0.06213863, 0.01563319]
                      >>> from scipy.special import expit
                      >>> expit(y_pred)
-                     array([0.7694556 , 0.82946634], dtype=float32)
+                     array([0.48447034, 0.5039082 ], dtype=float32)
 
 
          Parameters
