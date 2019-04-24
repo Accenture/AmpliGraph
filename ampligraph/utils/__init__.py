@@ -2,6 +2,7 @@
 
 """
 
-from .model_utils import save_model, restore_model, create_tensorboard_visualizations, write_metadata_tsv
+from .model_utils import save_model, restore_model, create_tensorboard_visualizations, create_tensorboard_projector_files, write_metadata_tsv
 
-__all__ = ['save_model', 'restore_model', 'create_tensorboard_visualizations', 'write_metadata_tsv']
+__all__ = ['save_model', 'restore_model', 'create_tensorboard_visualizations', 'create_tensorboard_projector_files',
+           'write_metadata_tsv']

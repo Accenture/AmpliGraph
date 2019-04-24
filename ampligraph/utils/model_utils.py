@@ -7,6 +7,7 @@ import logging
 
 import tensorflow as tf
 from tensorflow.contrib.tensorboard.plugins import projector
+import numpy as np
 import pandas as pd
 
 """This module contains utility functions for neural knowledge graph embedding models.
@@ -140,20 +141,20 @@ def restore_model(model_name_path=None):
     return model
 
 
-def create_tensorboard_visualizations(model, loc, labels=None):
-    """ Create Tensorboard visualization files.
+def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=True,):
+    """ Create Tensorboard checkpoint visualization files.
 
-        Note: this will create all the files required by Tensorboard to visualize embeddings,
-        but you must run Tensorboard yourself.
+        This will create a number of checkpoint and graph embedding files in the provided location that will allow
+        you to visualize embeddings using Tensorboard. This is generally for use with a local Tensorboard instance,
+        to create files to upload to projector.tensorflow.org then use the create_tensorboard_projector_files function.
 
         Examples
         --------
         >>> from ampligraph.utils import create_tensorboard_visualizations, restore_model
-        >>> import numpy as np
         >>> example_name = 'helloworld.pkl'
-        >>> restored_model = restore_model(model_name_path = example_name)
+        >>> model = restore_model(model_name_path = example_name)
         >>> output_path = 'model_tensorboard/'
-        >>> create_tensorboard_visualizations(restored_model, output_path)
+        >>> create_tensorboard_visualizations(model, output_path)
 
         Parameters
         ----------
@@ -165,11 +166,14 @@ def create_tensorboard_visualizations(model, loc, labels=None):
         labels: pd.DataFrame
             Label(s) for each embedding point in the Tensorboard visualization.
             Default behaviour is to use the embeddings labels included in the model.
+        write_metadata: bool (Default: True)
+            If True will write a file named 'metadata.tsv' in the same directory as path.
 
     """
 
     # Create loc if it doesn't exist
     if not os.path.exists(loc):
+        logger.debug('Creating Tensorboard visualization directory: %s' % loc)
         os.mkdir(loc)
 
     if not model.is_fitted:
@@ -177,12 +181,16 @@ def create_tensorboard_visualizations(model, loc, labels=None):
 
     # If no label data supplied, use model ent_to_idx keys as labels
     if labels is None:
+
+        logger.info('Using model entity dictionary to create Tensorboard metadata.tsv')
         labels = list(model.ent_to_idx.keys())
     else:
         if len(labels) != len(model.ent_to_idx):
             raise ValueError('Label data rows must equal number of embeddings.')
 
-    write_metadata_tsv(loc, labels)
+    if write_metadata:
+        logger.debug('Writing metadata.tsv to: %s' % loc)
+        write_metadata_tsv(loc, labels)
 
     checkpoint_path = os.path.join(loc, 'graph_embedding.ckpt')
 
@@ -207,6 +215,57 @@ def create_tensorboard_visualizations(model, loc, labels=None):
 
         # Saves a config file that TensorBoard will read during startup.
         projector.visualize_embeddings(tf.summary.FileWriter(loc), config)
+
+
+def create_tensorboard_projector_files(model, path, labels=None, write_metadata=True):
+    """ Create Tensorboard projector visualization files.
+
+        This will create a tab separated file of embeddings at the given path. This is generally used to
+        visualize embeddings by uploading to projector.tensorflow.org. To visualize using a local Tensorboard instance,
+        you may find it easier to use the create_tensorboard_visualizations function.
+
+        Examples
+        --------
+        >>> from ampligraph.utils import create_tensorboard_projector_files, restore_model
+        >>> example_name = 'helloworld.pkl'
+        >>> model = restore_model(model_name_path = example_name)
+        >>> output_path = 'path/my_embeddings.tsv'
+        >>> create_tensorboard_projector_files(model, output_path)
+
+        Parameters
+        ----------
+        model: EmbeddingModel
+            A trained neural knowledge graph embedding model, the model must be an instance of TransE,
+            DistMult, ComplEx, or HolE.
+        path: string
+            Filename where the embeddings.tsv is written. Default: embeddings.tsv
+        labels: pd.DataFrame, or list
+            Label(s) for each embedding point in the Tensorboard visualization.
+            Default behaviour is to use the embeddings labels included in the model.
+        write_metadata: bool (Default: True)
+            If True will write a file named 'metadata.tsv' in the same directory as path.
+
+    """
+
+    if not model.is_fitted:
+        raise ValueError('Cannot write embeddings if model is not fitted.')
+
+    # If no label data supplied, use model ent_to_idx keys as labels
+    if labels is None:
+        logger.info('Using model entity dictionary to create Tensorboard metadata.tsv')
+        labels = list(model.ent_to_idx.keys())
+    else:
+        if len(labels) != len(model.ent_to_idx):
+            raise ValueError('Label data rows must equal number of embeddings.')
+
+    loc = os.path.dirname(path)
+
+    if write_metadata:
+        logger.debug('Writing metadata to: %s' % os.path.join(loc, 'metadata.tsv'))
+        write_metadata_tsv(loc, labels)
+
+    logger.info('Writing embeddings tsv to: %s' % path)
+    np.savetxt(path, model.trained_model_params[0], delimiter='\t')
 
 
 def write_metadata_tsv(loc, data):
