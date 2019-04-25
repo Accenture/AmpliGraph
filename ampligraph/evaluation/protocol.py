@@ -462,9 +462,11 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
         Run the relational learning evaluation protocol defined in :cite:`bordes2013translating`.
 
-        It computes the ranks of each positive triple against all possible negatives created in compliance with
-        the local closed world assumption (LCWA), as described in :cite:`nickel2016review`.
-        
+        It computes the rank of each positive triple against a number of negatives generated on the fly.
+        Such negatives are compliant with the local closed world assumption (LCWA),
+        as described in :cite:`nickel2016review`. In practice, that means only one side of the triple is corrupted
+        (i.e. either the subject or the object).
+
         .. note::
             When *filtered* mode is enabled (i.e. `filtered_triples` is not ``None``),
             to speed up the procedure, we adopt a hashing-based strategy to handle the set difference problem.
@@ -524,37 +526,57 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
         - 's': corrupt only subject.
         - 'o': corrupt only object
-        - 's+o': corrupt both subject and object
+        - 's+o': corrupt both subject and object. The same behaviour is obtained with ``use_default_protocol=True``.
+
+        .. note::
+            If ``corrupt_side='s+o'`` the function will return 2*n ranks.
+            If ``corrupt_side='s'`` or ``corrupt_side='o'``, it will return n ranks, where n is the
+            number of statements in X.
+            The first n elements of ranks are obtained against subject corruptions. From n+1 until 2n ranks are obtained
+            against object corruptions.
+
     use_default_protocol: bool
-        Flag to indicate whether to evaluate head and tail corruptions separately (default: True).
-        If this is set to true, it will also ignore the ``corrupt_side`` argument and corrupt both head and tail
-        separately and rank triples.
+        Flag to indicate whether to use the standard protocol used in literature defined in
+        :cite:`bordes2013translating` (default: True).
+        If set to ``True`` it is equivalent to ``corrupt_side='s+o'``.
+        This corresponds to the evaluation protcol used in literature, where head and tail corruptions
+        are evaluated separately.
+
+        .. note::
+            When ``use_default_protocol=True`` the function will return 2*n ranks.
+            The first n elements of ranks are obtained against subject corruptions. From n+1 until 2n ranks are obtained
+            against object corruptions.
     Returns
     -------
-    ranks : ndarray, shape [n]
+    ranks : ndarray, shape [n] or [2*n]
         An array of ranks of positive test triples.
-
+        When ``use_default_protocol=True`` or ``corrupt_side='s+o'``, the function returns 2*n ranks instead of n.
+        In that case the first n elements of ranks are obtained against subject corruptions. From n+1 until 2n ranks
+        are obtained against object corruptions.
 
     Examples
     --------
     >>> import numpy as np
     >>> from ampligraph.datasets import load_wn18
     >>> from ampligraph.latent_features import ComplEx
-    >>> from ampligraph.evaluation import evaluate_performance
+    >>> from ampligraph.evaluation import evaluate_performance, mrr_score, hits_at_n_score
     >>>
     >>> X = load_wn18()
-    >>> model = ComplEx(batches_count=10, seed=0, epochs=1, k=150, eta=10,
-    >>>                 loss='pairwise', optimizer='adagrad')
+    >>> model = ComplEx(batches_count=10, seed=0, epochs=10, k=150, eta=1,
+    >>>                 loss='nll', optimizer='adam')
     >>> model.fit(np.concatenate((X['train'], X['valid'])))
     >>>
     >>> filter = np.concatenate((X['train'], X['valid'], X['test']))
-    >>> ranks = evaluate_performance(X['test'][:5], model=model, filter_triples=filter)
+    >>> ranks = evaluate_performance(X['test'][:5], model=model,
+                                     filter_triples=filter,
+                                     corrupt_side='s+o',
+                                     use_default_protocol=False)
     >>> ranks
-    array([    2,     4,     1,     1, 28550], dtype=int32)
+    [1, 582, 543, 6, 31]
     >>> mrr_score(ranks)
-    0.55000700525394053
+    0.24049691297347323
     >>> hits_at_n_score(ranks, n=10)
-    0.8
+    0.4
     """
 
     logger.debug('Evaluating the performance of the embedding model.')
