@@ -102,7 +102,7 @@ def train_test_split_no_unseen(X, test_size=5000, seed=0, allow_duplication=Fals
     tolerance = len(X) * 10
     while idx_test.shape[0] < test_size:
         i = rnd.randint(len(X))
-        if dict_subs[X[i, 0]] > 1 and dict_objs[X[i, 2]] > 1 and dict_rels[X[i,1]] > 1:
+        if dict_subs[X[i, 0]] > 0 and dict_objs[X[i, 2]] > 0 and dict_rels[X[i,1]] > 0:
             dict_subs[X[i, 0]] -= 1
             dict_objs[X[i, 2]] -= 1
             dict_rels[X[i, 1]] -= 1

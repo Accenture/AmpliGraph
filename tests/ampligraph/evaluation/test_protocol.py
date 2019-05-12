@@ -436,7 +436,7 @@ def test_train_test_split():
 
     # Graph
     X = np.array([['a', 'y', 'b'],
-                  ['a', 'y', 'c'],
+                  ['x', 'y', 'c'],
                   ['c', 'y', 'a'],
                   ['d', 'y', 'e'],
                   ['e', 'y', 'f'],
@@ -444,12 +444,12 @@ def test_train_test_split():
                   ['f', 'y', 'c']])
 
     expected_X_train = np.array([['a', 'y', 'b'],
+                                ['x', 'y', 'c'],
                                 ['c', 'y', 'a'],
                                 ['d', 'y', 'e'],
-                                ['e', 'y', 'f'],
                                 ['f', 'y', 'c']])
     
-    expected_X_test = np.array([['a', 'y', 'c'],
+    expected_X_test = np.array([['e', 'y', 'f'],
                                 ['f', 'y', 'c']])
 
     X_train, X_test = train_test_split_no_unseen(X, test_size = 2, seed = 0)
