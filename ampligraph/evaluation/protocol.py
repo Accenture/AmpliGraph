@@ -223,7 +223,7 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
     out : Tensor, shape [n, 3]
         An array of corruptions for the triples for x.
         
-    out_prime : Tensor, shape [n, 3]
+    out_prime : Tensor, shape [n]
         An array of product of prime numbers associated with corruption triples or None 
         based on filtered or non filtered version.
 

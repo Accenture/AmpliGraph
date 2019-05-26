@@ -837,12 +837,6 @@ class EmbeddingModel(abc.ABC):
                                                             self.relation_primes)
                 , 0)
 
-            # Create table to store train+test+valid triplet prime values(product)
-            self.table_filter_lookup = tf.contrib.lookup.HashTable(
-                tf.contrib.lookup.KeyValueTensorInitializer(self.filter_keys,
-                                                            np.zeros(len(self.filter_keys), dtype=np.int64))
-                , 1)
-
         corruption_entities = self.eval_config.get('corruption_entities', DEFAULT_CORRUPTION_ENTITIES)
 
         if corruption_entities == 'all':
@@ -866,8 +860,8 @@ class EmbeddingModel(abc.ABC):
 
         if self.is_filtered:
             # check if corruption prime product is present in dataset prime product
-            self.presense_mask = self.table_filter_lookup.lookup(self.out_corr_prime)
-            self.filtered_corruptions = tf.boolean_mask(self.out_corr, self.presense_mask)
+            _, self.present_idx = tf.setdiff1d(self.out_corr_prime, self.filter_keys)
+            self.filtered_corruptions = tf.gather(self.out_corr, self.present_idx)
         else:
             self.filtered_corruptions = self.out_corr
         
@@ -885,8 +879,10 @@ class EmbeddingModel(abc.ABC):
             
             if self.is_filtered: 
                 # get the number of filtered corruptions present for object and subject
-                self.presense_mask = tf.reshape(self.presense_mask, (2, -1))
-                self.presense_count = tf.reduce_sum(self.presense_mask, 1)
+                mid_idx = self.out_corr_prime.shape[0] // 2 + 1
+                obj = tf.reduce_sum(tf.cast(tf.less(self.present_idx, mid_idx), tf.int64))
+                sub = tf.reduce_sum(tf.cast(tf.greater_equal(self.present_idx, mid_idx), tf.int64))
+                self.presense_count = tf.stack([obj, sub])
             else:
                 self.presense_count = tf.stack([tf.shape(self.scores_predict)[0]//2,
                                                 tf.shape(self.scores_predict)[0]//2])
