@@ -5,6 +5,8 @@ from ..evaluation import mrr_score, hits_at_n_score, mr_score
 import itertools
 import tensorflow as tf
 import logging
+import psycopg2
+from psycopg2.extras import execute_values
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -566,6 +568,22 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         logger.debug('Getting filtered triples.')
         filter_triples = to_idx(filter_triples, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
         
+        conn = psycopg2.connect("dbname=AmpligraphDB user=ampligraph")
+        pg_triple_values = [i.tolist() for i in filter_triples]
+        pg_entity_values = [[i] for i in range(len(model.ent_to_idx))]
+        cur = conn.cursor()
+        try:
+            execute_values(cur, 'INSERT INTO entity_table VALUES %s', pg_entity_values)
+            conn.commit()
+        except psycopg2.Error as e:
+            conn.rollback()
+
+        cur = conn.cursor()
+        execute_values(cur, 'INSERT INTO triples_table VALUES %s', pg_triple_values)
+        conn.commit()
+        conn.close()
+    
+        
     eval_dict = {}
     eval_dict['default_protocol'] = False
     
@@ -586,6 +604,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     logger.debug('Configuring evaluation protocol.')
     model.configure_evaluation_protocol(eval_dict)
     logger.debug('Making predictions.')
+    '''
     for i in tqdm(range(X_test.shape[0]), disable=(not verbose)):
         _, rank = model.predict(X_test[i], from_idx=True, get_ranks=True)
         if use_default_protocol :
@@ -593,7 +612,9 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
             continue
             
         ranks.append(rank)
-            
+    '''  
+    _, ranks = model.predict(X_test, from_idx=True, get_ranks=True)
+    
     model.end_evaluation()
     logger.debug('Ending Evaluation')
 

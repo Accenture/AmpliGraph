@@ -4,6 +4,7 @@ from sklearn.utils import check_random_state
 import abc
 from tqdm import tqdm
 import logging
+import psycopg2
 
 MODEL_REGISTRY = {}
 
@@ -807,42 +808,49 @@ class EmbeddingModel(abc.ABC):
             - **default_protocol**: Boolean flag to indicate whether to use default protocol for evaluation. This computes scores for corruptions of subjects and objects and ranks them separately. This could have been done by evaluating s and o separately and then ranking but it slows down the performance. Hence this mode is used where s+o corruptions are generated at once but ranked separately for speed up.(default: False)
         """
         self.eval_config = config
+        if self.eval_config['default_protocol']:
+            self.eval_config['corrupt_side'] = 's+o'
+        
+    def sql_retrieve(self):
+        conn = psycopg2.connect("dbname=AmpligraphDB user=ampligraph")
+        cur1 = conn.cursor()
+        cur2 = conn.cursor()
+        for x_triple in self.X_test:
+            query1 = "select object from triples_table where subject=" + str(x_triple[0]) + \
+                        " and predicate="+ str(x_triple[1])
+            query2 = "select subject from triples_table where predicate=" + str(x_triple[1]) + \
+                        " and object="+ str(x_triple[2])
+            cur1.execute(query1)
+            cur2.execute(query2)
+            out_1 = np.array(cur1.fetchall())
+            if out_1.ndim>=1:
+                np.squeeze(out_1)
+            out_2 = np.array(cur2.fetchall())
+            if out_2.ndim>=1:
+                np.squeeze(out_2)
+            out_triple = np.array([x_triple])
+            yield out_triple, out_1, out_2
 
     def _initialize_eval_graph(self):
         """Initialize the evaluation graph. 
         
         Use prime number based filtering strategy (refer set_filter_for_eval()), if the filter is set
         """
-        self.X_test_tf = tf.placeholder(tf.int64, shape=[1, 3])
-
-        self.table_entity_lookup_left = None
-        self.table_entity_lookup_right = None
-        self.table_reln_lookup = None
-
-        all_entities_np = np.int64(np.arange(len(self.ent_to_idx)))
-
         if self.is_filtered:
-            all_reln_np = np.int64(np.arange(len(self.rel_to_idx)))
-            
-            self.table_entity_lookup_left = tf.contrib.lookup.HashTable(
-                tf.contrib.lookup.KeyValueTensorInitializer(all_entities_np,
-                                                            self.entity_primes_left)
-                , 0)
-            self.table_entity_lookup_right = tf.contrib.lookup.HashTable(
-                tf.contrib.lookup.KeyValueTensorInitializer(all_entities_np,
-                                                            self.entity_primes_right)
-                , 0)
-            self.table_reln_lookup = tf.contrib.lookup.HashTable(
-                tf.contrib.lookup.KeyValueTensorInitializer(all_reln_np,
-                                                            self.relation_primes)
-                , 0)
-
-            # Create table to store train+test+valid triplet prime values(product)
-            self.table_filter_lookup = tf.contrib.lookup.HashTable(
-                tf.contrib.lookup.KeyValueTensorInitializer(self.filter_keys,
-                                                            np.zeros(len(self.filter_keys), dtype=np.int64))
-                , 1)
-
+            dataset = tf.data.Dataset.from_generator(self.sql_retrieve, 
+                                         output_types=(tf.int64, tf.int64, tf.int64),
+                                         output_shapes=((1,3), (None,1), (None,1))) 
+            dataset = dataset.prefetch(1)
+            dataset_iter = dataset.make_one_shot_iterator()
+            self.X_test_tf, indices_obj, indices_sub = dataset_iter.get_next()
+        else:
+            dataset = tf.data.Dataset.from_tensor_slices(self.X_test)
+            dataset = dataset.prefetch(1).batch(1)
+            dataset_iter = dataset.make_one_shot_iterator()
+            self.X_test_tf = dataset_iter.get_next()
+        
+        
+        all_entities_np = np.int64(np.arange(len(self.ent_to_idx)))
         corruption_entities = self.eval_config.get('corruption_entities', DEFAULT_CORRUPTION_ENTITIES)
 
         if corruption_entities == 'all':
@@ -855,57 +863,69 @@ class EmbeddingModel(abc.ABC):
             raise ValueError(msg)
 
         self.corruption_entities_tf = tf.constant(corruption_entities, dtype=tf.int64)
-
+        
         corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
+            
         self.out_corr, self.out_corr_prime = generate_corruptions_for_eval(self.X_test_tf,
                                                                            self.corruption_entities_tf,
                                                                            corrupt_side,
-                                                                           self.table_entity_lookup_left,
-                                                                           self.table_entity_lookup_right,
-                                                                           self.table_reln_lookup)
+                                                                           None,
+                                                                           None,
+                                                                           None)
 
-        if self.is_filtered:
-            # check if corruption prime product is present in dataset prime product
-            self.presense_mask = self.table_filter_lookup.lookup(self.out_corr_prime)
-            self.filtered_corruptions = tf.boolean_mask(self.out_corr, self.presense_mask)
-        else:
-            self.filtered_corruptions = self.out_corr
-        
         # Compute scores for negatives
-        e_s, e_p, e_o = self._lookup_embeddings(self.filtered_corruptions)
+        e_s, e_p, e_o = self._lookup_embeddings(self.out_corr)
         self.scores_predict = self._fn(e_s, e_p, e_o)
         
         # Compute scores for positive
         e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
         self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
         
-        if self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL):
-            # For default protocol, the corrupt side is always s+o
-            corrupt_side == 's+o' 
-            
-            if self.is_filtered: 
-                # get the number of filtered corruptions present for object and subject
-                self.presense_mask = tf.reshape(self.presense_mask, (2, -1))
-                self.presense_count = tf.reduce_sum(self.presense_mask, 1)
-            else:
-                self.presense_count = tf.stack([tf.shape(self.scores_predict)[0]//2,
-                                                tf.shape(self.scores_predict)[0]//2])
-            
-            # Get the corresponding corruption triple scores
+        use_default_protocol = self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL)
+        
+        if use_default_protocol:
             obj_corruption_scores = tf.slice(self.scores_predict,
                                              [0],
-                                             [tf.gather(self.presense_count, 0)])
+                                             [tf.shape(self.scores_predict)[0]//2])
 
             subj_corruption_scores = tf.slice(self.scores_predict,
-                                              [tf.gather(self.presense_count, 0)],
-                                              [tf.gather(self.presense_count, 1)])
+                                              [tf.shape(self.scores_predict)[0]//2],
+                                              [tf.shape(self.scores_predict)[0]//2])
             
-            # rank them against the positive
-            self.rank = tf.stack([tf.reduce_sum(tf.cast(subj_corruption_scores >= self.score_positive, tf.int32))+1,
-                                  tf.reduce_sum(tf.cast(obj_corruption_scores >= self.score_positive, tf.int32))+1], 0)
-                                              
+        positives_among_obj_corruptions_ranked_higher = 0
+        positives_among_sub_corruptions_ranked_higher = 0    
+        
+        if self.is_filtered:
+            if use_default_protocol:
+                scores_pos_obj = tf.gather(obj_corruption_scores,indices_obj) 
+                scores_pos_sub = tf.gather(subj_corruption_scores,indices_sub)
+                
+            else:
+                scores_pos_obj = tf.gather(self.scores_predict,indices_obj) 
+                if corrupt_side == 's+o':
+                    scores_pos_sub = tf.gather(self.scores_predict,indices_sub+len(self.ent_to_idx))
+                else:
+                    scores_pos_sub = tf.gather(self.scores_predict,indices_sub)
+
+            if corrupt_side == 's+o' or corrupt_side == 'o':
+                positives_among_obj_corruptions_ranked_higher = tf.reduce_sum(tf.cast(scores_pos_obj >= \
+                                                                                                self.score_positive, tf.int32)) 
+            if corrupt_side == 's+o' or corrupt_side == 's':
+                positives_among_sub_corruptions_ranked_higher = tf.reduce_sum(tf.cast(scores_pos_sub >= \
+                                                                                            self.score_positive, tf.int32)) 
+
+        if use_default_protocol:
+            
+            self.rank = tf.stack([tf.reduce_sum(tf.cast(subj_corruption_scores >= self.score_positive, tf.int32)) + 1 - \
+                                                                          positives_among_sub_corruptions_ranked_higher,
+                                  tf.reduce_sum(tf.cast(obj_corruption_scores >= self.score_positive, tf.int32)) + 1 - \
+                                                                          positives_among_obj_corruptions_ranked_higher], 0)
         else:
-            self.rank = tf.reduce_sum(tf.cast(self.scores_predict >= self.score_positive, tf.int32))+1
+            self.rank = tf.reduce_sum(tf.cast(self.scores_predict >= self.score_positive, tf.int32)) + 1 - \
+                                positives_among_sub_corruptions_ranked_higher - positives_among_obj_corruptions_ranked_higher
+        
+
+                            
 
     def end_evaluation(self):
         """End the evaluation and close the Tensorflow session.
@@ -967,7 +987,9 @@ class EmbeddingModel(abc.ABC):
             raise RuntimeError(msg)
 
         if not from_idx:
-            X = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+            self.X_test = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+        else:
+            self.X_test = X
 
         # build tf graph for predictions
         if self.sess_predict is None:
@@ -982,6 +1004,7 @@ class EmbeddingModel(abc.ABC):
 
         scores = []
         ranks = []
+        '''
         if X.ndim > 1:
             for x in X:
                 all_scores = self.sess_predict.run(self.score_positive, feed_dict={self.X_test_tf: [x]})
@@ -995,7 +1018,16 @@ class EmbeddingModel(abc.ABC):
             scores = all_scores
             if get_ranks:
                 ranks = self.sess_predict.run(self.rank, feed_dict={self.X_test_tf: [X]})
-
+        '''
+        for i in tqdm(range(self.X_test.shape[0])):
+            all_scores, rank = self.sess_predict.run([self.score_positive, self.rank])
+            scores.append(all_scores)
+            if get_ranks:
+                if self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL): 
+                    ranks.extend(list(rank)) 
+                else:
+                    ranks.append(rank)
+                
         if get_ranks:
             return scores, ranks
 
