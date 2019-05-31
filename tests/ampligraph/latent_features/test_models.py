@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE
+from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline
 from ampligraph.datasets import load_wn18
-
+from ampligraph.evaluation import evaluate_performance, hits_at_n_score
 
 def test_fit_predict_TransE_early_stopping_with_filter():
     X = load_wn18()
@@ -34,7 +34,19 @@ def test_fit_predict_TransE_early_stopping_without_filter():
     y, _ = model.predict(X['test'][:1], get_ranks=True)
     print(y)
 
-
+def test_evaluate_RandomBaseline():
+    model = RandomBaseline(seed=0)
+    X = load_wn18()
+    model.fit(X["train"])
+    ranks = evaluate_performance(X["test"], 
+                                 model=model, 
+                                 use_default_protocol=False,
+                                 corrupt_side='s+o',
+                                 verbose=False)
+    hits10 = hits_at_n_score(ranks, n=10)
+    hits1 = hits_at_n_score(ranks, n=1)
+    assert(hits10==0.0002 and hits1==0.0)
+    
 def test_fit_predict_transE():
     model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5}, 
                    optimizer='adagrad', optimizer_params={'lr':0.1})
