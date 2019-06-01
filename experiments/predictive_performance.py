@@ -181,10 +181,10 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset",
-                        type=str,
+                        type=str.lower,
                         choices=SUPPORT_DATASETS)
     parser.add_argument("-m", "--model",
-                        type=str,
+                        type=str.lower,
                         choices=SUPPOORT_MODELS)
 
     args = parser.parse_args()
