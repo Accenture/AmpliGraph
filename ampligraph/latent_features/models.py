@@ -346,6 +346,10 @@ class EmbeddingModel(abc.ABC):
     def get_embeddings(self, entities, embedding_type='entity'):
         """Get the embeddings of entities or relations.
 
+
+        .. Note ::
+            Use :meth:`ampligraph.utils.create_tensorboard_visualizations` to visualize the embeddings with TensorBoard.
+
         Parameters
         ----------
         entities : array-like, dtype=int, shape=[n]
@@ -1052,6 +1056,9 @@ class RandomBaseline(EmbeddingModel):
     
     def get_embeddings(self, entities, type='entity'):
         """Get the embeddings of entities or relations.
+
+        .. Note ::
+            Use :meth:`ampligraph.utils.create_tensorboard_visualizations` to visualize the embeddings with TensorBoard.
 
         Parameters
         ----------

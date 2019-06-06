@@ -142,18 +142,22 @@ def restore_model(model_name_path=None):
 
 
 def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=True, export_tsv_embeddings=True):
-    """ Export Tensorboard and TensorBoard Projector visualization files.
+    """ Export embeddings to Tensorboard.
 
-        This function exports embeddings to disk in two TensorBoard formats:
+        This function exports embeddings to disk in a format used by
+        `TensorBoard <https://www.tensorflow.org/tensorboard>`_ and
+        `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_.
+        The function exports:
 
         * A number of checkpoint and graph embedding files in the provided location that will allow
-          you to visualize embeddings using Tensorboard. This is generally for use with a local Tensorboard instance,
-          to create files to upload to projector.tensorflow.org then use the create
-          _tensorboard_projector_files function.
-        * a tab-separated file of embeddings at the given path. This is generally used to
-          visualize embeddings by uploading to projector.tensorflow.org.
+          you to visualize embeddings using Tensorboard. This is generally for use with a
+          `local Tensorboard instance <https://www.tensorflow.org/tensorboard/r1/overview>`_.
+        * a tab-separated file of embeddings ``embeddings_projector.tsv``. This is generally used to
+          visualize embeddings by uploading to `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_.
+        * embeddings metadata (i.e. the embeddings labels from the original knowledge graph), saved to ``metadata.tsv``.
+          Such file can be used in TensorBoard or uploaded to TensorBoard Embedding Projector.
 
-        The content of ``loc`` will look like:
+        The content of ``loc`` will look like: ::
 
             tensorboard_files/
                 ├── checkpoint
@@ -164,10 +168,20 @@ def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=Tr
                 ├── metadata.tsv
                 └── projector_config.pbtxt
 
+        .. Note ::
+            A TensorBoard guide is available at `this address <https://www.tensorflow.org/tensorboard/r1/overview>`_.
+
+        .. Note ::
+            Uploading ``embeddings_projector.tsv`` and ``metadata.tsv`` to
+            `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_ will give a result
+            similar to the picture below:
+
+            .. image:: ../img/embeddings_projector.png
+
         Examples
         --------
         >>> import numpy as np
-        >>> from ampligraph.latent_features import
+        >>> from ampligraph.latent_features import TransE
         >>> from ampligraph.utils import create_tensorboard_visualizations
         >>>
         >>> X = np.array([['a', 'y', 'b'],
@@ -186,7 +200,6 @@ def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=Tr
         >>> create_tensorboard_visualizations(model, 'tensorboard_files')
 
 
-
         Parameters
         ----------
         model: EmbeddingModel
@@ -199,7 +212,7 @@ def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=Tr
             Default behaviour is to use the embeddings labels included in the model.
         export_tsv_embeddings: bool (Default: True
              If True, will generate a tab-separated file of embeddings at the given path. This is generally used to
-             visualize embeddings by uploading to projector.tensorflow.org.
+             visualize embeddings by uploading to `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_.
         write_metadata: bool (Default: True)
             If True will write a file named 'metadata.tsv' in the same directory as path.
 
