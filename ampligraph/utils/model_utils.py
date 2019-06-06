@@ -141,20 +141,51 @@ def restore_model(model_name_path=None):
     return model
 
 
-def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=True,):
-    """ Create Tensorboard checkpoint visualization files.
+def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=True, export_tsv_embeddings=True):
+    """ Export Tensorboard and TensorBoard Projector visualization files.
 
-        This will create a number of checkpoint and graph embedding files in the provided location that will allow
-        you to visualize embeddings using Tensorboard. This is generally for use with a local Tensorboard instance,
-        to create files to upload to projector.tensorflow.org then use the create_tensorboard_projector_files function.
+        This function exports embeddings to disk in two TensorBoard formats:
+
+        * A number of checkpoint and graph embedding files in the provided location that will allow
+          you to visualize embeddings using Tensorboard. This is generally for use with a local Tensorboard instance,
+          to create files to upload to projector.tensorflow.org then use the create
+          _tensorboard_projector_files function.
+        * a tab-separated file of embeddings at the given path. This is generally used to
+          visualize embeddings by uploading to projector.tensorflow.org.
+
+        The content of ``loc`` will look like:
+
+            tensorboard_files/
+                ├── checkpoint
+                ├── embeddings_projector.tsv
+                ├── graph_embedding.ckpt.data-00000-of-00001
+                ├── graph_embedding.ckpt.index
+                ├── graph_embedding.ckpt.meta
+                ├── metadata.tsv
+                └── projector_config.pbtxt
 
         Examples
         --------
-        >>> from ampligraph.utils import create_tensorboard_visualizations, restore_model
-        >>> example_name = 'helloworld.pkl'
-        >>> model = restore_model(model_name_path = example_name)
-        >>> output_path = 'model_tensorboard/'
-        >>> create_tensorboard_visualizations(model, output_path)
+        >>> import numpy as np
+        >>> from ampligraph.latent_features import
+        >>> from ampligraph.utils import create_tensorboard_visualizations
+        >>>
+        >>> X = np.array([['a', 'y', 'b'],
+        >>>               ['b', 'y', 'a'],
+        >>>               ['a', 'y', 'c'],
+        >>>               ['c', 'y', 'a'],
+        >>>               ['a', 'y', 'd'],
+        >>>               ['c', 'y', 'd'],
+        >>>               ['b', 'y', 'c'],
+        >>>               ['f', 'y', 'e']])
+        >>>
+        >>> model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise',
+        >>>                loss_params={'margin':5})
+        >>> model.fit(X)
+        >>>
+        >>> create_tensorboard_visualizations(model, 'tensorboard_files')
+
+
 
         Parameters
         ----------
@@ -166,6 +197,9 @@ def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=Tr
         labels: pd.DataFrame
             Label(s) for each embedding point in the Tensorboard visualization.
             Default behaviour is to use the embeddings labels included in the model.
+        export_tsv_embeddings: bool (Default: True
+             If True, will generate a tab-separated file of embeddings at the given path. This is generally used to
+             visualize embeddings by uploading to projector.tensorflow.org.
         write_metadata: bool (Default: True)
             If True will write a file named 'metadata.tsv' in the same directory as path.
 
@@ -191,6 +225,11 @@ def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=Tr
     if write_metadata:
         logger.debug('Writing metadata.tsv to: %s' % loc)
         write_metadata_tsv(loc, labels)
+
+    if export_tsv_embeddings:
+        tsv_filename = "embeddings_projector.tsv"
+        logger.info('Writing embeddings tsv to: %s' % os.path.join(loc, tsv_filename))
+        np.savetxt(os.path.join(loc, tsv_filename), model.trained_model_params[0], delimiter='\t')
 
     checkpoint_path = os.path.join(loc, 'graph_embedding.ckpt')
 
