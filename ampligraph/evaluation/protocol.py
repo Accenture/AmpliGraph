@@ -510,7 +510,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
         .. hint::
             When ``rank_against_ent=None``, the method will use all distinct entities in the knowledge graph ``X``
-            to generate negatives to rank against. If ``X`` includes more than 1 million unique
+            to generate negatives to rank against. If ``X`` includes more than 2.5 million unique
             entities and relations, the method will return a runtime error.
             To solve the problem, it is recommended to pass the desired entities to use to generate corruptions
             to ``rank_against_ent``. Besides, trying to rank a positive against an extremely large number of negatives
