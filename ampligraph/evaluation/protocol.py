@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def train_test_split_no_unseen(X, test_size=5000, seed=0, allow_duplication=False):
+def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False):
     """Split into train and test sets.
 
      This function carves out a test set that contains only entities 
@@ -123,10 +123,14 @@ def train_test_split_no_unseen(X, test_size=5000, seed=0, allow_duplication=Fals
         # in case can't find solution
         if loop_count == tolerance:
             if allow_duplication:
-                raise Exception("Not possible to split the dataset...")
+                raise Exception("Cannot create a test split of the desired size. "
+                                "Some entities will not occur in both training and test set. "
+                                "Change seed values, or set test_size to a smaller value.")
             else:
-                raise Exception("Not possible to split the dataset. \
-                                Maybe set allow_duplication = True can help...")
+                raise Exception("Cannot create a test split of the desired size. "
+                                "Some entities will not occur in both training and test set. "
+                                "Set allow_duplication=True, or "
+                                "change seed values, or set test_size to a smaller value.")
 
     logger.debug('Completed random search.')
     
@@ -135,6 +139,7 @@ def train_test_split_no_unseen(X, test_size=5000, seed=0, allow_duplication=Fals
     logger.debug('Train test split completed.')
 
     return X[idx_train, :], X[idx_test, :]
+
 
 def _create_unique_mappings(unique_obj, unique_rel):
     obj_count = len(unique_obj)
