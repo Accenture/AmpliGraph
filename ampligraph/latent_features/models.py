@@ -1,3 +1,10 @@
+# Copyright 2019 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 import numpy as np
 import tensorflow as tf
 from sklearn.utils import check_random_state
@@ -345,6 +352,10 @@ class EmbeddingModel(abc.ABC):
 
     def get_embeddings(self, entities, embedding_type='entity'):
         """Get the embeddings of entities or relations.
+
+
+        .. Note ::
+            Use :meth:`ampligraph.utils.create_tensorboard_visualizations` to visualize the embeddings with TensorBoard.
 
         Parameters
         ----------
@@ -1053,6 +1064,9 @@ class RandomBaseline(EmbeddingModel):
     def get_embeddings(self, entities, type='entity'):
         """Get the embeddings of entities or relations.
 
+        .. Note ::
+            Use :meth:`ampligraph.utils.create_tensorboard_visualizations` to visualize the embeddings with TensorBoard.
+
         Parameters
         ----------
         entities : array-like, dtype=int, shape=[n]
@@ -1113,7 +1127,7 @@ class RandomBaseline(EmbeddingModel):
         positive_scores = self.rnd.uniform(low=0, high=1, size=len(X)).tolist()
         if get_ranks:
             corruption_entities = self.eval_config.get('corruption_entities', DEFAULT_CORRUPTION_ENTITIES)
-            if corruption_entities is None:
+            if corruption_entities == "all":
                 corruption_length = len(self.ent_to_idx)
             else:
                 corruption_length = len(corruption_entities)
