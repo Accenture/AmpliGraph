@@ -300,7 +300,7 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False):
         The location to save the dataset to. Defaults to None.
 
     check_md5hash : boolean
-        If true check the md4hash of the files after they are downloaded.
+        If True check the md5hash of the files after they are downloaded. Defaults to False.
     """
     
     if dataset_metadata.dataset_name is None:
@@ -343,6 +343,10 @@ def load_wn18(check_md5hash=False):
         The dataset includes a large number of inverse relations, and its use in experiments has been deprecated.
         Use WN18RR instead.
 
+    Parameters
+    ----------
+    check_md5hash : bool
+        If ``True`` check the md5hash of the files. Defaults to ``False``.
 
     Returns
     -------
@@ -401,6 +405,9 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True):
     clean_unseen : bool
         If ``True``, filters triples in validation and test sets that include entities not present in the training set.
 
+    check_md5hash : bool
+        If ``True`` check the md5hash of the datset files. Defaults to ``False``.
+
     Returns
     -------
     
@@ -454,6 +461,12 @@ def load_fb15k(check_md5hash=False):
     .. warning::
         The dataset includes a large number of inverse relations, and its use in experiments has been deprecated.
         Use FB15k-237 instead.
+
+    Parameters
+    ----------
+    check_md5hash : boolean
+        If ``True`` check the md5hash of the files. Defaults to ``False``.
+
 
     Returns
     -------
@@ -513,6 +526,9 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True):
 
     Parameters
     ----------
+    check_md5hash : boolean
+        If ``True`` check the md5hash of the files. Defaults to ``False``.
+
     clean_unseen : bool
         If ``True``, filters triples in validation and test sets that include entities not present in the training set.
 
@@ -566,6 +582,13 @@ def load_yago3_10(check_md5hash=False, clean_unseen = True):
     YAGO3-10  1,079,040 5,000   5,000   123,182       37
     ========= ========= ======= ======= ============ ===========
 
+    Parameters
+    ----------
+    check_md5hash : boolean
+        If ``True`` check the md5hash of the files. Defaults to ``False``.
+    
+    clean_unseen : bool
+        If ``True``, filters triples in validation and test sets that include entities not present in the training set.
 
     Returns
     -------
