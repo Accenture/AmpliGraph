@@ -482,7 +482,7 @@ def load_fb15k(check_md5hash=False):
                 train_checksum='5a87195e68d7797af00e137a7f6929f2', valid_checksum='275835062bb86a86477a3c402d20b814', 
                 test_checksum='71098693b0efcfb8ac6cd61cf3a3b505')
 
-    return _load_dataset(FB15K, data_home=None, check_md5hash=False)
+    return _load_dataset(FB15K, data_home=None, check_md5hash=check_md5hash)
 
 
 def load_fb15k_237(check_md5hash=False, clean_unseen=True):
