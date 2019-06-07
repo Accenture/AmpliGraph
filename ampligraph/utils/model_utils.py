@@ -276,57 +276,6 @@ def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=Tr
         projector.visualize_embeddings(tf.summary.FileWriter(loc), config)
 
 
-def create_tensorboard_projector_files(model, path, labels=None, write_metadata=True):
-    """ Create Tensorboard projector visualization files.
-
-        This will create a tab separated file of embeddings at the given path. This is generally used to
-        visualize embeddings by uploading to projector.tensorflow.org. To visualize using a local Tensorboard instance,
-        you may find it easier to use the create_tensorboard_visualizations function.
-
-        Examples
-        --------
-        >>> from ampligraph.utils import create_tensorboard_projector_files, restore_model
-        >>> example_name = 'helloworld.pkl'
-        >>> model = restore_model(model_name_path = example_name)
-        >>> output_path = 'path/my_embeddings.tsv'
-        >>> create_tensorboard_projector_files(model, output_path)
-
-        Parameters
-        ----------
-        model: EmbeddingModel
-            A trained neural knowledge graph embedding model, the model must be an instance of TransE,
-            DistMult, ComplEx, or HolE.
-        path: string
-            Filename where the embeddings.tsv is written. Default: embeddings.tsv
-        labels: pd.DataFrame, or list
-            Label(s) for each embedding point in the Tensorboard visualization.
-            Default behaviour is to use the embeddings labels included in the model.
-        write_metadata: bool (Default: True)
-            If True will write a file named 'metadata.tsv' in the same directory as path.
-
-    """
-
-    if not model.is_fitted:
-        raise ValueError('Cannot write embeddings if model is not fitted.')
-
-    # If no label data supplied, use model ent_to_idx keys as labels
-    if labels is None:
-        logger.info('Using model entity dictionary to create Tensorboard metadata.tsv')
-        labels = list(model.ent_to_idx.keys())
-    else:
-        if len(labels) != len(model.ent_to_idx):
-            raise ValueError('Label data rows must equal number of embeddings.')
-
-    loc = os.path.dirname(path)
-
-    if write_metadata:
-        logger.debug('Writing metadata to: %s' % os.path.join(loc, 'metadata.tsv'))
-        write_metadata_tsv(loc, labels)
-
-    logger.info('Writing embeddings tsv to: %s' % path)
-    np.savetxt(path, model.trained_model_params[0], delimiter='\t')
-
-
 def write_metadata_tsv(loc, data):
     """ Write Tensorboard metadata.tsv file.
 
