@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3
+- Fixed regression in RandomBaseline (#94)
+- Added TensorBoard Embedding Projector support (#86)
+- Minor bugfixing (#87, #47)
+
+
 ## 1.0.2
 - Added multiclass loss (#24 and #22)
 - Updated the negative generation to speed up evaluation for default protocol.(#74)
