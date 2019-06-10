@@ -17,6 +17,7 @@ import tensorflow as tf
 
 from ampligraph.evaluation import train_test_split_no_unseen
 
+
 @pytest.mark.skip(reason="Speeding up jenkins")
 def test_select_best_model_ranking():
     X = load_wn18()
@@ -78,20 +79,19 @@ def test_select_best_model_ranking_inf_skip():
                                                                                               X,
                                                                                               param_grid)
     assert(best_params["optimizer_params"]["lr"] == 0.1)
-    
+
+
 def test_evaluate_performance_default_protocol_without_filter():
     wn18 = load_wn18()
 
-
-    model = TransE(batches_count=10, seed=0, epochs=1, 
-                    k=50, eta=10,  verbose=True, 
-                    embedding_model_params={'normalize_ent_emb':False, 'norm':1},
-                    loss = 'self_adversarial', loss_params={'margin':1, 'alpha':0.5}, 
-                    optimizer='adam', 
-                    optimizer_params={'lr':0.0005})
+    model = TransE(batches_count=10, seed=0, epochs=1,
+                   k=50, eta=10,  verbose=True,
+                   embedding_model_params={'normalize_ent_emb':False, 'norm': 1},
+                   loss='self_adversarial', loss_params={'margin': 1, 'alpha': 0.5},
+                   optimizer='adam',
+                   optimizer_params={'lr': 0.0005})
 
     model.fit(wn18['train'])
-
 
     from ampligraph.evaluation import evaluate_performance
     ranks_sep = []
@@ -138,16 +138,14 @@ def test_evaluate_performance_default_protocol_with_filter():
 
     X_filter = np.concatenate((wn18['train'], wn18['valid'], wn18['test']))
 
-
     model = TransE(batches_count=10, seed=0, epochs=1, 
-                    k=50, eta=10,  verbose=True, 
-                    embedding_model_params={'normalize_ent_emb':False, 'norm':1},
-                    loss = 'self_adversarial', loss_params={'margin':1, 'alpha':0.5}, 
-                    optimizer='adam', 
-                    optimizer_params={'lr':0.0005})
+                   k=50, eta=10,  verbose=True,
+                   embedding_model_params={'normalize_ent_emb': False, 'norm': 1},
+                   loss='self_adversarial', loss_params={'margin': 1, 'alpha': 0.5},
+                   optimizer='adam',
+                   optimizer_params={'lr': 0.0005})
 
     model.fit(wn18['train'])
-
 
     from ampligraph.evaluation import evaluate_performance
     ranks_sep = []
@@ -170,7 +168,6 @@ def test_evaluate_performance_default_protocol_with_filter():
     print('hits10:', hits_at_n_score(ranks_sep, 10))
     print('hits3:', hits_at_n_score(ranks_sep, 3))
     print('hits1:', hits_at_n_score(ranks_sep, 1))
-
 
     from ampligraph.evaluation import evaluate_performance
 
@@ -205,6 +202,7 @@ def test_evaluate_performance_so_side_corruptions_with_filter():
     print("Hits@10: %f" % hits_10)
     assert(mrr is not np.Inf)
 
+
 def test_evaluate_performance_so_side_corruptions_without_filter():
     X = load_wn18()
     model = ComplEx(batches_count=10, seed=0, epochs=5, k=200, eta=10, loss='nll',
@@ -229,8 +227,8 @@ def test_evaluate_performance_nll_complex():
                     optimizer='adagrad', verbose=True)
     model.fit(np.concatenate((X['train'], X['valid'])))
 
-    filter = np.concatenate((X['train'], X['valid'], X['test']))
-    ranks = evaluate_performance(X['test'][:200], model=model, filter_triples=filter, verbose=True)
+    filter_triples = np.concatenate((X['train'], X['valid'], X['test']))
+    ranks = evaluate_performance(X['test'][:200], model=model, filter_triples=filter_triples, verbose=True)
 
     mrr = mrr_score(ranks)
     hits_10 = hits_at_n_score(ranks, n=10)
@@ -246,10 +244,9 @@ def test_evaluate_performance_TransE():
                    loss='pairwise', loss_params={'margin': 5}, optimizer='adagrad')
     model.fit(np.concatenate((X['train'], X['valid'])))
 
-    filter = np.concatenate((X['train'], X['valid'], X['test']))
-    ranks = evaluate_performance(X['test'][:200], model=model, filter_triples=filter, verbose=True)
-    
-    
+    filter_triples = np.concatenate((X['train'], X['valid'], X['test']))
+    ranks = evaluate_performance(X['test'][:200], model=model, filter_triples=filter_triples, verbose=True)
+
     # ranks = evaluate_performance(X['test'][:200], model=model)
 
     mrr = mrr_score(ranks)
@@ -438,7 +435,6 @@ def test_generate_corruptions_for_fit_curropt_side_o():
     np.testing.assert_array_equal(X_corr, X_corr_exp)
 
 
-
 def test_train_test_split():
 
     # Graph
@@ -459,7 +455,7 @@ def test_train_test_split():
     expected_X_test = np.array([['a', 'y', 'c'],
                                 ['f', 'y', 'c']])
 
-    X_train, X_test = train_test_split_no_unseen(X, test_size = 2, seed = 0)
+    X_train, X_test = train_test_split_no_unseen(X, test_size=2, seed=0)
 
     np.testing.assert_array_equal(X_train, expected_X_train)
     np.testing.assert_array_equal(X_test, expected_X_test)

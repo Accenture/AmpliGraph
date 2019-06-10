@@ -32,16 +32,15 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
         If float, the percentage of total triples.
     seed : int
         A random seed used to split the dataset.
-    
     allow_duplication: boolean
         Flag to indicate if the test set can contain duplicated triples. 
 
     Returns
     -------
     X_train : ndarray, size[n, 3]
-        The training set
+        The training set.
     X_test : ndarray, size[n, 3]
-        The test set
+        The test set.
 
     Examples
     --------
@@ -109,7 +108,7 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
     tolerance = len(X) * 10
     while idx_test.shape[0] < test_size:
         i = rnd.randint(len(X))
-        if dict_subs[X[i, 0]] > 1 and dict_objs[X[i, 2]] > 1 and dict_rels[X[i,1]] > 1:
+        if dict_subs[X[i, 0]] > 1 and dict_objs[X[i, 2]] > 1 and dict_rels[X[i, 1]] > 1:
             dict_subs[X[i, 0]] -= 1
             dict_objs[X[i, 2]] -= 1
             dict_rels[X[i, 1]] -= 1
@@ -117,9 +116,9 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
                 idx_test = np.append(idx_test, i)
             else:
                 idx_test = np.unique(np.append(idx_test, i))
-        
+
         loop_count += 1
-        
+
         # in case can't find solution
         if loop_count == tolerance:
             if allow_duplication:
@@ -133,7 +132,7 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
                                 "change seed values, or set test_size to a smaller value.")
 
     logger.debug('Completed random search.')
-    
+
     idx = np.arange(len(X))
     idx_train = np.setdiff1d(idx, idx_test)
     logger.debug('Train test split completed.')
@@ -152,9 +151,9 @@ def _create_unique_mappings(unique_obj, unique_rel):
 def create_mappings(X):
     """Create string-IDs mappings for entities and relations.
 
-        Entities and relations are assigned incremental, unique integer IDs.
-        Mappings are preserved in two distinct dictionaries,
-        and counters are separated for entities and relations mappings.
+    Entities and relations are assigned incremental, unique integer IDs.
+    Mappings are preserved in two distinct dictionaries,
+    and counters are separated for entities and relations mappings.
 
     Parameters
     ----------
@@ -164,7 +163,7 @@ def create_mappings(X):
     Returns
     -------
     rel_to_idx : dict
-        The relation-to-internal-id associations
+        The relation-to-internal-id associations.
     ent_to_idx: dict
         The entity-to-internal-id associations.
 
@@ -179,43 +178,43 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
                                   table_entity_lookup_right=None, table_reln_lookup=None):
     """Generate corruptions for evaluation.
 
-        Create corruptions (subject and object) for a given triple x, in compliance with the
-        local closed world assumption (LCWA), as described in :cite:`nickel2016review`.
-        
-        .. note::
-            For filtering the corruptions, we adopt a hashing-based strategy to handle the set difference problem.
-            This strategy is as described below:
+    Create corruptions (subject and object) for a given triple x, in compliance with the
+    local closed world assumption (LCWA), as described in :cite:`nickel2016review`.
 
-            * We compute unique entities and relations in our dataset.
+    .. note::
+        For filtering the corruptions, we adopt a hashing-based strategy to handle the set difference problem.
+        This strategy is as described below:
 
-            * We assign unique prime numbers for entities (unique for subject and object separately) and for relations
-              and create three separate hash tables. (these hash maps are input to this function)
+        * We compute unique entities and relations in our dataset.
 
-            * For each triple in filter_triples, we get the prime numbers associated with subject, relation
-              and object by mapping to their respective hash tables. We then compute the **prime product for the
-              filter triple**. We store this triple product.
+        * We assign unique prime numbers for entities (unique for subject and object separately) and for relations
+          and create three separate hash tables. (these hash maps are input to this function)
 
-            * Since the numbers assigned to subjects, relations and objects are unique, their prime product is also
-              unique. i.e. a triple :math:`(a, b, c)` would have a different product compared to triple :math:`(c, b, a)`
-              as :math:`a, c` of subject have different primes compared to :math:`a, c` of object.
+        * For each triple in filter_triples, we get the prime numbers associated with subject, relation
+          and object by mapping to their respective hash tables. We then compute the **prime product for the
+          filter triple**. We store this triple product.
 
-            * While generating corruptions for evaluation, we hash the triple's entities and relations and get
-              the associated prime number and compute the **prime product for the corrupted triple**.
+        * Since the numbers assigned to subjects, relations and objects are unique, their prime product is also
+          unique. i.e. a triple :math:`(a, b, c)` would have a different product compared to triple
+          :math:`(c, b, a)` as :math:`a, c` of subject have different primes compared to :math:`a, c` of object.
 
-            * If this product is present in the products stored for the filter set, then we remove the corresponding
-              corrupted triple (as it is a duplicate i.e. the corruption triple is present in filter_triples)
+        * While generating corruptions for evaluation, we hash the triple's entities and relations and get
+          the associated prime number and compute the **prime product for the corrupted triple**.
 
-            * Using this approach we generate filtered corruptions for evaluation.
+        * If this product is present in the products stored for the filter set, then we remove the corresponding
+          corrupted triple (as it is a duplicate i.e. the corruption triple is present in filter_triples)
 
-            **Execution Time:** This method takes ~20 minutes on FB15K using ComplEx
-            (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
+        * Using this approach we generate filtered corruptions for evaluation.
+
+        **Execution Time:** This method takes ~20 minutes on FB15K using ComplEx
+        (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
 
     Parameters
     ----------
     X : Tensor, shape [1, 3]
         Currently, a single positive triples that will be used to create corruptions.
     entities_for_corruption : Tensor
-        All the entity IDs which are to be used for generation of corruptions
+        All the entity IDs which are to be used for generation of corruptions.
     corrupt_side: string
         Specifies which side of the triple to corrupt:
 
@@ -223,17 +222,17 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
         - 'o': corrupt only object
         - 's+o': corrupt both subject and object
     table_entity_lookup_left : tf.HashTable
-        Hash table of subject entities mapped to unique prime numbers
+        Hash table of subject entities mapped to unique prime numbers.
     table_entity_lookup_right : tf.HashTable
-        Hash table of object entities mapped to unique prime numbers
+        Hash table of object entities mapped to unique prime numbers.
     table_reln_lookup : tf.HashTable
-        Hash table of relations mapped to unique prime numbers
+        Hash table of relations mapped to unique prime numbers.
 
     Returns
     -------
 
     out : Tensor, shape [n, 3]
-        An array of corruptions for the triples for x.
+        An array of corruptions for the triples for X.
         
     out_prime : Tensor, shape [n, 3]
         An array of product of prime numbers associated with corruption triples or None 
@@ -253,8 +252,8 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
         repeated_subjs = tf.keras.backend.repeat(
             tf.slice(X,
                      [0, 0],  # subj
-                     [tf.shape(X)[0], 1])
-            , tf.shape(entities_for_corruption)[0])
+                     [tf.shape(X)[0], 1]),
+            tf.shape(entities_for_corruption)[0])
         repeated_subjs = tf.squeeze(repeated_subjs, 2)
 
     logger.debug('Getting repeating object.')
@@ -262,16 +261,16 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
         repeated_objs = tf.keras.backend.repeat(
             tf.slice(X,
                      [0, 2],  # Obj
-                     [tf.shape(X)[0], 1])
-            , tf.shape(entities_for_corruption)[0])
+                     [tf.shape(X)[0], 1]),
+            tf.shape(entities_for_corruption)[0])
         repeated_objs = tf.squeeze(repeated_objs, 2)
 
     logger.debug('Getting repeating relationships.')
     repeated_relns = tf.keras.backend.repeat(
         tf.slice(X,
                  [0, 1],  # reln
-                 [tf.shape(X)[0], 1])
-        , tf.shape(entities_for_corruption)[0])
+                 [tf.shape(X)[0], 1]),
+        tf.shape(entities_for_corruption)[0])
     repeated_relns = tf.squeeze(repeated_relns, 2)
 
     rep_ent = tf.keras.backend.repeat(tf.expand_dims(entities_for_corruption, 0), tf.shape(X)[0])
@@ -291,7 +290,7 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
     out_prime = tf.constant([])
 
     logger.debug('Creating prime numbers associated with corruptions.')
-    if table_entity_lookup_left != None and table_entity_lookup_right != None and table_reln_lookup != None:
+    if table_entity_lookup_left is not None and table_entity_lookup_right is not None and table_reln_lookup is not None:
 
         if corrupt_side in ['s+o', 'o']:
             prime_subj = tf.squeeze(table_entity_lookup_left.lookup(repeated_subjs))
@@ -319,21 +318,21 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
 def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o', entities_size=0, rnd=None):
     """Generate corruptions for training.
 
-        Creates corrupted triples for each statement in an array of statements,
-        as described by :cite:`trouillon2016complex`.
+    Creates corrupted triples for each statement in an array of statements,
+    as described by :cite:`trouillon2016complex`.
 
-        .. note::
-            Collisions are not checked, as this will be computationally expensive :cite:`trouillon2016complex`.
-            That means that some corruptions *may* result in being positive statements (i.e. *unfiltered* settings).
+    .. note::
+        Collisions are not checked, as this will be computationally expensive :cite:`trouillon2016complex`.
+        That means that some corruptions *may* result in being positive statements (i.e. *unfiltered* settings).
 
-        .. note::
-            When processing large knowledge graphs, it may be useful to generate corruptions only using entities from
-            a single batch.
-            This also brings the benefit of creating more meaningful negatives, as entities used to corrupt are
-            sourced locally.
-            The function can be configured to generate corruptions *only* using the entities from the current batch.
-            You can enable such behaviour be setting ``entities_size==-1``. In such case, if ``entities_list=None``
-            all entities from the *current batch* will be used to generate corruptions.
+    .. note::
+        When processing large knowledge graphs, it may be useful to generate corruptions only using entities from
+        a single batch.
+        This also brings the benefit of creating more meaningful negatives, as entities used to corrupt are
+        sourced locally.
+        The function can be configured to generate corruptions *only* using the entities from the current batch.
+        You can enable such behaviour be setting ``entities_size==-1``. In such case, if ``entities_list=None``
+        all entities from the *current batch* will be used to generate corruptions.
 
     Parameters
     ----------
@@ -367,7 +366,7 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
     -------
 
     out : Tensor, shape [n * eta, 3]
-        An array of corruptions for a list of positive triples x. For each row in X the corresponding corruption
+        An array of corruptions for a list of positive triples X. For each row in X the corresponding corruption
         indexes can be found at [index+i*n for i in range(eta)]
 
     """
@@ -472,50 +471,50 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
                          corrupt_side='s+o', use_default_protocol=True):
     """Evaluate the performance of an embedding model.
 
-        Run the relational learning evaluation protocol defined in :cite:`bordes2013translating`.
+    Run the relational learning evaluation protocol defined in :cite:`bordes2013translating`.
 
-        It computes the rank of each positive triple against a number of negatives generated on the fly.
-        Such negatives are compliant with the local closed world assumption (LCWA),
-        as described in :cite:`nickel2016review`. In practice, that means only one side of the triple is corrupted
-        (i.e. either the subject or the object).
+    It computes the rank of each positive triple against a number of negatives generated on the fly.
+    Such negatives are compliant with the local closed world assumption (LCWA),
+    as described in :cite:`nickel2016review`. In practice, that means only one side of the triple is corrupted
+    (i.e. either the subject or the object).
 
-        .. note::
-            When *filtered* mode is enabled (i.e. `filtered_triples` is not ``None``),
-            to speed up the procedure, we adopt a hashing-based strategy to handle the set difference problem.
-            This strategy is as described below:
+    .. note::
+        When *filtered* mode is enabled (i.e. `filtered_triples` is not ``None``),
+        to speed up the procedure, we adopt a hashing-based strategy to handle the set difference problem.
+        This strategy is as described below:
 
-            * We compute unique entities and relations in our dataset.
+        * We compute unique entities and relations in our dataset.
 
-            * We assign unique prime numbers for entities (unique for subject and object separately) and for relations
-              and create three separate hash tables.
+        * We assign unique prime numbers for entities (unique for subject and object separately) and for relations
+          and create three separate hash tables.
 
-            * For each triple in ``filter_triples``, we get the prime numbers associated with subject, relation
-              and object by mapping to their respective hash tables. We then compute the **prime product for the
-              filter triple**. We store this triple product.
+        * For each triple in ``filter_triples``, we get the prime numbers associated with subject, relation
+          and object by mapping to their respective hash tables. We then compute the **prime product for the
+          filter triple**. We store this triple product.
 
-            * Since the numbers assigned to subjects, relations and objects are unique, their prime product is also
-              unique. i.e. a triple :math:`(a, b, c)` would have a different product compared to triple :math:`(c, b, a)`
-              as :math:`a, c` of subject have different primes compared to :math:`a, c` of object.
+        * Since the numbers assigned to subjects, relations and objects are unique, their prime product is also
+          unique. i.e. a triple :math:`(a, b, c)` would have a different product compared to triple
+          :math:`(c, b, a)` as :math:`a, c` of subject have different primes compared to :math:`a, c` of object.
 
-            * While generating corruptions for evaluation, we hash the triple's entities and relations and get
-              the associated prime number and compute the **prime product for the corrupted triple**.
+        * While generating corruptions for evaluation, we hash the triple's entities and relations and get
+          the associated prime number and compute the **prime product for the corrupted triple**.
 
-            * If this product is present in the products stored for the filter set, then we remove the corresponding
-              corrupted triple (as it is a duplicate i.e. the corruption triple is present in ``filter_triples``)
+        * If this product is present in the products stored for the filter set, then we remove the corresponding
+          corrupted triple (as it is a duplicate i.e. the corruption triple is present in ``filter_triples``)
 
-            * Using this approach we generate filtered corruptions for evaluation.
+        * Using this approach we generate filtered corruptions for evaluation.
 
-            **Execution Time:** This method takes ~20 minutes on FB15K using ComplEx
-            (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
+        **Execution Time:** This method takes ~20 minutes on FB15K using ComplEx
+        (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
 
-        .. hint::
-            When ``rank_against_ent=None``, the method will use all distinct entities in the knowledge graph ``X``
-            to generate negatives to rank against. If ``X`` includes more than 1 million unique
-            entities and relations, the method will return a runtime error.
-            To solve the problem, it is recommended to pass the desired entities to use to generate corruptions
-            to ``rank_against_ent``. Besides, trying to rank a positive against an extremely large number of negatives
-            may be overkilling. As a reference, the popular FB15k-237 dataset has ~15k distinct entities. The evaluation
-            protocol ranks each positives against 15k corruptions per side.
+    .. hint::
+        When ``rank_against_ent=None``, the method will use all distinct entities in the knowledge graph ``X``
+        to generate negatives to rank against. If ``X`` includes more than 1 million unique
+        entities and relations, the method will return a runtime error.
+        To solve the problem, it is recommended to pass the desired entities to use to generate corruptions
+        to ``rank_against_ent``. Besides, trying to rank a positive against an extremely large number of negatives
+        may be overkilling. As a reference, the popular FB15k-237 dataset has ~15k distinct entities. The evaluation
+        protocol ranks each positives against 15k corruptions per side.
 
     Parameters
     ----------
@@ -578,11 +577,11 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     >>>                 loss='nll', optimizer='adam')
     >>> model.fit(np.concatenate((X['train'], X['valid'])))
     >>>
-    >>> filter = np.concatenate((X['train'], X['valid'], X['test']))
+    >>> filter_triples = np.concatenate((X['train'], X['valid'], X['test']))
     >>> ranks = evaluate_performance(X['test'][:5], model=model,
-                                     filter_triples=filter,
-                                     corrupt_side='s+o',
-                                     use_default_protocol=False)
+    >>>                              filter_triples=filter_triples,
+    >>>                              corrupt_side='s+o',
+    >>>                              use_default_protocol=False)
     >>> ranks
     [1, 582, 543, 6, 31]
     >>> mrr_score(ranks)
@@ -599,10 +598,9 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     if filter_triples is not None:
         logger.debug('Getting filtered triples.')
         filter_triples = to_idx(filter_triples, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
-        
-    eval_dict = {}
-    eval_dict['default_protocol'] = False
-    
+
+    eval_dict = {'default_protocol': False}
+
     if use_default_protocol:
         corrupt_side = 's+o'
         eval_dict['default_protocol'] = True
@@ -622,12 +620,12 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     logger.debug('Making predictions.')
     for i in tqdm(range(X_test.shape[0]), disable=(not verbose)):
         _, rank = model.predict(X_test[i], from_idx=True, get_ranks=True)
-        if use_default_protocol :
-            ranks.extend(list(rank)) 
+        if use_default_protocol:
+            ranks.extend(list(rank))
             continue
-            
+
         ranks.append(rank)
-            
+
     model.end_evaluation()
     logger.debug('Ending Evaluation')
 
@@ -643,9 +641,9 @@ def filter_unseen_entities(X, model, verbose=False, strict=True):
     X : ndarray, shape [n, 3]
         An array of test triples.
     model : ampligraph.latent_features.EmbeddingModel
-        A knowledge graph embedding model
+        A knowledge graph embedding model.
     verbose : bool
-        Verbose mode
+        Verbose mode.
     strict : bool
         Strict mode. If True then any unseen entity will cause a RuntimeError.
         If False then triples containing unseen entities will be filtered out.
@@ -682,25 +680,25 @@ def filter_unseen_entities(X, model, verbose=False, strict=True):
 
 
 def yield_all_permutations(registry, category_type, category_type_params):
-    """Yields all the permutation of category type with their respective hyperparams
+    """Yields all the permutation of category type with their respective hyperparams.
 
     Parameters
     ----------
     registry: dictionary
-        registry of the category type
+        Registry of the category type.
     category_type: string
-        category type values
+        Category type values.
     category_type_params: list
-        category type hyperparams
+        Category type hyperparams.
 
     Returns
     -------
     name: str
-        Specific name of the category
+        Specific name of the category.
     present_params: list
-        Names of hyperparameters of the category
+        Names of hyperparameters of the category.
     val: list
-        Values of the respective hyperparams
+        Values of the respective hyperparams.
     """
     for name in category_type:
         present_params = []
@@ -723,11 +721,12 @@ def gridsearch_next_hyperparam(model_name, in_dict):
     Parameters
     ----------
     model_name: string
-        name of the embedding model
+        Name of the embedding model.
     in_dict: dictionary
-        dictionary of all the parameters and the list of values to be searched
+        Dictionary of all the parameters and the list of values to be searched.
 
-    Returns:
+    Returns
+    ----------
     out_dict: dict
         Dictionary containing an instance of model hyperparameters.
     """
@@ -798,16 +797,16 @@ def gridsearch_next_hyperparam(model_name, in_dict):
 
 
 def select_best_model_ranking(model_class, X, param_grid, use_filter=False, early_stopping=False,
-                              early_stopping_params={}, use_test_for_selection=True, rank_against_ent=None,
+                              early_stopping_params=None, use_test_for_selection=True, rank_against_ent=None,
                               corrupt_side='s+o', use_default_protocol=False, verbose=False):
     """Model selection routine for embedding models.
 
-        .. note::
-            By default, model selection is done with raw MRR for better runtime performance (``use_filter=False``).
+    .. note::
+        By default, model selection is done with raw MRR for better runtime performance (``use_filter=False``).
 
-        The function also retrains the best performing model on the concatenation of training and validation sets.
+    The function also retrains the best performing model on the concatenation of training and validation sets.
 
-        Note we generate negatives at runtime according to the strategy described in ::cite:`bordes2013translating`).
+    Note we generate negatives at runtime according to the strategy described in ::cite:`bordes2013translating`).
 
     Parameters
     ----------
@@ -820,7 +819,7 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
         A grid of hyperparameters to use in model selection. The routine will train a model for each combination
         of these hyperparameters.
     use_filter : bool
-        If True, will use the entire input dataset X to compute filtered MRR
+        If True, will use the entire input dataset X to compute filtered MRR.
     early_stopping: bool
         Flag to enable early stopping (default:False).
 
@@ -856,33 +855,34 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
 
         The following keys are supported:
 
-            x_valid: ndarray, shape [n, 3] : Validation set to be used for early stopping. Uses X['valid'] by default.
+            * x_valid: ndarray, shape [n, 3] : Validation set to be used for early stopping. Uses X['valid'] by default.
 
-            criteria: criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr``. (default)
+            * criteria: criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr``. (default)
 
-            x_filter: ndarray, shape [n, 3] : Filter to be used(no filter by default)
+            * x_filter: ndarray, shape [n, 3] : Filter to be used(no filter by default)
 
-            burn_in: Number of epochs to pass before kicking in early stopping(default: 100)
+            * burn_in: Number of epochs to pass before kicking in early stopping(default: 100)
 
-            check_interval: Early stopping interval after burn-in(default:10)
+            * check_interval: Early stopping interval after burn-in(default:10)
 
-            stop_interval: Stop if criteria is performing worse over n consecutive checks (default: 3)
+            * stop_interval: Stop if criteria is performing worse over n consecutive checks (default: 3)
 
     use_test_for_selection:bool
-        Use test set for model selection. If False, uses validation set. Default(True)
+        Use test set for model selection. If False, uses validation set (default: True).
     rank_against_ent: array-like
         List of entities to use for corruptions. If None, will generate corruptions
-        using all distinct entities. Default is None.
+        using all distinct entities (default: None).
     corrupt_side: string
-        Specifies which side to corrupt the entities.
+        Specifies which side to corrupt the entities:
         ``s`` is to corrupt only subject.
-        ``o`` is to corrupt only object
-        ``s+o`` is to corrupt both subject and object
+        ``o`` is to corrupt only object.
+        ``s+o`` is to corrupt both subject and object.
     use_default_protocol: bool
         Flag to indicate whether to evaluate head and tail corruptions separately(default:False).
-        If this is set to true, it will ignore corrupt_side argument and corrupt both head and tail separately and rank triples.
+        If this is set to true, it will ignore corrupt_side argument and corrupt both head
+        and tail separately and rank triples.
     verbose : bool
-        Verbose mode during evaluation of trained model
+        Verbose mode during evaluation of trained model.
 
     Returns
     -------
@@ -937,6 +937,9 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
     >>> select_best_model_ranking(model_class, X, param_grid, use_filter=True, verbose=True, early_stopping=True)
 
     """
+    if early_stopping_params is None:
+        early_stopping_params = {}
+
     hyperparams_list_keys = ["batches_count", "epochs", "k", "eta", "loss", "regularizer", "optimizer"]
     hyperparams_dict_keys = ["loss_params", "embedding_model_params", "regularizer_params", "optimizer_params"]
 
@@ -951,9 +954,7 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
             param_grid[key] = {}
 
     # this would be extended later to take multiple params for optimizers(currently only lr supported)
-    try:
-        lr = param_grid["optimizer_params"]["lr"]
-    except KeyError:
+    if 'lr' not in param_grid["optimizer_params"]:
         logger.debug('Hypermater key {} is missing'.format(key))
         raise ValueError('Please pass values for optimizer parameter - lr')
 
@@ -1014,8 +1015,8 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
                 logger.error(str(e))
             else:
                 pass
-    
-    ranks_test =[]
+
+    ranks_test = []
     mrr_test = 0
     if best_model is not None:
         # Retraining

@@ -15,7 +15,7 @@ logger.setLevel(logging.DEBUG)
 
 
 def hits_at_n_score(ranks, n):
-    """Hits@N
+    r"""Hits@N
 
     The function computes how many elements of a vector of rankings ``ranks`` make it to the top ``n`` positions.
 
@@ -26,7 +26,7 @@ def hits_at_n_score(ranks, n):
 
     .. math::
 
-        Hits@N = \sum_{i = 1}^{|Q|} 1 \, if rank_{(s, p, o)_i} \leq N
+        Hits@N = \sum_{i = 1}^{|Q|} 1 \, \text{if } rank_{(s, p, o)_i} \leq N
 
     where :math:`Q` is a set of triples and :math:`(s, p, o)` is a triple :math:`\in Q`.
 
@@ -83,7 +83,7 @@ def hits_at_n_score(ranks, n):
 
 
 def mrr_score(ranks):
-    """Mean Reciprocal Rank (MRR)
+    r"""Mean Reciprocal Rank (MRR)
 
     The function computes the mean of the reciprocal of elements of a vector of rankings ``ranks``.
 
@@ -94,7 +94,7 @@ def mrr_score(ranks):
 
     .. math::
 
-        MRR = \\frac{1}{|Q|}\sum_{i = 1}^{|Q|}\\frac{1}{rank_{(s, p, o)_i}}
+        MRR = \frac{1}{|Q|}\sum_{i = 1}^{|Q|}\frac{1}{rank_{(s, p, o)_i}}
 
     where :math:`Q` is a set of triples and :math:`(s, p, o)` is a triple :math:`\in Q`.
 
@@ -122,8 +122,6 @@ def mrr_score(ranks):
         Jack   friend_with   Germany    0.156	   5
 
         MRR=0.75
-
-
 
     Parameters
     ----------
@@ -168,14 +166,12 @@ def rank_score(y_true, y_pred, pos_lab=1):
     y_pred : ndarray, shape [n]
         An array of scores, for the positive element and the n-1 negatives.
     pos_lab : int
-        The value of the positive label (default = 1)
-
+        The value of the positive label (default = 1).
 
     Returns
     -------
     rank : int
         The rank of the positive element against the negatives.
-
 
     Examples
     --------
@@ -196,7 +192,7 @@ def rank_score(y_true, y_pred, pos_lab=1):
 
 
 def mr_score(ranks):
-    """ Mean Rank (MR)
+    r"""Mean Rank (MR)
 
     The function computes the mean of of a vector of rankings ``ranks``.
 
@@ -206,7 +202,7 @@ def mr_score(ranks):
     It is formally defined as follows:
 
     .. math::
-        MR = \\frac{1}{|Q|}\sum_{i = 1}^{|Q|}rank_{(s, p, o)_i}
+        MR = \frac{1}{|Q|}\sum_{i = 1}^{|Q|}rank_{(s, p, o)_i}
 
     where :math:`Q` is a set of triples and :math:`(s, p, o)` is a triple :math:`\in Q`.
 

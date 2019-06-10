@@ -27,7 +27,7 @@ logger.setLevel(logging.DEBUG)
 
 
 def save_model(model, model_name_path=None):
-    """ Save a trained model to disk.
+    """Save a trained model to disk.
 
         Examples
         --------
@@ -88,7 +88,7 @@ def save_model(model, model_name_path=None):
 
 
 def restore_model(model_name_path=None):
-    """ Restore a saved model from disk.
+    """Restore a saved model from disk.
 
         See also :meth:`save_model`.
 
@@ -115,9 +115,9 @@ def restore_model(model_name_path=None):
 
     """
     if model_name_path is None:
-        logger.warn("There is no model name specified. \
-                     We will try to lookup \
-                     the latest default saved model...")
+        logger.warning("There is no model name specified. \
+                        We will try to lookup \
+                        the latest default saved model...")
         default_models = glob.glob("*.model.pkl")
         if len(default_models) == 0:
             raise Exception("No default model found. Please specify \
@@ -129,12 +129,11 @@ def restore_model(model_name_path=None):
 
     model = None
     logger.info('Will load model {}.'.format(model_name_path))
-    restored_obj = None
 
-    with open(model_name_path, 'rb') as fr:
-        restored_obj = pickle.load(fr)
+    try:
+        with open(model_name_path, 'rb') as fr:
+            restored_obj = pickle.load(fr)
 
-    if restored_obj:
         logger.debug('Restoring model...')
         module = importlib.import_module("ampligraph.latent_features.models")
         class_ = getattr(module, restored_obj['class_name'])
@@ -143,85 +142,86 @@ def restore_model(model_name_path=None):
         model.ent_to_idx = restored_obj['ent_to_idx']
         model.rel_to_idx = restored_obj['rel_to_idx']
         model.restore_model_params(restored_obj)
-    else:
-        logger.debug('No model found.')
+    except (IOError, pickle.UnpicklingError) as e:
+        logger.debug('No model found: {}.'.format(e))
+
     return model
 
 
 def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=True, export_tsv_embeddings=True):
-    """ Export embeddings to Tensorboard.
+    """Export embeddings to Tensorboard.
 
-        This function exports embeddings to disk in a format used by
-        `TensorBoard <https://www.tensorflow.org/tensorboard>`_ and
-        `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_.
-        The function exports:
+    This function exports embeddings to disk in a format used by
+    `TensorBoard <https://www.tensorflow.org/tensorboard>`_ and
+    `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_.
+    The function exports:
 
-        * A number of checkpoint and graph embedding files in the provided location that will allow
-          you to visualize embeddings using Tensorboard. This is generally for use with a
-          `local Tensorboard instance <https://www.tensorflow.org/tensorboard/r1/overview>`_.
-        * a tab-separated file of embeddings ``embeddings_projector.tsv``. This is generally used to
-          visualize embeddings by uploading to `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_.
-        * embeddings metadata (i.e. the embeddings labels from the original knowledge graph), saved to ``metadata.tsv``.
-          Such file can be used in TensorBoard or uploaded to TensorBoard Embedding Projector.
+    * A number of checkpoint and graph embedding files in the provided location that will allow
+      you to visualize embeddings using Tensorboard. This is generally for use with a
+      `local Tensorboard instance <https://www.tensorflow.org/tensorboard/r1/overview>`_.
+    * a tab-separated file of embeddings ``embeddings_projector.tsv``. This is generally used to
+      visualize embeddings by uploading to `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_.
+    * embeddings metadata (i.e. the embeddings labels from the original knowledge graph), saved to ``metadata.tsv``.
+      Such file can be used in TensorBoard or uploaded to TensorBoard Embedding Projector.
 
-        The content of ``loc`` will look like: ::
+    The content of ``loc`` will look like: ::
 
-            tensorboard_files/
-                ├── checkpoint
-                ├── embeddings_projector.tsv
-                ├── graph_embedding.ckpt.data-00000-of-00001
-                ├── graph_embedding.ckpt.index
-                ├── graph_embedding.ckpt.meta
-                ├── metadata.tsv
-                └── projector_config.pbtxt
+        tensorboard_files/
+            ├── checkpoint
+            ├── embeddings_projector.tsv
+            ├── graph_embedding.ckpt.data-00000-of-00001
+            ├── graph_embedding.ckpt.index
+            ├── graph_embedding.ckpt.meta
+            ├── metadata.tsv
+            └── projector_config.pbtxt
 
-        .. Note ::
-            A TensorBoard guide is available at `this address <https://www.tensorflow.org/tensorboard/r1/overview>`_.
+    .. Note ::
+        A TensorBoard guide is available at `this address <https://www.tensorflow.org/tensorboard/r1/overview>`_.
 
-        .. Note ::
-            Uploading ``embeddings_projector.tsv`` and ``metadata.tsv`` to
-            `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_ will give a result
-            similar to the picture below:
+    .. Note ::
+        Uploading ``embeddings_projector.tsv`` and ``metadata.tsv`` to
+        `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_ will give a result
+        similar to the picture below:
 
-            .. image:: ../img/embeddings_projector.png
+        .. image:: ../img/embeddings_projector.png
 
-        Examples
-        --------
-        >>> import numpy as np
-        >>> from ampligraph.latent_features import TransE
-        >>> from ampligraph.utils import create_tensorboard_visualizations
-        >>>
-        >>> X = np.array([['a', 'y', 'b'],
-        >>>               ['b', 'y', 'a'],
-        >>>               ['a', 'y', 'c'],
-        >>>               ['c', 'y', 'a'],
-        >>>               ['a', 'y', 'd'],
-        >>>               ['c', 'y', 'd'],
-        >>>               ['b', 'y', 'c'],
-        >>>               ['f', 'y', 'e']])
-        >>>
-        >>> model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise',
-        >>>                loss_params={'margin':5})
-        >>> model.fit(X)
-        >>>
-        >>> create_tensorboard_visualizations(model, 'tensorboard_files')
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from ampligraph.latent_features import TransE
+    >>> from ampligraph.utils import create_tensorboard_visualizations
+    >>>
+    >>> X = np.array([['a', 'y', 'b'],
+    >>>               ['b', 'y', 'a'],
+    >>>               ['a', 'y', 'c'],
+    >>>               ['c', 'y', 'a'],
+    >>>               ['a', 'y', 'd'],
+    >>>               ['c', 'y', 'd'],
+    >>>               ['b', 'y', 'c'],
+    >>>               ['f', 'y', 'e']])
+    >>>
+    >>> model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise',
+    >>>                loss_params={'margin':5})
+    >>> model.fit(X)
+    >>>
+    >>> create_tensorboard_visualizations(model, 'tensorboard_files')
 
 
-        Parameters
-        ----------
-        model: EmbeddingModel
-            A trained neural knowledge graph embedding model, the model must be an instance of TransE,
-            DistMult, ComplEx, or HolE.
-        loc: string
-            Directory where the files are written.
-        labels: pd.DataFrame
-            Label(s) for each embedding point in the Tensorboard visualization.
-            Default behaviour is to use the embeddings labels included in the model.
-        export_tsv_embeddings: bool (Default: True
-             If True, will generate a tab-separated file of embeddings at the given path. This is generally used to
-             visualize embeddings by uploading to `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_.
-        write_metadata: bool (Default: True)
-            If True will write a file named 'metadata.tsv' in the same directory as path.
+    Parameters
+    ----------
+    model: EmbeddingModel
+        A trained neural knowledge graph embedding model, the model must be an instance of TransE,
+        DistMult, ComplEx, or HolE.
+    loc: string
+        Directory where the files are written.
+    labels: pd.DataFrame
+        Label(s) for each embedding point in the Tensorboard visualization.
+        Default behaviour is to use the embeddings labels included in the model.
+    export_tsv_embeddings: bool (Default: True
+         If True, will generate a tab-separated file of embeddings at the given path. This is generally used to
+         visualize embeddings by uploading to `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_.
+    write_metadata: bool (Default: True)
+        If True will write a file named 'metadata.tsv' in the same directory as path.
 
     """
 
@@ -277,16 +277,16 @@ def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=Tr
 
 
 def write_metadata_tsv(loc, data):
-    """ Write Tensorboard metadata.tsv file.
+    """Write Tensorboard metadata.tsv file.
 
-        Parameters
-        ----------
-        loc: string
-            Directory where the file is written.
-        data: list of strings, or pd.DataFrame
-            Label(s) for each embedding point in the Tensorboard visualization.
-            If data is a list of strings then no header will be written. If it is a pandas DataFrame with multiple
-            columns then headers will be written.
+    Parameters
+    ----------
+    loc: string
+        Directory where the file is written.
+    data: list of strings, or pd.DataFrame
+        Label(s) for each embedding point in the Tensorboard visualization.
+        If data is a list of strings then no header will be written. If it is a pandas DataFrame with multiple
+        columns then headers will be written.
     """
 
     # Write metadata.tsv
