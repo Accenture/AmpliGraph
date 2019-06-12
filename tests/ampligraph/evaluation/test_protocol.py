@@ -48,7 +48,7 @@ def test_select_best_model_ranking():
     print(type(best_model).__name__, best_params, best_mrr_train, mrr_test)
     assert best_params['k'] == 150
 
-
+@pytest.mark.skip(reason="Redundant. The loss was going to inf due to numerical instability of log sigmoid with larger lr.")
 def test_select_best_model_ranking_inf_skip():
     X = load_wn18()
     X['test'] = X['test'][::1000]
@@ -56,7 +56,7 @@ def test_select_best_model_ranking_inf_skip():
     param_grid = in_dict = {
         "batches_count": [10],
         "seed": 0,
-        "epochs": [1],
+        "epochs": [5],
         "k": [150],
         "eta": [10],
         "loss": ["self_adversarial"],

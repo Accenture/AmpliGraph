@@ -458,9 +458,8 @@ class SelfAdversarialLoss(Loss):
         p_neg = tf.nn.softmax(alpha * scores_neg_reshaped, axis=0)
 
         # Compute Loss based on eg 5
-        loss = tf.reduce_sum(-tf.log_sigmoid(margin - tf.negative(scores_pos))) - \
-               tf.reduce_sum(tf.multiply(p_neg,
-                                         tf.log_sigmoid(tf.negative(scores_neg_reshaped) - margin)))
+        loss = tf.reduce_sum(-tf.log_sigmoid(margin - tf.negative(scores_pos))) - tf.reduce_sum(
+            tf.multiply(p_neg, tf.log_sigmoid(tf.negative(scores_neg_reshaped) - margin)))
         return loss
 
 
