@@ -554,8 +554,10 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True):
     FB15K-237 272,115   17,535  20,466  14,541        237
     ========= ========= ======= ======= ============ ===========
 
-    .. warning:: FB15K-237's validation set contains 8 unseen entities over 9 triples.
-    The test set has 29 unseen entities, distributed over 28 triples.
+
+    .. warning::
+        FB15K-237's validation set contains 8 unseen entities over 9 triples.
+        The test set has 29 unseen entities, distributed over 28 triples.
 
     Parameters
     ----------
@@ -567,18 +569,19 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True):
 
     Returns
     -------
-    
+
     splits : dict
         The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-    
+
     Examples
     --------
-    
+
     >>> from ampligraph.datasets import load_fb15k_237
     >>> X = load_fb15k_237()
     >>> X["train"][2]
     array(['/m/07s9rl0', '/media_common/netflix_genre/titles', '/m/0170z3'],
       dtype=object)
+
     """
 
     fb15k_237 = DatasetMetadata(

@@ -823,15 +823,15 @@ class EmbeddingModel(abc.ABC):
             Dictionary of parameters for evaluation configuration. Can contain following keys:
             
             - **corruption_entities**: List of entities to be used for corruptions.
-            If ``all``, it uses all entities (default: ``all``)
+              If ``all``, it uses all entities (default: ``all``)
             - **corrupt_side**: Specifies which side to corrupt. ``s``, ``o``, ``s+o`` (default)
-            
             - **default_protocol**: Boolean flag to indicate whether to use default protocol for evaluation.
-            This computes scores for corruptions of subjects and objects and ranks them separately.
-            This could have been done by evaluating s and o separately and then
-             ranking but it slows down the performance.
-             Hence this mode is used where s+o corruptions are generated at once but ranked separately for speed up
-             (default: False).
+              This computes scores for corruptions of subjects and objects and ranks them separately.
+              This could have been done by evaluating s and o separately and then
+              ranking but it slows down the performance.
+              Hence this mode is used where s+o corruptions are generated at once but ranked separately for speed up
+              (default: False).
+
         """
         if config is None:
             config = {'corruption_entities': DEFAULT_CORRUPTION_ENTITIES,
@@ -965,22 +965,22 @@ class EmbeddingModel(abc.ABC):
                 >>> expit(y_pred)
                 array([0.7694556 , 0.82946634], dtype=float32)
 
-         Parameters
-         ----------
-         X : ndarray, shape [n, 3]
-             The triples to score.
-         from_idx : bool
-             If True, will skip conversion to internal IDs. (default: False).
-         get_ranks : bool
-             Flag to compute ranks by scoring against corruptions (default: False).
+        Parameters
+        ----------
+        X : ndarray, shape [n, 3]
+            The triples to score.
+        from_idx : bool
+            If True, will skip conversion to internal IDs. (default: False).
+        get_ranks : bool
+            Flag to compute ranks by scoring against corruptions (default: False).
 
-         Returns
-         -------
-         scores_predict : ndarray, shape [n]
-             The predicted scores for input triples X.
+        Returns
+        -------
+        scores_predict : ndarray, shape [n]
+            The predicted scores for input triples X.
 
-         rank : ndarray, shape [n]
-             Ranks of the triples (only returned if ``get_ranks=True``.
+        rank : ndarray, shape [n]
+            Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
 
@@ -1420,13 +1420,13 @@ class TransE(EmbeddingModel):
 
             To obtain probability estimates, use a logistic sigmoid: ::
 
-            >>> model.fit(X)
-            >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-            >>> print(y_pred)
-            [-4.6903257, -3.9047198]
-            >>> from scipy.special import expit
-            >>> expit(y_pred)
-            array([0.00910012, 0.01974873], dtype=float32)
+                >>> model.fit(X)
+                >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+                >>> print(y_pred)
+                [-4.6903257, -3.9047198]
+                >>> from scipy.special import expit
+                >>> expit(y_pred)
+                array([0.00910012, 0.01974873], dtype=float32)
 
 
         Parameters
@@ -1444,7 +1444,7 @@ class TransE(EmbeddingModel):
             The predicted scores for input triples X.
 
         rank : ndarray, shape [n]
-            Ranks of the triples (only returned if ``get_ranks=True``.
+            Ranks of the triples (only returned if ``get_ranks=True``).
 
         """
         return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
@@ -2254,22 +2254,22 @@ class HolE(ComplEx):
                 array([0.48447034, 0.5039082 ], dtype=float32)
 
 
-         Parameters
-         ----------
-         X : ndarray, shape [n, 3]
-             The triples to score.
-         from_idx : bool
-             If True, will skip conversion to internal IDs. (default: False).
-         get_ranks : bool
-             Flag to compute ranks by scoring against corruptions (default: False).
+        Parameters
+        ----------
+        X : ndarray, shape [n, 3]
+            The triples to score.
+        from_idx : bool
+            If True, will skip conversion to internal IDs. (default: False).
+        get_ranks : bool
+            Flag to compute ranks by scoring against corruptions (default: False).
 
-         Returns
-         -------
-         scores_predict : ndarray, shape [n]
-             The predicted scores for input triples X.
+        Returns
+        -------
+        scores_predict : ndarray, shape [n]
+            The predicted scores for input triples X.
 
-         rank : ndarray, shape [n]
-             Ranks of the triples (only returned if ``get_ranks=True``.
+        rank : ndarray, shape [n]
+            Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
         return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
