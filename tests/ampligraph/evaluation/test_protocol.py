@@ -43,7 +43,9 @@ def test_select_best_model_ranking():
         }
     }
     best_model, best_params, best_mrr_train, ranks_test, mrr_test = select_best_model_ranking(model_class, 
-                                                                                              X,
+                                                                                              X['train'],
+                                                                                              X['valid'],
+                                                                                              X['test'],
                                                                                               param_grid)
     print(type(best_model).__name__, best_params, best_mrr_train, mrr_test)
     assert best_params['k'] == 150
@@ -76,7 +78,9 @@ def test_select_best_model_ranking_inf_skip():
         'verbose':True
     }
     best_model, best_params, best_mrr_train, ranks_test, mrr_test = select_best_model_ranking(model_class, 
-                                                                                              X,
+                                                                                              X['train'],
+                                                                                              X['valid'],
+                                                                                              X['test'],
                                                                                               param_grid)
     assert(best_params["optimizer_params"]["lr"] == 0.1)
 

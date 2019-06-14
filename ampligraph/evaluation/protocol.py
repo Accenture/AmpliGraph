@@ -796,7 +796,7 @@ def gridsearch_next_hyperparam(model_name, in_dict):
         print(str(e))
 
 
-def select_best_model_ranking(model_class, X, param_grid, use_filter=False, early_stopping=False,
+def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid, use_filter=False, early_stopping=False,
                               early_stopping_params=None, use_test_for_selection=True, rank_against_ent=None,
                               corrupt_side='s+o', use_default_protocol=False, verbose=False):
     """Model selection routine for embedding models.
@@ -812,9 +812,12 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
     ----------
     model_class : class
         The class of the EmbeddingModel to evaluate (TransE, DistMult, ComplEx, etc).
-    X : dict
-        A dictionary of triples to use in model selection. Must include three keys: `train`, `val`, `test`.
-        Values are ndarray of shape [n, 3]..
+    X_train : ndarray, shape [n, 3]
+        An array of training triples.
+    X_valid : ndarray, shape [n, 3]
+        An array of validation triples.
+    X_test : ndarray, shape [n, 3]
+        An array of test triples.
     param_grid : dict
         A grid of hyperparameters to use in model selection. The routine will train a model for each combination
         of these hyperparameters.
@@ -934,7 +937,8 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
     >>>                     },
     >>>                     "verbose": false
     >>>                 }
-    >>> select_best_model_ranking(model_class, X, param_grid, use_filter=True, verbose=True, early_stopping=True)
+    >>> select_best_model_ranking(model_class, X['train'], X['valid'], X['test'], param_grid,
+    >>>                           use_filter=True, verbose=True, early_stopping=True)
 
     """
     if early_stopping_params is None:
@@ -968,23 +972,23 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
         try:
             early_stopping_params['x_valid']
         except KeyError:
-            logger.debug('Early stopping enable but no x_valid parameter set. Setting x_valid to {}'.format(X['valid']))
-            early_stopping_params['x_valid'] = X['valid']
+            logger.debug('Early stopping enable but no x_valid parameter set. Setting x_valid to {}'.format(X_valid))
+            early_stopping_params['x_valid'] = X_valid
 
     if use_filter:
-        X_filter = np.concatenate((X['train'], X['valid'], X['test']))
+        X_filter = np.concatenate((X_train, X_valid, X_test))
     else:
         X_filter = None
 
     if use_test_for_selection:
-        selection_dataset = X['test']
+        selection_dataset = X_test
     else:
-        selection_dataset = X['valid']
+        selection_dataset = X_valid
 
     for model_params in tqdm(model_params_combinations, disable=(not verbose)):
         try:
             model = model_class(**model_params)
-            model.fit(X['train'], early_stopping, early_stopping_params)
+            model.fit(X_train, early_stopping, early_stopping_params)
 
             ranks = evaluate_performance(selection_dataset, model=model,
                                          filter_triples=X_filter, verbose=verbose,
@@ -1020,9 +1024,9 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
     mrr_test = 0
     if best_model is not None:
         # Retraining
-        best_model.fit(np.concatenate((X['train'], X['valid'])))
+        best_model.fit(np.concatenate((X_train, X_valid)))
 
-        ranks_test = evaluate_performance(X['test'], model=best_model,
+        ranks_test = evaluate_performance(X_test, model=best_model,
                                           filter_triples=X_filter, verbose=verbose,
                                           rank_against_ent=rank_against_ent,
                                           use_default_protocol=use_default_protocol,
