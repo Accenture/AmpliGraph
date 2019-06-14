@@ -53,9 +53,6 @@ DEFAULT_CORRUPT_SIDE_EVAL = 's+o'
 # default hyperparameter for transE
 DEFAULT_NORM_TRANSE = 1
 
-# initial value for criteria in early stopping
-INITIAL_EARLY_STOPPING_CRITERIA_VALUE = 0
-
 # default value for the way in which the corruptions are to be generated while training/testing.
 # Uses all entities
 DEFAULT_CORRUPTION_ENTITIES = 'all'
@@ -544,7 +541,7 @@ class EmbeddingModel(abc.ABC):
 
         self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
 
-        self.early_stopping_best_value = INITIAL_EARLY_STOPPING_CRITERIA_VALUE
+        self.early_stopping_best_value = None
         self.early_stopping_stop_counter = 0
         try:
             x_filter = self.early_stopping_params['x_filter']
@@ -587,14 +584,17 @@ class EmbeddingModel(abc.ABC):
             elif self.early_stopping_criteria == 'mrr':
                 current_test_value = mrr_score(ranks)
 
-            if self.early_stopping_best_value >= current_test_value:
+            if self.early_stopping_best_value is None:  # First validation iteration
+                self.early_stopping_best_value = current_test_value
+                self.early_stopping_first_value = current_test_value
+            elif self.early_stopping_best_value >= current_test_value:
                 self.early_stopping_stop_counter += 1
                 if self.early_stopping_stop_counter == self.early_stopping_params.get(
                         'stop_interval', DEFAULT_STOP_INTERVAL_EARLY_STOPPING):
 
                     # If the best value for the criteria has not changed from initial value then
                     # save the model before early stopping
-                    if self.early_stopping_best_value == INITIAL_EARLY_STOPPING_CRITERIA_VALUE:
+                    if self.early_stopping_best_value == self.early_stopping_first_value:
                         self._save_trained_params()
 
                     if self.verbose:
@@ -741,6 +741,10 @@ class EmbeddingModel(abc.ABC):
                     self.sess_train.run(normalize_ent_emb_op)
             if self.verbose:
                 msg = 'Average Loss: {:10f}'.format(sum(losses) / (batch_size * self.batches_count))
+                if early_stopping and self.early_stopping_best_value is not None:
+                    msg += ' — Best validation ({}): {:5f}'.format(self.early_stopping_criteria,
+                                                                   self.early_stopping_best_value)
+
                 logger.debug(msg)
                 epoch_iterator_with_progress.set_description(msg)
 
