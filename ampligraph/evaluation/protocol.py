@@ -585,8 +585,14 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
         cur.execute("CREATE INDEX triples_table_sp_idx ON triples_table (subject, predicate);")
         cur.execute("CREATE INDEX triples_table_po_idx ON triples_table (predicate, object);")
+        
+        cur.execute("CREATE TABLE integrity_check (validity integer primary key);")
 
         conn.commit()
+        
+        cur.execute('INSERT INTO integrity_check VALUES (0)')
+        conn.commit()
+        
         pg_entity_values = np.arange(len(model.ent_to_idx)).reshape(-1,1).tolist()
         cur = conn.cursor()
         try:
@@ -601,6 +607,54 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
             cur = conn.cursor()
             cur.executemany('INSERT INTO triples_table VALUES (?,?,?)', pg_triple_values)
             conn.commit()
+            
+        
+        cur.execute('Update integrity_check set validity=1 where validity=0')
+        conn.commit()   
+        
+        cur.execute('''CREATE TRIGGER triples_table_ins_integrity_check_trigger  
+                        AFTER INSERT ON triples_table 
+                        BEGIN 
+                            Update integrity_check set validity=0 where validity=1; 
+                        END
+                            ;
+                    ''')
+        cur.execute('''CREATE TRIGGER triples_table_upd_integrity_check_trigger  
+                        AFTER UPDATE ON triples_table 
+                        BEGIN 
+                            Update integrity_check set validity=0 where validity=1; 
+                        END
+                            ;
+                    ''')
+        cur.execute('''CREATE TRIGGER triples_table_del_integrity_check_trigger  
+                        AFTER DELETE ON triples_table 
+                        BEGIN 
+                            Update integrity_check set validity=0 where validity=1; 
+                        END
+                            ;
+                    ''')
+        
+        cur.execute('''CREATE TRIGGER entity_table_upd_integrity_check_trigger  
+                        AFTER UPDATE ON entity_table 
+                        BEGIN 
+                            Update integrity_check set validity=0 where validity=1; 
+                        END
+                        ;
+                    ''')
+        cur.execute('''CREATE TRIGGER entity_table_ins_integrity_check_trigger  
+                        AFTER INSERT ON entity_table 
+                        BEGIN 
+                            Update integrity_check set validity=0 where validity=1; 
+                        END
+                        ;
+                    ''')
+        cur.execute('''CREATE TRIGGER entity_table_del_integrity_check_trigger  
+                        AFTER DELETE ON entity_table 
+                        BEGIN 
+                            Update integrity_check set validity=0 where validity=1; 
+                        END
+                        ;
+                    ''')
             
         conn.close()
     

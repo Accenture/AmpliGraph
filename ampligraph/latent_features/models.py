@@ -817,9 +817,14 @@ class EmbeddingModel(abc.ABC):
             conn = sqlite3.connect("{}".format(self.eval_config['dbname']))
             cur1 = conn.cursor()
             cur2 = conn.cursor()
-            query1 = "select object from triples_table where subject=" + str(x_triple[0]) + \
+            cur_integrity = conn.cursor()
+            cur_integrity.execute("SELECT * FROM integrity_check")
+            if cur_integrity.fetchone()[0] == 0:
+                raise Exception('Data integrity is corrupted. The tables have been modified.')
+            
+            query1 = "select object from triples_table INDEXED BY triples_table_sp_idx where subject=" + str(x_triple[0]) + \
                         " and predicate="+ str(x_triple[1])
-            query2 = "select subject from triples_table where predicate=" + str(x_triple[1]) + \
+            query2 = "select subject from triples_table INDEXED BY triples_table_po_idx where predicate=" + str(x_triple[1]) + \
                         " and object="+ str(x_triple[2])
             cur1.execute(query1)
             cur2.execute(query2)
@@ -936,7 +941,28 @@ class EmbeddingModel(abc.ABC):
             self.sess_predict.close()
         self.sess_predict = None
         self.is_filtered = False
+        
+        conn = sqlite3.connect("{}".format(self.eval_config['dbname']))
+        cur = conn.cursor()
+        cur.execute("drop trigger entity_table_del_integrity_check_trigger")
+        cur.execute("drop trigger entity_table_ins_integrity_check_trigger")
+        cur.execute("drop trigger entity_table_upd_integrity_check_trigger")
+
+        cur.execute("drop trigger triples_table_del_integrity_check_trigger")
+        cur.execute("drop trigger triples_table_upd_integrity_check_trigger")
+        cur.execute("drop trigger triples_table_ins_integrity_check_trigger")
+        cur.execute("drop table integrity_check")
+        cur.execute("drop index triples_table_po_idx")
+        cur.execute("drop index triples_table_sp_idx")
+        cur.execute("drop table triples_table")
+        cur.execute("drop table entity_table")
+        conn.commit()
+        conn.execute("VACUUM")
+        conn.close()
+        
         self.eval_config = {}
+        
+        
 
     def predict(self, X, from_idx=False, get_ranks=False):
         """Predict the scores of triples using a trained embedding model.
@@ -1113,12 +1139,6 @@ class RandomBaseline(EmbeddingModel):
         """
         self.rel_to_idx, self.ent_to_idx = create_mappings(X)
         self.is_fitted = True
-
-    def end_evaluation(self):
-        """End the evaluation
-        """
-        self.is_filtered = False
-        self.eval_config = {}
 
     def predict(self, X, from_idx=False, get_ranks=False):
         """Assign random scores to candidate triples and then ranks them
