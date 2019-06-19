@@ -5,8 +5,11 @@ from ..evaluation import mrr_score, hits_at_n_score, mr_score
 import itertools
 import tensorflow as tf
 import logging
-import psycopg2
-from psycopg2.extras import execute_values
+#import psycopg2
+#from psycopg2.extras import execute_values
+
+import time
+import sqlite3
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -568,24 +571,44 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         logger.debug('Getting filtered triples.')
         filter_triples = to_idx(filter_triples, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
         
-        conn = psycopg2.connect("dbname=AmpligraphDB user=ampligraph")
-        pg_triple_values = [i.tolist() for i in filter_triples]
-        pg_entity_values = [[i] for i in range(len(model.ent_to_idx))]
+        dbname = 'Ampligraph_{}.db'.format(int(time.time()))
+        #print('---DB NAME: {}'.format(dbname))
+        conn = sqlite3.connect("{}".format(dbname))
+        cur = conn.cursor()
+        cur.execute("CREATE TABLE entity_table (entity_type integer primary key);")
+        cur.execute("CREATE TABLE triples_table (subject integer, \
+                                                    predicate integer, \
+                                                    object integer, \
+                                                    foreign key (object) references entity_table(entity_type), \
+                                                    foreign key (subject) references entity_table(entity_type) \
+                                                    );")
+
+        cur.execute("CREATE INDEX triples_table_sp_idx ON triples_table (subject, predicate);")
+        cur.execute("CREATE INDEX triples_table_po_idx ON triples_table (predicate, object);")
+
+        conn.commit()
+        pg_entity_values = np.arange(len(model.ent_to_idx)).reshape(-1,1).tolist()
         cur = conn.cursor()
         try:
-            execute_values(cur, 'INSERT INTO entity_table VALUES %s', pg_entity_values)
+            cur.executemany('INSERT INTO entity_table VALUES (?)', pg_entity_values)
             conn.commit()
-        except psycopg2.Error as e:
+        except sqlite3.Error as e:
             conn.rollback()
 
-        cur = conn.cursor()
-        execute_values(cur, 'INSERT INTO triples_table VALUES %s', pg_triple_values)
-        conn.commit()
+        
+        for j in range(int(np.ceil(filter_triples.shape[0]/500000.0))):
+            pg_triple_values = filter_triples[j*500000:(j+1)*500000].tolist()
+            cur = conn.cursor()
+            cur.executemany('INSERT INTO triples_table VALUES (?,?,?)', pg_triple_values)
+            conn.commit()
+            
         conn.close()
     
         
     eval_dict = {}
     eval_dict['default_protocol'] = False
+    
+    eval_dict['dbname'] = dbname
     
     if use_default_protocol:
         corrupt_side = 's+o'

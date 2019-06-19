@@ -4,7 +4,7 @@ from sklearn.utils import check_random_state
 import abc
 from tqdm import tqdm
 import logging
-import psycopg2
+import sqlite3
 
 MODEL_REGISTRY = {}
 
@@ -812,10 +812,11 @@ class EmbeddingModel(abc.ABC):
             self.eval_config['corrupt_side'] = 's+o'
         
     def sql_retrieve(self):
-        conn = psycopg2.connect("dbname=AmpligraphDB user=ampligraph")
-        cur1 = conn.cursor()
-        cur2 = conn.cursor()
+        
         for x_triple in self.X_test:
+            conn = sqlite3.connect("{}".format(self.eval_config['dbname']))
+            cur1 = conn.cursor()
+            cur2 = conn.cursor()
             query1 = "select object from triples_table where subject=" + str(x_triple[0]) + \
                         " and predicate="+ str(x_triple[1])
             query2 = "select subject from triples_table where predicate=" + str(x_triple[1]) + \
@@ -829,6 +830,7 @@ class EmbeddingModel(abc.ABC):
             if out_2.ndim>=1:
                 np.squeeze(out_2)
             out_triple = np.array([x_triple])
+            conn.close()
             yield out_triple, out_1, out_2
 
     def _initialize_eval_graph(self):
@@ -840,7 +842,7 @@ class EmbeddingModel(abc.ABC):
             dataset = tf.data.Dataset.from_generator(self.sql_retrieve, 
                                          output_types=(tf.int64, tf.int64, tf.int64),
                                          output_shapes=((1,3), (None,1), (None,1))) 
-            dataset = dataset.prefetch(1)
+            dataset = dataset.prefetch(3)
             dataset_iter = dataset.make_one_shot_iterator()
             self.X_test_tf, indices_obj, indices_sub = dataset_iter.get_next()
         else:
