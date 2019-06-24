@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+from sklearn.cluster import DBSCAN
 
 from ..evaluation import evaluate_performance, filter_unseen_entities
 
@@ -280,3 +281,92 @@ def _setdiff2d(A, B):
 
     tmp = np.prod(np.swapaxes(A[:, :, None], 1, 2) == B, axis=2)
     return A[~ np.sum(np.cumsum(tmp, axis=0) * tmp == 1, axis=1).astype(bool)]
+
+
+def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None, relations_subset=None):
+    """
+    Perform link-based cluster analysis on a knowledge graph.
+
+    Clustering is exclusive (i.e. a triple is assigned to one and only one cluster).
+
+    Parameters
+    ----------
+
+    X : ndarray, shape [n, 3]
+        The input knowledge graph (triples) to be clustered.
+    model : EmbeddingModel
+        The fitted model that will be used to generate the embeddings.
+        This model must have been fully trained already, be it directly with `fit` or from
+        a helper function such as `select_best_model_ranking`.
+    clustering_algorithm : object
+        The initialized object of the clustering algorithm.
+        It should be ready to apply the `fit_predict` method.
+        Please see https://scikit-learn.org/stable/modules/clustering.html#clustering
+        to understand the clustering API provided by scikit-learn.
+        The default clustering model is sklearn's DBSCAN with its default parameters.
+    entities_subset: ndarray, shape [n]
+        The entities to consider for clustering. This is a subset of all the entities included in X.
+        If None, all entities will be clustered.
+        To exclude all relations from clustering, pass an empty array.
+    relations_subset: ndarray, shape [n]
+        The relation types to consider for clustering. This is a subset of all the relation types included in X.
+        If None, all relations will be clustered.
+         To exclude all relations from clustering, pass an empty array.
+
+    Returns
+    -------
+    labels : ndarray, shape [n]
+        Index of the cluster each triple belongs to.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from sklearn.cluster import DBSCAN
+    >>> from ampligraph.discovery find_clusters
+    >>> from from ampligraph.latent_features.models import ComplEx
+    >>>
+    >>> X = np.array([['a', 'y', 'b'],
+    >>>               ['b', 'y', 'a'],
+    >>>               ['a', 'y', 'c'],
+    >>>               ['c', 'y', 'a'],
+    >>>               ['a', 'y', 'd'],
+    >>>               ['c', 'y', 'd'],
+    >>>               ['b', 'y', 'c'],
+    >>>               ['f', 'y', 'e']])
+    >>>
+    >>> model = ComplEx(k=2, batches_count=2)
+    >>> model.fit(X)
+    >>> clustering_algorithm = DBSCAN(min_samples=1)
+    >>> labels = find_clusters(X, model=model, clustering_algorithm=clustering_algorithm)
+    array([0, 1, 2, 3, 4, 5, 6, 7])
+
+    """
+
+    if not model.is_fitted:
+        raise ValueError("Model has not been fitted.")
+
+    if not hasattr(clustering_algorithm, "fit_predict"):
+        raise ValueError("Clustering algorithm does not have the `fit_predict` method.")
+
+    s = model.get_embeddings(X[:, 0], embedding_type='entity')
+    p = model.get_embeddings(X[:, 1], embedding_type='relation')
+    o = model.get_embeddings(X[:, 2], embedding_type='entity')
+
+    mask = np.ones(len(X), dtype=np.bool)
+
+    if entities_subset is not None:
+        if len(entities_subset) == 0:
+            s = np.empty(p.shape)
+            o = np.empty(p.shape)
+        else:
+            mask &= ~(np.isin(X[:, 0], entities_subset) | np.isin(X[:, 2], entities_subset))
+
+    if relations_subset is not None:
+        if len(relations_subset) == 0:
+            p = np.empty(s.shape)
+        else:
+            mask &= ~np.isin(X[:, 1], relations_subset)
+
+    X = np.hstack((s, p, o))[mask]
+
+    return clustering_algorithm.fit_predict(X)

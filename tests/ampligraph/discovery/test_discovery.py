@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
-from ampligraph.discovery.discovery import discover_facts, generate_candidates, _setdiff2d
+from sklearn.cluster import DBSCAN
 
+from ampligraph.discovery.discovery import discover_facts, generate_candidates, _setdiff2d
 from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE
 
 def test_discover_facts():
@@ -123,3 +124,31 @@ def test_setdiff2d():
         X = np.zeros((3, 3, 3))
         Y = np.ones((3, 3, 3))
         _setdiff2d(Y, X)
+
+
+def test_find_clusters():
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'y', 'a'],
+                  ['a', 'y', 'd'],
+                  ['c', 'x', 'd'],
+                  ['b', 'y', 'c'],
+                  ['f', 'y', 'e']])
+    model = ComplEx(k=2, batches_count=2)
+    model.fit(X)
+    clustering_algorithm = DBSCAN(min_samples=1)
+
+    expected_clusters = np.array([0, 1, 2, 3, 4, 5, 6, 7])
+
+    labels = find_clusters(X, model, clustering_algorithm)
+    assert np.array_equal(labels, expected_clusters)
+    labels = find_clusters(X, model, clustering_algorithm, entities_subset=[])
+    assert np.array_equal(labels, expected_clusters)
+    labels = find_clusters(X, model, clustering_algorithm, relations_subset=[])
+    assert np.array_equal(labels, expected_clusters)
+
+    labels = find_clusters(X, model, clustering_algorithm, entities_subset=['a', 'b'])
+    assert labels.shape == (2,)
+    labels = find_clusters(X, model, clustering_algorithm, relations_subset=['x'])
+    assert labels.shape == (7,)
