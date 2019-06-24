@@ -333,7 +333,8 @@ class EmbeddingModel(abc.ABC):
         The order would be useful for loading the model. 
         This method must be overridden if the model has any other parameters (apart from entity-relation embeddings)
         """
-        self.trained_model_params = self.sess_train.run([self.ent_emb, self.rel_emb])
+        #self.trained_model_params = self.sess_train.run([self.ent_emb, self.rel_emb])
+        self.trained_model_params = [self.ent_emb_cpu, self.rel_emb_cpu]
 
     def _load_model_from_trained_params(self):
         """Load the model from trained params. 
@@ -398,9 +399,14 @@ class EmbeddingModel(abc.ABC):
         e_o : Tensor
             A Tensor that includes the embeddings of the objects.
         """
-        e_s = tf.nn.embedding_lookup(self.ent_emb, x[:, 0], name='embedding_lookup_subject')
+        
+
+        sub_remapping = self.sparse_mappings.lookup(x[:, 0])
+        obj_remapping = self.sparse_mappings.lookup(x[:, 2])
+   
+        e_s = tf.nn.embedding_lookup(self.ent_emb, sub_remapping, name='embedding_lookup_subject')
         e_p = tf.nn.embedding_lookup(self.rel_emb, x[:, 1], name='embedding_lookup_predicate')
-        e_o = tf.nn.embedding_lookup(self.ent_emb, x[:, 2], name='embedding_lookup_object')
+        e_o = tf.nn.embedding_lookup(self.ent_emb, obj_remapping, name='embedding_lookup_object')
         return e_s, e_p, e_o
 
     def _initialize_parameters(self):
@@ -413,6 +419,9 @@ class EmbeddingModel(abc.ABC):
                                        initializer=self.initializer)
         self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
                                        initializer=self.initializer)
+        
+        self.ent_emb_placeholder = tf.placeholder(shape=(None, self.k), dtype = tf.float32)
+        self.rel_emb_placeholder = tf.placeholder(shape=(None, self.k), dtype = tf.float32)
         
     def _get_model_loss(self, dataset_iterator):
         """ Get the current loss including loss due to regularization.
@@ -429,57 +438,71 @@ class EmbeddingModel(abc.ABC):
             The loss value that must be minimized.    
         """
         # training input placeholder
-        x_pos_tf = tf.cast(dataset_iterator.get_next(), tf.int32)
+        x_pos_tf, unique_entities = dataset_iterator.get_next()
         
-        entities_size = 0
-        entities_list = None
+        self.sparse_mappings = tf.contrib.lookup.MutableDenseHashTable(key_dtype=tf.int32,
+                                 value_dtype=tf.int32,
+                                 default_value=-1,
+                                 empty_key=-2,
+                                 deleted_key=-1)
         
-        negative_corruption_entities = self.embedding_model_params.get('negative_corruption_entities',
-                                                                       DEFAULT_CORRUPTION_ENTITIES)
-        
-        if negative_corruption_entities=='all':
-            logger.debug('Using all entities for generation of corruptions during training')
-            entities_size = len(self.ent_to_idx)
-        elif negative_corruption_entities=='batch':
-            # default is batch (entities_size=0 and entities_list=None)
-            logger.debug('Using batch entities for generation of corruptions during training')
-        elif isinstance(negative_corruption_entities, list):
-            logger.debug('Using the supplied entities for generation of corruptions during training')
-            entities_list=tf.squeeze(tf.constant(negative_corruption_entities, dtype=tf.int32))
-        elif isinstance(negative_corruption_entities, int):
-            logger.debug('Using first {} entities for generation of corruptions during training'.format(negative_corruption_entities))
-            entities_size = negative_corruption_entities
 
-        if self.loss.get_state('require_same_size_pos_neg'):
-            logger.debug('Requires the same size of postive and negative')
-            x_pos = tf.reshape(tf.tile(tf.reshape(x_pos_tf, [-1]), [self.eta]), [tf.shape(x_pos_tf)[0] * self.eta, 3])
-        else:
-            x_pos = x_pos_tf
-        # look up embeddings from input training triples
-        e_s_pos, e_p_pos, e_o_pos = self._lookup_embeddings(x_pos)
-        scores_pos = self._fn(e_s_pos, e_p_pos, e_o_pos)
+        insert_lookup_op = self.sparse_mappings.insert(unique_entities, 
+                                                       tf.reshape(tf.range(tf.shape(unique_entities)[0], 
+                                                                           dtype=tf.int32), (-1,1)))
         
-        loss = 0
-        
-        corruption_sides = self.embedding_model_params.get('corrupt_sides', DEFAULT_CORRUPT_SIDE_TRAIN)
-        if not isinstance(corruption_sides, list):
-            corruption_sides = [corruption_sides]
-            
-        for side in corruption_sides:
-            x_neg_tf = generate_corruptions_for_fit(x_pos_tf, 
-                                                    entities_list=entities_list, 
-                                                    eta=self.eta, 
-                                                    corrupt_side=side, 
-                                                    entities_size=entities_size, 
-                                                    rnd=self.seed)
-            e_s_neg, e_p_neg, e_o_neg = self._lookup_embeddings(x_neg_tf)
-            scores_neg = self._fn(e_s_neg, e_p_neg, e_o_neg)
-            loss += self.loss.apply(scores_pos, scores_neg)
-            
-        if self.regularizer is not None:
-            loss += self.regularizer.apply([self.ent_emb, self.rel_emb])
-            
-        return loss
+        with tf.control_dependencies([insert_lookup_op]):
+            entities_size = 0
+            entities_list = None
+
+            negative_corruption_entities = self.embedding_model_params.get('negative_corruption_entities',
+                                                                           DEFAULT_CORRUPTION_ENTITIES)
+
+            negative_corruption_entities = 'batch'
+
+            if negative_corruption_entities=='all':
+                logger.debug('Using all entities for generation of corruptions during training')
+                entities_size = len(self.ent_to_idx)
+            elif negative_corruption_entities=='batch':
+                # default is batch (entities_size=0 and entities_list=None)
+                logger.debug('Using batch entities for generation of corruptions during training')
+            elif isinstance(negative_corruption_entities, list):
+                logger.debug('Using the supplied entities for generation of corruptions during training')
+                entities_list=tf.squeeze(tf.constant(negative_corruption_entities, dtype=tf.int32))
+            elif isinstance(negative_corruption_entities, int):
+                logger.debug('Using first {} entities for generation of corruptions during training'.format(negative_corruption_entities))
+                entities_size = negative_corruption_entities
+
+            if self.loss.get_state('require_same_size_pos_neg'):
+                logger.debug('Requires the same size of postive and negative')
+                x_pos = tf.reshape(tf.tile(tf.reshape(x_pos_tf, [-1]), [self.eta]), [tf.shape(x_pos_tf)[0] * self.eta, 3])
+            else:
+                x_pos = x_pos_tf
+            # look up embeddings from input training triples
+            e_s_pos, e_p_pos, e_o_pos = self._lookup_embeddings(x_pos)
+            scores_pos = self._fn(e_s_pos, e_p_pos, e_o_pos)
+
+            loss = 0
+
+            corruption_sides = self.embedding_model_params.get('corrupt_sides', DEFAULT_CORRUPT_SIDE_TRAIN)
+            if not isinstance(corruption_sides, list):
+                corruption_sides = [corruption_sides]
+
+            for side in corruption_sides:
+                x_neg_tf = generate_corruptions_for_fit(x_pos_tf, 
+                                                        entities_list=entities_list, 
+                                                        eta=self.eta, 
+                                                        corrupt_side=side, 
+                                                        entities_size=entities_size, 
+                                                        rnd=self.seed)
+                e_s_neg, e_p_neg, e_o_neg = self._lookup_embeddings(x_neg_tf)
+                scores_neg = self._fn(e_s_neg, e_p_neg, e_o_neg)
+                loss += self.loss.apply(scores_pos, scores_neg)
+
+            if self.regularizer is not None:
+                loss += self.regularizer.apply([self.ent_emb, self.rel_emb])
+
+            return loss
         
     def _initialize_early_stopping(self):
         """ Initializes and creates evaluation graph for early stopping
@@ -608,6 +631,24 @@ class EmbeddingModel(abc.ABC):
         # set is_fitted to true to indicate that the model fitting is completed
         self.is_fitted = True
         
+    def train_retrieve(self):
+        
+        for i in range(self.batches_count):
+            out = self.X_train[(i*self.batch_size) : ((i+1)*self.batch_size), :]
+            self.unique_entities = np.unique(np.concatenate([out[:,0], out[:,2]], axis=0))
+
+            
+            self.sess_train.run([self.init_ent_emb_batch, self.init_rel_emb_batch], 
+                                    feed_dict={
+                                        self.ent_emb_placeholder: np.concatenate(
+                                            (self.ent_emb_cpu[self.unique_entities,:], 
+                                             np.zeros((self.ent_emb_cpu.shape[0]-self.unique_entities.shape[0], 
+                                                       self.ent_emb_cpu.shape[1]))), axis=0),
+                                               self.rel_emb_placeholder: self.rel_emb_cpu})
+            
+            unique_entities = self.unique_entities.reshape(-1,1)
+            yield out, unique_entities
+        
     def fit(self, X, early_stopping=False, early_stopping_params={}):
         """Train an EmbeddingModel (with optional early stopping).
 
@@ -670,8 +711,23 @@ class EmbeddingModel(abc.ABC):
 
         self.sess_train = tf.Session(config=self.tf_config)
 
-        batch_size = X.shape[0] // self.batches_count
-        dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(2)
+        batch_size = int(np.ceil(X.shape[0] / self.batches_count))
+        #dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(2)
+        
+        self.batch_size = batch_size
+        self.X_train = X
+        
+        
+        
+        dataset = tf.data.Dataset.from_generator(self.train_retrieve, 
+                                         output_types=(tf.int32, tf.int32),
+                                         output_shapes=((None,3), (None,1))).repeat().prefetch(0)
+        
+        
+        '''
+        dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(0)
+        '''
+        
         dataset_iterator = dataset.make_one_shot_iterator()
         # init tf graph/dataflow for training
         # init variables (model parameters to be learned - i.e. the embeddings)
@@ -703,12 +759,24 @@ class EmbeddingModel(abc.ABC):
         if self.embedding_model_params.get('normalize_ent_emb', DEFAULT_NORMALIZE_EMBEDDINGS):
             self.sess_train.run(normalize_rel_emb_op)
             self.sess_train.run(normalize_ent_emb_op)
-
+            
+        self.init_ent_emb_batch = self.ent_emb.assign(self.ent_emb_placeholder)
+        self.init_rel_emb_batch = self.rel_emb.assign(self.rel_emb_placeholder)
+        
+        self.ent_emb_cpu = self.sess_train.run(self.ent_emb)
+        self.rel_emb_cpu = self.sess_train.run(self.rel_emb)
+            
         epoch_iterator_with_progress = tqdm(range(1, self.epochs + 1), disable=(not self.verbose), unit='epoch')
         for epoch in epoch_iterator_with_progress:
+            
             losses = []
             for batch in range(1, self.batches_count + 1):
+                
+                
+                
                 loss_batch, _ = self.sess_train.run([loss, train])
+                self.ent_emb_cpu[self.unique_entities,:] = self.sess_train.run(self.ent_emb)[:self.unique_entities.shape[0], :]
+                self.rel_emb_cpu = self.sess_train.run(self.rel_emb)
 
                 if np.isnan(loss_batch) or np.isinf(loss_batch):
                     msg = 'Loss is {}. Please change the hyperparameters.'.format(loss_batch)
@@ -845,7 +913,7 @@ class EmbeddingModel(abc.ABC):
         """
         if self.is_filtered:
             dataset = tf.data.Dataset.from_generator(self.sql_retrieve, 
-                                         output_types=(tf.int64, tf.int64, tf.int64),
+                                         output_types=(tf.int32, tf.int32, tf.int32),
                                          output_shapes=((1,3), (None,1), (None,1))) 
             dataset = dataset.prefetch(3)
             dataset_iter = dataset.make_one_shot_iterator()
@@ -857,80 +925,93 @@ class EmbeddingModel(abc.ABC):
             self.X_test_tf = dataset_iter.get_next()
         
         
-        all_entities_np = np.int64(np.arange(len(self.ent_to_idx)))
-        corruption_entities = self.eval_config.get('corruption_entities', DEFAULT_CORRUPTION_ENTITIES)
-
-        if corruption_entities == 'all':
-            corruption_entities = all_entities_np
-        elif isinstance(corruption_entities, np.ndarray):
-            corruption_entities = corruption_entities
-        else:
-            msg = 'Invalid type for corruption entities.'
-            logger.error(msg)
-            raise ValueError(msg)
-
-        self.corruption_entities_tf = tf.constant(corruption_entities, dtype=tf.int64)
+        self.sparse_mappings = tf.contrib.lookup.MutableDenseHashTable(key_dtype=tf.int32,
+                                 value_dtype=tf.int32,
+                                 default_value=-1,
+                                 empty_key=-2,
+                                 deleted_key=-1)
         
-        corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
+
+        insert_lookup_op = self.sparse_mappings.insert(tf.reshape(tf.range(len(self.ent_to_idx), 
+                                                                           dtype=tf.int32), (-1,1)), 
+                                                       tf.reshape(tf.range(len(self.ent_to_idx), 
+                                                                           dtype=tf.int32), (-1,1)))
+        with tf.control_dependencies([insert_lookup_op]):
+            all_entities_np = np.arange(len(self.ent_to_idx))
             
-        self.out_corr, self.out_corr_prime = generate_corruptions_for_eval(self.X_test_tf,
-                                                                           self.corruption_entities_tf,
-                                                                           corrupt_side,
-                                                                           None,
-                                                                           None,
-                                                                           None)
+            corruption_entities = self.eval_config.get('corruption_entities', DEFAULT_CORRUPTION_ENTITIES)
 
-        # Compute scores for negatives
-        e_s, e_p, e_o = self._lookup_embeddings(self.out_corr)
-        self.scores_predict = self._fn(e_s, e_p, e_o)
-        
-        # Compute scores for positive
-        e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
-        self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
-        
-        use_default_protocol = self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL)
-        
-        if use_default_protocol:
-            obj_corruption_scores = tf.slice(self.scores_predict,
-                                             [0],
-                                             [tf.shape(self.scores_predict)[0]//2])
-
-            subj_corruption_scores = tf.slice(self.scores_predict,
-                                              [tf.shape(self.scores_predict)[0]//2],
-                                              [tf.shape(self.scores_predict)[0]//2])
-            
-        positives_among_obj_corruptions_ranked_higher = 0
-        positives_among_sub_corruptions_ranked_higher = 0    
-        
-        if self.is_filtered:
-            if use_default_protocol:
-                scores_pos_obj = tf.gather(obj_corruption_scores,indices_obj) 
-                scores_pos_sub = tf.gather(subj_corruption_scores,indices_sub)
-                
+            if corruption_entities == 'all':
+                corruption_entities = all_entities_np
+            elif isinstance(corruption_entities, np.ndarray):
+                corruption_entities = corruption_entities
             else:
-                scores_pos_obj = tf.gather(self.scores_predict,indices_obj) 
-                if corrupt_side == 's+o':
-                    scores_pos_sub = tf.gather(self.scores_predict,indices_sub+len(self.ent_to_idx))
+                msg = 'Invalid type for corruption entities.'
+                logger.error(msg)
+                raise ValueError(msg)
+
+            self.corruption_entities_tf = tf.constant(corruption_entities, dtype=tf.int32)
+
+            corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
+
+            self.out_corr, self.out_corr_prime = generate_corruptions_for_eval(self.X_test_tf,
+                                                                               self.corruption_entities_tf,
+                                                                               corrupt_side,
+                                                                               None,
+                                                                               None,
+                                                                               None)
+
+            # Compute scores for negatives
+            e_s, e_p, e_o = self._lookup_embeddings(self.out_corr)
+            self.scores_predict = self._fn(e_s, e_p, e_o)
+
+            # Compute scores for positive
+            e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
+            self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
+
+            use_default_protocol = self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL)
+
+            if use_default_protocol:
+                obj_corruption_scores = tf.slice(self.scores_predict,
+                                                 [0],
+                                                 [tf.shape(self.scores_predict)[0]//2])
+
+                subj_corruption_scores = tf.slice(self.scores_predict,
+                                                  [tf.shape(self.scores_predict)[0]//2],
+                                                  [tf.shape(self.scores_predict)[0]//2])
+
+            positives_among_obj_corruptions_ranked_higher = 0
+            positives_among_sub_corruptions_ranked_higher = 0    
+
+            if self.is_filtered:
+                if use_default_protocol:
+                    scores_pos_obj = tf.gather(obj_corruption_scores,indices_obj) 
+                    scores_pos_sub = tf.gather(subj_corruption_scores,indices_sub)
+
                 else:
-                    scores_pos_sub = tf.gather(self.scores_predict,indices_sub)
+                    scores_pos_obj = tf.gather(self.scores_predict,indices_obj) 
+                    if corrupt_side == 's+o':
+                        scores_pos_sub = tf.gather(self.scores_predict,indices_sub+len(self.ent_to_idx))
+                    else:
+                        scores_pos_sub = tf.gather(self.scores_predict,indices_sub)
 
-            if corrupt_side == 's+o' or corrupt_side == 'o':
-                positives_among_obj_corruptions_ranked_higher = tf.reduce_sum(tf.cast(scores_pos_obj >= \
+                if corrupt_side == 's+o' or corrupt_side == 'o':
+                    positives_among_obj_corruptions_ranked_higher = tf.reduce_sum(tf.cast(scores_pos_obj >= \
+                                                                                                    self.score_positive, tf.int32)) 
+                if corrupt_side == 's+o' or corrupt_side == 's':
+                    positives_among_sub_corruptions_ranked_higher = tf.reduce_sum(tf.cast(scores_pos_sub >= \
                                                                                                 self.score_positive, tf.int32)) 
-            if corrupt_side == 's+o' or corrupt_side == 's':
-                positives_among_sub_corruptions_ranked_higher = tf.reduce_sum(tf.cast(scores_pos_sub >= \
-                                                                                            self.score_positive, tf.int32)) 
 
-        if use_default_protocol:
-            
-            self.rank = tf.stack([tf.reduce_sum(tf.cast(subj_corruption_scores >= self.score_positive, tf.int32)) + 1 - \
-                                                                          positives_among_sub_corruptions_ranked_higher,
-                                  tf.reduce_sum(tf.cast(obj_corruption_scores >= self.score_positive, tf.int32)) + 1 - \
-                                                                          positives_among_obj_corruptions_ranked_higher], 0)
-        else:
-            self.rank = tf.reduce_sum(tf.cast(self.scores_predict >= self.score_positive, tf.int32)) + 1 - \
-                                positives_among_sub_corruptions_ranked_higher - positives_among_obj_corruptions_ranked_higher
-        
+            if use_default_protocol:
+
+                self.rank = tf.stack([tf.reduce_sum(tf.cast(subj_corruption_scores >= self.score_positive, tf.int32)) + 1 - \
+                                                                              positives_among_sub_corruptions_ranked_higher,
+                                      tf.reduce_sum(tf.cast(obj_corruption_scores >= self.score_positive, tf.int32)) + 1 - \
+                                                                              positives_among_obj_corruptions_ranked_higher], 0)
+            else:
+                self.rank = tf.reduce_sum(tf.cast(self.scores_predict >= self.score_positive, tf.int32)) + 1 - \
+                                    positives_among_sub_corruptions_ranked_higher - positives_among_obj_corruptions_ranked_higher
+
 
                             
 
@@ -1855,6 +1936,9 @@ class ComplEx(EmbeddingModel):
                                        initializer=self.initializer)
         self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k * 2],
                                        initializer=self.initializer)
+        
+        self.ent_emb_placeholder = tf.placeholder(shape=(None, self.k*2), dtype = tf.float32)
+        self.rel_emb_placeholder = tf.placeholder(shape=(None, self.k*2), dtype = tf.float32)
 
     def _fn(self, e_s, e_p, e_o):
         """ComplEx scoring function.
