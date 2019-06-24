@@ -194,3 +194,30 @@ def test_lookup_embeddings():
     model.fit(X)
     model.get_embeddings(['a', 'b'], embedding_type='entity')
 
+def test_is_fitted_on():
+
+    model = DistMult(batches_count=2, seed=555, epochs=1, k=10, loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr':0.1})
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'z', 'a'],
+                  ['a', 'z', 'd']])
+
+    model.fit(X)
+
+    X1 = np.array([['a', 'y', 'b'],
+                   ['b', 'y', 'a'],
+                   ['a', 'y', 'c'],
+                   ['c', 'z', 'a'],
+                   ['g', 'z', 'd']])
+
+    X2 = np.array([['a', 'y', 'b'],
+                   ['b', 'y', 'a'],
+                   ['a', 'y', 'c'],
+                   ['c', 'z', 'a'],
+                   ['a', 'x', 'd']])
+
+    assert model.is_fitted_on(X) == True      # Fits the train triples
+    assert model.is_fitted_on(X1) == False    # Doesn't fit the extra entity triples
+    assert model.is_fitted_on(X2) == False    # Doesn't fit the extra relationship triples
