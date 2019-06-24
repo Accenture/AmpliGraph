@@ -622,8 +622,9 @@ class EmbeddingModel(abc.ABC):
         self._initialize_eval_graph()
 
     def _perform_early_stopping_test(self, epoch):
-        """perform regular validation checks and stop early if the criteria
-        is acheived
+        """Perform regular validation checks and stop early if the stopping
+        criteria is reached.
+
         Parameters
         ----------
         epoch : int
@@ -631,7 +632,7 @@ class EmbeddingModel(abc.ABC):
         Returns
         -------
         stopped: bool
-            Flag to indicate if the early stopping criteria is acheived
+            Flag to indicate if the early stopping criteria is reached
         """
 
         if epoch >= self.early_stopping_params.get('burn_in',
@@ -2117,8 +2118,7 @@ class ComplEx(EmbeddingModel):
 
         optimizer : string
             The optimizer used to minimize the loss function. Choose between
-            'sgd',
-            'adagrad', 'adam', 'momentum'.
+            'sgd', 'adagrad', 'adam', 'momentum'.
         optimizer_params : dict
             Arguments specific to the optimizer, passed as a dictionary.
 
@@ -2384,7 +2384,7 @@ class HolE(ComplEx):
     get_ranks=True)
     ([-0.06213863, 0.01563319], [13, 3])
     >>> model.get_embeddings(['f','e'], embedding_type='entity')
-        array([[ 0.17335348,  0.15826802,  0.24862595,  0.21404941, -0.00968813,
+        array([[ 0.17335348,  0.15826802,  0.24862595,  0.21404941, -0.009813,
          0.06185953, -0.24956754,  0.01114257, -0.1038138 ,  0.40461722,
         -0.12298391, -0.10997348,  0.28220937,  0.34238952,  0.58363295,
          0.03315138, -0.37830347,  0.13480346,  0.49922466, -0.26328272],
@@ -2466,7 +2466,8 @@ class HolE(ComplEx):
             - ``pairwise``  the model will use pairwise margin-based loss
             function.
             - ``nll`` the model will use negative loss likelihood.
-            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``absolute_margin`` the model will use absolute margin
+            likelihood.
             - ``self_adversarial`` the model will use adversarial sampling
             loss function.
             - ``multiclass_nll`` the model will use multiclass nll loss.
@@ -2502,7 +2503,8 @@ class HolE(ComplEx):
         super().__init__(k=k, eta=eta, epochs=epochs,
                          batches_count=batches_count, seed=seed,
                          embedding_model_params=embedding_model_params,
-                         optimizer=optimizer, optimizer_params=optimizer_params,
+                         optimizer=optimizer,
+                         optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer,
                          regularizer_params=regularizer_params,
@@ -2539,8 +2541,8 @@ class HolE(ComplEx):
     def fit(self, X, early_stopping=False, early_stopping_params={}):
         """Train a HolE model.
 
-            The model is trained on a training set X using the training protocol
-            described in :cite:`nickel2016holographic`.
+            The model is trained on a training set X using the training
+            protocol described in :cite:`nickel2016holographic`.
 
         Parameters
         ----------
