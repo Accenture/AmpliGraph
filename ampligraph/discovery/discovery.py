@@ -213,28 +213,31 @@ def generate_candidates(X, strategy, target_rel, max_candidates,
 
     """
 
-    relations = np.unique(X[:, 1])
-    if target_rel not in relations:
-        # Not raising error as not clear this would or should always
-        # be the case.
+    if strategy not in ['random_uniform', 'exhaustive']:
+        msg = '%s is not a valid candidate generation strategy.' % strategy
+        raise ValueError(msg)
+
+    if target_rel not in np.unique(X[:, 1]):
+        # Not raising error as may be case where target_rel is
+        # not in X
         msg = 'Target relation is not found in triples.'
         logger.warning(msg)
 
+    if not isinstance(max_candidates, (float, int)):
+        msg = 'Parameter max_candidates must be a float or int.'
+        raise ValueError(msg)
+
+    if max_candidates <= 0:
+        msg = 'Parameter max_candidates must be a positive integer ' \
+              'or float in range (0,1].'
+        raise ValueError(msg)
+
     if isinstance(max_candidates, float):
-
-        if max_candidates <= 0 or max_candidates > 1.0:
-            msg = 'Must specify a positive integer or float in range (0,1].'
-            raise ValueError(msg)
-
         _max_candidates = int(max_candidates * len(X))
     elif isinstance(max_candidates, int):
         _max_candidates = max_candidates
-    else:
-        msg = 'Must specify a positive integer or float in range (0,1].'
-        raise ValueError(msg)
 
     # Get entities linked with this relation
-
     if consolidate_sides:
         e_s = np.unique(np.concatenate((X[:, 0], X[:, 2])))
         e_o = e_s
