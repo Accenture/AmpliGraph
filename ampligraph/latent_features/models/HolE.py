@@ -1,4 +1,6 @@
-from . import EmbeddingModel
+from .ComplEx import ComplEx 
+from ampligraph.latent_features import constants as CONSTANTS
+import tensorflow as tf
 
 class HolE(ComplEx):
     r"""Holographic Embeddings
@@ -41,20 +43,20 @@ class HolE(ComplEx):
 
     """
     def __init__(self,
-                 k=DEFAULT_EMBEDDING_SIZE,
-                 eta=DEFAULT_ETA,
-                 epochs=DEFAULT_EPOCH,
-                 batches_count=DEFAULT_BATCH_COUNT,
-                 seed=DEFAULT_SEED,
-                 embedding_model_params={'negative_corruption_entities': DEFAULT_CORRUPTION_ENTITIES,
-                                         'corrupt_sides': DEFAULT_CORRUPT_SIDE_TRAIN},
-                 optimizer=DEFAULT_OPTIM,
-                 optimizer_params={'lr': DEFAULT_LR},
-                 loss=DEFAULT_LOSS,
+                 k=CONSTANTS.DEFAULT_EMBEDDING_SIZE,
+                 eta=CONSTANTS.DEFAULT_ETA,
+                 epochs=CONSTANTS.DEFAULT_EPOCH,
+                 batches_count=CONSTANTS.DEFAULT_BATCH_COUNT,
+                 seed=CONSTANTS.DEFAULT_SEED,
+                 embedding_model_params={'negative_corruption_entities': CONSTANTS.DEFAULT_CORRUPTION_ENTITIES,
+                                         'corrupt_sides': CONSTANTS.DEFAULT_CORRUPT_SIDE_TRAIN},
+                 optimizer=CONSTANTS.DEFAULT_OPTIM,
+                 optimizer_params={'lr': CONSTANTS.DEFAULT_LR},
+                 loss=CONSTANTS.DEFAULT_LOSS,
                  loss_params={},
-                 regularizer=DEFAULT_REGULARIZER,
+                 regularizer=CONSTANTS.DEFAULT_REGULARIZER,
                  regularizer_params={},
-                 verbose=DEFAULT_VERBOSE):
+                 verbose=CONSTANTS.DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
         Also creates a new Tensorflow session for training.

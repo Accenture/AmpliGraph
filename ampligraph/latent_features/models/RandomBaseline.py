@@ -1,4 +1,9 @@
-from . import EmbeddingModel
+from .EmbeddingModel import EmbeddingModel
+from ampligraph.latent_features import constants as CONSTANTS
+import tensorflow as tf
+from sklearn.utils import check_random_state
+
+from ampligraph.evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval,hits_at_n_score, mrr_score
 
 class RandomBaseline(EmbeddingModel):
     """Random baseline
@@ -30,7 +35,7 @@ class RandomBaseline(EmbeddingModel):
     [0.5488135039273248, 0.7151893663724195]
     """
 
-    def __init__(self, seed=DEFAULT_SEED):
+    def __init__(self, seed=CONSTANTS.DEFAULT_SEED):
         """Initialize the model
         
         Parameters
@@ -113,13 +118,13 @@ class RandomBaseline(EmbeddingModel):
 
         positive_scores = self.rnd.uniform(low=0, high=1, size=len(X)).tolist()
         if get_ranks:
-            corruption_entities = self.eval_config.get('corruption_entities', DEFAULT_CORRUPTION_ENTITIES)
+            corruption_entities = self.eval_config.get('corruption_entities', CONSTANTS.DEFAULT_CORRUPTION_ENTITIES)
             if corruption_entities == "all":
                 corruption_length = len(self.ent_to_idx)
             else:
                 corruption_length = len(corruption_entities)
 
-            corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
+            corrupt_side = self.eval_config.get('corrupt_side', CONSTANTS.DEFAULT_CORRUPT_SIDE_EVAL)
             if corrupt_side == 's+o':
                 # since we are corrupting both subject and object
                 corruption_length *= 2
