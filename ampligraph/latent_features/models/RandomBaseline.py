@@ -1,6 +1,7 @@
 from .EmbeddingModel import EmbeddingModel
 from ampligraph.latent_features import constants as CONSTANTS
 import tensorflow as tf
+import numpy as np
 from sklearn.utils import check_random_state
 
 from ampligraph.evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval,hits_at_n_score, mrr_score
