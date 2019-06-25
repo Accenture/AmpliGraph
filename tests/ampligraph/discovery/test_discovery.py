@@ -70,12 +70,12 @@ def test_generate_candidates():
                           np.array(['i', 'j', 'k', 'l', 'm', 'n', 'o', 'p'])))
 
     gen = generate_candidates(X, strategy='random_uniform', target_rel='y',
-                              max_candidates=10, consolidate_sides=True)
+                              max_candidates=100, consolidate_sides=True)
     Xhat = next(gen)
 
     # Check that any of the head or tail entities from X has been found
     # on the OTHER side of the candidates
-    # Chance that this test fails with probability:
+    # Chance that this test fails with probability: 0.00980392156862745
     assert np.logical_or(
         np.any(np.isin(Xhat[:, 2],
                        np.array(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']))),
@@ -148,3 +148,8 @@ def test_find_clusters():
     assert labels.shape == (2,)
     labels = find_clusters(X, model, clustering_algorithm, relations_subset=['x'])
     assert labels.shape == (7,)
+
+
+if __name__ == '__main__':
+
+    test_generate_candidates()
