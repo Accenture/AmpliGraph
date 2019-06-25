@@ -1,6 +1,5 @@
 from . import EmbeddingModel
 
-@register_model("ComplEx", ["negative_corruption_entities"])
 class ComplEx(EmbeddingModel):
     r"""Complex embeddings (ComplEx)
 

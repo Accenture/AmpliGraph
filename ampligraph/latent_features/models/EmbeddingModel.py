@@ -12,9 +12,9 @@ import abc
 from tqdm import tqdm
 import logging
 
-from .loss_functions import LOSS_REGISTRY
-from .regularizers import REGULARIZER_REGISTRY
-from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, \
+from ampligraph.latent_features.loss_functions import LOSS_REGISTRY
+from ampligraph.latent_features.regularizers import REGULARIZER_REGISTRY
+from ampligraph.evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, \
     hits_at_n_score, mrr_score
 import os
 
@@ -93,23 +93,6 @@ DEFAULT_PROTOCOL_EVAL = False
 # Specifies how to generate corruptions for training - default does s and o together and applies the loss
 DEFAULT_CORRUPT_SIDE_TRAIN = ['s+o']
 #######################################################################################################
-
-
-def register_model(name, external_params=None, class_params=None):
-    if external_params is None:
-        external_params = []
-    if class_params is None:
-        class_params = {}
-
-    def insert_in_registry(class_handle):
-        MODEL_REGISTRY[name] = class_handle
-        class_handle.name = name
-        MODEL_REGISTRY[name].external_params = external_params
-        MODEL_REGISTRY[name].class_params = class_params
-        return class_handle
-
-    return insert_in_registry
-
 
 class EmbeddingModel(abc.ABC):
     """Abstract class for embedding models

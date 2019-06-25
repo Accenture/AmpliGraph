@@ -1,6 +1,5 @@
 from . import EmbeddingModel
 
-@register_model("RandomBaseline")
 class RandomBaseline(EmbeddingModel):
     """Random baseline
 

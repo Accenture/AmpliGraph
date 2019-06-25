@@ -1,6 +1,5 @@
 from . import EmbeddingModel
 
-@register_model("TransE", ["norm", "normalize_ent_emb", "negative_corruption_entities"])
 class TransE(EmbeddingModel):
     r"""Translating Embeddings (TransE)
 

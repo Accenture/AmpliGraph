@@ -1,6 +1,5 @@
 from . import EmbeddingModel
 
-@register_model("HolE", ["negative_corruption_entities"])
 class HolE(ComplEx):
     r"""Holographic Embeddings
 

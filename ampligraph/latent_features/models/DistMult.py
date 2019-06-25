@@ -1,6 +1,5 @@
 from . import EmbeddingModel
 
-@register_model("DistMult", ["normalize_ent_emb", "negative_corruption_entities"])
 class DistMult(EmbeddingModel):
     r"""The DistMult model
 
