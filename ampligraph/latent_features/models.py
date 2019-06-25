@@ -1340,10 +1340,13 @@ class RandomBaseline(EmbeddingModel):
             X = np.expand_dims(X, 0)
 
         positive_scores = self.rnd.uniform(low=0, high=1, size=len(X)).tolist()
+
         if get_ranks:
+
             corruption_entities = self.eval_config.get('corruption_entities',
                                                        DEFAULT_CORRUPTION_ENTITIES)
-            if corruption_entities is None:
+
+            if corruption_entities == "all":
                 corruption_length = len(self.ent_to_idx)
             else:
                 corruption_length = len(corruption_entities)
