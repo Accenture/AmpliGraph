@@ -7,30 +7,34 @@ from ampligraph.evaluation import evaluate_performance, hits_at_n_score
 
 def test_fit_predict_TransE_early_stopping_with_filter():
     X = load_wn18()
-    model = TransE(batches_count=1, seed=555, epochs=7, k=50, loss='pairwise', loss_params={'margin': 5},
-                   verbose=True, optimizer='adagrad', optimizer_params={'lr':0.1})
+    model = TransE(batches_count=1, seed=555, epochs=7, k=50, loss='pairwise',
+                   loss_params={'margin': 5},
+                   verbose=True, optimizer='adagrad',
+                   optimizer_params={'lr': 0.1})
     X_filter = np.concatenate((X['train'], X['valid'], X['test']))
-    model.fit(X['train'], True, {'x_valid': X['valid'][::100], 
-                                 'criteria':'mrr', 
-                                 'x_filter':X_filter,
-                                 'stop_interval': 2, 
-                                 'burn_in':1, 
-                                 'check_interval':2})
-    
+    model.fit(X['train'], True, {'x_valid': X['valid'][::100],
+                                 'criteria': 'mrr',
+                                 'x_filter': X_filter,
+                                 'stop_interval': 2,
+                                 'burn_in': 1,
+                                 'check_interval': 2})
+
     y, _ = model.predict(X['test'][:1], get_ranks=True)
     print(y)
-    
+
 
 def test_fit_predict_TransE_early_stopping_without_filter():
     X = load_wn18()
-    model = TransE(batches_count=1, seed=555, epochs=7, k=50, loss='pairwise', loss_params={'margin': 5},
-                   verbose=True, optimizer='adagrad', optimizer_params={'lr':0.1})
-    model.fit(X['train'], True, {'x_valid': X['valid'][::100], 
-                                 'criteria':'mrr',
-                                 'stop_interval': 2, 
-                                 'burn_in':1, 
-                                 'check_interval':2})
-    
+    model = TransE(batches_count=1, seed=555, epochs=7, k=50, loss='pairwise',
+                   loss_params={'margin': 5},
+                   verbose=True, optimizer='adagrad',
+                   optimizer_params={'lr': 0.1})
+    model.fit(X['train'], True, {'x_valid': X['valid'][::100],
+                                 'criteria': 'mrr',
+                                 'stop_interval': 2,
+                                 'burn_in': 1,
+                                 'check_interval': 2})
+
     y, _ = model.predict(X['test'][:1], get_ranks=True)
     print(y)
 
@@ -48,8 +52,9 @@ def test_evaluate_RandomBaseline():
     assert(hits10==0.0002 and hits1==0.0)
     
 def test_fit_predict_transE():
-    model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5}, 
-                   optimizer='adagrad', optimizer_params={'lr':0.1})
+    model = TransE(batches_count=1, seed=555, epochs=20, k=10,
+                   loss='pairwise', loss_params={'margin': 5},
+                   optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -59,14 +64,16 @@ def test_fit_predict_transE():
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
     model.fit(X)
-    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
+    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]),
+                              get_ranks=True)
     print(y_pred)
     assert y_pred[0] > y_pred[1]
 
 
 def test_fit_predict_DistMult():
-    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5}, 
-                     optimizer='adagrad', optimizer_params={'lr':0.1})
+    model = DistMult(batches_count=2, seed=555, epochs=20, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -76,16 +83,18 @@ def test_fit_predict_DistMult():
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
     model.fit(X)
-    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
+    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]),
+                              get_ranks=True)
     print(y_pred)
     assert y_pred[0] > y_pred[1]
 
 
 def test_fit_predict_CompleEx():
     model = ComplEx(batches_count=1, seed=555, epochs=20, k=10,
-                    loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                    regularizer_params={'lambda': 0.1, 'p': 2}, 
-                    optimizer='adagrad', optimizer_params={'lr':0.1})
+                    loss='pairwise', loss_params={'margin': 1},
+                    regularizer='LP',
+                    regularizer_params={'lambda': 0.1, 'p': 2},
+                    optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -95,7 +104,8 @@ def test_fit_predict_CompleEx():
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
     model.fit(X)
-    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
+    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]),
+                              get_ranks=True)
     print(y_pred)
     assert y_pred[0] > y_pred[1]
 
@@ -103,8 +113,8 @@ def test_fit_predict_CompleEx():
 def test_fit_predict_HolE():
     model = HolE(batches_count=1, seed=555, epochs=20, k=10,
                  loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                 regularizer_params={'lambda': 0.1, 'p': 2}, 
-                 optimizer='adagrad', optimizer_params={'lr':0.1})
+                 regularizer_params={'lambda': 0.1, 'p': 2},
+                 optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -114,16 +124,18 @@ def test_fit_predict_HolE():
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
     model.fit(X)
-    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
+    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]),
+                              get_ranks=True)
     print(y_pred)
     assert y_pred[0] > y_pred[1]
 
 
 def test_retrain():
     model = ComplEx(batches_count=1, seed=555, epochs=20, k=10,
-                    loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                    regularizer_params={'lambda': 0.1, 'p': 2}, 
-                    optimizer='adagrad', optimizer_params={'lr':0.1})
+                    loss='pairwise', loss_params={'margin': 1},
+                    regularizer='LP',
+                    regularizer_params={'lambda': 0.1, 'p': 2},
+                    optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -133,16 +145,20 @@ def test_retrain():
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
     model.fit(X)
-    y_pred_1st, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
+    y_pred_1st, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]),
+                                  get_ranks=True)
     model.fit(X)
-    y_pred_2nd, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
+    y_pred_2nd, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]),
+                                  get_ranks=True)
     np.testing.assert_array_equal(y_pred_1st, y_pred_2nd)
 
 
 def test_fit_predict_wn18_TransE():
     X = load_wn18()
-    model = TransE(batches_count=1, seed=555, epochs=5, k=100, loss='pairwise', loss_params={'margin': 5},
-                   verbose=True, optimizer='adagrad', optimizer_params={'lr': 0.1})
+    model = TransE(batches_count=1, seed=555, epochs=5, k=100, loss='pairwise',
+                   loss_params={'margin': 5},
+                   verbose=True, optimizer='adagrad',
+                   optimizer_params={'lr': 0.1})
     model.fit(X['train'])
     y, _ = model.predict(X['test'][:1], get_ranks=True)
 
@@ -172,17 +188,19 @@ def test_missing_entity_ComplEx():
 def test_fit_predict_wn18_ComplEx():
     X = load_wn18()
     model = ComplEx(batches_count=1, seed=555, epochs=5, k=100,
-                    loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                    regularizer_params={'lambda': 0.1, 'p': 2}, 
-                    optimizer='adagrad', optimizer_params={'lr':0.1})
+                    loss='pairwise', loss_params={'margin': 1},
+                    regularizer='LP',
+                    regularizer_params={'lambda': 0.1, 'p': 2},
+                    optimizer='adagrad', optimizer_params={'lr': 0.1})
     model.fit(X['train'])
     y = model.predict(X['test'][:1], get_ranks=True)
     print(y)
 
 
 def test_lookup_embeddings():
-    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5}, 
-                     optimizer='adagrad', optimizer_params={'lr':0.1})
+    model = DistMult(batches_count=2, seed=555, epochs=20, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -194,10 +212,12 @@ def test_lookup_embeddings():
     model.fit(X)
     model.get_embeddings(['a', 'b'], embedding_type='entity')
 
+
 def test_is_fitted_on():
 
-    model = DistMult(batches_count=2, seed=555, epochs=1, k=10, loss='pairwise', loss_params={'margin': 5},
-                     optimizer='adagrad', optimizer_params={'lr':0.1})
+    model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
                   ['a', 'y', 'c'],
@@ -218,6 +238,9 @@ def test_is_fitted_on():
                    ['c', 'z', 'a'],
                    ['a', 'x', 'd']])
 
-    assert model.is_fitted_on(X) == True      # Fits the train triples
-    assert model.is_fitted_on(X1) == False    # Doesn't fit the extra entity triples
-    assert model.is_fitted_on(X2) == False    # Doesn't fit the extra relationship triples
+    # Fits the train triples
+    assert model.is_fitted_on(X) is True
+    # Doesn't fit the extra entity triples
+    assert model.is_fitted_on(X1) is False
+    # Doesn't fit the extra relationship triples
+    assert model.is_fitted_on(X2) is False
