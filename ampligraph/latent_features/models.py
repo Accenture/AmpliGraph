@@ -220,6 +220,9 @@ class EmbeddingModel(abc.ABC):
         self.eta = eta
         self.regularizer_params = regularizer_params
         self.batches_count = batches_count
+        
+        self.dealing_with_extreme_concepts = False
+        
         if batches_count == 1:
             logger.warning(
                 'All triples will be processed in the same batch (batches_count=1). '
@@ -271,8 +274,8 @@ class EmbeddingModel(abc.ABC):
 
         self.rnd = check_random_state(self.seed)
 
-        #self.initializer = tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed)
-        self.initializer = tf.initializers.random_normal(0,0.1, seed=self.seed)
+        self.initializer = tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed)
+        
         self.tf_config = tf.ConfigProto(allow_soft_placement=True)
         self.tf_config.gpu_options.allow_growth = True
         self.sess_train = None
@@ -335,8 +338,10 @@ class EmbeddingModel(abc.ABC):
         The order would be useful for loading the model. 
         This method must be overridden if the model has any other parameters (apart from entity-relation embeddings)
         """
-        #self.trained_model_params = self.sess_train.run([self.ent_emb, self.rel_emb])
-        self.trained_model_params = [self.ent_emb_cpu, self.rel_emb_cpu]
+        if not self.dealing_with_extreme_concepts:
+            self.trained_model_params = self.sess_train.run([self.ent_emb, self.rel_emb])
+        else:
+            self.trained_model_params = [self.ent_emb_cpu, self.sess_train.run(self.rel_emb)]
 
     def _load_model_from_trained_params(self):
         """Load the model from trained params. 
@@ -344,6 +349,7 @@ class EmbeddingModel(abc.ABC):
             It's the duty of the embedding model to load the variables correctly.
             This method must be overridden if the model has any other parameters (apart from entity-relation embeddings)
         """
+        #TODO: Handle re-loading
         self.ent_emb = tf.constant(self.trained_model_params[0])
         self.rel_emb = tf.constant(self.trained_model_params[1])
 
@@ -402,11 +408,13 @@ class EmbeddingModel(abc.ABC):
             A Tensor that includes the embeddings of the objects.
         """
         
-
-        sub_remapping = self.sparse_mappings.lookup(x[:, 0])
-        obj_remapping = self.sparse_mappings.lookup(x[:, 2])
-        
-
+        if self.dealing_with_extreme_concepts:
+            sub_remapping = self.sparse_mappings.lookup(x[:, 0])
+            obj_remapping = self.sparse_mappings.lookup(x[:, 2])
+        else:
+            sub_remapping = x[:, 0]
+            obj_remapping = x[:, 2]
+            
         e_s = tf.nn.embedding_lookup(self.ent_emb, sub_remapping, name='embedding_lookup_subject')
         e_p = tf.nn.embedding_lookup(self.rel_emb, x[:, 1], name='embedding_lookup_predicate')
         e_o = tf.nn.embedding_lookup(self.ent_emb, obj_remapping, name='embedding_lookup_object')
@@ -418,9 +426,18 @@ class EmbeddingModel(abc.ABC):
             This function creates and initializes entity and relation embeddings (with size k). 
             Overload this function if the parameters needs to be initialized differently.
         """
-        self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.internal_k],
+        if not self.dealing_with_extreme_concepts:
+            
+            self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k],
+                                           initializer=self.initializer)
+            self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
                                        initializer=self.initializer)
-        self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
+            
+        else:
+            
+            self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size*2, self.k],
+                                           initializer=self.initializer)
+            self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size*2, self.k],
                                        initializer=self.initializer)
         
     def _get_model_loss(self, dataset_iterator):
@@ -440,30 +457,31 @@ class EmbeddingModel(abc.ABC):
         # training input placeholder
         x_pos_tf, self.unique_entities, ent_emb_batch = dataset_iterator.get_next()
         
-        #init_ent_emb_batch = self.ent_emb.assign(ent_emb_batch)
+        dependencies = []
         
-        
-        self.sparse_mappings = tf.contrib.lookup.MutableDenseHashTable(key_dtype=tf.int32,
-                                 value_dtype=tf.int32,
-                                 default_value=-1,
-                                 empty_key=-2,
-                                 deleted_key=-1)
-        
-        
-        
-
-        insert_lookup_op = self.sparse_mappings.insert(self.unique_entities, 
-                                                       tf.reshape(tf.range(tf.shape(self.unique_entities)[0], 
+        if self.dealing_with_extreme_concepts:
+            
+            init_ent_emb_batch = self.ent_emb.assign(ent_emb_batch)
+            dependencies.append(init_ent_emb_batch)
+            
+            self.sparse_mappings = tf.contrib.lookup.MutableDenseHashTable(key_dtype=tf.int32,
+                                     value_dtype=tf.int32,
+                                     default_value=-1,
+                                     empty_key=-2,
+                                     deleted_key=-1)
+            
+            insert_lookup_op = self.sparse_mappings.insert(self.unique_entities, 
+                                                           tf.reshape(tf.range(tf.shape(self.unique_entities)[0], 
                                                                            dtype=tf.int32), (-1,1)))
+            
+            dependencies.append(insert_lookup_op)
         
-        with tf.control_dependencies([insert_lookup_op]):
+        with tf.control_dependencies(dependencies):
             entities_size = 0
             entities_list = None
 
             negative_corruption_entities = self.embedding_model_params.get('negative_corruption_entities',
                                                                            DEFAULT_CORRUPTION_ENTITIES)
-
-            negative_corruption_entities = 'batch'
 
             if negative_corruption_entities=='all':
                 logger.debug('Using all entities for generation of corruptions during training')
@@ -638,30 +656,31 @@ class EmbeddingModel(abc.ABC):
         self.is_fitted = True
         
     def train_retrieve(self):
-        all_ent = np.arange(len(self.ent_to_idx))
+        all_ent = np.int32(np.arange(len(self.ent_to_idx)))
+        unique_entities = all_ent.reshape(-1,1)
+        entity_embeddings = np.empty(shape=(0,self.internal_k), dtype=np.float32)
         for i in range(self.batches_count):
             out = np.int32(self.X_train[(i*self.batch_size) : ((i+1)*self.batch_size), :])
-            unique_entities = np.int32(np.unique(np.concatenate([out[:,0], out[:,2]], axis=0)))
-            
-            self.leftover_entities = np.random.permutation(np.setdiff1d(all_ent, unique_entities))
-            '''
-            print('Leftover before:', np.sum(self.ent_emb_cpu[self.leftover_entities,:]))
-            print('Used before:', np.sum(self.ent_emb_cpu[unique_entities,:]))
-            '''
+            if self.dealing_with_extreme_concepts:
+                
+                unique_entities = np.int32(np.unique(np.concatenate([out[:,0], out[:,2]], axis=0)))
 
-            needed = (self.ent_emb_cpu.shape[0]-unique_entities.shape[0])
-            
-            large_number = np.zeros((self.ent_emb_cpu.shape[0]-unique_entities.shape[0], 
-                                     self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
-            '''
-            entity_embeddings = np.concatenate((self.ent_emb_cpu[unique_entities,:], 
-                                               self.ent_emb_cpu[self.leftover_entities[:needed],:]), axis=0)
-            '''
-            entity_embeddings = np.concatenate((self.ent_emb_cpu[unique_entities,:], large_number), axis=0)
-                                                
-            self.sess_train.run(self.init_ent_emb_batch, feed_dict={self.ent_emb_batch_place: entity_embeddings})
-            
-            unique_entities = unique_entities.reshape(-1,1)
+                self.leftover_entities = np.random.permutation(np.setdiff1d(all_ent, unique_entities))
+
+                needed = (self.batch_size*2-unique_entities.shape[0])
+                '''
+                large_number = np.zeros((self.batch_size-unique_entities.shape[0], 
+                                             self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
+
+                entity_embeddings = np.concatenate((self.ent_emb_cpu[unique_entities,:], 
+                                                    large_number), axis=0)
+                '''
+                entity_embeddings = np.concatenate((self.ent_emb_cpu[unique_entities,:], 
+                                                    self.ent_emb_cpu[self.leftover_entities[:needed],:]), axis=0)
+                
+                unique_entities = unique_entities.reshape(-1,1)
+
+                
             yield out, unique_entities, entity_embeddings
             
     def train_retrieve_all(self):
@@ -669,12 +688,7 @@ class EmbeddingModel(abc.ABC):
         for i in range(self.batches_count):
             out = np.int32(self.X_train[(i*self.batch_size) : ((i+1)*self.batch_size), :])
             unique_entities = all_ent[::-1]
-           
             entity_embeddings = self.ent_emb_cpu[::-1,:]
-            
-            self.sess_train.run(self.init_ent_emb_batch, feed_dict={self.ent_emb_batch_place: entity_embeddings})
-         
-            
             unique_entities = unique_entities.reshape(-1,1)
             yield out, unique_entities, entity_embeddings
         
@@ -722,17 +736,32 @@ class EmbeddingModel(abc.ABC):
 
         # create internal IDs mappings
         self.rel_to_idx, self.ent_to_idx = create_mappings(X)
-        #  convert training set into internal IDs
-        X = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+        prefetch_batches = 1
         
         if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
+            self.dealing_with_extreme_concepts = True
+            prefetch_batches =0
+            
+            self.optimizer = tf.train.GradientDescentOptimizer(
+                    learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
+            self.ent_emb_cpu = np.random.normal(0, 0.1, size=(len(self.ent_to_idx), self.internal_k))
+            
+            
             logger.warning('Your graph has a large number of distinct entities. '
                            'Found {} distinct entities'.format(len(self.ent_to_idx)))
+            
+            logger.warning('Changing the strategy to use lazy loading of variables...')
+            logger.warning('Changing the optimizer to SGD (as it is not dependent on variables being trained)...')
+            logger.warning('Changing the variable initialization strategy')
+            
             if early_stopping:
                 logger.warning("Early stopping may introduce memory issues when many distinct entities are present."
                                " Disable early stopping with `early_stopping_params={'early_stopping'=False}` or set "
                                "`corruption_entities` to a reduced set of distinct entities to save memory "
                                "when generating corruptions.")
+                
+        #  convert training set into internal IDs
+        X = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
             
         # This is useful when we re-fit the same model (e.g. retraining in model selection)
         if self.is_fitted:
@@ -750,8 +779,9 @@ class EmbeddingModel(abc.ABC):
 
         dataset = tf.data.Dataset.from_generator(self.train_retrieve, 
                                          output_types=(tf.int32, tf.int32, tf.float32),
-                                         output_shapes=((None,3), (None,1), (None, self.internal_k))).repeat().prefetch(0)
+                                         output_shapes=((None,3), (None,1), (None, self.internal_k)))
         
+        dataset = dataset.repeat().prefetch(prefetch_batches)
         
         '''
         dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(0)
@@ -789,26 +819,20 @@ class EmbeddingModel(abc.ABC):
         if self.embedding_model_params.get('normalize_ent_emb', DEFAULT_NORMALIZE_EMBEDDINGS):
             self.sess_train.run(normalize_rel_emb_op)
             self.sess_train.run(normalize_ent_emb_op)
-                                                 
-        self.ent_emb_cpu = self.sess_train.run(self.ent_emb)
-        self.rel_emb_cpu = self.sess_train.run(self.rel_emb)
-        print('self.ent_emb_cpu:', self.ent_emb_cpu.shape)
-        
-        self.ent_emb_batch_place = tf.placeholder(shape=(None,self.internal_k), dtype=tf.float32)
-        
-        p2=tf.print(tf.shape(self.ent_emb_batch_place))
-        with tf.control_dependencies([p2]):
-            self.init_ent_emb_batch = self.ent_emb.assign(self.ent_emb_batch_place)
-        
             
         epoch_iterator_with_progress = tqdm(range(1, self.epochs + 1), disable=(not self.verbose), unit='epoch')
                                                  
         for epoch in epoch_iterator_with_progress:
             losses = []
             for batch in range(1, self.batches_count + 1):
-                loss_batch, unique_entities, _ = self.sess_train.run([loss, self.unique_entities, train])
-                self.ent_emb_cpu[np.squeeze(unique_entities), :] = self.sess_train.run(self.ent_emb)[:unique_entities.shape[0], :]
-                self.rel_emb_cpu = self.sess_train.run(self.rel_emb)
+                
+                if self.dealing_with_extreme_concepts:
+                    loss_batch, unique_entities, _ = self.sess_train.run([loss, self.unique_entities, train])
+                    self.ent_emb_cpu[np.squeeze(unique_entities), :] = \
+                        self.sess_train.run(self.ent_emb)[:unique_entities.shape[0], :]
+                else:
+                    loss_batch, _ = self.sess_train.run([loss, train])
+
                 '''
                 print('Leftover after:', np.sum(self.ent_emb_cpu[self.leftover_entities,:]))
                 print('Used after:', np.sum(self.ent_emb_cpu[unique_entities,:]))
@@ -821,6 +845,7 @@ class EmbeddingModel(abc.ABC):
                 losses.append(loss_batch)
                 if self.embedding_model_params.get('normalize_ent_emb', DEFAULT_NORMALIZE_EMBEDDINGS):
                     self.sess_train.run(normalize_ent_emb_op)
+                    
             if self.verbose:
                 msg = 'Average Loss: {:10f}'.format(sum(losses) / (self.batches_count))
                 logger.debug(msg)
@@ -1969,14 +1994,17 @@ class ComplEx(EmbeddingModel):
 
     def _initialize_parameters(self):
         """ Initialize the complex embeddings.
-        """                                         
-        self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.internal_k],
+        """
+        if not self.dealing_with_extreme_concepts:
+            self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k * 2],
+                                           initializer=self.initializer)
+            self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k * 2],
+                                           initializer=self.initializer)
+        else:
+            self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.k * 2],
+                                           initializer=self.initializer)
+            self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size * 2, self.k * 2],
                                        initializer=self.initializer)
-        self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
-                                       initializer=self.initializer)
-        
-        self.ent_emb_placeholder = tf.placeholder(shape=(None, self.internal_k), dtype = tf.float32)
-        self.rel_emb_placeholder = tf.placeholder(shape=(None, self.internal_k), dtype = tf.float32)
 
     def _fn(self, e_s, e_p, e_o):
         """ComplEx scoring function.
