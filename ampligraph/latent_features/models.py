@@ -1737,6 +1737,10 @@ class ComplEx(EmbeddingModel):
 
         f_{ComplEx}=Re(\langle \mathbf{r}_p, \mathbf{e}_s, \overline{\mathbf{e}_o}  \rangle)
 
+    ComplEx can be improved if used alongside the nuclear 3-norm :cite:`lacroix2018canonical`,
+    which can be easily added to the loss function via the Lp regularisation parameter with `p=3`
+    and a chosen regularisation weight (represented by `lambda`), as shown in the example below.
+
     Note that because embeddings are in :math:`\mathcal{C}`, ComplEx uses twice as many parameters as
     :class:`ampligraph.latent_features.DistMult`.
 
@@ -1747,7 +1751,7 @@ class ComplEx(EmbeddingModel):
     >>>
     >>> model = ComplEx(batches_count=1, seed=555, epochs=20, k=10,
     >>>             loss='pairwise', loss_params={'margin':1},
-    >>>             regularizer='LP', regularizer_params={'lambda':0.1})
+    >>>             regularizer='LP', regularizer_params={'p': 3, 'lambda':0.1})
     >>> X = np.array([['a', 'y', 'b'],
     >>>               ['b', 'y', 'a'],
     >>>               ['a', 'y', 'c'],
@@ -1758,17 +1762,17 @@ class ComplEx(EmbeddingModel):
     >>>               ['f', 'y', 'e']])
     >>> model.fit(X)
     >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-    [-0.31336197, 0.07829369]
+    [-0.3136923, 0.078388765]
     >>> model.get_embeddings(['f','e'], embedding_type='entity')
-    array([[ 0.17496692,  0.15856805,  0.2549046 ,  0.21418071, -0.00980021,
-    0.06208976, -0.2573946 ,  0.01115128, -0.10728686,  0.40512595,
-    -0.12340491, -0.11021495,  0.28515074,  0.34275156,  0.58547366,
-    0.03383447, -0.37839213,  0.1353071 ,  0.50376487, -0.26477185],
-    [-0.19194135,  0.20568603,  0.04714957,  0.4366147 ,  0.07175589,
-     0.5740745 ,  0.28201544,  0.3266275 , -0.06701915,  0.29062983,
-    -0.21265475,  0.5720126 , -0.05321272,  0.04141249,  0.01574909,
-    -0.11786222,  0.30488515,  0.34970865,  0.23362857, -0.55025095]],
-    dtype=float32)
+    array([[ 0.17530274,  0.15865138,  0.2559045 ,  0.21435979, -0.00982418,
+         0.06216379, -0.2602038 ,  0.01115429, -0.10862222,  0.40523437,
+        -0.12347769, -0.11028474,  0.28538892,  0.34305975,  0.58568525,
+         0.0340597 , -0.37842   ,  0.13549514,  0.50580424, -0.26587492],
+       [-0.19215044,  0.20638846,  0.04732068,  0.4367251 ,  0.07201706,
+         0.5745204 ,  0.2822151 ,  0.32835224, -0.0671052 ,  0.29105374,
+        -0.21271947,  0.5722657 , -0.05323813,  0.04409647,  0.01575985,
+        -0.11947805,  0.3062414 ,  0.34990367,  0.23658516, -0.5502773 ]],
+      dtype=float32)
 
     """
     def __init__(self,

@@ -64,10 +64,10 @@ FB15K-237
                                                          check_interval: 100
                                                          };
 
-   ComplEx  519     0.30      0.20     0.33      0.48    k: 350;
+   ComplEx  158     0.33      0.23     0.36      0.51    k: 350;
                                                          epochs: 4000;
                                                          eta: 30;
-                                                         loss: self_adversarial;
+                                                         loss: multiclass_nll;
                                                          loss_params:
                                                          alpha: 1;
                                                          margin: 0.5;
@@ -75,6 +75,9 @@ FB15K-237
                                                          optimizer_params:
                                                          lr: 0.0001;
                                                          seed: 0;
+                                                         regularizer_params:
+                                                         lambda: 0.05;
+                                                         p: 3;
                                                          batches_count: 50;
                                                          early_stopping:{
                                                          x_valid: validation[::10],
@@ -171,16 +174,19 @@ WN18RR
                                                           check_interval: 100
                                                           };
 
- ComplEx    8214      0.44    0.41     0.45      0.50     k: 200;
+ ComplEx    4550      0.50    0.47     0.52      0.57     k: 200;
                                                           epochs: 4000;
                                                           eta: 20;
-                                                          loss: nll;
+                                                          loss: multiclass_nll;
                                                           loss_params:
                                                           margin: 1;
                                                           optimizer: adam;
                                                           optimizer_params:
                                                           lr: 0.0005;
                                                           seed: 0;
+                                                          regularizer_params:
+                                                          lambda: 0.05;
+                                                          p: 3;
                                                           batches_count: 10;
                                                           early_stopping:{
                                                           x_valid: validation[::10],
