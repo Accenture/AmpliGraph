@@ -15,6 +15,7 @@ from .loss_functions import LOSS_REGISTRY
 from .regularizers import REGULARIZER_REGISTRY
 from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, \
     hits_at_n_score, mrr_score
+from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
 import os
 
 #######################################################################################################
@@ -659,8 +660,10 @@ class EmbeddingModel(abc.ABC):
         all_ent = np.int32(np.arange(len(self.ent_to_idx)))
         unique_entities = all_ent.reshape(-1,1)
         entity_embeddings = np.empty(shape=(0,self.internal_k), dtype=np.float32)
+        batch_iterator = iter(self.dataset_handler.get_next_batch(self.batch_size))
         for i in range(self.batches_count):
-            out = np.int32(self.X_train[(i*self.batch_size) : ((i+1)*self.batch_size), :])
+            out = next(batch_iterator)
+            
             if self.dealing_with_extreme_concepts:
                 
                 unique_entities = np.int32(np.unique(np.concatenate([out[:,0], out[:,2]], axis=0)))
@@ -681,15 +684,6 @@ class EmbeddingModel(abc.ABC):
                 unique_entities = unique_entities.reshape(-1,1)
 
                 
-            yield out, unique_entities, entity_embeddings
-            
-    def train_retrieve_all(self):
-        all_ent = np.arange(len(self.ent_to_idx))
-        for i in range(self.batches_count):
-            out = np.int32(self.X_train[(i*self.batch_size) : ((i+1)*self.batch_size), :])
-            unique_entities = all_ent[::-1]
-            entity_embeddings = self.ent_emb_cpu[::-1,:]
-            unique_entities = unique_entities.reshape(-1,1)
             yield out, unique_entities, entity_embeddings
         
     def fit(self, X, early_stopping=False, early_stopping_params={}):
@@ -724,18 +718,19 @@ class EmbeddingModel(abc.ABC):
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
         """
-        if type(X) != np.ndarray:
-            msg = 'Invalid type for input X. Expected ndarray, got {}'.format(type(X))
+        if isinstance(X, np.ndarray):
+            dataset_handle = NumpyDatasetAdapter()
+            dataset_handle.set_data(X, "train")
+        elif isinstance(X, AmpligraphDataset):
+            dataset_handle = X
+        else:
+            msg = 'Invalid type for input X. Expected ndarray/AmpligraphDataset object, got {}'.format(type(X))
             logger.error(msg)
             raise ValueError(msg)
-
-        if (np.shape(X)[1]) != 3:
-            msg = 'Invalid size for input X. Expected number of column 3, got {}'.format(np.shape(X)[1])
-            logger.error(msg)
-            raise ValueError(msg)
+        
 
         # create internal IDs mappings
-        self.rel_to_idx, self.ent_to_idx = create_mappings(X)
+        self.rel_to_idx, self.ent_to_idx = dataset_handle.generate_mappings()
         prefetch_batches = 1
         
         if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
@@ -760,8 +755,7 @@ class EmbeddingModel(abc.ABC):
                                "`corruption_entities` to a reduced set of distinct entities to save memory "
                                "when generating corruptions.")
                 
-        #  convert training set into internal IDs
-        X = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+        dataset_handle.map_data()
             
         # This is useful when we re-fit the same model (e.g. retraining in model selection)
         if self.is_fitted:
@@ -769,11 +763,12 @@ class EmbeddingModel(abc.ABC):
 
         self.sess_train = tf.Session(config=self.tf_config)
 
-        batch_size = int(np.ceil(X.shape[0] / self.batches_count))
+        batch_size = int(np.ceil(dataset_handle.get_size("train") / self.batches_count))
         #dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(2)
         
         self.batch_size = batch_size
-        self.X_train = X
+        
+        self.dataset_handler = dataset_handle
         
         self._initialize_parameters()
 
@@ -859,65 +854,7 @@ class EmbeddingModel(abc.ABC):
         self._save_trained_params()
         self._end_training()
         
-    def set_filter_for_eval(self, x_filter):
-        """Set the filter to be used during evaluation (filtered_corruption = corruptions - filter).
-       
-        We would be using a prime number based assignment and product for do the filtering.
-        We associate a unique prime number for subject entities, object entities and to relations.
-        Product of three prime numbers is divisible only by those three prime numbers.
-        So we generate this product for the filter triples and store it in a hash map.
-        When corruptions are generated for a triple during evaluation, we follow a similar approach 
-        and look up the product of corruption in the above hash table. If the corrupted triple is 
-        present in the hashmap, it means that it was present in the filter list.
-        
-        Parameters
-        ----------
-        x_filter : ndarray, shape [n, 3]
-            Filter triples. If the generated corruptions are present in this, they will be removed.
-
-        """
-        self.x_filter = x_filter
-
-        entity_size = len(self.ent_to_idx)
-        reln_size = len(self.rel_to_idx)
-
-        first_million_primes_list = []
-        curr_dir, _ = os.path.split(__file__)
-        with open(os.path.join(curr_dir, "prime_number_list.txt"), "r") as f:
-            logger.debug('Reading from prime_number_list.txt.')
-            line = f.readline()
-            i = 0
-            for line in f:
-                p_nums_line = line.split(' ')
-                first_million_primes_list.extend([np.int64(x) for x in p_nums_line if x != '' and x != '\n'])
-                if len(first_million_primes_list) > (2 * entity_size + reln_size):
-                    break
-        # Assign first to relations - as these are dense - it would reduce the overflows in the product computation
-        # reln
-        self.relation_primes = np.array(first_million_primes_list[:reln_size], dtype=np.int64)
-        # subject
-        self.entity_primes_left = np.array(first_million_primes_list[reln_size:(entity_size+reln_size)], dtype=np.int64)
-        # obj
-        self.entity_primes_right = np.array(first_million_primes_list[(entity_size+reln_size):(2 * entity_size + reln_size)], dtype=np.int64)
-        
-        self.filter_keys = []
-        try:
-            # subject
-            self.filter_keys = [self.entity_primes_left[self.x_filter[i, 0]] for i in range(self.x_filter.shape[0])]
-            # obj
-            self.filter_keys = [self.filter_keys[i] * self.entity_primes_right[self.x_filter[i, 2]]
-                                for i in range(self.x_filter.shape[0])]
-            # reln
-            self.filter_keys = [self.filter_keys[i] * self.relation_primes[self.x_filter[i, 1]]
-                                for i in range(self.x_filter.shape[0])]
-            
-            self.filter_keys = np.array(self.filter_keys, dtype=np.int64)
-        except IndexError:
-            msg = 'The graph has too many distinct entities. ' \
-                  'Please extend the prime numbers list to have at least {} primes.'.format(2 * entity_size + reln_size)
-            logger.error(msg)
-            raise ValueError(msg)
-
+    def set_filter_for_eval(self):
         self.is_filtered = True
 
     def configure_evaluation_protocol(self, config={'corruption_entities': DEFAULT_CORRUPTION_ENTITIES,
@@ -938,49 +875,25 @@ class EmbeddingModel(abc.ABC):
         self.eval_config = config
         if self.eval_config['default_protocol']:
             self.eval_config['corrupt_side'] = 's+o'
-        
-    def sql_retrieve(self):
-        
-        for x_triple in self.X_test:
-            conn = sqlite3.connect("{}".format(self.eval_config['dbname']))
-            cur1 = conn.cursor()
-            cur2 = conn.cursor()
-            cur_integrity = conn.cursor()
-            cur_integrity.execute("SELECT * FROM integrity_check")
-            if cur_integrity.fetchone()[0] == 0:
-                raise Exception('Data integrity is corrupted. The tables have been modified.')
-            
-            query1 = "select object from triples_table INDEXED BY triples_table_sp_idx where subject=" + str(x_triple[0]) + \
-                        " and predicate="+ str(x_triple[1])
-            query2 = "select subject from triples_table INDEXED BY triples_table_po_idx where predicate=" + str(x_triple[1]) + \
-                        " and object="+ str(x_triple[2])
-            cur1.execute(query1)
-            cur2.execute(query2)
-            out_1 = np.array(cur1.fetchall())
-            if out_1.ndim>=1:
-                np.squeeze(out_1)
-            out_2 = np.array(cur2.fetchall())
-            if out_2.ndim>=1:
-                np.squeeze(out_2)
-            out_triple = np.array([x_triple])
-            conn.close()
-            yield out_triple, out_1, out_2
 
     def _initialize_eval_graph(self):
         """Initialize the evaluation graph. 
         
         Use prime number based filtering strategy (refer set_filter_for_eval()), if the filter is set
         """
+        #TODO: change generator to use a particular dataset
         if self.is_filtered:
-            dataset = tf.data.Dataset.from_generator(self.sql_retrieve, 
+            dataset = tf.data.Dataset.from_generator(self.eval_dataset_handle.get_next_batch_with_filter, 
                                          output_types=(tf.int32, tf.int32, tf.int32),
                                          output_shapes=((1,3), (None,1), (None,1))) 
             dataset = dataset.prefetch(3)
             dataset_iter = dataset.make_one_shot_iterator()
             self.X_test_tf, indices_obj, indices_sub = dataset_iter.get_next()
         else:
-            dataset = tf.data.Dataset.from_tensor_slices(self.X_test)
-            dataset = dataset.prefetch(1).batch(1)
+            dataset = tf.data.Dataset.from_generator(self.eval_dataset_handle.get_next_batch("test"), 
+                                         output_types=(tf.int32),
+                                         output_shapes=((1,3)) )
+            dataset = dataset.prefetch(1)
             dataset_iter = dataset.make_one_shot_iterator()
             self.X_test_tf = dataset_iter.get_next()
         
@@ -1078,90 +991,30 @@ class EmbeddingModel(abc.ABC):
     def end_evaluation(self):
         """End the evaluation and close the Tensorflow session.
         """
+        
+        if self.is_filtered:
+            self.eval_dataset_handle.cleanup()
+            
         if self.sess_predict is not None:
             self.sess_predict.close()
         self.sess_predict = None
         self.is_filtered = False
         
-        conn = sqlite3.connect("{}".format(self.eval_config['dbname']))
-        cur = conn.cursor()
-        cur.execute("drop trigger entity_table_del_integrity_check_trigger")
-        cur.execute("drop trigger entity_table_ins_integrity_check_trigger")
-        cur.execute("drop trigger entity_table_upd_integrity_check_trigger")
-
-        cur.execute("drop trigger triples_table_del_integrity_check_trigger")
-        cur.execute("drop trigger triples_table_upd_integrity_check_trigger")
-        cur.execute("drop trigger triples_table_ins_integrity_check_trigger")
-        cur.execute("drop table integrity_check")
-        cur.execute("drop index triples_table_po_idx")
-        cur.execute("drop index triples_table_sp_idx")
-        cur.execute("drop table triples_table")
-        cur.execute("drop table entity_table")
-        conn.commit()
-        conn.execute("VACUUM")
-        conn.close()
-        
         self.eval_config = {}
         
         
 
-    def predict(self, X, from_idx=False, get_ranks=False):
-        """Predict the scores of triples using a trained embedding model.
-
-             The function returns raw scores generated by the model.
-
-             .. note::
-
-                 To obtain probability estimates, use a logistic sigmoid: ::
-
-                     >>> model.fit(X)
-                     >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-                     >>> print(y_pred)
-                     array([1.2052395, 1.5818497], dtype=float32)
-                     >>> from scipy.special import expit
-                     >>> expit(y_pred)
-                     array([0.7694556 , 0.82946634], dtype=float32)
-
-
-         Parameters
-         ----------
-         X : ndarray, shape [n, 3]
-             The triples to score.
-         from_idx : bool
-             If True, will skip conversion to internal IDs. (default: False).
-         get_ranks : bool
-             Flag to compute ranks by scoring against corruptions (default: False).
-
-         Returns
-         -------
-         scores_predict : ndarray, shape [n]
-             The predicted scores for input triples X.
-
-         rank : ndarray, shape [n]
-             Ranks of the triples (only returned if ``get_ranks=True``.
-
-        """
-
-        if not isinstance(X, (list, tuple, np.ndarray)):
-            msg = 'Invalid type for input X. Expected ndarray, list, or tuple. Got {}'.format(type(X))
-            logger.error(msg)
-            raise ValueError(msg)
-
-        if isinstance(X, (list, tuple)):
-            X = np.asarray(X)
-
+    def predict(self, dataset_handle, from_idx=False, get_ranks=False):
         if not self.is_fitted:
             msg = 'Model has not been fitted.'
             logger.error(msg)
             raise RuntimeError(msg)
-
-        if not from_idx:
-            self.X_test = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
-        else:
-            self.X_test = X
-
+        
+        self.eval_dataset_handle = dataset_handle
+        
         # build tf graph for predictions
         if self.sess_predict is None:
+            #TODO: this needs to be changed to take care of >1m concepts.
             self._load_model_from_trained_params()
 
             self._initialize_eval_graph()
@@ -1173,22 +1026,9 @@ class EmbeddingModel(abc.ABC):
 
         scores = []
         ranks = []
-        '''
-        if X.ndim > 1:
-            for x in X:
-                all_scores = self.sess_predict.run(self.score_positive, feed_dict={self.X_test_tf: [x]})
-                scores.append(all_scores)
-
-                if get_ranks:
-                    rank = self.sess_predict.run(self.rank, feed_dict={self.X_test_tf: [x]})
-                    ranks.append(rank)
-        else:
-            all_scores = self.sess_predict.run(self.score_positive, feed_dict={self.X_test_tf: [X]})
-            scores = all_scores
-            if get_ranks:
-                ranks = self.sess_predict.run(self.rank, feed_dict={self.X_test_tf: [X]})
-        '''
-        for i in tqdm(range(self.X_test.shape[0])):
+        
+                                                   
+        for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
             all_scores, rank = self.sess_predict.run([self.score_positive, self.rank])
             scores.append(all_scores)
             if get_ranks:

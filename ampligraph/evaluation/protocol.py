@@ -10,6 +10,7 @@ import logging
 
 import time
 import sqlite3
+from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -563,106 +564,25 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     """
 
     logger.debug('Evaluating the performance of the embedding model.')
-    X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
-
-    X_test = to_idx(X_test, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
+    if isinstance(X, np.ndarray):
+        
+        X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
+        
+        dataset_handle = NumpyDatasetAdapter()
+        dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
+        
+        dataset_handle.set_data(X_test, "test")
+        
 
     if filter_triples is not None:
-        logger.debug('Getting filtered triples.')
-        filter_triples = to_idx(filter_triples, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
+        if isinstance(filter_triples, np.ndarray):
+            logger.debug('Getting filtered triples.')
+            dataset_handle.set_filter(filter_triples)
         
-        dbname = 'Ampligraph_{}.db'.format(int(time.time()))
-        #print('---DB NAME: {}'.format(dbname))
-        conn = sqlite3.connect("{}".format(dbname))
-        cur = conn.cursor()
-        cur.execute("CREATE TABLE entity_table (entity_type integer primary key);")
-        cur.execute("CREATE TABLE triples_table (subject integer, \
-                                                    predicate integer, \
-                                                    object integer, \
-                                                    foreign key (object) references entity_table(entity_type), \
-                                                    foreign key (subject) references entity_table(entity_type) \
-                                                    );")
-
-        cur.execute("CREATE INDEX triples_table_sp_idx ON triples_table (subject, predicate);")
-        cur.execute("CREATE INDEX triples_table_po_idx ON triples_table (predicate, object);")
-        
-        cur.execute("CREATE TABLE integrity_check (validity integer primary key);")
-
-        conn.commit()
-        
-        cur.execute('INSERT INTO integrity_check VALUES (0)')
-        conn.commit()
-        
-        pg_entity_values = np.arange(len(model.ent_to_idx)).reshape(-1,1).tolist()
-        cur = conn.cursor()
-        try:
-            cur.executemany('INSERT INTO entity_table VALUES (?)', pg_entity_values)
-            conn.commit()
-        except sqlite3.Error as e:
-            conn.rollback()
-
-        
-        for j in range(int(np.ceil(filter_triples.shape[0]/500000.0))):
-            pg_triple_values = filter_triples[j*500000:(j+1)*500000].tolist()
-            cur = conn.cursor()
-            cur.executemany('INSERT INTO triples_table VALUES (?,?,?)', pg_triple_values)
-            conn.commit()
-            
-        
-        cur.execute('Update integrity_check set validity=1 where validity=0')
-        conn.commit()   
-        
-        cur.execute('''CREATE TRIGGER triples_table_ins_integrity_check_trigger  
-                        AFTER INSERT ON triples_table 
-                        BEGIN 
-                            Update integrity_check set validity=0 where validity=1; 
-                        END
-                            ;
-                    ''')
-        cur.execute('''CREATE TRIGGER triples_table_upd_integrity_check_trigger  
-                        AFTER UPDATE ON triples_table 
-                        BEGIN 
-                            Update integrity_check set validity=0 where validity=1; 
-                        END
-                            ;
-                    ''')
-        cur.execute('''CREATE TRIGGER triples_table_del_integrity_check_trigger  
-                        AFTER DELETE ON triples_table 
-                        BEGIN 
-                            Update integrity_check set validity=0 where validity=1; 
-                        END
-                            ;
-                    ''')
-        
-        cur.execute('''CREATE TRIGGER entity_table_upd_integrity_check_trigger  
-                        AFTER UPDATE ON entity_table 
-                        BEGIN 
-                            Update integrity_check set validity=0 where validity=1; 
-                        END
-                        ;
-                    ''')
-        cur.execute('''CREATE TRIGGER entity_table_ins_integrity_check_trigger  
-                        AFTER INSERT ON entity_table 
-                        BEGIN 
-                            Update integrity_check set validity=0 where validity=1; 
-                        END
-                        ;
-                    ''')
-        cur.execute('''CREATE TRIGGER entity_table_del_integrity_check_trigger  
-                        AFTER DELETE ON entity_table 
-                        BEGIN 
-                            Update integrity_check set validity=0 where validity=1; 
-                        END
-                        ;
-                    ''')
-            
-        conn.close()
-    
         
     eval_dict = {}
     eval_dict['default_protocol'] = False
-    
-    eval_dict['dbname'] = dbname
+
     
     if use_default_protocol:
         corrupt_side = 's+o'
@@ -677,20 +597,12 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     logger.debug('Evaluating the test set by corrupting side : {}'.format(corrupt_side))
     eval_dict['corrupt_side'] = corrupt_side
     if filter_triples is not None:
-        model.set_filter_for_eval(filter_triples)
+        model.set_filter_for_eval()
     logger.debug('Configuring evaluation protocol.')
     model.configure_evaluation_protocol(eval_dict)
     logger.debug('Making predictions.')
-    '''
-    for i in tqdm(range(X_test.shape[0]), disable=(not verbose)):
-        _, rank = model.predict(X_test[i], from_idx=True, get_ranks=True)
-        if use_default_protocol :
-            ranks.extend(list(rank)) 
-            continue
-            
-        ranks.append(rank)
-    '''  
-    _, ranks = model.predict(X_test, from_idx=True, get_ranks=True)
+
+    _, ranks = model.predict(dataset_handle, from_idx=True, get_ranks=True)
     
     model.end_evaluation()
     logger.debug('Ending Evaluation')
