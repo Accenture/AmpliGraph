@@ -1737,12 +1737,15 @@ class ComplEx(EmbeddingModel):
 
         f_{ComplEx}=Re(\langle \mathbf{r}_p, \mathbf{e}_s, \overline{\mathbf{e}_o}  \rangle)
 
-    ComplEx can be improved if used alongside the nuclear 3-norm :cite:`lacroix2018canonical`,
-    which can be easily added to the loss function via the Lp regularisation parameter with `p=3`
-    and a chosen regularisation weight (represented by `lambda`), as shown in the example below.
+    ComplEx can be improved if used alongside the nuclear 3-norm (the **ComplEx-N3** model :cite:`lacroix2018canonical`)
+    , which can be easily added to the loss function via the ``regularizer`` hyperparameter with ``p=3``
+    and a chosen regularisation weight (represented by ``lambda``), as shown in the example below.
+    See also :meth:`ampligraph.latent_features.LPRegularizer`.
 
-    Note that because embeddings are in :math:`\mathcal{C}`, ComplEx uses twice as many parameters as
-    :class:`ampligraph.latent_features.DistMult`.
+    .. note::
+
+        Since ComplEx embeddings belong to :math:`\mathcal{C}`, this model uses twice as many parameters as
+        :class:`ampligraph.latent_features.DistMult`.
 
     Examples
     --------

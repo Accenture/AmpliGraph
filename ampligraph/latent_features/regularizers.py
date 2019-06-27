@@ -150,8 +150,12 @@ class LPRegularizer(Regularizer):
     where n is the number of model parameters, :math:`p \in{1,2,3}` is the p-norm and
     :math:`\lambda` is the regularization weight.
 
-    Example: if :math:`p=1` the function will perform L1 regularization.
+    For example, if :math:`p=1` the function will perform L1 regularization.
     L2 regularization is obtained with :math:`p=2`.
+
+    The nuclear 3-norm proposed in the ComplEx-N3 paper :cite:`lacroix2018canonical` can be obtained with
+    ``regularizer_params={'p': 3}``.
+
           
     """
 
