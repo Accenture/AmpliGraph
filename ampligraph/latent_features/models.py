@@ -17,6 +17,7 @@ from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings, 
     hits_at_n_score, mrr_score
 from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
 import os
+from functools import partial
 
 #######################################################################################################
 # If not specified, following defaults will be used at respective locations
@@ -534,16 +535,23 @@ class EmbeddingModel(abc.ABC):
         """
         try:
             self.x_valid = self.early_stopping_params['x_valid']
-            if type(self.x_valid) != np.ndarray:
-                msg = 'Invalid type for input x_valid. Expected ndarray, got {}'.format(type(self.x_valid))
+            
+            if isinstance(self.x_valid, np.ndarray):
+                if self.x_valid.ndim <= 1 or (np.shape(self.x_valid)[1]) != 3:
+                    msg = 'Invalid size for input x_valid. Expected (n,3):  got {}'.format(np.shape(self.x_valid))
+                    logger.error(msg)
+                    raise ValueError(msg)
+                
+                self.x_valid = to_idx(self.x_valid, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+                self.dataset_handler.set_data(self.x_valid, "valid", mapped_status=True)
+                self.eval_dataset_handle = self.dataset_handler
+            elif isinstance(self.x_valid, AmpligraphDatasetAdapter):
+                self.eval_dataset_handle = self.x_valid
+            else:
+                msg = 'Invalid type for input X. Expected ndarray/AmpligraphDataset object, got {}'.format(type(X))
                 logger.error(msg)
                 raise ValueError(msg)
-
-            if self.x_valid.ndim <= 1 or (np.shape(self.x_valid)[1]) != 3:
-                msg = 'Invalid size for input x_valid. Expected (n,3):  got {}'.format(np.shape(self.x_valid))
-                logger.error(msg)
-                raise ValueError(msg)
-            self.x_valid = to_idx(self.x_valid, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+            
 
         except KeyError:
             msg = 'x_valid must be passed for early fitting.'
@@ -575,14 +583,25 @@ class EmbeddingModel(abc.ABC):
         self.early_stopping_best_value = INITIAL_EARLY_STOPPING_CRITERIA_VALUE
         self.early_stopping_stop_counter = 0
         try:
+            
             x_filter = self.early_stopping_params['x_filter']
-            x_filter = to_idx(x_filter, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
-            self.set_filter_for_eval(x_filter)
+            if isinstance(x_filter, np.ndarray):
+                if x_filter.ndim <= 1 or (np.shape(x_filter)[1]) != 3:
+                    msg = 'Invalid size for input x_valid. Expected (n,3):  got {}'.format(np.shape(x_filter))
+                    logger.error(msg)
+                    raise ValueError(msg)
+                    
+                x_filter = to_idx(x_filter, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+                self.eval_dataset_handle.set_filter(x_filter, mapped_status=True)
+                
+            self.set_filter_for_eval()
+            
+             
         except KeyError:
             logger.debug('x_filter not found in early_stopping_params.')
             pass
 
-        self._initialize_eval_graph()
+        self._initialize_eval_graph("valid")
 
     def _perform_early_stopping_test(self, epoch):
         """perform regular validation checks and stop early if the criteria is acheived
@@ -602,8 +621,8 @@ class EmbeddingModel(abc.ABC):
             # compute and store test_loss
             ranks = []
 
-            for x_test_triple in self.x_valid:
-                rank_triple = self.sess_train.run(self.rank, feed_dict={self.X_test_tf: [x_test_triple]})
+            for x_test_triple in range(self.eval_dataset_handle.get_size("valid")):
+                rank_triple = self.sess_train.run(self.rank)
                 ranks.append(rank_triple)
             if self.early_stopping_criteria == 'hits10':
                 current_test_value = hits_at_n_score(ranks, 10)
@@ -613,7 +632,7 @@ class EmbeddingModel(abc.ABC):
                 current_test_value = hits_at_n_score(ranks, 1)
             elif self.early_stopping_criteria == 'mrr':
                 current_test_value = mrr_score(ranks)
-
+                
             if self.early_stopping_best_value >= current_test_value:
                 self.early_stopping_stop_counter += 1
                 if self.early_stopping_stop_counter == self.early_stopping_params.get('stop_interval',
@@ -647,6 +666,9 @@ class EmbeddingModel(abc.ABC):
         """Perform clean up tasks after training.
         """
         # Reset this variable as it is reused during evaluation phase
+        if self.is_filtered:
+            self.eval_dataset_handle.cleanup()
+            
         self.is_filtered = False
         self.eval_config = {}
         
@@ -660,7 +682,7 @@ class EmbeddingModel(abc.ABC):
         all_ent = np.int32(np.arange(len(self.ent_to_idx)))
         unique_entities = all_ent.reshape(-1,1)
         entity_embeddings = np.empty(shape=(0,self.internal_k), dtype=np.float32)
-        batch_iterator = iter(self.dataset_handler.get_next_batch(self.batch_size))
+        batch_iterator = iter(self.dataset_handler.get_next_train_batch(self.batch_size, "train"))
         for i in range(self.batches_count):
             out = next(batch_iterator)
             
@@ -721,16 +743,16 @@ class EmbeddingModel(abc.ABC):
         if isinstance(X, np.ndarray):
             dataset_handle = NumpyDatasetAdapter()
             dataset_handle.set_data(X, "train")
-        elif isinstance(X, AmpligraphDataset):
+        elif isinstance(X, AmpligraphDatasetAdapter):
             dataset_handle = X
         else:
             msg = 'Invalid type for input X. Expected ndarray/AmpligraphDataset object, got {}'.format(type(X))
             logger.error(msg)
             raise ValueError(msg)
         
-
+        self.dataset_handler = dataset_handle
         # create internal IDs mappings
-        self.rel_to_idx, self.ent_to_idx = dataset_handle.generate_mappings()
+        self.rel_to_idx, self.ent_to_idx = self.dataset_handler.generate_mappings()
         prefetch_batches = 1
         
         if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
@@ -755,7 +777,7 @@ class EmbeddingModel(abc.ABC):
                                "`corruption_entities` to a reduced set of distinct entities to save memory "
                                "when generating corruptions.")
                 
-        dataset_handle.map_data()
+        self.dataset_handler.map_data()
             
         # This is useful when we re-fit the same model (e.g. retraining in model selection)
         if self.is_fitted:
@@ -763,12 +785,12 @@ class EmbeddingModel(abc.ABC):
 
         self.sess_train = tf.Session(config=self.tf_config)
 
-        batch_size = int(np.ceil(dataset_handle.get_size("train") / self.batches_count))
+        batch_size = int(np.ceil(self.dataset_handler.get_size("train") / self.batches_count))
         #dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(2)
         
         self.batch_size = batch_size
         
-        self.dataset_handler = dataset_handle
+        
         
         self._initialize_parameters()
 
@@ -828,10 +850,6 @@ class EmbeddingModel(abc.ABC):
                 else:
                     loss_batch, _ = self.sess_train.run([loss, train])
 
-                '''
-                print('Leftover after:', np.sum(self.ent_emb_cpu[self.leftover_entities,:]))
-                print('Used after:', np.sum(self.ent_emb_cpu[unique_entities,:]))
-                '''
                 if np.isnan(loss_batch) or np.isinf(loss_batch):
                     msg = 'Loss is {}. Please change the hyperparameters.'.format(loss_batch)
                     logger.error(msg)
@@ -876,23 +894,27 @@ class EmbeddingModel(abc.ABC):
         if self.eval_config['default_protocol']:
             self.eval_config['corrupt_side'] = 's+o'
 
-    def _initialize_eval_graph(self):
+    def _initialize_eval_graph(self, mode="test"):
         """Initialize the evaluation graph. 
         
         Use prime number based filtering strategy (refer set_filter_for_eval()), if the filter is set
         """
         #TODO: change generator to use a particular dataset
         if self.is_filtered:
-            dataset = tf.data.Dataset.from_generator(self.eval_dataset_handle.get_next_batch_with_filter, 
+            test_generator = partial(self.eval_dataset_handle.get_next_batch_with_filter,batch_size=1, dataset_type=mode)
+            dataset = tf.data.Dataset.from_generator(test_generator, 
                                          output_types=(tf.int32, tf.int32, tf.int32),
                                          output_shapes=((1,3), (None,1), (None,1))) 
+            dataset = dataset.repeat()
             dataset = dataset.prefetch(3)
             dataset_iter = dataset.make_one_shot_iterator()
             self.X_test_tf, indices_obj, indices_sub = dataset_iter.get_next()
         else:
-            dataset = tf.data.Dataset.from_generator(self.eval_dataset_handle.get_next_batch("test"), 
+            test_generator = partial(self.eval_dataset_handle.get_next_eval_batch, batch_size=1, dataset_type=mode)
+            dataset = tf.data.Dataset.from_generator(test_generator, 
                                          output_types=(tf.int32),
                                          output_shapes=((1,3)) )
+            dataset = dataset.repeat()
             dataset = dataset.prefetch(1)
             dataset_iter = dataset.make_one_shot_iterator()
             self.X_test_tf = dataset_iter.get_next()

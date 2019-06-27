@@ -570,8 +570,10 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         
         dataset_handle = NumpyDatasetAdapter()
         dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
-        
         dataset_handle.set_data(X_test, "test")
+        
+    elif isinstance(X, AmpligraphDatasetAdapter):     
+        dataset_handle = X
         
 
     if filter_triples is not None:
@@ -596,8 +598,10 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
     logger.debug('Evaluating the test set by corrupting side : {}'.format(corrupt_side))
     eval_dict['corrupt_side'] = corrupt_side
+    
     if filter_triples is not None:
         model.set_filter_for_eval()
+        
     logger.debug('Configuring evaluation protocol.')
     model.configure_evaluation_protocol(eval_dict)
     logger.debug('Making predictions.')

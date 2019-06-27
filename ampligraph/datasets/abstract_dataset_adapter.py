@@ -14,12 +14,21 @@ class AmpligraphDatasetAdapter(abc.ABC):
         
     def get_size(self, dataset_type="train"):
         raise NotImplementedError('Abstract Method not implemented!')
-         
-    def get_next_batch(self, batch_size, dataset_type="train"):
-        raise NotImplementedError('Abstract Method not implemented!')
         
-    def set_data(self, x_train=None, x_valid=None, x_test=None):
+    def set_data(self, dataset, dataset_type=None, mapped_status=False):
         raise NotImplementedError('Abstract Method not implemented!')
         
     def map_data(self, remap=False):
+        raise NotImplementedError('Abstract Method not implemented!')
+    
+    def set_filter(self, filter_triples):
+        raise NotImplementedError('Abstract Method not implemented!')
+        
+    def get_next_batch(self, batch_size, dataset_type="train"):
+        raise NotImplementedError('Abstract Method not implemented!')
+        
+    def get_next_batch_with_filter(self, batch_size=1, dataset_type="test"):
+        raise NotImplementedError('Abstract Method not implemented!')
+            
+    def cleanup(self):
         raise NotImplementedError('Abstract Method not implemented!')
