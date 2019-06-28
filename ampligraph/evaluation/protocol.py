@@ -6,8 +6,8 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 
-import itertools
 from collections.abc import Iterable
+from itertools import product, islice
 import logging
 
 import numpy as np
@@ -735,8 +735,6 @@ def next_hyperparam(model_name, param_grid):
         One particular combination of parameters.
 
     """
-    logger.debug('Starting gridsearch over hyperparameters. {}'.format(param_grid))
-
     # Make scalars into lists
     param_grid = {k: v if isinstance(v, Iterable) and not isinstance(v, str) else [v] for k, v in param_grid.items()}
 
@@ -755,7 +753,7 @@ def next_hyperparam(model_name, param_grid):
 
     param_history = set()
 
-    for values in itertools.product(*flattened_param_grid.values()):
+    for values in product(*flattened_param_grid.values()):
         # Get one single parameter combination as a flattened dictionary
         param = dict(zip(flattened_param_grid.keys(), values))
 
@@ -801,6 +799,24 @@ def randomly_sample_params(param_grid, max_combinations):
             param_grid[k] = [v() for _ in range(max_combinations)]
         elif type(v) is dict:
             randomly_sample_params(v, max_combinations)
+
+
+def scalars_into_lists(param_grid):
+    """
+    For a param_grid with scalars (instead of lists or callables), transform scalars into lists of size one.
+
+    Parameters
+    ----------
+    param_grid: dict
+        Parameter configurations.
+        Example::
+            param_grid = {"k": [50, 100], "eta": lambda: np.random.choice([1, 2, 3]}
+    """
+    for k, v in param_grid.items():
+        if not (callable(v) or isinstance(v, Iterable)) or type(v) is str:
+            param_grid[k] = [v]
+        elif type(v) is dict:
+            scalars_into_lists(v)
 
 
 def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid, max_combinations=None,
@@ -968,25 +984,30 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     >>>                     "optimizer_params":{
     >>>                         "lr": lambda: np.random.uniform(0.0001, 0.01)
     >>>                     },
-    >>>                     "verbose": false
+    >>>                     "verbose": False
     >>>                 }
     >>> select_best_model_ranking(model_class, X['train'], X['valid'], X['test'], param_grid,
     >>>                           max_combinations=100, use_filter=True, verbose=True, early_stopping=True)
 
     """
+    logger.debug('Starting gridsearch over hyperparameters. {}'.format(param_grid))
+
     if early_stopping_params is None:
         early_stopping_params = {}
 
+    # Verify missing parameters for the model class (default values will be used)
     undeclared_args = set(model_class.__init__.__code__.co_varnames[1:]) - set(param_grid.keys())
     if len(undeclared_args) != 0:
         logger.debug("The following arguments were not defined in the parameter grid"
-                     " and thus the default values will be used: ".format(', '.join(undeclared_args)))
+                     " and thus the default values will be used: {}".format(', '.join(undeclared_args)))
+
+    scalars_into_lists(param_grid)
 
     np.random.seed(param_grid_random_seed)
     randomly_sample_params(param_grid, max_combinations)
 
     if max_combinations is not None:
-        model_params_combinations = [next_hyperparam(model_class.name, param_grid) for _ in range(max_combinations)]
+        model_params_combinations = list(islice(next_hyperparam(model_class.name, param_grid), max_combinations))
         np.random.shuffle(model_params_combinations)
     else:
         model_params_combinations = next_hyperparam(model_class.name, param_grid)
@@ -1040,7 +1061,6 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
                 best_model = model
                 best_params = model_params
         except Exception as e:
-            logger.error(str(e))
             if verbose:
                 logger.error('Exception occured for parameters:{}'.format(model_params))
                 logger.error(str(e))

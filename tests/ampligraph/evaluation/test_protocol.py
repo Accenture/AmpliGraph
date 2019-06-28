@@ -17,7 +17,8 @@ from ampligraph.datasets import load_wn18, load_wn18rr
 import tensorflow as tf
 
 from ampligraph.evaluation import train_test_split_no_unseen
-from ampligraph.evaluation.protocol import next_hyperparam, remove_unused_params, randomly_sample_params
+from ampligraph.evaluation.protocol import next_hyperparam, remove_unused_params, randomly_sample_params, \
+    scalars_into_lists
 
 
 def test_evaluate_performance_default_protocol_without_filter():
@@ -534,7 +535,61 @@ def test_randomly_sample_params():
     assert len(set(param_grid["optimizer_params"]["lr"])) == 10
 
 
-def test_select_best_model_ranking_real():
+def test_scalars_into_lists():
+    eta_fn = lambda: np.random.choice([5, 10, 15])
+
+    param_grid = {
+        "batches_count": 50,
+        "epochs": [4000],
+        "k": [100, 200],
+        "eta": eta_fn,
+        "loss": "nll",
+        "loss_params": {
+            "margin": 2
+        },
+        "embedding_model_params": {
+        },
+        "regularizer": ["LP", None],
+        "regularizer_params": {
+            "p": [1, 3],
+            "lambda": [1e-4, 1e-5]
+        },
+        "optimizer": ["adagrad", "adam"],
+        "optimizer_params": {
+            "lr": "wrong"
+        },
+        "verbose": False
+    }
+
+    scalars_into_lists(param_grid)
+
+    expected = {
+        "batches_count": [50],
+        "epochs": [4000],
+        "k": [100, 200],
+        "eta": eta_fn,
+        "loss": ["nll"],
+        "loss_params": {
+            "margin": [2]
+        },
+        "embedding_model_params": {
+        },
+        "regularizer": ["LP", None],
+        "regularizer_params": {
+            "p": [1, 3],
+            "lambda": [1e-4, 1e-5]
+        },
+        "optimizer": ["adagrad", "adam"],
+        "optimizer_params": {
+            "lr": ["wrong"]
+        },
+        "verbose": [False]
+    }
+
+    assert param_grid == expected
+
+
+def test_select_best_model_ranking_grid():
     X = load_wn18rr()
     model_class = TransE
     param_grid = {
@@ -569,7 +624,7 @@ def test_select_best_model_ranking_real():
     assert best_params['optimizer_params']['lr'] == 0.0001
 
 
-def test_select_best_model_ranking_real_random():
+def test_select_best_model_ranking_random():
     X = load_wn18rr()
     model_class = TransE
     param_grid = {
@@ -589,7 +644,7 @@ def test_select_best_model_ranking_real_random():
         },
         "optimizer": ["adagrad"],
         "optimizer_params": {
-            "lr": lambda: np.log(np.random.uniform(1.00001, 100))
+            "lr": lambda: np.log(np.random.uniform(1.00001, 1.1))
         }
     }
 
@@ -599,7 +654,7 @@ def test_select_best_model_ranking_real_random():
         X['valid'][::5],
         X['test'][::10],
         param_grid,
-        max_combinations=10
+        max_combinations=5
     )
     assert 0 < best_params['k'] < 50
     assert np.log(1.00001) <= best_params['optimizer_params']['lr'] <= np.log(100)
