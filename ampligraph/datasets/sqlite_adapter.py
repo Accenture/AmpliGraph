@@ -4,6 +4,10 @@ from ..datasets import AmpligraphDatasetAdapter
 
 import sqlite3
 import time
+import os
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class SQLiteAdapter(AmpligraphDatasetAdapter):
     '''
@@ -326,6 +330,8 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
             self.using_existing_db=False
             return
         
+        
+        
         conn = sqlite3.connect("{}".format(self.dbname))         
         cur = conn.cursor()
         cur.execute("drop trigger IF EXISTS entity_table_del_integrity_check_trigger")
@@ -344,4 +350,11 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         conn.commit()
         conn.execute("VACUUM")
         conn.close()
+        
+        try:
+            os.remove(self.dbname)
+        except:
+            logger.warning('Unable to remove the created temperory files.')
+            logger.warning('Filename:{}'.format(self.dbname))
+            
         self.dbname = None

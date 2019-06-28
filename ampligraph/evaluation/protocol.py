@@ -606,7 +606,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     model.configure_evaluation_protocol(eval_dict)
     logger.debug('Making predictions.')
 
-    _, ranks = model.predict(dataset_handle, from_idx=True, get_ranks=True)
+    ranks = model.get_ranks(dataset_handle)
     
     model.end_evaluation()
     logger.debug('Ending Evaluation')

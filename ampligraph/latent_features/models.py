@@ -458,9 +458,7 @@ class EmbeddingModel(abc.ABC):
         """
         # training input placeholder
         x_pos_tf, self.unique_entities, ent_emb_batch = dataset_iterator.get_next()
-        
         dependencies = []
-        
         if self.dealing_with_extreme_concepts:
             
             init_ent_emb_batch = self.ent_emb.assign(ent_emb_batch)
@@ -524,7 +522,6 @@ class EmbeddingModel(abc.ABC):
                 scores_neg = self._fn(e_s_neg, e_p_neg, e_o_neg)
                 loss += self.loss.apply(scores_pos, scores_neg)
 
-            loss = loss/self.deno_batch
             if self.regularizer is not None:
                 loss += self.regularizer.apply([self.ent_emb, self.rel_emb])
 
@@ -811,7 +808,6 @@ class EmbeddingModel(abc.ABC):
         if self.loss.get_state('require_same_size_pos_neg'):
             batch_size = batch_size * self.eta
             
-        self.deno_batch = batch_size
         loss = self._get_model_loss(dataset_iterator)
             
         train = self.optimizer.minimize(loss)
@@ -860,7 +856,7 @@ class EmbeddingModel(abc.ABC):
                     self.sess_train.run(normalize_ent_emb_op)
                     
             if self.verbose:
-                msg = 'Average Loss: {:10f}'.format(sum(losses) / (self.batches_count))
+                msg = 'Average Loss: {:10f}'.format(sum(losses) / (self.batches_count*batch_size))
                 logger.debug(msg)
                 epoch_iterator_with_progress.set_description(msg)
 
@@ -1026,7 +1022,7 @@ class EmbeddingModel(abc.ABC):
         
         
 
-    def predict(self, dataset_handle, from_idx=False, get_ranks=False):
+    def get_ranks(self, dataset_handle):
         if not self.is_fitted:
             msg = 'Model has not been fitted.'
             logger.error(msg)
@@ -1046,25 +1042,53 @@ class EmbeddingModel(abc.ABC):
             sess.run(tf.global_variables_initializer())
             self.sess_predict = sess
 
-        scores = []
         ranks = []
         
                                                    
         for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
-            all_scores, rank = self.sess_predict.run([self.score_positive, self.rank])
-            scores.append(all_scores)
-            if get_ranks:
-                if self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL): 
-                    ranks.extend(list(rank)) 
-                else:
-                    ranks.append(rank)
-                
-        if get_ranks:
-            return scores, ranks
+            rank = self.sess_predict.run([self.rank])
+            if self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL): 
+                ranks.append(np.mean(rank[0])) 
+            else:
+                ranks.append(rank)
+
+        return ranks
+
+    def predict(self, X, from_idx=False):
+        if not self.is_fitted:
+            msg = 'Model has not been fitted.'
+            logger.error(msg)
+            raise RuntimeError(msg)
+            
+        dataset_handle = NumpyDatasetAdapter()
+        dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
+        dataset_handle.set_data(X, "test", mapped_status=from_idx)
+        
+        self.eval_dataset_handle = dataset_handle
+        
+        # build tf graph for predictions
+        if self.sess_predict is None:
+            #TODO: this needs to be changed to take care of >1m concepts.
+            self._load_model_from_trained_params()
+
+            self._initialize_eval_graph()
+
+            sess = tf.Session()
+            sess.run(tf.tables_initializer())
+            sess.run(tf.global_variables_initializer())
+            self.sess_predict = sess
+
+        scores = []
+                                                   
+        for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
+            score = self.sess_predict.run([self.score_positive])
+            if self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL): 
+                scores.extend(list(score)) 
+            else:
+                scores.append(score)
 
         return scores
-
-
+    
 @register_model("RandomBaseline")
 class RandomBaseline(EmbeddingModel):
     """Random baseline
@@ -1143,7 +1167,7 @@ class RandomBaseline(EmbeddingModel):
         self.rel_to_idx, self.ent_to_idx = create_mappings(X)
         self.is_fitted = True
 
-    def predict(self, X, from_idx=False, get_ranks=False):
+    def predict(self, X, from_idx=False):
         """Assign random scores to candidate triples and then ranks them
 
         Parameters
@@ -1152,47 +1176,48 @@ class RandomBaseline(EmbeddingModel):
             The triples to score.
         from_idx : bool
             If True, will skip conversion to internal IDs. (default: False).
-        get_ranks : bool
-            Flag to compute ranks by scoring against corruptions (default: False).
             
         Returns
         -------
         scores : ndarray, shape [n]
             The predicted scores for input triples X.
-            
-        ranks : ndarray, shape [n]
-            Rank of the triple
 
         """
         if X.ndim == 1:
             X = np.expand_dims(X, 0)
 
         positive_scores = self.rnd.uniform(low=0, high=1, size=len(X)).tolist()
-        if get_ranks:
-            corruption_entities = self.eval_config.get('corruption_entities', DEFAULT_CORRUPTION_ENTITIES)
-            if corruption_entities is None:
-                corruption_length = len(self.ent_to_idx)
-            else:
-                corruption_length = len(corruption_entities)
-
-            corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
-            if corrupt_side == 's+o':
-                # since we are corrupting both subject and object
-                corruption_length *= 2
-                # to account for the positive that we are testing
-                corruption_length -= 2
-            else:
-                # to account for the positive that we are testing
-                corruption_length -= 1
-            ranks = []
-            for i in range(len(X)):
-                rank = np.sum(self.rnd.uniform(low=0, high=1, size=corruption_length) >= positive_scores[i]) + 1
-                ranks.append(rank)
-
-            return positive_scores, ranks
-
         return positive_scores
+    
+    
+    def get_ranks(self, dataset_handle):
+        self.eval_dataset_handle = dataset_handle
+        test_data_size = self.eval_dataset_handle.get_size('test')
+        positive_scores = self.rnd.uniform(low=0, high=1, size=test_data_size).tolist()
 
+        corruption_entities = self.eval_config.get('corruption_entities', DEFAULT_CORRUPTION_ENTITIES)
+        if corruption_entities is None:
+            corruption_length = len(self.ent_to_idx)
+        else:
+            corruption_length = len(corruption_entities)
+        
+        corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
+        if corrupt_side == 's+o':
+            # since we are corrupting both subject and object
+            corruption_length *= 2
+            # to account for the positive that we are testing
+            corruption_length -= 2
+        else:
+            # to account for the positive that we are testing
+            corruption_length -= 1
+            
+        ranks = []
+        for i in range(test_data_size):
+            rank = np.sum(self.rnd.uniform(low=0, high=1, size=corruption_length) >= positive_scores[i]) + 1
+            ranks.append(rank)
+
+        return positive_scores, ranks
+    
 
 @register_model("TransE", ["norm", "normalize_ent_emb", "negative_corruption_entities"])
 class TransE(EmbeddingModel):
@@ -1421,7 +1446,7 @@ class TransE(EmbeddingModel):
         """
         super().fit(X, early_stopping, early_stopping_params)
 
-    def predict(self, X, from_idx=False, get_ranks=False):
+    def predict(self, X, from_idx=False):
         """Predict the scores of triples using a trained embedding model.
 
              The function returns raw scores generated by the model.
@@ -1445,19 +1470,15 @@ class TransE(EmbeddingModel):
              The triples to score.
          from_idx : bool
              If True, will skip conversion to internal IDs. (default: False).
-         get_ranks : bool
-             Flag to compute ranks by scoring against corruptions (default: False).
 
          Returns
          -------
          scores_predict : ndarray, shape [n]
              The predicted scores for input triples X.
 
-         rank : ndarray, shape [n]
-             Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
-        return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
+        return super().predict(X, from_idx=from_idx)
 
 
 @register_model("DistMult", ["normalize_ent_emb", "negative_corruption_entities"])
@@ -1680,7 +1701,7 @@ class DistMult(EmbeddingModel):
         """
         super().fit(X, early_stopping, early_stopping_params)
 
-    def predict(self, X, from_idx=False, get_ranks=False):
+    def predict(self, X, from_idx=False):
         """Predict the scores of triples using a trained embedding model.
 
             The function returns raw scores generated by the model.
@@ -1704,19 +1725,15 @@ class DistMult(EmbeddingModel):
             The triples to score.
         from_idx : bool
             If True, will skip conversion to internal IDs. (default: False).
-        get_ranks : bool
-            Flag to compute ranks by scoring against corruptions (default: False).
 
         Returns
         -------
         scores_predict : ndarray, shape [n]
             The predicted scores for input triples X.
             
-        rank : ndarray, shape [n]
-            Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
-        return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
+        return super().predict(X, from_idx=from_idx)
 
 
 @register_model("ComplEx", ["negative_corruption_entities"])
@@ -1964,7 +1981,7 @@ class ComplEx(EmbeddingModel):
         """
         super().fit(X, early_stopping, early_stopping_params)
 
-    def predict(self, X, from_idx=False, get_ranks=False):
+    def predict(self, X, from_idx=False):
         """Predict the scores of triples using a trained embedding model.
 
              The function returns raw scores generated by the model.
@@ -1988,19 +2005,14 @@ class ComplEx(EmbeddingModel):
              The triples to score.
          from_idx : bool
              If True, will skip conversion to internal IDs. (default: False).
-         get_ranks : bool
-             Flag to compute ranks by scoring against corruptions (default: False).
 
          Returns
          -------
          scores_predict : ndarray, shape [n]
              The predicted scores for input triples X.
 
-         rank : ndarray, shape [n]
-             Ranks of the triples (only returned if ``get_ranks=True``.
-
         """
-        return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
+        return super().predict(X, from_idx=from_idx)
 
 
 @register_model("HolE", ["negative_corruption_entities"])
@@ -2218,7 +2230,7 @@ class HolE(ComplEx):
         """
         super().fit(X, early_stopping, early_stopping_params)
 
-    def predict(self, X, from_idx=False, get_ranks=False):
+    def predict(self, X, from_idx=False):
         """Predict the scores of triples using a trained embedding model.
 
              The function returns raw scores generated by the model.
@@ -2242,16 +2254,12 @@ class HolE(ComplEx):
              The triples to score.
          from_idx : bool
              If True, will skip conversion to internal IDs. (default: False).
-         get_ranks : bool
-             Flag to compute ranks by scoring against corruptions (default: False).
 
          Returns
          -------
          scores_predict : ndarray, shape [n]
              The predicted scores for input triples X.
 
-         rank : ndarray, shape [n]
-             Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
-        return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
+        return super().predict(X, from_idx=from_idx)
