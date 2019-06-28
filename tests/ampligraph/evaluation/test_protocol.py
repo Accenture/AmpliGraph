@@ -599,7 +599,7 @@ def test_select_best_model_ranking_real_random():
         X['valid'][::5],
         X['test'][::10],
         param_grid,
-        max_combinations=5
+        max_combinations=10
     )
     assert 0 < best_params['k'] < 50
     assert np.log(1.00001) <= best_params['optimizer_params']['lr'] <= np.log(100)

@@ -985,7 +985,11 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     np.random.seed(param_grid_random_seed)
     randomly_sample_params(param_grid, max_combinations)
 
-    model_params_combinations = next_hyperparam(model_class.name, param_grid)
+    if max_combinations is not None:
+        model_params_combinations = [next_hyperparam(model_class.name, param_grid) for _ in range(max_combinations)]
+        np.random.shuffle(model_params_combinations)
+    else:
+        model_params_combinations = next_hyperparam(model_class.name, param_grid)
 
     best_mrr_train = 0
     best_model = None
