@@ -958,8 +958,9 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         The MRR (filtered) of the best model, retrained on the concatenation of training and validation sets,
         computed over the test set.
 
-    results_history: list of dict
-        A list containing all the intermediate results: model parameters and corresponding validation metrics.
+    experimental_history: list of dict
+        A list containing all the intermediate experimental results:
+        the model parameters and the corresponding validation metrics.
 
     Examples
     --------
@@ -1015,8 +1016,9 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     randomly_sample_params(param_grid, max_combinations)
 
     if max_combinations is not None:
-        model_params_combinations = list(islice(next_hyperparam(model_class.name, param_grid), max_combinations))
+        model_params_combinations = list(next_hyperparam(model_class.name, param_grid))
         np.random.shuffle(model_params_combinations)
+        model_params_combinations = model_params_combinations[:max_combinations]
     else:
         model_params_combinations = next_hyperparam(model_class.name, param_grid)
 
@@ -1041,11 +1043,11 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     else:
         selection_dataset = X_valid
 
-    results_history = []
+    experimental_history = []
 
     for model_params in tqdm(model_params_combinations, disable=(not verbose)):
         current_result = {
-            "model_name": type(model).__name__,
+            "model_name": type(model_class).__name__,
             "model_params": model_params
         }
         try:
@@ -1093,7 +1095,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
                 logger.error(str(e))
             else:
                 pass
-        results_history.append(current_result)
+        experimental_history.append(current_result)
 
     ranks_test = []
     mrr_test = 0
@@ -1109,4 +1111,4 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
         mrr_test = mrr_score(ranks_test)
 
-    return best_model, best_params, best_mrr_train, ranks_test, mrr_test, results_history
+    return best_model, best_params, best_mrr_train, ranks_test, mrr_test, experimental_history

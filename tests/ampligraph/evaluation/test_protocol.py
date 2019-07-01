@@ -613,7 +613,7 @@ def test_select_best_model_ranking_grid():
         }
     }
 
-    best_model, best_params, best_mrr_train, ranks_test, mrr_test = select_best_model_ranking(
+    best_model, best_params, best_mrr_train, ranks_test, mrr_test, experimental_history = select_best_model_ranking(
         model_class,
         X['train'],
         X['valid'][::5],
@@ -622,6 +622,9 @@ def test_select_best_model_ranking_grid():
     )
     assert best_params['k'] == 50
     assert best_params['optimizer_params']['lr'] == 0.0001
+    assert len(experimental_history) == 4
+    assert set(i["model_params"]["k"] for i in experimental_history) == {2, 50}
+    assert set(i["model_params"]["optimizer_params"]["lr"] for i in experimental_history) == {1000.0, 0.0001}
 
 
 def test_select_best_model_ranking_random():
@@ -631,7 +634,7 @@ def test_select_best_model_ranking_random():
         "batches_count": [50],
         "seed": 0,
         "epochs": [1],
-        "k": lambda: np.random.choice(range(1, 50)),
+        "k": [2, 50],
         "eta": [1],
         "loss": ["nll"],
         "loss_params": {
@@ -648,13 +651,17 @@ def test_select_best_model_ranking_random():
         }
     }
 
-    best_model, best_params, best_mrr_train, ranks_test, mrr_test = select_best_model_ranking(
+    best_model, best_params, best_mrr_train, ranks_test, mrr_test, experimental_history = select_best_model_ranking(
         model_class,
         X['train'],
         X['valid'][::5],
         X['test'][::10],
         param_grid,
-        max_combinations=5
+        max_combinations=10
     )
-    assert 0 < best_params['k'] < 50
+    assert best_params['k'] == 50
     assert np.log(1.00001) <= best_params['optimizer_params']['lr'] <= np.log(100)
+    assert len(experimental_history) == 10
+    assert set(i["model_params"]["k"] for i in experimental_history) == {2, 50}
+    assert np.all([np.log(1.00001) <= i["model_params"]["optimizer_params"]["lr"] <= np.log(100)
+                   for i in experimental_history])
