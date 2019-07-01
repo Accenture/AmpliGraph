@@ -13,6 +13,7 @@ logger.setLevel(logging.DEBUG)
 
 from .loss_functions import LOSS_REGISTRY
 from .regularizers import REGULARIZER_REGISTRY
+from .optimizers import DefaultOptimizer, SGDOptimizer
 from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, \
     hits_at_n_score, mrr_score
 from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
@@ -24,9 +25,6 @@ from functools import partial
 
 # Default learning rate for the optimizers
 DEFAULT_LR = 0.0005
-
-# Default momentum for the optimizers
-DEFAULT_MOMENTUM = 0.9
 
 # Default burn in for early stopping
 DEFAULT_BURN_IN_EARLY_STOPPING = 100
@@ -254,19 +252,17 @@ class EmbeddingModel(abc.ABC):
             logger.info('\n------- Optimizer ------')
             logger.info('Name : {}'.format(optimizer))
             logger.info('Learning rate : {}'.format(self.optimizer_params.get('lr', DEFAULT_LR)))
+            
+        self.decay_cycle = 10
+        self.double_cycle_rate = True
+        self.double_factor = 10
+        self.stop_decay = 100
+        self.start_lr = 0.01
         
-        if optimizer == "adagrad":
-            self.optimizer = tf.train.AdagradOptimizer(learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
-        elif optimizer == "adam":
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
-        elif optimizer == "sgd":
-            self.optimizer = tf.train.GradientDescentOptimizer(
-                learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
-        elif optimizer == "momentum":
-            self.optimizer = tf.train.MomentumOptimizer(learning_rate=self.optimizer_params.get('lr', DEFAULT_LR),
-                                                        momentum=self.optimizer_params.get('momentum',
-                                                                                           DEFAULT_MOMENTUM))
-            logger.info('Momentum : {}'.format(self.optimizer_params.get('momentum', DEFAULT_MOMENTUM)))
+        if optimizer == "adagrad" or optimizer == "adam" or optimizer == "momentum":
+            self.optimizer = DefaultOptimizer(optimizer, self.optimizer_params, self.batches_count)
+        elif optimizer=="sgd":
+            self.optimizer = SGDOptimizer(optimizer, self.optimizer_params, self.batches_count)
         else:
             msg = 'Unsupported optimizer: {}'.format(optimizer)
             logger.error(msg)
@@ -275,6 +271,7 @@ class EmbeddingModel(abc.ABC):
         self.verbose = verbose
 
         self.rnd = check_random_state(self.seed)
+        np.random.seed(self.seed)
 
         self.initializer = tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed)
         
@@ -356,12 +353,23 @@ class EmbeddingModel(abc.ABC):
             While restoring make sure that the order of loaded parameters match the saved order.
             It's the duty of the embedding model to load the variables correctly.
             This method must be overridden if the model has any other parameters (apart from entity-relation embeddings)
+            This function also set's the evaluation mode to do lazy loading of variables based on the number of 
+            distinct entities present in the graph.
         """
         
+        #Generate the batch size based on entity length and batch_count
         self.batch_size = int(np.ceil(len(self.ent_to_idx)/self.batches_count))
-        #Testing of lazy loading
-        #self.batch_size = 1000
-        #self.dealing_with_extreme_concepts = True
+        
+        if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
+            self.dealing_with_extreme_concepts = True
+            
+            logger.warning('Your graph has a large number of distinct entities. '
+                           'Found {} distinct entities'.format(len(self.ent_to_idx)))
+            
+            logger.warning('Changing the variable loading strategy to use lazy loading of variables...')
+            logger.warning('Evaluation would take longer than usual.')
+            
+            
         if not self.dealing_with_extreme_concepts:
             self.ent_emb = tf.Variable(self.trained_model_params[0], dtype=tf.float32)
         else:
@@ -433,6 +441,18 @@ class EmbeddingModel(abc.ABC):
         return e_s, e_p, e_o
     
     def _entity_lookup(self, entity):
+        """Get the embeddings for entities. 
+           Remaps the entity indices to corresponding variables in the GPU memory when dealing with large graphs.
+           
+        Parameters
+        ----------
+        entity : nd-tensor, shape [n, 1]
+        Returns
+        -------
+        emb : Tensor
+            A Tensor that includes the embeddings of the entities.
+        """
+        
         if self.dealing_with_extreme_concepts:
             remapping = self.sparse_mappings.lookup(entity)
         else:
@@ -445,6 +465,8 @@ class EmbeddingModel(abc.ABC):
         """ Initialize parameters of the model. 
             
             This function creates and initializes entity and relation embeddings (with size k). 
+            If the graph is large, then it loads only the required entity embeddings (max:batch_size*2) 
+            and all relation embeddings.
             Overload this function if the parameters needs to be initialized differently.
         """
         if not self.dealing_with_extreme_concepts:
@@ -475,14 +497,20 @@ class EmbeddingModel(abc.ABC):
         loss : tf.Tensor
             The loss value that must be minimized.    
         """
-        # training input placeholder
+        #get the train triples of the batch, unique entities and the corresponding embeddings
+        #the latter 2 variables are passed only for large graphs. 
         x_pos_tf, self.unique_entities, ent_emb_batch = dataset_iterator.get_next()
+        
+        #list of dependent ops that need to be evaluated before computing the loss
         dependencies = []
+        
+        #if the graph is large
         if self.dealing_with_extreme_concepts:
-            
+            #Create a dependency to load the embeddings of the batch entities dynamically
             init_ent_emb_batch = self.ent_emb.assign(ent_emb_batch)
             dependencies.append(init_ent_emb_batch)
             
+            #create a lookup dependency (to remap the entity indices to the corresponding indices of variables in memory
             self.sparse_mappings = tf.contrib.lookup.MutableDenseHashTable(key_dtype=tf.int32,
                                      value_dtype=tf.int32,
                                      default_value=-1,
@@ -495,6 +523,7 @@ class EmbeddingModel(abc.ABC):
             
             dependencies.append(insert_lookup_op)
         
+        #run the dependencies
         with tf.control_dependencies(dependencies):
             entities_size = 0
             entities_list = None
@@ -503,6 +532,11 @@ class EmbeddingModel(abc.ABC):
                                                                            DEFAULT_CORRUPTION_ENTITIES)
 
             if negative_corruption_entities=='all':
+                '''
+                if number of entities are large then in this case('all'), 
+                the corruptions would be generated from batch entities and and additional random entities 
+                that are selected from all entities (since a total of batch_size*2 entity embeddings are loaded in memory)
+                '''
                 logger.debug('Using all entities for generation of corruptions during training')
                 entities_size = tf.shape(self.ent_emb)[0]
             elif negative_corruption_entities=='batch':
@@ -531,17 +565,22 @@ class EmbeddingModel(abc.ABC):
                 corruption_sides = [corruption_sides]
 
             for side in corruption_sides:
+                #Generate the corruptions
                 x_neg_tf = generate_corruptions_for_fit(x_pos_tf, 
                                                         entities_list=entities_list, 
                                                         eta=self.eta, 
                                                         corrupt_side=side, 
                                                         entities_size=entities_size, 
                                                         rnd=self.seed)
+                #compute corruption scores
                 e_s_neg, e_p_neg, e_o_neg = self._lookup_embeddings(x_neg_tf)
                 scores_neg = self._fn(e_s_neg, e_p_neg, e_o_neg)
+                
+                #Apply the loss function
                 loss += self.loss.apply(scores_pos, scores_neg)
 
             if self.regularizer is not None:
+                #Apply the regularizer
                 loss += self.regularizer.apply([self.ent_emb, self.rel_emb])
 
             return loss
@@ -558,10 +597,13 @@ class EmbeddingModel(abc.ABC):
                     logger.error(msg)
                     raise ValueError(msg)
                 
+                #store the validation data in the data handler 
                 self.x_valid = to_idx(self.x_valid, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
                 self.dataset_handler.set_data(self.x_valid, "valid", mapped_status=True)
                 self.eval_dataset_handle = self.dataset_handler
+                
             elif isinstance(self.x_valid, AmpligraphDatasetAdapter):
+                #this assumes that the validation data has already been set in the adapter
                 self.eval_dataset_handle = self.x_valid
             else:
                 msg = 'Invalid type for input X. Expected ndarray/AmpligraphDataset object, got {}'.format(type(X))
@@ -599,24 +641,25 @@ class EmbeddingModel(abc.ABC):
         self.early_stopping_best_value = INITIAL_EARLY_STOPPING_CRITERIA_VALUE
         self.early_stopping_stop_counter = 0
         try:
-            
+            #If the filter has already been set in the dataset adapter then just pass x_filter = True
             x_filter = self.early_stopping_params['x_filter']
             if isinstance(x_filter, np.ndarray):
                 if x_filter.ndim <= 1 or (np.shape(x_filter)[1]) != 3:
                     msg = 'Invalid size for input x_valid. Expected (n,3):  got {}'.format(np.shape(x_filter))
                     logger.error(msg)
                     raise ValueError(msg)
-                    
+                #set the filter triples in the data handler    
                 x_filter = to_idx(x_filter, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
                 self.eval_dataset_handle.set_filter(x_filter, mapped_status=True)
-                
+            #set the flag to perform filtering     
             self.set_filter_for_eval()
             
              
         except KeyError:
             logger.debug('x_filter not found in early_stopping_params.')
             pass
-
+        
+        #initialize evaluation graph in validation mode i.e. to use validation set 
         self._initialize_eval_graph("valid")
 
     def _perform_early_stopping_test(self, epoch):
@@ -636,10 +679,12 @@ class EmbeddingModel(abc.ABC):
                                                            DEFAULT_CHECK_INTERVAL_EARLY_STOPPING) == 0:
             # compute and store test_loss
             ranks = []
-
+            
+            #Get each triple and compute the rank for that triple
             for x_test_triple in range(self.eval_dataset_handle.get_size("valid")):
                 rank_triple = self.sess_train.run(self.rank)
                 ranks.append(rank_triple)
+                
             if self.early_stopping_criteria == 'hits10':
                 current_test_value = hits_at_n_score(ranks, 10)
             elif self.early_stopping_criteria == 'hits3':
@@ -683,6 +728,7 @@ class EmbeddingModel(abc.ABC):
         """
         # Reset this variable as it is reused during evaluation phase
         if self.is_filtered:
+            #cleanup the evaluation data (deletion of tables
             self.eval_dataset_handle.cleanup()
             
         self.is_filtered = False
@@ -694,22 +740,31 @@ class EmbeddingModel(abc.ABC):
         # set is_fitted to true to indicate that the model fitting is completed
         self.is_fitted = True
         
-    def train_retrieve(self):
+    def _training_data_generator(self):
+        """Generates the training data.
+           If we are dealing with large graphs, then along with the training triples (of the batch), 
+           this method returns the idx of the entities present in the batch (along with filler entities 
+           sampled randomly from the rest(not in batch) to load batch_size*2 entities on the GPU) and their embeddings. 
+        """
+           
         all_ent = np.int32(np.arange(len(self.ent_to_idx)))
         unique_entities = all_ent.reshape(-1,1)
+        #generate empty embeddings for smaller graphs - as all the entity embeddings will be loaded on GPU
         entity_embeddings = np.empty(shape=(0,self.internal_k), dtype=np.float32)
+        #create iterator to iterate over the train batches
         batch_iterator = iter(self.dataset_handler.get_next_train_batch(self.batch_size, "train"))
         for i in range(self.batches_count):
             out = next(batch_iterator)
             
+            #If large graph, load batch_size*2 entities on GPU memory
             if self.dealing_with_extreme_concepts:
-                
+                #find the unique entities - these HAVE to be loaded
                 unique_entities = np.int32(np.unique(np.concatenate([out[:,0], out[:,2]], axis=0)))
-
+                #Load the remaining entities by randomly selecting from the rest of the entities
                 self.leftover_entities = np.random.permutation(np.setdiff1d(all_ent, unique_entities))
-
                 needed = (self.batch_size*2-unique_entities.shape[0])
                 '''
+                #this is for debugging
                 large_number = np.zeros((self.batch_size-unique_entities.shape[0], 
                                              self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
 
@@ -732,8 +787,8 @@ class EmbeddingModel(abc.ABC):
    
         Parameters
         ----------
-        X : ndarray, shape [n, 3]
-            The training triples
+        X : ndarray (shape [n, 3]) or object of AmpligraphDatasetAdapter
+            Numpy array of training triples OR handle of Dataset adapter which would help retrieve data.
         early_stopping: bool
             Flag to enable early stopping (default:``False``)
         early_stopping_params: dictionary
@@ -741,11 +796,13 @@ class EmbeddingModel(abc.ABC):
 
             The following string keys are supported:
 
-                - **'x_valid'**: ndarray, shape [n, 3] : Validation set to be used for early stopping.
+                - **'x_valid'**: ndarray (shape [n, 3]) or object of AmpligraphDatasetAdapter : Numpy array of validation
+                                 triples OR handle of Dataset adapter which would help retrieve data.
                 - **'criteria'**: string : criteria for early stopping 'hits10', 'hits3', 'hits1' or 'mrr'(default).
                 - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early
                                   stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr').
                                   Note this will affect training time (no filter by default).
+                                  If the filter has already been set in the adapter, pass True
                 - **'burn_in'**: int : Number of epochs to pass before kicking in early stopping (default: 100).
                 - **check_interval'**: int : Early stopping interval after burn-in (default:10).
                 - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
@@ -757,6 +814,7 @@ class EmbeddingModel(abc.ABC):
 
         """
         if isinstance(X, np.ndarray):
+            #Adapt the numpy data in the internal format - to generalize
             dataset_handle = NumpyDatasetAdapter()
             dataset_handle.set_data(X, "train")
         elif isinstance(X, AmpligraphDatasetAdapter):
@@ -775,17 +833,21 @@ class EmbeddingModel(abc.ABC):
             self.dealing_with_extreme_concepts = True
             prefetch_batches =0
             
-            self.optimizer = tf.train.GradientDescentOptimizer(
-                    learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
-            self.ent_emb_cpu = np.random.normal(0, 0.1, size=(len(self.ent_to_idx), self.internal_k))
-            
-            
             logger.warning('Your graph has a large number of distinct entities. '
                            'Found {} distinct entities'.format(len(self.ent_to_idx)))
             
+            logger.warning('Changing the variable initialization strategy...')
             logger.warning('Changing the strategy to use lazy loading of variables...')
-            logger.warning('Changing the optimizer to SGD (as it is not dependent on variables being trained)...')
-            logger.warning('Changing the variable initialization strategy')
+            
+            if not isinstance(self.optimizer, SGDOptimizer):
+                raise Exception("This mode works well only with SGD optimizer with decay(read docs for details). \
+                Kindly change the optimizer and restart the experiment")
+                #logger.warning('Changing the optimizer to SGD (as it is not dependent on variables being trained)...')
+                #self.optimizer = tf.train.GradientDescentOptimizer(
+                #    learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
+            
+            
+            self.ent_emb_cpu = np.random.normal(0, 0.1, size=(len(self.ent_to_idx), self.internal_k))
             
             if early_stopping:
                 logger.warning("Early stopping may introduce memory issues when many distinct entities are present."
@@ -810,7 +872,7 @@ class EmbeddingModel(abc.ABC):
         
         self._initialize_parameters()
 
-        dataset = tf.data.Dataset.from_generator(self.train_retrieve, 
+        dataset = tf.data.Dataset.from_generator(self._training_data_generator, 
                                          output_types=(tf.int32, tf.int32, tf.float32),
                                          output_shapes=((None,3), (None,1), (None, self.internal_k)))
         
@@ -857,13 +919,14 @@ class EmbeddingModel(abc.ABC):
         for epoch in epoch_iterator_with_progress:
             losses = []
             for batch in range(1, self.batches_count + 1):
-                
+                feed_dict = {}
+                self.optimizer.update_feed_dict(feed_dict, batch, epoch)
                 if self.dealing_with_extreme_concepts:
-                    loss_batch, unique_entities, _ = self.sess_train.run([loss, self.unique_entities, train])
+                    loss_batch, unique_entities, _ = self.sess_train.run([loss, self.unique_entities, train], feed_dict=feed_dict)
                     self.ent_emb_cpu[np.squeeze(unique_entities), :] = \
                         self.sess_train.run(self.ent_emb)[:unique_entities.shape[0], :]
                 else:
-                    loss_batch, _ = self.sess_train.run([loss, train])
+                    loss_batch, _ = self.sess_train.run([loss, train], feed_dict=feed_dict)
 
                 if np.isnan(loss_batch) or np.isinf(loss_batch):
                     msg = 'Loss is {}. Please change the hyperparameters.'.format(loss_batch)
@@ -1211,7 +1274,6 @@ class EmbeddingModel(abc.ABC):
             else:
                 ranks.append(rank)
             scores.append(score)
-        print(scores)
         return ranks
 
     def predict(self, X, from_idx=False):

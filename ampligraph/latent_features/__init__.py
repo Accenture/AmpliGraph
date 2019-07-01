@@ -11,12 +11,13 @@ from .models import EmbeddingModel, TransE, DistMult, ComplEx, HolE, RandomBasel
 from .loss_functions import Loss, AbsoluteMarginLoss, SelfAdversarialLoss, NLLLoss, PairwiseLoss,\
     NLLMulticlass, LOSS_REGISTRY
 from .regularizers import Regularizer, LPRegularizer, REGULARIZER_REGISTRY
+from .optimizers import DefaultOptimizer, SGDOptimizer
 from .misc import get_entity_triples
 from ..utils import save_model, restore_model
 
 __all__ = ['LOSS_REGISTRY', 'REGULARIZER_REGISTRY', 'MODEL_REGISTRY',
            'EmbeddingModel', 'TransE', 'DistMult', 'ComplEx', 'HolE', 'RandomBaseline',
            'Loss', 'AbsoluteMarginLoss', 'SelfAdversarialLoss', 'NLLLoss', 'PairwiseLoss', 'NLLMulticlass',
-           'Regularizer', 'LPRegularizer', 'get_entity_triples', 'save_model', 'restore_model']
+           'Regularizer', 'LPRegularizer', 'DefaultOptimizer', 'SGDOptimizer', 'get_entity_triples', 'save_model', 'restore_model']
 
 
