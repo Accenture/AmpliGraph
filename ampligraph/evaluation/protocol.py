@@ -933,7 +933,12 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         If this is set to true, it will ignore corrupt_side argument and corrupt both head
         and tail separately and rank triples.
     verbose : bool
-        Verbose mode during evaluation of trained model.
+        Verbose mode for the model selection procedure (which is independent of the verbose mode in the model fit).
+
+        Verbose mode includes display of the progress bar, logging info for each iteration,
+        evaluation information, and exception details.
+
+        If you need verbosity inside the model training itself, change the verbose parameter within the ``param_grid``.
 
     Returns
     -------
@@ -952,6 +957,9 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     mrr_test : float
         The MRR (filtered) of the best model, retrained on the concatenation of training and validation sets,
         computed over the test set.
+
+    results_history: list of dict
+        A list containing all the intermediate results: model parameters and corresponding validation metrics.
 
     Examples
     --------
@@ -1033,7 +1041,13 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     else:
         selection_dataset = X_valid
 
+    results_history = []
+
     for model_params in tqdm(model_params_combinations, disable=(not verbose)):
+        current_result = {
+            "model_name": type(model).__name__,
+            "model_params": model_params
+        }
         try:
             model = model_class(**model_params)
             model.fit(X_train, early_stopping, early_stopping_params)
@@ -1048,10 +1062,19 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
             hits_1 = hits_at_n_score(ranks, n=1)
             hits_3 = hits_at_n_score(ranks, n=3)
             hits_10 = hits_at_n_score(ranks, n=10)
-            info = 'mr:{} mrr: {} hits 1: {} hits 3: {} hits 10: {}, model: {}, params: {}'.format(mr, curr_mrr, hits_1,
-                                                                                                   hits_3, hits_10,
-                                                                                                   type(model).__name__,
-                                                                                                   model_params)
+
+            current_result["results"] = {
+                "mrr": curr_mrr,
+                "mr": mr,
+                "hits_1": hits_1,
+                "hits_3": hits_3,
+                "hits_10": hits_10
+            }
+
+            info = 'mr: {} mrr: {} hits 1: {} hits 3: {} hits 10: {}, model: {}, params: {}'.format(
+                mr, curr_mrr, hits_1, hits_3, hits_10, type(model).__name__, model_params
+            )
+
             logger.debug(info)
             if verbose:
                 logger.info(info)
@@ -1061,11 +1084,16 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
                 best_model = model
                 best_params = model_params
         except Exception as e:
+            current_result["results"] = {
+                "exception": str(e)
+            }
+
             if verbose:
-                logger.error('Exception occured for parameters:{}'.format(model_params))
+                logger.error('Exception occurred for parameters:{}'.format(model_params))
                 logger.error(str(e))
             else:
                 pass
+        results_history.append(current_result)
 
     ranks_test = []
     mrr_test = 0
@@ -1081,4 +1109,4 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
         mrr_test = mrr_score(ranks_test)
 
-    return best_model, best_params, best_mrr_train, ranks_test, mrr_test
+    return best_model, best_params, best_mrr_train, ranks_test, mrr_test, results_history
