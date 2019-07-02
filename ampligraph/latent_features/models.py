@@ -13,7 +13,7 @@ logger.setLevel(logging.DEBUG)
 
 from .loss_functions import LOSS_REGISTRY
 from .regularizers import REGULARIZER_REGISTRY
-from .optimizers import DefaultOptimizer, SGDOptimizer
+from .optimizers import OPTIMIZER_REGISTRY, SGDOptimizer
 from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, \
     hits_at_n_score, mrr_score
 from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
@@ -58,6 +58,14 @@ DEFAULT_CORRUPTION_ENTITIES = 'all'
 # Threshold (on number of unique entities) to categorize the data as Huge Dataset (to warn user)
 ENTITY_WARN_THRESHOLD = 5e5
 
+def set_warning_threshold(threshold):
+    global ENTITY_WARN_THRESHOLD
+    ENTITY_WARN_THRESHOLD = threshold
+
+def reset_warning_threshold():
+    global ENTITY_WARN_THRESHOLD
+    ENTITY_WARN_THRESHOLD = 5e5
+    
 # Default value for k (embedding size)
 DEFAULT_EMBEDDING_SIZE = 100
 
@@ -221,7 +229,7 @@ class EmbeddingModel(abc.ABC):
         self.regularizer_params = regularizer_params
         self.batches_count = batches_count
         
-        self.dealing_with_extreme_concepts = False
+        self.dealing_with_large_graphs = False
         
         if batches_count == 1:
             logger.warning(
@@ -253,17 +261,10 @@ class EmbeddingModel(abc.ABC):
             logger.info('Name : {}'.format(optimizer))
             logger.info('Learning rate : {}'.format(self.optimizer_params.get('lr', DEFAULT_LR)))
             
-        self.decay_cycle = 10
-        self.double_cycle_rate = True
-        self.double_factor = 10
-        self.stop_decay = 100
-        self.start_lr = 0.01
         
-        if optimizer == "adagrad" or optimizer == "adam" or optimizer == "momentum":
-            self.optimizer = DefaultOptimizer(optimizer, self.optimizer_params, self.batches_count)
-        elif optimizer=="sgd":
-            self.optimizer = SGDOptimizer(optimizer, self.optimizer_params, self.batches_count)
-        else:
+        try:
+            self.optimizer = OPTIMIZER_REGISTRY[optimizer](optimizer, self.optimizer_params, self.batches_count)
+        except KeyError:
             msg = 'Unsupported optimizer: {}'.format(optimizer)
             logger.error(msg)
             raise ValueError(msg)
@@ -320,7 +321,7 @@ class EmbeddingModel(abc.ABC):
         
         """
         output_dict['model_params'] = self.trained_model_params
-        output_dict['extreme_concepts'] = self.dealing_with_extreme_concepts
+        output_dict['large_graph'] = self.dealing_with_large_graphs
 
     def restore_model_params(self, in_dict):
         """Load the model parameters from the input dictionary.
@@ -333,17 +334,17 @@ class EmbeddingModel(abc.ABC):
 
         self.trained_model_params = in_dict['model_params']
         try:
-            self.dealing_with_extreme_concepts = in_dict['extreme_concepts']
+            self.dealing_with_large_graphs = in_dict['large_graph']
         except KeyError:
             #For backward compatibility
-            self.dealing_with_extreme_concepts = False
+            self.dealing_with_large_graphs = False
 
     def _save_trained_params(self):
         """After model fitting, save all the trained parameters in trained_model_params in some order. 
         The order would be useful for loading the model. 
         This method must be overridden if the model has any other parameters (apart from entity-relation embeddings)
         """
-        if not self.dealing_with_extreme_concepts:
+        if not self.dealing_with_large_graphs:
             self.trained_model_params = self.sess_train.run([self.ent_emb, self.rel_emb])
         else:
             self.trained_model_params = [self.ent_emb_cpu, self.sess_train.run(self.rel_emb)]
@@ -361,7 +362,7 @@ class EmbeddingModel(abc.ABC):
         self.batch_size = int(np.ceil(len(self.ent_to_idx)/self.batches_count))
         
         if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
-            self.dealing_with_extreme_concepts = True
+            self.dealing_with_large_graphs = True
             
             logger.warning('Your graph has a large number of distinct entities. '
                            'Found {} distinct entities'.format(len(self.ent_to_idx)))
@@ -370,7 +371,7 @@ class EmbeddingModel(abc.ABC):
             logger.warning('Evaluation would take longer than usual.')
             
             
-        if not self.dealing_with_extreme_concepts:
+        if not self.dealing_with_large_graphs:
             self.ent_emb = tf.Variable(self.trained_model_params[0], dtype=tf.float32)
         else:
             self.ent_emb_cpu = self.trained_model_params[0]
@@ -453,7 +454,7 @@ class EmbeddingModel(abc.ABC):
             A Tensor that includes the embeddings of the entities.
         """
         
-        if self.dealing_with_extreme_concepts:
+        if self.dealing_with_large_graphs:
             remapping = self.sparse_mappings.lookup(entity)
         else:
             remapping = entity
@@ -469,7 +470,7 @@ class EmbeddingModel(abc.ABC):
             and all relation embeddings.
             Overload this function if the parameters needs to be initialized differently.
         """
-        if not self.dealing_with_extreme_concepts:
+        if not self.dealing_with_large_graphs:
             
             self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.internal_k],
                                            initializer=self.initializer)
@@ -505,7 +506,7 @@ class EmbeddingModel(abc.ABC):
         dependencies = []
         
         #if the graph is large
-        if self.dealing_with_extreme_concepts:
+        if self.dealing_with_large_graphs:
             #Create a dependency to load the embeddings of the batch entities dynamically
             init_ent_emb_batch = self.ent_emb.assign(ent_emb_batch)
             dependencies.append(init_ent_emb_batch)
@@ -757,7 +758,7 @@ class EmbeddingModel(abc.ABC):
             out = next(batch_iterator)
             
             #If large graph, load batch_size*2 entities on GPU memory
-            if self.dealing_with_extreme_concepts:
+            if self.dealing_with_large_graphs:
                 #find the unique entities - these HAVE to be loaded
                 unique_entities = np.int32(np.unique(np.concatenate([out[:,0], out[:,2]], axis=0)))
                 #Load the remaining entities by randomly selecting from the rest of the entities
@@ -830,7 +831,7 @@ class EmbeddingModel(abc.ABC):
         prefetch_batches = 1
         
         if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
-            self.dealing_with_extreme_concepts = True
+            self.dealing_with_large_graphs = True
             prefetch_batches =0
             
             logger.warning('Your graph has a large number of distinct entities. '
@@ -846,9 +847,9 @@ class EmbeddingModel(abc.ABC):
                 #self.optimizer = tf.train.GradientDescentOptimizer(
                 #    learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
             
-            
+            #CPU matrix of embeddings
             self.ent_emb_cpu = np.random.normal(0, 0.1, size=(len(self.ent_to_idx), self.internal_k))
-            
+                        
             if early_stopping:
                 logger.warning("Early stopping may introduce memory issues when many distinct entities are present."
                                " Disable early stopping with `early_stopping_params={'early_stopping'=False}` or set "
@@ -921,7 +922,7 @@ class EmbeddingModel(abc.ABC):
             for batch in range(1, self.batches_count + 1):
                 feed_dict = {}
                 self.optimizer.update_feed_dict(feed_dict, batch, epoch)
-                if self.dealing_with_extreme_concepts:
+                if self.dealing_with_large_graphs:
                     loss_batch, unique_entities, _ = self.sess_train.run([loss, self.unique_entities, train], feed_dict=feed_dict)
                     self.ent_emb_cpu[np.squeeze(unique_entities), :] = \
                         self.sess_train.run(self.ent_emb)[:unique_entities.shape[0], :]
@@ -992,11 +993,13 @@ class EmbeddingModel(abc.ABC):
             else:
                 out = next(batch_iterator)
                 
-            if self.dealing_with_extreme_concepts:
-                needed = (self.batch_size-2)
+            if self.dealing_with_large_graphs:
+                #since we are dealing with only one triple (2 entities)
+                unique_ent = np.unique(np.array([out[0,0],out[0,2]]))
+                needed = (self.batch_size-unique_ent.shape[0])
                 large_number = np.zeros((needed, self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
-                entity_embeddings = np.concatenate((self.ent_emb_cpu[[out[0,0],out[0,2]],:], large_number), axis=0)
-                unique_ent = np.array([out[0,0],out[0,2]]).reshape(-1,1)
+                entity_embeddings = np.concatenate((self.ent_emb_cpu[unique_ent, :], large_number), axis=0)
+                unique_ent = unique_ent.reshape(-1,1)
                 
             yield out, indices_obj, indices_sub, entity_embeddings, unique_ent
             
@@ -1023,7 +1026,7 @@ class EmbeddingModel(abc.ABC):
         
         for i in range(self.corr_batches_count):
             all_ent = corruption_entities[i*self.batch_size:(i+1)*self.batch_size]
-            if self.dealing_with_extreme_concepts:
+            if self.dealing_with_large_graphs:
                 needed = (self.batch_size-all_ent.shape[0])
                 large_number = np.zeros((needed, self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
                 entity_embeddings = np.concatenate((self.ent_emb_cpu[all_ent,:], large_number), axis=0)
@@ -1056,10 +1059,10 @@ class EmbeddingModel(abc.ABC):
         #Dependencies that need to be run before scoring
         test_dependency = []
         #For large graphs
-        if self.dealing_with_extreme_concepts:
+        if self.dealing_with_large_graphs:
             #early stopping is not supported
             if mode!="test":
-                raise Exception('Early stopping not supported for datasets with extreme concepts')
+                raise Exception('Early stopping not supported for datasets large graph')
             #Add a dependency to load the embeddings on the GPU    
             init_ent_emb_batch = self.ent_emb.assign(entity_embeddings)
             test_dependency.append(init_ent_emb_batch)
@@ -1115,7 +1118,7 @@ class EmbeddingModel(abc.ABC):
                     
                     corr_dependency = []
                     all_ent, entity_embeddings_corrpt = corruption_iter.get_next()
-                    #if self.dealing_with_extreme_concepts: #for debugging
+                    #if self.dealing_with_large_graphs: #for debugging
                     #Add dependency to load the embeddings
                     init_ent_emb_corrpt = self.ent_emb.assign(entity_embeddings_corrpt)
                     corr_dependency.append(init_ent_emb_corrpt)
@@ -2162,7 +2165,7 @@ class ComplEx(EmbeddingModel):
     def _initialize_parameters(self):
         """ Initialize the complex embeddings.
         """
-        if not self.dealing_with_extreme_concepts:
+        if not self.dealing_with_large_graphs:
             self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.internal_k],
                                            initializer=self.initializer)
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],

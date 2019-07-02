@@ -89,7 +89,7 @@ class Regularizer(abc.ABC):
             Consists of key value pairs. The regularizer will check the keys to get the corresponding params
         """
         logger.error('This function is a placeholder in an abstract class')
-        NotImplementedError("This function is a placeholder in an abstract class")
+        raise NotImplementedError("This function is a placeholder in an abstract class")
 
     def _apply(self, trainable_params):
         """ Apply the regularization function. Every inherited class must implement this function.
@@ -107,7 +107,7 @@ class Regularizer(abc.ABC):
             Regularization Loss
         """
         logger.error('This function is a placeholder in an abstract class')
-        NotImplementedError("This function is a placeholder in an abstract class")
+        raise NotImplementedError("This function is a placeholder in an abstract class")
 
     def apply(self, trainable_params):
         """ Interface to external world. This function performs input checks, input pre-processing, and
