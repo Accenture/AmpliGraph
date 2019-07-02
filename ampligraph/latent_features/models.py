@@ -951,6 +951,9 @@ class EmbeddingModel(abc.ABC):
         self._end_training()
         
     def set_filter_for_eval(self):
+        """Configures to use filter
+        """
+        
         self.is_filtered = True
 
     def configure_evaluation_protocol(self, config={'corruption_entities': DEFAULT_CORRUPTION_ENTITIES,
@@ -1001,6 +1004,10 @@ class EmbeddingModel(abc.ABC):
                 
         
     def generate_corruptions(self):
+        """Corruption generator for large graphs.
+           It generates corruptions in batches and loads corresponding variables on GPU
+        """
+        
         corruption_entities = self.eval_config.get('corruption_entities', DEFAULT_CORRUPTION_ENTITIES)
 
         if corruption_entities == 'all':
@@ -1032,25 +1039,32 @@ class EmbeddingModel(abc.ABC):
         """
         #TODO: change generator to use a particular dataset
         
-        
+        #Use a data generator which mainly returns a test triple along with the subjects and objects indices for filtering
+        #The last two data are used if the graph is large. They are the embeddings of the entities that must be 
+        #loaded on the GPU before scoring and the indices of those embeddings. 
         dataset = tf.data.Dataset.from_generator(partial(self.test_retrieve, mode=mode),
                                      output_types=(tf.int32, tf.int32, tf.int32, tf.float32, tf.int32),
                                      output_shapes=((1,3), (None,1), (None,1), (None,self.internal_k), (None,1))) 
         dataset = dataset.repeat()
-        dataset = dataset.prefetch(100)
+        dataset = dataset.prefetch(1)
         dataset_iter = dataset.make_one_shot_iterator()
         self.X_test_tf, indices_obj, indices_sub, entity_embeddings, unique_ent = dataset_iter.get_next()
 
 
         use_default_protocol = self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL)
         corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
+        #Dependencies that need to be run before scoring
         test_dependency = []
+        #For large graphs
         if self.dealing_with_extreme_concepts:
+            #early stopping is not supported
             if mode!="test":
                 raise Exception('Early stopping not supported for datasets with extreme concepts')
-                
+            #Add a dependency to load the embeddings on the GPU    
             init_ent_emb_batch = self.ent_emb.assign(entity_embeddings)
             test_dependency.append(init_ent_emb_batch)
+            
+            #Add a dependency to create lookup tables(for remapping the entity indices to the order of variables on GPU
             self.sparse_mappings = tf.contrib.lookup.MutableDenseHashTable(key_dtype=tf.int32,
                                          value_dtype=tf.int32,
                                          default_value=-1,
@@ -1062,24 +1076,30 @@ class EmbeddingModel(abc.ABC):
                                                                                dtype=tf.int32), (-1,1)))
             test_dependency.append(insert_lookup_op)
         
-        #if True:
+        #if True: #For debugging
+            #Execute the dependency
             with tf.control_dependencies(test_dependency):
                 # Compute scores for positive - single triple
                 e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
                 self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
+                
+                #Generate corruptions in batches
                 self.corr_batches_count = int(np.ceil(len(self.ent_to_idx)/self.batch_size))
 
+                #Corruption generator - returns corruptions and their corresponding embeddings that need to be loaded on the GPU
                 corruption_generator = tf.data.Dataset.from_generator(self.generate_corruptions, 
                                                  output_types=(tf.int32, tf.float32),
                                                  output_shapes=((None,1), (None,self.internal_k))) 
 
                 corruption_generator = corruption_generator.repeat()
                 corruption_generator = corruption_generator.prefetch(1)
-
+                
                 corruption_iter = corruption_generator.make_one_shot_iterator()
 
-
+                
                 loop_iterations = self.corr_batches_count
+                
+                #Create tensor arrays for storing the scores of subject and object evals
                 scores_predict_s_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(self.ent_to_idx)))
                 scores_predict_o_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(self.ent_to_idx)))
 
@@ -1095,19 +1115,22 @@ class EmbeddingModel(abc.ABC):
                     
                     corr_dependency = []
                     all_ent, entity_embeddings_corrpt = corruption_iter.get_next()
-                    if self.dealing_with_extreme_concepts:
-                        init_ent_emb_corrpt = self.ent_emb.assign(entity_embeddings_corrpt)
-                        corr_dependency.append(init_ent_emb_corrpt)
-
-                        insert_lookup_op2 = self.sparse_mappings.insert(all_ent, 
-                                                                   tf.reshape(tf.range(tf.shape(all_ent)[0], 
-                                                                                   dtype=tf.int32), (-1,1)))
-                        corr_dependency.append(insert_lookup_op2)
-
+                    #if self.dealing_with_extreme_concepts: #for debugging
+                    #Add dependency to load the embeddings
+                    init_ent_emb_corrpt = self.ent_emb.assign(entity_embeddings_corrpt)
+                    corr_dependency.append(init_ent_emb_corrpt)
+                    #Add dependency to remap the indices to the corresponding indices on the GPU
+                    insert_lookup_op2 = self.sparse_mappings.insert(all_ent, 
+                                                               tf.reshape(tf.range(tf.shape(all_ent)[0], 
+                                                                               dtype=tf.int32), (-1,1)))
+                    corr_dependency.append(insert_lookup_op2)
+                    #end if
+                    
+                    #Execute the dependency
                     with tf.control_dependencies(corr_dependency):
-
                         emb_corr = tf.squeeze(self._entity_lookup(all_ent))
                         if corrupt_side == 's+o' or corrupt_side == 's':
+                            #compute and store the scores batch wise
                             scores_predict_s_c = self._fn(emb_corr, e_p, e_o)
                             scores_predict_s_corruptions_in = scores_predict_s_corruptions_in.scatter(
                                                                 tf.squeeze(all_ent), tf.squeeze(scores_predict_s_c))
@@ -1119,7 +1142,8 @@ class EmbeddingModel(abc.ABC):
                                                                 tf.squeeze(all_ent), tf.squeeze(scores_predict_o_c))
 
                     return i+1, scores_predict_s_corruptions_in, scores_predict_o_corruptions_in
-
+                
+                #compute the scores for all the corruptions
                 counter, scores_predict_s_corr_out, scores_predict_o_corr_out = tf.while_loop(loop_cond, 
                                                                                            compute_score_corruptions, 
                                                                                            (0, 
@@ -1129,23 +1153,20 @@ class EmbeddingModel(abc.ABC):
                                                                                              parallel_iterations = 1)
                 
                 if corrupt_side == 's+o' or corrupt_side == 's':
-                    scores_s = scores_predict_s_corr_out.stack()
+                    subj_corruption_scores = scores_predict_s_corr_out.stack()
                     
                 if corrupt_side == 's+o' or corrupt_side == 'o':
-                    scores_o = scores_predict_o_corr_out.stack()
+                    obj_corruption_scores = scores_predict_o_corr_out.stack()
                     
                 if corrupt_side == 's+o':
-                    self.scores_predict = tf.concat([scores_o, scores_s], axis=0)
+                    self.scores_predict = tf.concat([obj_corruption_scores, subj_corruption_scores], axis=0)
                 elif corrupt_side == 'o':
-                    self.scores_predict = scores_o
+                    self.scores_predict = obj_corruption_scores
                 else:
-                    self.scores_predict = scores_s
+                    self.scores_predict = subj_corruption_scores
                     
-                if use_default_protocol:
-                    obj_corruption_scores = scores_o
-                    subj_corruption_scores = scores_s
         else:
-            
+            #Rather than generating corruptions in batches do it at once on the GPU for small or medium sized graphs
             all_entities_np = np.arange(len(self.ent_to_idx))
             
             corruption_entities = self.eval_config.get('corruption_entities', DEFAULT_CORRUPTION_ENTITIES)
@@ -1159,16 +1180,14 @@ class EmbeddingModel(abc.ABC):
                 logger.error(msg)
                 raise ValueError(msg)
 
+            #Entities that must be used while generating corruptions
             self.corruption_entities_tf = tf.constant(corruption_entities, dtype=tf.int32)
 
             corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
-
-            self.out_corr, self.out_corr_prime = generate_corruptions_for_eval(self.X_test_tf,
-                                                                               self.corruption_entities_tf,
-                                                                               corrupt_side,
-                                                                               None,
-                                                                               None,
-                                                                               None)
+            #Generate corruptions
+            self.out_corr = generate_corruptions_for_eval(self.X_test_tf,
+                                                          self.corruption_entities_tf,
+                                                          corrupt_side)
 
             # Compute scores for negatives
             e_s, e_p, e_o = self._lookup_embeddings(self.out_corr)
@@ -1190,11 +1209,12 @@ class EmbeddingModel(abc.ABC):
                                                   [tf.shape(self.scores_predict)[0]//2])
                 
                 
-        
+        #this is to remove the positives from corruptions - while ranking with filter
         positives_among_obj_corruptions_ranked_higher = 0
         positives_among_sub_corruptions_ranked_higher = 0    
 
         if self.is_filtered:
+            #get the scores of positives present in corruptions
             if use_default_protocol:
                 scores_pos_obj = tf.gather(obj_corruption_scores,indices_obj) 
                 scores_pos_sub = tf.gather(subj_corruption_scores,indices_sub)
@@ -1205,14 +1225,16 @@ class EmbeddingModel(abc.ABC):
                     scores_pos_sub = tf.gather(self.scores_predict,indices_sub+len(self.ent_to_idx))
                 else:
                     scores_pos_sub = tf.gather(self.scores_predict,indices_sub)
-
+            # compute the ranks of the positives present in the corruptions and 
+            # see how many are ranked higher than the test triple
             if corrupt_side == 's+o' or corrupt_side == 'o':
                 positives_among_obj_corruptions_ranked_higher = tf.reduce_sum(tf.cast(scores_pos_obj >= \
                                                                                                 self.score_positive, tf.int32)) 
             if corrupt_side == 's+o' or corrupt_side == 's':
                 positives_among_sub_corruptions_ranked_higher = tf.reduce_sum(tf.cast(scores_pos_sub >= \
                                                                                             self.score_positive, tf.int32)) 
-
+                
+        #compute the rank of the test triple and subtract the positives(from corruptions) that are ranked higher
         if use_default_protocol:
 
             self.rank = tf.stack([tf.reduce_sum(tf.cast(subj_corruption_scores >= self.score_positive, tf.int32)) + 1 - \
@@ -1243,6 +1265,13 @@ class EmbeddingModel(abc.ABC):
         
 
     def get_ranks(self, dataset_handle):
+        """ Used by evaluate_predictions to get the ranks for evaluation.
+        
+        Parameters
+        ----------
+        dataset_handle : Object of AmpligraphDatasetAdapter
+                         This contains handles of the generators that would be used to get test triples and filters
+        """
         if not self.is_fitted:
             msg = 'Model has not been fitted.'
             logger.error(msg)
@@ -1252,9 +1281,9 @@ class EmbeddingModel(abc.ABC):
         
         # build tf graph for predictions
         if self.sess_predict is None:
-            #TODO: this needs to be changed to take care of >1m concepts.
+            #load the parameters
             self._load_model_from_trained_params()
-
+            #build the eval graph
             self._initialize_eval_graph()
 
             sess = tf.Session()
@@ -1263,25 +1292,54 @@ class EmbeddingModel(abc.ABC):
             self.sess_predict = sess
 
         ranks = []
-        scores = []
                                                    
         for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
-            score, rank = self.sess_predict.run([self.score_positive, self.rank])
+            rank = self.sess_predict.run(self.rank)
             if self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL): 
                 #ranks.append(np.mean(rank[0])) 
                 #ranks.extend(list(rank[0])) 
                 ranks.extend(list(rank)) 
             else:
                 ranks.append(rank)
-            scores.append(score)
         return ranks
 
     def predict(self, X, from_idx=False):
+        """Predict the scores of triples using a trained embedding model.
+
+            The function returns raw scores generated by the model.
+
+            .. note::
+
+                To obtain probability estimates, use a logistic sigmoid: ::
+
+                    >>> model.fit(X)
+                    >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+                    >>> print(y_pred)
+                    [-0.13863425, -0.09917116]
+                    >>> from scipy.special import expit
+                    >>> expit(y_pred)
+                    array([0.4653968 , 0.47522753], dtype=float32)
+
+
+        Parameters
+        ----------
+        X : ndarray, shape [n, 3]
+            The triples to score.
+        from_idx : bool
+            If True, will skip conversion to internal IDs. (default: False).
+
+        Returns
+        -------
+        scores_predict : ndarray, shape [n]
+            The predicted scores for input triples X.
+            
+
+        """
         if not self.is_fitted:
             msg = 'Model has not been fitted.'
             logger.error(msg)
             raise RuntimeError(msg)
-            
+        #adapt the data with numpy adapter for internal use
         dataset_handle = NumpyDatasetAdapter()
         dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
         dataset_handle.set_data(X, "test", mapped_status=from_idx)
@@ -1290,9 +1348,9 @@ class EmbeddingModel(abc.ABC):
         
         # build tf graph for predictions
         if self.sess_predict is None:
-            #TODO: this needs to be changed to take care of >1m concepts.
+            #load the parameters
             self._load_model_from_trained_params()
-
+            #build the eval graph
             self._initialize_eval_graph()
 
             sess = tf.Session()
@@ -1413,6 +1471,14 @@ class RandomBaseline(EmbeddingModel):
     
     
     def get_ranks(self, dataset_handle):
+        """ Used by evaluate_predictions to get the ranks for evaluation.
+            Generates random ranks for each test triple based on the entity size.
+            
+        Parameters
+        ----------
+        dataset_handle : Object of AmpligraphDatasetAdapter
+                         This contains handles of the generators that would be used to get test triples and filters
+        """
         self.eval_dataset_handle = dataset_handle
         test_data_size = self.eval_dataset_handle.get_size('test')
         positive_scores = self.rnd.uniform(low=0, high=1, size=test_data_size).tolist()
@@ -1438,7 +1504,7 @@ class RandomBaseline(EmbeddingModel):
             rank = np.sum(self.rnd.uniform(low=0, high=1, size=corruption_length) >= positive_scores[i]) + 1
             ranks.append(rank)
 
-        return positive_scores, ranks
+        return ranks
     
 
 @register_model("TransE", ["norm", "normalize_ent_emb", "negative_corruption_entities"])

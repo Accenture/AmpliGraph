@@ -10,41 +10,27 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 class SQLiteAdapter(AmpligraphDatasetAdapter):
-    '''
-    #Usage for extremely large datasets:
-    from ampligraph.datasets import SQLiteAdapter
-    adapt = SQLiteAdapter()
-    
-    #compute the mappings from the large dataset.
-    #Let's assume that the mappings are already computed in rel_to_idx, ent_to_idx. 
-    #Set the mappings
-    adapt.use_mappings(rel_to_idx, ent_to_idx)
-    
-    #load and store parts of data in the db as train test or valid
-    #if you have already mapped the entity names to index, set mapped_status = True
-    adapt.set_data(load_part1, 'train', mapped_status = True)
-    adapt.set_data(load_part2, 'train', mapped_status = True)
-    adapt.set_data(load_part3, 'train', mapped_status = True)
-    
-    #if mapped_status = False, then the adapter will map the entities to index before persisting
-    adapt.set_data(load_part1, 'test', mapped_status = False)
-    adapt.set_data(load_part2, 'test', mapped_status = False)
-    
-    adapt.set_data(load_part1, 'valid', mapped_status = False)
-    adapt.set_data(load_part2, 'valid', mapped_status = False)
-    
-    #create the model
-    model = ComplEx(batches_count=10000, seed=0, epochs=10, k=50, eta=10)
-    model.fit(adapt)
-    
+    '''SQLLite adapter
     '''
     def __init__(self, existing_db_name=None, ent_to_idx=None, rel_to_idx=None):
+        """Initialize the class variables
+        Parameters
+        ----------
+        existing_db_name : string
+            Name of an existing database to use. Assumes that the database has schema as required by the adapter and the persisted data is already mapped
+        ent_to_idx : dictionary of mappings
+            Mappings of entity to idx
+        rel_to_idx : dictionary of mappings
+            Mappings of relation to idx
+        """
         super(SQLiteAdapter, self).__init__()
-        self.mapped_status = {}
+        #persistance status of the data
         self.persistance_status = {}
         self.dbname = existing_db_name
+        #flag indicating whether we are using existing db
         self.using_existing_db = False
         if self.dbname is not None:
+            #If we are using existing db then the mappings need to be passed
             assert(self.rel_to_idx is not None)
             assert(self.ent_to_idx is not None)
             
@@ -53,9 +39,13 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
             self.ent_to_idx = ent_to_idx
             
     def get_db_name(self):
+        """Returns the db name
+        """
         return self.dbname
     
     def _create_schema(self):
+        """Creates the database schema
+        """
         if self.using_existing_db:
             return
         if self.dbname is not None:
@@ -86,6 +76,20 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         conn.close()
     
     def generate_mappings(self, use_all=False, regenerate=False):
+        """Generate mappings from either train set or use all dataset to generate mappings
+        Parameters
+        ----------
+        use_all : boolean
+            If True, it generates mapping from all the data. If False, it only uses training set to generate mappings
+        regenerate : boolean
+            If true, regenerates the mappings. If regenerating, then the database is created again(to conform to new mapping)
+        Returns
+        -------
+        rel_to_idx : dictionary
+            Relation to idx mapping dictionary
+        ent_to_idx : dictionary
+            entity to idx mapping dictionary
+        """
         if (len(self.rel_to_idx) == 0 or len(self.ent_to_idx) == 0 or regenerate==True) and not self.using_existing_db:
             from ..evaluation import create_mappings
             self._create_schema()
@@ -103,6 +107,8 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
     
             
     def _insert_entities_in_db(self):
+        """Inserts entities in the database
+        """
         #TODO: can change it to just use the values of the dictionary
         pg_entity_values = np.arange(len(self.ent_to_idx)).reshape(-1,1).tolist()
         conn = sqlite3.connect("{}".format(self.dbname))
@@ -116,6 +122,9 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         conn.close()
     
     def use_mappings(self, rel_to_idx, ent_to_idx):
+        """Use an existing mapping with the datasource.
+        """
+        #cannot change mappings for an existing database.
         if self.using_existing_db:
             raise Exception('Cannot change the mappings for an existing DB')
         super().use_mappings(rel_to_idx, ent_to_idx)
@@ -129,6 +138,17 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         
         
     def get_size(self, dataset_type="train"):
+        """Returns the size of the specified dataset
+        Parameters
+        ----------
+        dataset_type : string
+            type of the dataset
+            
+        Returns
+        -------
+        size : int
+            size of the specified dataset
+        """
         select_query = "SELECT count(*) from triples_table where dataset_type ='{}'"
         conn = sqlite3.connect("{}".format(self.dbname))         
         cur1 = conn.cursor()
@@ -137,9 +157,23 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         return out[0][0]
     
     def get_next_train_batch(self, batch_size, dataset_type="train"):
+        """Generator that returns the next batch of data.
+        
+        Parameters
+        ----------
+        batch_size : int
+            data size that needs to be returned
+        dataset_type: string
+            indicates which dataset to use
+        Returns
+        -------
+        batch_output : nd-array
+            yields a batch of triples from the dataset type specified
+        """
         if (not self.using_existing_db) and self.mapped_status[dataset_type] == False:
             self.map_data()
-            
+        
+        #create batches directly from database
         batches_count = int(np.ceil(self.get_size(dataset_type)/batch_size))
         select_query = "SELECT subject, predicate,object FROM triples_table INDEXED BY triples_table_type_idx where dataset_type ='{}' LIMIT {}, {}"
         for i in range(batches_count):
@@ -151,9 +185,23 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
             yield out
             
     def get_next_eval_batch(self, batch_size, dataset_type="test"):
+        """Generator that returns the next batch of data.
+        
+        Parameters
+        ----------
+        batch_size : int
+            data size that needs to be returned
+        dataset_type: string
+            indicates which dataset to use
+        Returns
+        -------
+        batch_output : nd-array
+            yields a batch of triples from the dataset type specified
+        """
         if (not self.using_existing_db) and self.mapped_status[dataset_type] == False:
             self.map_data()
-            
+        
+        #create batches directly from database
         batches_count = int(np.ceil(self.get_size(dataset_type)/batch_size))
         select_query = "SELECT subject, predicate,object FROM triples_table INDEXED BY triples_table_type_idx where dataset_type ='{}' LIMIT {}, {}"
         for i in range(batches_count):
@@ -165,21 +213,42 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
             yield out
     
     def get_next_batch_with_filter(self, batch_size=1, dataset_type="test"):
+        """Generator that returns the next batch of data along with the filter.
+        
+        Parameters
+        ----------
+        batch_size : int
+            data size that needs to be returned
+        dataset_type: string
+            indicates which dataset to use
+        Returns
+        -------
+        batch_output : nd-array [n,3]
+            yields a batch of triples from the dataset type specified
+        participating_objects : nd-array [n,1]
+            all objects that were involved in the s-p-? relation
+        participating_subjects : nd-array [n,1]
+            all subjects that were involved in the ?-p-o relation
+        """
         if (not self.using_existing_db) and self.mapped_status[dataset_type] == False:
             self.map_data()
             
         batches_count = int(np.ceil(self.get_size(dataset_type)/batch_size))
         select_query = "SELECT subject, predicate,object FROM triples_table INDEXED BY triples_table_type_idx where dataset_type = '{}' LIMIT {}, {}"
         for i in range(batches_count):
+            #generate the batch
             conn = sqlite3.connect("{}".format(self.dbname))         
             cur1 = conn.cursor()
             cur1.execute(select_query.format(dataset_type, i*batch_size, batch_size))
             out = np.array(cur1.fetchall(), dtype=np.int32)
             cur1.close()
+            #get the filter values
             participating_objects, participating_subjects = self.get_participating_entities(out)
             yield out, participating_objects, participating_subjects
             
     def _insert_triples(self, triples , key=""):
+        """inserts triples in the database for the specified category
+        """
         conn = sqlite3.connect("{}".format(self.dbname))
         key= np.array([[key]])
         for j in range(int(np.ceil(triples.shape[0]/500000.0))):
@@ -193,7 +262,14 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         conn.close()
     
     def map_data(self, remap=False):
+        """map the data to the mappings of ent_to_idx and rel_to_idx
+        Parameters
+        ----------
+        remap : boolean
+            remap the data, if already mapped. One would do this if the dictionary is updated.
+        """
         if self.using_existing_db:
+            #since the assumption is that the persisted data is already mapped for an existing db
             return
         from ..evaluation import to_idx
         if len(self.rel_to_idx) == 0 or len(self.ent_to_idx) == 0:
@@ -212,6 +288,7 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
                     
         conn = sqlite3.connect("{}".format(self.dbname))   
         cur = conn.cursor()
+        #to maintain integrity of data
         cur.execute('Update integrity_check set validity=1 where validity=0')
         conn.commit()   
         
@@ -263,6 +340,8 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
                 
             
     def _validate_data(self, data):
+        """validates the data
+        """
         if type(data) != np.ndarray:
             msg = 'Invalid type for input data. Expected ndarray, got {}'.format(type(data))
             raise ValueError(msg)
@@ -272,6 +351,46 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
             raise ValueError(msg)
             
     def set_data(self, dataset, dataset_type=None, mapped_status=False, persistance_status=False):
+        """set the dataset based on the type.
+            Note: If you pass the same dataset type it will be appended
+            
+            #Usage for extremely large datasets:
+            from ampligraph.datasets import SQLiteAdapter
+            adapt = SQLiteAdapter()
+
+            #compute the mappings from the large dataset.
+            #Let's assume that the mappings are already computed in rel_to_idx, ent_to_idx. 
+            #Set the mappings
+            adapt.use_mappings(rel_to_idx, ent_to_idx)
+
+            #load and store parts of data in the db as train test or valid
+            #if you have already mapped the entity names to index, set mapped_status = True
+            adapt.set_data(load_part1, 'train', mapped_status = True)
+            adapt.set_data(load_part2, 'train', mapped_status = True)
+            adapt.set_data(load_part3, 'train', mapped_status = True)
+
+            #if mapped_status = False, then the adapter will map the entities to index before persisting
+            adapt.set_data(load_part1, 'test', mapped_status = False)
+            adapt.set_data(load_part2, 'test', mapped_status = False)
+
+            adapt.set_data(load_part1, 'valid', mapped_status = False)
+            adapt.set_data(load_part2, 'valid', mapped_status = False)
+
+            #create the model
+            model = ComplEx(batches_count=10000, seed=0, epochs=10, k=50, eta=10)
+            model.fit(adapt)
+            
+        Parameters
+        ----------
+        dataset : nd-array or dictionary
+            dataset of triples 
+        dataset_type : string
+            if the dataset parameter is an nd- array then this indicates the type of the data being based
+        mapped_status : bool
+            indicates whether the data has already been mapped to the indices
+        persistance_status : bool
+            indicates whether the data has already been written to the database
+        """
         if self.using_existing_db:
             raise Exception('Cannot change the existing DB')
         
@@ -293,6 +412,18 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
             self.map_data()
             
     def get_participating_entities(self, x_triple):
+        """returns the participating entities in the relation ?-p-o and s-p-?
+        Parameters
+        ----------
+        x_triple : nd-array (3,)
+            triple (s-p-o) that we are querying
+        Returns
+        -------
+        ent_participating_as_objects : nd-array (n,1)
+            entities participating in the relation s-p-?
+        ent_participating_as_subjects : nd-array (n,1)
+            entities participating in the relation ?-p-o
+        """
         x_triple = np.squeeze(x_triple)
         conn = sqlite3.connect("{}".format(self.dbname))         
         cur1 = conn.cursor()
@@ -325,13 +456,16 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         return ent_participating_as_objects, ent_participating_as_subjects
         
     def cleanup(self):
+        """Clean up the database
+        """
         if self.using_existing_db:
+            #if using an existing db then dont remove
             self.dbname = None
             self.using_existing_db=False
             return
         
         
-        
+        #Drop the created tables
         conn = sqlite3.connect("{}".format(self.dbname))         
         cur = conn.cursor()
         cur.execute("drop trigger IF EXISTS entity_table_del_integrity_check_trigger")
