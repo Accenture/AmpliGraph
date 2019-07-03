@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from sklearn.cluster import DBSCAN
 from ampligraph.discovery.discovery import discover_facts, \
-    generate_candidates, _setdiff2d, find_clusters
+    generate_candidates, _setdiff2d, find_clusters, find_duplicates
 from ampligraph.latent_features import ComplEx
 
 def test_discover_facts():
@@ -122,6 +122,7 @@ def test_setdiff2d():
         Y = np.array([1, 2, 3, 7, 8, 9])
         _setdiff2d(X, Y)
 
+
 def test_find_clusters():
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -148,6 +149,27 @@ def test_find_clusters():
     assert labels.shape == (2,)
     labels = find_clusters(X, model, clustering_algorithm, relations_subset=['x'])
     assert labels.shape == (7,)
+
+
+def test_find_duplicates():
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'y', 'a'],
+                  ['a', 'y', 'd'],
+                  ['c', 'x', 'd'],
+                  ['b', 'y', 'c'],
+                  ['f', 'y', 'e']])
+    model = ComplEx(k=2, batches_count=2)
+    model.fit(X)
+
+    dups = find_duplicates(X, model)
+
+    entities = set('a b c d e f'.split())
+
+    assert len(dups) <= len(entities)
+    assert all(len(d) <= len(entities) for d in dups)
+    assert all(d in entities for d in dups)
 
 
 if __name__ == '__main__':

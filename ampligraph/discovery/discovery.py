@@ -1,6 +1,7 @@
 import logging
 import numpy as np
 from sklearn.cluster import DBSCAN
+from sklearn.neighbors import NearestNeighbors
 
 from ..evaluation import evaluate_performance, filter_unseen_entities
 
@@ -445,3 +446,91 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None,
     X = np.hstack((s, p, o))[mask]
 
     return clustering_algorithm.fit_predict(X)
+
+
+def find_duplicates(X, model, entities_subset=None, tolerance=1.0, metric='l2'):
+    """
+    Find duplicate entities in a graph based on their embeddings.
+
+    Parameters
+    ----------
+
+    X : ndarray, shape [n, 3]
+        The input knowledge graph (triples) to find the duplicate entities.
+    model : EmbeddingModel
+        The fitted model that will be used to generate the embeddings.
+        This model must have been fully trained already, be it directly with `fit` or from
+        a helper function such as `select_best_model_ranking`.
+    entities_subset: ndarray, shape [n]
+        The entities to consider for duplicate finding.
+        This is a subset of all the entities included in X.
+        If None, all entities will be clustered.
+    tolerance: int
+        Minimum distance (depending on the chosen metric) to define one entity as the duplicate of another.
+    metric: str
+        A distance metric used to compare entity distance in the embedding space.
+        See https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html
+        for the whole list of options.
+
+    Returns
+    -------
+    duplicates : set of frozensets
+        Each entry in the duplicates set is a set containing all entities that were found to be duplicates
+        according to the metric and tolerance.
+        A set containing just one element means no duplicates were found for this entity.
+    Examples
+    --------
+    >>> import requests
+    >>> from ampligraph.datasets import load_from_csv
+    >>> from ampligraph.latent_features import ComplEx
+    >>> from ampligraph.discovery import find_duplicates
+    >>>
+    >>> # Game of Thrones relations dataset
+    >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
+    >>> open('GoT.csv', 'wb').write(requests.get(url).content)
+    >>> X = load_from_csv('.', 'GoT.csv', sep=',')
+    >>>
+    >>> model = ComplEx(batches_count=10,
+    >>>                 seed=0,
+    >>>                 epochs=200,
+    >>>                 k=150,
+    >>>                 eta=5,
+    >>>                 optimizer='adam',
+    >>>                 optimizer_params={'lr':1e-3},
+    >>>                 loss='multiclass_nll',
+    >>>                 regularizer='LP',
+    >>>                 regularizer_params={'p':3, 'lambda':1e-5},
+    >>>                 verbose=True)
+    >>> model.fit(X)
+    >>>
+    >>> dups = find_duplicates(train, model, tolerance=1.0)
+    >>> sorted([(len(i), i) for i in dups], reverse=True)
+    [(53, frozenset({
+        'Addam Frey',
+        'Aegon Frey',
+        'Aemon Rivers',
+        'Alesander Frey',
+        'Alyn Frey',
+        'Androw Frey',
+        'Arwyn Frey',
+        'Bradamar Frey',
+        'Brenett',
+        'Bryan Frey',
+        'Cersei Frey',
+        ...
+
+    """
+    if not model.is_fitted:
+        raise ValueError("Model has not been fitted.")
+
+    entities = np.setdiff1d(np.unique(np.concatenate((X[:, 0], X[:, 2]))), entities_subset)
+
+    ent_embeddings = model.get_embeddings(entities, embedding_type='entity')
+
+    nn = NearestNeighbors(metric=metric, radius=tolerance)
+    nn.fit(ent_embeddings)
+    neighbors = nn.radius_neighbors(ent_embeddings)[1]
+
+    duplicates = {frozenset(entities[idx] for idx in row) for i, row in enumerate(neighbors)}
+
+    return duplicates
