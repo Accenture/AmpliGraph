@@ -12,11 +12,9 @@ from ..evaluation import mrr_score, hits_at_n_score, mr_score
 import itertools
 import tensorflow as tf
 import logging
-#import psycopg2
-#from psycopg2.extras import execute_values
+# import psycopg2
+# from psycopg2.extras import execute_values
 
-import time
-import sqlite3
 from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
 
 logger = logging.getLogger(__name__)
@@ -543,13 +541,11 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         
     elif isinstance(X, AmpligraphDatasetAdapter):     
         dataset_handle = X
-        
-
+     
     if filter_triples is not None:
         if isinstance(filter_triples, np.ndarray):
             logger.debug('Getting filtered triples.')
             dataset_handle.set_filter(filter_triples)
-        
         
     eval_dict = {}
     eval_dict['default_protocol'] = False

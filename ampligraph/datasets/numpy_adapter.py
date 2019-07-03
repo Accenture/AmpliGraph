@@ -1,13 +1,13 @@
-
 import numpy as np
 from ..datasets import AmpligraphDatasetAdapter, SQLiteAdapter
+
 
 class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
     def __init__(self):
         """Initialize the class variables
         """
         super(NumpyDatasetAdapter, self).__init__()
-        #NumpyDatasetAdapter uses SQLAdapter to filter (if filters are set)
+        # NumpyDatasetAdapter uses SQLAdapter to filter (if filters are set)
         self.filter_adapter = None
     
     def generate_mappings(self, use_all=False):
@@ -41,7 +41,6 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
         """
         super().use_mappings(rel_to_idx, ent_to_idx)
         
-        
     def get_size(self, dataset_type="train"):
         """Returns the size of the specified dataset
         Parameters
@@ -70,13 +69,13 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
         batch_output : nd-array
             yields a batch of triples from the dataset type specified
         """
-        #if data is not already mapped, then map before returning the batch
-        if self.mapped_status[dataset_type] == False:
+        # if data is not already mapped, then map before returning the batch
+        if not self.mapped_status[dataset_type]:
             self.map_data()
             
-        batches_count = int(np.ceil(self.get_size(dataset_type)/batch_size))
+        batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
         for i in range(batches_count):
-            out = np.int32(self.dataset[dataset_type][(i*batch_size) : ((i+1)*batch_size), :])
+            out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
             yield out
             
     def get_next_eval_batch(self, batch_size=1, dataset_type="test"):
@@ -93,13 +92,13 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
         batch_output : nd-array
             yields a batch of triples from the dataset type specified
         """
-        #if data is not already mapped, then map before returning the batch
-        if self.mapped_status[dataset_type] == False:
+        # if data is not already mapped, then map before returning the batch
+        if not self.mapped_status[dataset_type]:
             self.map_data()
             
-        batches_count = int(np.ceil(self.get_size(dataset_type)/batch_size))
+        batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
         for i in range(batches_count):
-            out = np.int32(self.dataset[dataset_type][(i*batch_size) : ((i+1)*batch_size), :])
+            out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
             yield out
     
     def map_data(self, remap=False):
@@ -114,13 +113,12 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
             self.generate_mappings()
             
         for key in self.dataset.keys():
-            if self.mapped_status[key] == False or remap == True:
+            if (not self.mapped_status[key]) or (remap is True):
                 self.dataset[key] = to_idx(self.dataset[key], 
                                            ent_to_idx=self.ent_to_idx, 
                                            rel_to_idx=self.rel_to_idx)
                 self.mapped_status[key] = True
                 
-            
     def _validate_data(self, data):
         """valiates the data
         """
@@ -158,7 +156,7 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
         else:
             raise Exception("Incorrect usage. Expected a dictionary or a combination of dataset and it's type.")
             
-        #If the concept-idx mappings are present, then map the passed dataset    
+        # If the concept-idx mappings are present, then map the passed dataset    
         if not (len(self.rel_to_idx) == 0 or len(self.ent_to_idx) == 0):
             self.map_data()
             
@@ -192,14 +190,14 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
         participating_subjects : nd-array [n,1]
             all subjects that were involved in the ?-p-o relation
         """
-        if self.mapped_status[dataset_type] == False:
+        if not self.mapped_status[dataset_type]:
             self.map_data()
             
-        batches_count = int(np.ceil(self.get_size(dataset_type)/batch_size))
+        batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
         for i in range(batches_count):
-            #generate the batch 
-            out = np.int32(self.dataset[dataset_type][(i*batch_size) : ((i+1)*batch_size), :])
-            #get the filter values by querying the database
+            # generate the batch 
+            out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
+            # get the filter values by querying the database
             participating_objects, participating_subjects = self.filter_adapter.get_participating_entities(out)
             yield out, participating_objects, participating_subjects
             

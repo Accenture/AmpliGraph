@@ -268,7 +268,7 @@ class MomentumOptimizer(Optimizer):
             Node that needs to be evaluated for minimizing the loss during training
         """
         self.optimizer = tf.train.MomentumOptimizer(learning_rate=self._optimizer_params['lr'],
-                                                        momentum=self._optimizer_params['momentum'])
+                                                    momentum=self._optimizer_params['momentum'])
 
         train = self.optimizer.minimize(loss)
         return train
@@ -384,12 +384,12 @@ class SGDOptimizer(Optimizer):
         # Sinusoidal Decay
         if self.is_sine_decay:
             # compute the cycle number
-            current_cycle_num = ((epoch_num - 1 - self.curr_start)  + 
-                         (batch_num) / (1.0 * self.batches_count)) / self.curr_cycle_length
+            current_cycle_num = \
+                ((epoch_num - 1 - self.curr_start) + (batch_num) / (1.0 * self.batches_count)) / self.curr_cycle_length
             
             # compute a learning rate for the current batch/epoch
-            self.current_lr = self.end_lr + (self.start_lr - self.end_lr) * \
-                                0.5 * (1 + math.cos(math.pi * current_cycle_num))
+            self.current_lr = \
+                self.end_lr + (self.start_lr - self.end_lr) * 0.5 * (1 + math.cos(math.pi * current_cycle_num))
 
             # Start the next cycle and Expand the cycle/Decay the learning rate
             if epoch_num % self.next_cycle_epoch == 0 and batch_num == self.batches_count:

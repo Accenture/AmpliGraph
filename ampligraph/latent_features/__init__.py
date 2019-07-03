@@ -24,7 +24,8 @@ from .misc import get_entity_triples
 from ..utils import save_model, restore_model
 
 __all__ = ['LOSS_REGISTRY', 'REGULARIZER_REGISTRY', 'MODEL_REGISTRY', 'OPTIMIZER_REGISTRY',
+           'set_warning_threshold', 'reset_warning_threshold',
            'EmbeddingModel', 'TransE', 'DistMult', 'ComplEx', 'HolE', 'RandomBaseline',
            'Loss', 'AbsoluteMarginLoss', 'SelfAdversarialLoss', 'NLLLoss', 'PairwiseLoss', 'NLLMulticlass',
-           'Regularizer', 'LPRegularizer', 'Optimizer', 'AdagradOptimizer', 'AdamOptimizer', 'MomentumOptimizer', 'SGDOptimizer', 'get_entity_triples', 'save_model', 'restore_model']
-
+           'Regularizer', 'LPRegularizer', 'Optimizer', 'AdagradOptimizer', 'AdamOptimizer', 'MomentumOptimizer', 
+           'SGDOptimizer', 'get_entity_triples', 'save_model', 'restore_model']

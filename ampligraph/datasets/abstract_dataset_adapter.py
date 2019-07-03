@@ -1,4 +1,6 @@
 import abc
+
+
 class AmpligraphDatasetAdapter(abc.ABC):
     """Abstract class for dataset adapters
        Developers can design in similar format to adapt data from different sources to feed to ampligraph.
@@ -8,11 +10,11 @@ class AmpligraphDatasetAdapter(abc.ABC):
         """
         self.dataset = {}
         
-        #relation to idx mappings
+        # relation to idx mappings
         self.rel_to_idx = {}
-        #entities to idx mappings
+        # entities to idx mappings
         self.ent_to_idx = {}
-        #Mapped status of each dataset
+        # Mapped status of each dataset
         self.mapped_status = {}
         
     def use_mappings(self, rel_to_idx, ent_to_idx):
@@ -20,7 +22,7 @@ class AmpligraphDatasetAdapter(abc.ABC):
         """
         self.rel_to_idx = rel_to_idx
         self.ent_to_idx = ent_to_idx
-        #set the mapped status to false, since we are changing the dictionary
+        # set the mapped status to false, since we are changing the dictionary
         for key in self.dataset.keys():
             self.mapped_status[key] = False
     

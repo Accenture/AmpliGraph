@@ -11,15 +11,12 @@ from sklearn.utils import check_random_state
 import abc
 from tqdm import tqdm
 import logging
-import sqlite3
-
 from .loss_functions import LOSS_REGISTRY
 from .regularizers import REGULARIZER_REGISTRY
 from .optimizers import OPTIMIZER_REGISTRY, SGDOptimizer
 from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, \
     hits_at_n_score, mrr_score
 from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
-import os
 from functools import partial
 
 MODEL_REGISTRY = {}
@@ -61,13 +58,16 @@ DEFAULT_CORRUPTION_ENTITIES = 'all'
 # Threshold (on number of unique entities) to categorize the data as Huge Dataset (to warn user)
 ENTITY_WARN_THRESHOLD = 5e5
 
+
 def set_warning_threshold(threshold):
     global ENTITY_WARN_THRESHOLD
     ENTITY_WARN_THRESHOLD = threshold
 
+    
 def reset_warning_threshold():
     global ENTITY_WARN_THRESHOLD
     ENTITY_WARN_THRESHOLD = 5e5
+    
     
 # Default value for k (embedding size)
 DEFAULT_EMBEDDING_SIZE = 100
@@ -350,7 +350,7 @@ class EmbeddingModel(abc.ABC):
         try:
             self.dealing_with_large_graphs = in_dict['large_graph']
         except KeyError:
-            #For backward compatibility
+            # For backward compatibility
             self.dealing_with_large_graphs = False
 
     def _save_trained_params(self):
@@ -372,8 +372,8 @@ class EmbeddingModel(abc.ABC):
             distinct entities present in the graph.
         """
         
-        #Generate the batch size based on entity length and batch_count
-        self.batch_size = int(np.ceil(len(self.ent_to_idx)/self.batches_count))
+        # Generate the batch size based on entity length and batch_count
+        self.batch_size = int(np.ceil(len(self.ent_to_idx) / self.batches_count))
         
         if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
             self.dealing_with_large_graphs = True
@@ -384,7 +384,6 @@ class EmbeddingModel(abc.ABC):
             logger.warning('Changing the variable loading strategy to use lazy loading of variables...')
             logger.warning('Evaluation would take longer than usual.')
             
-            
         if not self.dealing_with_large_graphs:
             self.ent_emb = tf.Variable(self.trained_model_params[0], dtype=tf.float32)
         else:
@@ -393,8 +392,6 @@ class EmbeddingModel(abc.ABC):
             
         self.rel_emb = tf.Variable(self.trained_model_params[1], dtype=tf.float32)
         
-        
-
     def get_embeddings(self, entities, embedding_type='entity'):
         """Get the embeddings of entities or relations.
 
@@ -492,14 +489,13 @@ class EmbeddingModel(abc.ABC):
             self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.internal_k],
                                            initializer=self.initializer)
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
-                                       initializer=self.initializer)
-            
+                                           initializer=self.initializer)
         else:
             
-            self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size*2, self.internal_k],
+            self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
                                            initializer=self.initializer)
-            self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size*2, self.internal_k],
-                                       initializer=self.initializer)
+            self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size * 2, self.internal_k],
+                                           initializer=self.initializer)
 
     def _get_model_loss(self, dataset_iterator):
         """Get the current loss including loss due to regularization.
@@ -515,33 +511,31 @@ class EmbeddingModel(abc.ABC):
         loss : tf.Tensor
             The loss value that must be minimized.    
         """
-        #get the train triples of the batch, unique entities and the corresponding embeddings
-        #the latter 2 variables are passed only for large graphs. 
+        # get the train triples of the batch, unique entities and the corresponding embeddings
+        # the latter 2 variables are passed only for large graphs. 
         x_pos_tf, self.unique_entities, ent_emb_batch = dataset_iterator.get_next()
         
-        #list of dependent ops that need to be evaluated before computing the loss
+        # list of dependent ops that need to be evaluated before computing the loss
         dependencies = []
         
-        #if the graph is large
+        # if the graph is large
         if self.dealing_with_large_graphs:
-            #Create a dependency to load the embeddings of the batch entities dynamically
+            # Create a dependency to load the embeddings of the batch entities dynamically
             init_ent_emb_batch = self.ent_emb.assign(ent_emb_batch)
             dependencies.append(init_ent_emb_batch)
             
-            #create a lookup dependency (to remap the entity indices to the corresponding indices of variables in memory
-            self.sparse_mappings = tf.contrib.lookup.MutableDenseHashTable(key_dtype=tf.int32,
-                                     value_dtype=tf.int32,
-                                     default_value=-1,
-                                     empty_key=-2,
-                                     deleted_key=-1)
+            # create a lookup dependency(to remap the entity indices to the corresponding indices of variables in memory
+            self.sparse_mappings = tf.contrib.lookup.MutableDenseHashTable(key_dtype=tf.int32, value_dtype=tf.int32,
+                                                                           default_value=-1, empty_key=-2,
+                                                                           deleted_key=-1)
             
             insert_lookup_op = self.sparse_mappings.insert(self.unique_entities, 
                                                            tf.reshape(tf.range(tf.shape(self.unique_entities)[0], 
-                                                                           dtype=tf.int32), (-1,1)))
+                                                                      dtype=tf.int32), (-1, 1)))
             
             dependencies.append(insert_lookup_op)
         
-        #run the dependencies
+        # run the dependencies
         with tf.control_dependencies(dependencies):
             entities_size = 0
             entities_list = None
@@ -555,41 +549,39 @@ class EmbeddingModel(abc.ABC):
                 logger.debug('Requires the same size of postive and negative')
                 scores_pos = tf.reshape(tf.tile(scores_pos, [self.eta]), [tf.shape(scores_pos)[0] * self.eta])
 
-                
             # look up embeddings from input training triples
             negative_corruption_entities = self.embedding_model_params.get('negative_corruption_entities',
                                                                            DEFAULT_CORRUPTION_ENTITIES)
 
-            if negative_corruption_entities=='all':
+            if negative_corruption_entities == 'all':
                 '''
                 if number of entities are large then in this case('all'), 
-                the corruptions would be generated from batch entities and and additional random entities 
-                that are selected from all entities (since a total of batch_size*2 entity embeddings are loaded in memory)
+                the corruptions would be generated from batch entities and and additional random entities that
+                are selected from all entities (since a total of batch_size*2 entity embeddings are loaded in memory)
                 '''
                 logger.debug('Using all entities for generation of corruptions during training')
                 if self.dealing_with_large_graphs:
-                    entities_list=tf.squeeze(self.unique_entities)
+                    entities_list = tf.squeeze(self.unique_entities)
                 else:
                     entities_size = tf.shape(self.ent_emb)[0]
-            elif negative_corruption_entities=='batch':
+            elif negative_corruption_entities == 'batch':
                 # default is batch (entities_size=0 and entities_list=None)
                 logger.debug('Using batch entities for generation of corruptions during training')
             elif isinstance(negative_corruption_entities, list):
                 logger.debug('Using the supplied entities for generation of corruptions during training')
-                entities_list=tf.squeeze(tf.constant(negative_corruption_entities, dtype=tf.int32))
+                entities_list = tf.squeeze(tf.constant(negative_corruption_entities, dtype=tf.int32))
             elif isinstance(negative_corruption_entities, int):
-                logger.debug('Using first {} entities for generation of corruptions during training'.format(negative_corruption_entities))
+                logger.debug('Using first {} entities for generation of corruptions during \
+                             training'.format(negative_corruption_entities))
                 entities_size = negative_corruption_entities
 
-            
             loss = 0
-
             corruption_sides = self.embedding_model_params.get('corrupt_sides', DEFAULT_CORRUPT_SIDE_TRAIN)
             if not isinstance(corruption_sides, list):
                 corruption_sides = [corruption_sides]
 
             for side in corruption_sides:
-                #Generate the corruptions
+                # Generate the corruptions
                 x_neg_tf = generate_corruptions_for_fit(x_pos_tf, 
                                                         entities_list=entities_list, 
                                                         eta=self.eta, 
@@ -597,16 +589,15 @@ class EmbeddingModel(abc.ABC):
                                                         entities_size=entities_size, 
                                                         rnd=self.seed)
                 
-                    
-                #compute corruption scores
+                # compute corruption scores
                 e_s_neg, e_p_neg, e_o_neg = self._lookup_embeddings(x_neg_tf)
                 scores_neg = self._fn(e_s_neg, e_p_neg, e_o_neg)
 
-                #Apply the loss function
+                # Apply the loss function
                 loss += self.loss.apply(scores_pos, scores_neg)
 
             if self.regularizer is not None:
-                #Apply the regularizer
+                # Apply the regularizer
                 loss += self.regularizer.apply([self.ent_emb, self.rel_emb])
 
             return loss
@@ -623,16 +614,17 @@ class EmbeddingModel(abc.ABC):
                     logger.error(msg)
                     raise ValueError(msg)
                 
-                #store the validation data in the data handler 
+                # store the validation data in the data handler 
                 self.x_valid = to_idx(self.x_valid, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
                 self.dataset_handler.set_data(self.x_valid, "valid", mapped_status=True)
                 self.eval_dataset_handle = self.dataset_handler
                 
             elif isinstance(self.x_valid, AmpligraphDatasetAdapter):
-                #this assumes that the validation data has already been set in the adapter
+                # this assumes that the validation data has already been set in the adapter
                 self.eval_dataset_handle = self.x_valid
             else:
-                msg = 'Invalid type for input X. Expected ndarray/AmpligraphDataset object, got {}'.format(type(X))
+                msg = 'Invalid type for input X. Expected ndarray/AmpligraphDataset object, \
+                       got {}'.format(type(self.x_valid))
                 logger.error(msg)
                 raise ValueError(msg)
         except KeyError:
@@ -664,25 +656,23 @@ class EmbeddingModel(abc.ABC):
         self.early_stopping_best_value = None
         self.early_stopping_stop_counter = 0
         try:
-            #If the filter has already been set in the dataset adapter then just pass x_filter = True
+            # If the filter has already been set in the dataset adapter then just pass x_filter = True
             x_filter = self.early_stopping_params['x_filter']
             if isinstance(x_filter, np.ndarray):
                 if x_filter.ndim <= 1 or (np.shape(x_filter)[1]) != 3:
                     msg = 'Invalid size for input x_valid. Expected (n,3):  got {}'.format(np.shape(x_filter))
                     logger.error(msg)
                     raise ValueError(msg)
-                #set the filter triples in the data handler    
+                # set the filter triples in the data handler    
                 x_filter = to_idx(x_filter, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
                 self.eval_dataset_handle.set_filter(x_filter, mapped_status=True)
-            #set the flag to perform filtering     
+            # set the flag to perform filtering     
             self.set_filter_for_eval()
-            
-             
         except KeyError:
             logger.debug('x_filter not found in early_stopping_params.')
             pass
         
-        #initialize evaluation graph in validation mode i.e. to use validation set 
+        # initialize evaluation graph in validation mode i.e. to use validation set 
         self._initialize_eval_graph("valid")
 
     def _perform_early_stopping_test(self, epoch):
@@ -704,7 +694,7 @@ class EmbeddingModel(abc.ABC):
             # compute and store test_loss
             ranks = []
             
-            #Get each triple and compute the rank for that triple
+            # Get each triple and compute the rank for that triple
             for x_test_triple in range(self.eval_dataset_handle.get_size("valid")):
                 rank_triple = self.sess_train.run(self.rank)
                 ranks.append(rank_triple)
@@ -755,7 +745,7 @@ class EmbeddingModel(abc.ABC):
         """
         # Reset this variable as it is reused during evaluation phase
         if self.is_filtered:
-            #cleanup the evaluation data (deletion of tables
+            # cleanup the evaluation data (deletion of tables
             self.eval_dataset_handle.cleanup()
             
         self.is_filtered = False
@@ -776,21 +766,20 @@ class EmbeddingModel(abc.ABC):
         """
            
         all_ent = np.int32(np.arange(len(self.ent_to_idx)))
-        unique_entities = all_ent.reshape(-1,1)
-        #generate empty embeddings for smaller graphs - as all the entity embeddings will be loaded on GPU
-        entity_embeddings = np.empty(shape=(0,self.internal_k), dtype=np.float32)
-        #create iterator to iterate over the train batches
+        unique_entities = all_ent.reshape(-1, 1)
+        # generate empty embeddings for smaller graphs - as all the entity embeddings will be loaded on GPU
+        entity_embeddings = np.empty(shape=(0, self.internal_k), dtype=np.float32)
+        # create iterator to iterate over the train batches
         batch_iterator = iter(self.dataset_handler.get_next_train_batch(self.batch_size, "train"))
         for i in range(self.batches_count):
             out = next(batch_iterator)
-            
-            #If large graph, load batch_size*2 entities on GPU memory
+            # If large graph, load batch_size*2 entities on GPU memory
             if self.dealing_with_large_graphs:
-                #find the unique entities - these HAVE to be loaded
-                unique_entities = np.int32(np.unique(np.concatenate([out[:,0], out[:,2]], axis=0)))
-                #Load the remaining entities by randomly selecting from the rest of the entities
+                # find the unique entities - these HAVE to be loaded
+                unique_entities = np.int32(np.unique(np.concatenate([out[:, 0], out[:, 2]], axis=0)))
+                # Load the remaining entities by randomly selecting from the rest of the entities
                 self.leftover_entities = np.random.permutation(np.setdiff1d(all_ent, unique_entities))
-                needed = (self.batch_size*2-unique_entities.shape[0])
+                needed = (self.batch_size * 2 - unique_entities.shape[0])
                 '''
                 #this is for debugging
                 large_number = np.zeros((self.batch_size-unique_entities.shape[0], 
@@ -800,11 +789,10 @@ class EmbeddingModel(abc.ABC):
                                                     large_number), axis=0)
                 '''
                 unique_entities = np.int32(np.concatenate([unique_entities, self.leftover_entities[:needed]], axis=0))
-                entity_embeddings = self.ent_emb_cpu[unique_entities,:]
+                entity_embeddings = self.ent_emb_cpu[unique_entities, :]
                 
-                unique_entities = unique_entities.reshape(-1,1)
+                unique_entities = unique_entities.reshape(-1, 1)
 
-                
             yield out, unique_entities, entity_embeddings
         
     def fit(self, X, early_stopping=False, early_stopping_params={}):
@@ -824,8 +812,9 @@ class EmbeddingModel(abc.ABC):
 
             The following string keys are supported:
 
-                - **'x_valid'**: ndarray (shape [n, 3]) or object of AmpligraphDatasetAdapter : Numpy array of validation
-                                 triples OR handle of Dataset adapter which would help retrieve data.
+                - **'x_valid'**: ndarray (shape [n, 3]) or object of AmpligraphDatasetAdapter : 
+                                 Numpy array of validation triples OR handle of Dataset adapter which 
+                                 would help retrieve data.
                 - **'criteria'**: string : criteria for early stopping 'hits10', 'hits3', 'hits1' or 'mrr'(default).
                 - **'x_filter'**: ndarray, shape [n, 3] : Positive triples to use as filter if a 'filtered' early
                                   stopping criteria is desired (i.e. filtered-MRR if 'criteria':'mrr').
@@ -842,7 +831,7 @@ class EmbeddingModel(abc.ABC):
 
         """
         if isinstance(X, np.ndarray):
-            #Adapt the numpy data in the internal format - to generalize
+            # Adapt the numpy data in the internal format - to generalize
             dataset_handle = NumpyDatasetAdapter()
             dataset_handle.set_data(X, "train")
         elif isinstance(X, AmpligraphDatasetAdapter):
@@ -860,7 +849,7 @@ class EmbeddingModel(abc.ABC):
 
         if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
             self.dealing_with_large_graphs = True
-            prefetch_batches =0
+            prefetch_batches = 0
             
             logger.warning('Your graph has a large number of distinct entities. '
                            'Found {} distinct entities'.format(len(self.ent_to_idx)))
@@ -871,11 +860,11 @@ class EmbeddingModel(abc.ABC):
             if not isinstance(self.optimizer, SGDOptimizer):
                 raise Exception("This mode works well only with SGD optimizer with decay(read docs for details). \
                 Kindly change the optimizer and restart the experiment")
-                #logger.warning('Changing the optimizer to SGD (as it is not dependent on variables being trained)...')
-                #self.optimizer = tf.train.GradientDescentOptimizer(
-                #    learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
+                # logger.warning('Changing the optimizer to SGD (as it is not dependent on variables being trained)...')
+                # self.optimizer = tf.train.GradientDescentOptimizer(
+                # learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
             
-            #CPU matrix of embeddings
+            # CPU matrix of embeddings
             self.ent_emb_cpu = np.random.normal(0, 0.05, size=(len(self.ent_to_idx), self.internal_k))
                         
             if early_stopping:
@@ -893,17 +882,14 @@ class EmbeddingModel(abc.ABC):
         self.sess_train = tf.Session(config=self.tf_config)
 
         batch_size = int(np.ceil(self.dataset_handler.get_size("train") / self.batches_count))
-        #dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(2)
+        # dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(2)
         
         self.batch_size = batch_size
-        
-        
-        
         self._initialize_parameters()
 
         dataset = tf.data.Dataset.from_generator(self._training_data_generator, 
-                                         output_types=(tf.int32, tf.int32, tf.float32),
-                                         output_shapes=((None,3), (None,1), (None, self.internal_k)))
+                                                 output_types=(tf.int32, tf.int32, tf.float32),
+                                                 output_shapes=((None, 3), (None, 1), (None, self.internal_k)))
         
         dataset = dataset.repeat().prefetch(prefetch_batches)
         
@@ -921,8 +907,7 @@ class EmbeddingModel(abc.ABC):
         loss = self._get_model_loss(dataset_iterator)
 
         train = self.optimizer.minimize(loss)
-
-
+        
         # Entity embeddings normalization
         normalize_ent_emb_op = self.ent_emb.assign(tf.clip_by_norm(self.ent_emb, clip_norm=1, axes=1))
 
@@ -951,7 +936,8 @@ class EmbeddingModel(abc.ABC):
                 feed_dict = {}
                 self.optimizer.update_feed_dict(feed_dict, batch, epoch)
                 if self.dealing_with_large_graphs:
-                    loss_batch, unique_entities, _ = self.sess_train.run([loss, self.unique_entities, train], feed_dict=feed_dict)
+                    loss_batch, unique_entities, _ = self.sess_train.run([loss, self.unique_entities, train], 
+                                                                         feed_dict=feed_dict)
                     self.ent_emb_cpu[np.squeeze(unique_entities), :] = \
                         self.sess_train.run(self.ent_emb)[:unique_entities.shape[0], :]
                 else:
@@ -1017,15 +1003,16 @@ class EmbeddingModel(abc.ABC):
 
     def test_retrieve(self, mode):
         if self.is_filtered:
-            test_generator = partial(self.eval_dataset_handle.get_next_batch_with_filter,batch_size=1, dataset_type=mode)
+            test_generator = partial(self.eval_dataset_handle.get_next_batch_with_filter,
+                                     batch_size=1, dataset_type=mode)
         else:
             test_generator = partial(self.eval_dataset_handle.get_next_eval_batch, batch_size=1, dataset_type=mode)
             
         batch_iterator = iter(test_generator())
-        indices_obj = np.empty(shape=(0,1), dtype=np.int32)
-        indices_sub = np.empty(shape=(0,1), dtype=np.int32)
-        unique_ent = np.empty(shape=(0,1), dtype=np.int32)
-        entity_embeddings = np.empty(shape=(0,self.internal_k), dtype=np.float32)
+        indices_obj = np.empty(shape=(0, 1), dtype=np.int32)
+        indices_sub = np.empty(shape=(0, 1), dtype=np.int32)
+        unique_ent = np.empty(shape=(0, 1), dtype=np.int32)
+        entity_embeddings = np.empty(shape=(0, self.internal_k), dtype=np.float32)
         for i in range(self.eval_dataset_handle.get_size(mode)):
             if self.is_filtered:
                 out, indices_obj, indices_sub = next(batch_iterator)
@@ -1033,18 +1020,15 @@ class EmbeddingModel(abc.ABC):
                 out = next(batch_iterator)
                 
             if self.dealing_with_large_graphs:
-                #since we are dealing with only one triple (2 entities)
-                unique_ent = np.unique(np.array([out[0,0],out[0,2]]))
-                needed = (self.batch_size-unique_ent.shape[0])
+                # since we are dealing with only one triple (2 entities)
+                unique_ent = np.unique(np.array([out[0, 0], out[0, 2]]))
+                needed = (self.batch_size - unique_ent.shape[0])
                 large_number = np.zeros((needed, self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
                 entity_embeddings = np.concatenate((self.ent_emb_cpu[unique_ent, :], large_number), axis=0)
-                unique_ent = unique_ent.reshape(-1,1)
+                unique_ent = unique_ent.reshape(-1, 1)
                 
             yield out, indices_obj, indices_sub, entity_embeddings, unique_ent
             
-            
-                
-        
     def generate_corruptions(self):
         """Corruption generator for large graphs.
            It generates corruptions in batches and loads corresponding variables on GPU
@@ -1062,90 +1046,88 @@ class EmbeddingModel(abc.ABC):
             logger.error(msg)
             raise ValueError(msg)
 
-        entity_embeddings = np.empty(shape=(0,self.internal_k), dtype=np.float32)
+        entity_embeddings = np.empty(shape=(0, self.internal_k), dtype=np.float32)
         
         for i in range(self.corr_batches_count):
-            all_ent = corruption_entities[i*self.batch_size:(i+1)*self.batch_size]
+            all_ent = corruption_entities[i * self.batch_size:(i + 1) * self.batch_size]
             if self.dealing_with_large_graphs:
-                needed = (self.batch_size-all_ent.shape[0])
+                needed = (self.batch_size - all_ent.shape[0])
                 large_number = np.zeros((needed, self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
-                entity_embeddings = np.concatenate((self.ent_emb_cpu[all_ent,:], large_number), axis=0)
+                entity_embeddings = np.concatenate((self.ent_emb_cpu[all_ent, :], large_number), axis=0)
             
-            all_ent = all_ent.reshape(-1,1)
+            all_ent = all_ent.reshape(-1, 1)
             yield all_ent, entity_embeddings
-        
             
     def _initialize_eval_graph(self, mode="test"):
         """Initialize the evaluation graph. 
         
         Use prime number based filtering strategy (refer set_filter_for_eval()), if the filter is set
         """
-        #TODO: change generator to use a particular dataset
-        
-        #Use a data generator which mainly returns a test triple along with the subjects and objects indices for filtering
-        #The last two data are used if the graph is large. They are the embeddings of the entities that must be 
-        #loaded on the GPU before scoring and the indices of those embeddings. 
+
+        # Use a data generator which returns a test triple along with the subjects and objects indices for filtering
+        # The last two data are used if the graph is large. They are the embeddings of the entities that must be 
+        # loaded on the GPU before scoring and the indices of those embeddings. 
         dataset = tf.data.Dataset.from_generator(partial(self.test_retrieve, mode=mode),
-                                     output_types=(tf.int32, tf.int32, tf.int32, tf.float32, tf.int32),
-                                     output_shapes=((1,3), (None,1), (None,1), (None,self.internal_k), (None,1))) 
+                                                 output_types=(tf.int32, tf.int32, tf.int32, tf.float32, tf.int32),
+                                                 output_shapes=((1, 3), (None, 1), (None, 1), 
+                                                                (None, self.internal_k), (None, 1))) 
         dataset = dataset.repeat()
         dataset = dataset.prefetch(1)
         dataset_iter = dataset.make_one_shot_iterator()
         self.X_test_tf, indices_obj, indices_sub, entity_embeddings, unique_ent = dataset_iter.get_next()
 
-
-        use_default_protocol = self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL)
+        use_default_protocol = self.eval_config.get('default_protocol', DEFAULT_PROTOCOL_EVAL)
         corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
-        #Dependencies that need to be run before scoring
+        # Dependencies that need to be run before scoring
         test_dependency = []
-        #For large graphs
+        # For large graphs
         if self.dealing_with_large_graphs:
-            #early stopping is not supported
-            if mode!="test":
+            # early stopping is not supported
+            if mode != "test":
                 raise Exception('Early stopping not supported for datasets large graph')
-            #Add a dependency to load the embeddings on the GPU    
+            # Add a dependency to load the embeddings on the GPU    
             init_ent_emb_batch = self.ent_emb.assign(entity_embeddings)
             test_dependency.append(init_ent_emb_batch)
             
-            #Add a dependency to create lookup tables(for remapping the entity indices to the order of variables on GPU
+            # Add a dependency to create lookup tables(for remapping the entity indices to the order of variables on GPU
             self.sparse_mappings = tf.contrib.lookup.MutableDenseHashTable(key_dtype=tf.int32,
-                                         value_dtype=tf.int32,
-                                         default_value=-1,
-                                         empty_key=-2,
-                                         deleted_key=-1)
+                                                                           value_dtype=tf.int32,
+                                                                           default_value=-1,
+                                                                           empty_key=-2,
+                                                                           deleted_key=-1)
 
             insert_lookup_op = self.sparse_mappings.insert(unique_ent, 
-                                                               tf.reshape(tf.range(tf.shape(unique_ent)[0], 
-                                                                               dtype=tf.int32), (-1,1)))
+                                                           tf.reshape(tf.range(tf.shape(unique_ent)[0], 
+                                                                      dtype=tf.int32), (-1, 1)))
             test_dependency.append(insert_lookup_op)
         
-        #if True: #For debugging
-            #Execute the dependency
+        # if True: # For debugging
+            # Execute the dependency
             with tf.control_dependencies(test_dependency):
                 # Compute scores for positive - single triple
                 e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
                 self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
                 
-                #Generate corruptions in batches
-                self.corr_batches_count = int(np.ceil(len(self.ent_to_idx)/self.batch_size))
+                # Generate corruptions in batches
+                self.corr_batches_count = int(np.ceil(len(self.ent_to_idx) / self.batch_size))
 
-                #Corruption generator - returns corruptions and their corresponding embeddings that need to be loaded on the GPU
+                # Corruption generator - 
+                # returns corruptions and their corresponding embeddings that need to be loaded on the GPU
                 corruption_generator = tf.data.Dataset.from_generator(self.generate_corruptions, 
-                                                 output_types=(tf.int32, tf.float32),
-                                                 output_shapes=((None,1), (None,self.internal_k))) 
+                                                                      output_types=(tf.int32, tf.float32),
+                                                                      output_shapes=((None, 1), 
+                                                                                     (None, self.internal_k))) 
 
                 corruption_generator = corruption_generator.repeat()
                 corruption_generator = corruption_generator.prefetch(1)
                 
                 corruption_iter = corruption_generator.make_one_shot_iterator()
 
-                
                 loop_iterations = self.corr_batches_count
                 
-                #Create tensor arrays for storing the scores of subject and object evals
+                # Create tensor arrays for storing the scores of subject and object evals
                 scores_predict_s_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(self.ent_to_idx)))
                 scores_predict_o_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(self.ent_to_idx)))
-
 
                 def loop_cond(i, 
                               scores_predict_s_corruptions_in, 
@@ -1153,48 +1135,50 @@ class EmbeddingModel(abc.ABC):
                     return i < loop_iterations
 
                 def compute_score_corruptions(i,
-                                             scores_predict_s_corruptions_in, 
-                                             scores_predict_o_corruptions_in):
-                    
+                                              scores_predict_s_corruptions_in, 
+                                              scores_predict_o_corruptions_in):
                     corr_dependency = []
                     all_ent, entity_embeddings_corrpt = corruption_iter.get_next()
-                    #if self.dealing_with_large_graphs: #for debugging
-                    #Add dependency to load the embeddings
+                    # if self.dealing_with_large_graphs: #for debugging
+                    # Add dependency to load the embeddings
                     init_ent_emb_corrpt = self.ent_emb.assign(entity_embeddings_corrpt)
                     corr_dependency.append(init_ent_emb_corrpt)
-                    #Add dependency to remap the indices to the corresponding indices on the GPU
+                    # Add dependency to remap the indices to the corresponding indices on the GPU
                     insert_lookup_op2 = self.sparse_mappings.insert(all_ent, 
-                                                               tf.reshape(tf.range(tf.shape(all_ent)[0], 
-                                                                               dtype=tf.int32), (-1,1)))
+                                                                    tf.reshape(tf.range(tf.shape(all_ent)[0], 
+                                                                                        dtype=tf.int32), 
+                                                                               (-1, 1)))
                     corr_dependency.append(insert_lookup_op2)
-                    #end if
+                    # end if
                     
-                    #Execute the dependency
+                    # Execute the dependency
                     with tf.control_dependencies(corr_dependency):
                         emb_corr = tf.squeeze(self._entity_lookup(all_ent))
                         if corrupt_side == 's+o' or corrupt_side == 's':
-                            #compute and store the scores batch wise
+                            # compute and store the scores batch wise
                             scores_predict_s_c = self._fn(emb_corr, e_p, e_o)
-                            scores_predict_s_corruptions_in = scores_predict_s_corruptions_in.scatter(
-                                                                tf.squeeze(all_ent), tf.squeeze(scores_predict_s_c))
-                        
+                            scores_predict_s_corruptions_in = \
+                                scores_predict_s_corruptions_in.scatter(tf.squeeze(all_ent), 
+                                                                        tf.squeeze(scores_predict_s_c))
                         
                         if corrupt_side == 's+o' or corrupt_side == 'o':
                             scores_predict_o_c = self._fn(e_s, e_p, emb_corr)
-                            scores_predict_o_corruptions_in = scores_predict_o_corruptions_in.scatter(
-                                                                tf.squeeze(all_ent), tf.squeeze(scores_predict_o_c))
+                            scores_predict_o_corruptions_in = \
+                                scores_predict_o_corruptions_in.scatter(tf.squeeze(all_ent), 
+                                                                        tf.squeeze(scores_predict_o_c))
 
-                    return i+1, scores_predict_s_corruptions_in, scores_predict_o_corruptions_in
+                    return i + 1, scores_predict_s_corruptions_in, scores_predict_o_corruptions_in
                 
-                #compute the scores for all the corruptions
-                counter, scores_predict_s_corr_out, scores_predict_o_corr_out = tf.while_loop(loop_cond, 
-                                                                                           compute_score_corruptions, 
-                                                                                           (0, 
-                                                                                            scores_predict_s_corruptions, 
-                                                                                            scores_predict_o_corruptions), 
-                                                                                           back_prop=False,
-                                                                                             parallel_iterations = 1)
-                
+                # compute the scores for all the corruptions
+                counter, scores_predict_s_corr_out, scores_predict_o_corr_out = \
+                    tf.while_loop(loop_cond, 
+                                  compute_score_corruptions, 
+                                  (0, 
+                                   scores_predict_s_corruptions, 
+                                   scores_predict_o_corruptions), 
+                                  back_prop=False,
+                                  parallel_iterations=1)
+
                 if corrupt_side == 's+o' or corrupt_side == 's':
                     subj_corruption_scores = scores_predict_s_corr_out.stack()
                     
@@ -1209,7 +1193,7 @@ class EmbeddingModel(abc.ABC):
                     self.scores_predict = subj_corruption_scores
                     
         else:
-            #Rather than generating corruptions in batches do it at once on the GPU for small or medium sized graphs
+            # Rather than generating corruptions in batches do it at once on the GPU for small or medium sized graphs
             all_entities_np = np.arange(len(self.ent_to_idx))
             
             corruption_entities = self.eval_config.get('corruption_entities', DEFAULT_CORRUPTION_ENTITIES)
@@ -1223,11 +1207,11 @@ class EmbeddingModel(abc.ABC):
                 logger.error(msg)
                 raise ValueError(msg)
 
-            #Entities that must be used while generating corruptions
+            # Entities that must be used while generating corruptions
             self.corruption_entities_tf = tf.constant(corruption_entities, dtype=tf.int32)
 
             corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
-            #Generate corruptions
+            # Generate corruptions
             self.out_corr = generate_corruptions_for_eval(self.X_test_tf,
                                                           self.corruption_entities_tf,
                                                           corrupt_side)
@@ -1240,54 +1224,54 @@ class EmbeddingModel(abc.ABC):
             e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
             self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
 
-            use_default_protocol = self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL)
+            use_default_protocol = self.eval_config.get('default_protocol', DEFAULT_PROTOCOL_EVAL)
 
             if use_default_protocol:
                 obj_corruption_scores = tf.slice(self.scores_predict,
                                                  [0],
-                                                 [tf.shape(self.scores_predict)[0]//2])
+                                                 [tf.shape(self.scores_predict)[0] // 2])
 
                 subj_corruption_scores = tf.slice(self.scores_predict,
-                                                  [tf.shape(self.scores_predict)[0]//2],
-                                                  [tf.shape(self.scores_predict)[0]//2])
+                                                  [tf.shape(self.scores_predict)[0] // 2],
+                                                  [tf.shape(self.scores_predict)[0] // 2])
                 
-                
-        #this is to remove the positives from corruptions - while ranking with filter
+        # this is to remove the positives from corruptions - while ranking with filter
         positives_among_obj_corruptions_ranked_higher = 0
         positives_among_sub_corruptions_ranked_higher = 0    
 
         if self.is_filtered:
-            #get the scores of positives present in corruptions
+            # get the scores of positives present in corruptions
             if use_default_protocol:
-                scores_pos_obj = tf.gather(obj_corruption_scores,indices_obj) 
-                scores_pos_sub = tf.gather(subj_corruption_scores,indices_sub)
-
+                scores_pos_obj = tf.gather(obj_corruption_scores, indices_obj) 
+                scores_pos_sub = tf.gather(subj_corruption_scores, indices_sub)
             else:
-                scores_pos_obj = tf.gather(self.scores_predict,indices_obj) 
+                scores_pos_obj = tf.gather(self.scores_predict, indices_obj) 
                 if corrupt_side == 's+o':
-                    scores_pos_sub = tf.gather(self.scores_predict,indices_sub+len(self.ent_to_idx))
+                    scores_pos_sub = tf.gather(self.scores_predict, indices_sub + len(self.ent_to_idx))
                 else:
-                    scores_pos_sub = tf.gather(self.scores_predict,indices_sub)
+                    scores_pos_sub = tf.gather(self.scores_predict, indices_sub)
             # compute the ranks of the positives present in the corruptions and 
             # see how many are ranked higher than the test triple
             if corrupt_side == 's+o' or corrupt_side == 'o':
-                positives_among_obj_corruptions_ranked_higher = tf.reduce_sum(tf.cast(scores_pos_obj >= \
-                                                                                                self.score_positive, tf.int32)) 
+                positives_among_obj_corruptions_ranked_higher = tf.reduce_sum(
+                    tf.cast(scores_pos_obj >= self.score_positive, tf.int32)) 
             if corrupt_side == 's+o' or corrupt_side == 's':
-                positives_among_sub_corruptions_ranked_higher = tf.reduce_sum(tf.cast(scores_pos_sub >= \
-                                                                                            self.score_positive, tf.int32)) 
+                positives_among_sub_corruptions_ranked_higher = tf.reduce_sum(
+                    tf.cast(scores_pos_sub >= self.score_positive, tf.int32)) 
                 
-        #compute the rank of the test triple and subtract the positives(from corruptions) that are ranked higher
+        # compute the rank of the test triple and subtract the positives(from corruptions) that are ranked higher
         if use_default_protocol:
 
-            self.rank = tf.stack([tf.reduce_sum(tf.cast(subj_corruption_scores >= self.score_positive, tf.int32)) + 1 - \
-                                                                          positives_among_sub_corruptions_ranked_higher,
-                                  tf.reduce_sum(tf.cast(obj_corruption_scores >= self.score_positive, tf.int32)) + 1 - \
-                                                                          positives_among_obj_corruptions_ranked_higher], 0)
+            self.rank = tf.stack([tf.reduce_sum(tf.cast(
+                subj_corruption_scores >= self.score_positive, 
+                tf.int32)) + 1 - positives_among_sub_corruptions_ranked_higher,
+                tf.reduce_sum(tf.cast(obj_corruption_scores >= self.score_positive,
+                                      tf.int32)) + 1 - positives_among_obj_corruptions_ranked_higher], 0)
         else:
-            self.rank = tf.reduce_sum(tf.cast(self.scores_predict >= self.score_positive, tf.int32)) + 1 - \
-                                positives_among_sub_corruptions_ranked_higher - positives_among_obj_corruptions_ranked_higher
-
+            self.rank = tf.reduce_sum(tf.cast(
+                self.scores_predict >= self.score_positive, 
+                tf.int32)) + 1 - positives_among_sub_corruptions_ranked_higher - \
+                positives_among_obj_corruptions_ranked_higher
 
     def end_evaluation(self):
         """End the evaluation and close the Tensorflow session.
@@ -1320,9 +1304,9 @@ class EmbeddingModel(abc.ABC):
         
         # build tf graph for predictions
         if self.sess_predict is None:
-            #load the parameters
+            # load the parameters
             self._load_model_from_trained_params()
-            #build the eval graph
+            # build the eval graph
             self._initialize_eval_graph()
 
             sess = tf.Session()
@@ -1334,9 +1318,9 @@ class EmbeddingModel(abc.ABC):
                                                    
         for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
             rank = self.sess_predict.run(self.rank)
-            if self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL): 
-                #ranks.append(np.mean(rank[0])) 
-                #ranks.extend(list(rank[0])) 
+            if self.eval_config.get('default_protocol', DEFAULT_PROTOCOL_EVAL): 
+                # ranks.append(np.mean(rank[0])) 
+                # ranks.extend(list(rank[0])) 
                 ranks.extend(list(rank)) 
             else:
                 ranks.append(rank)
@@ -1344,7 +1328,6 @@ class EmbeddingModel(abc.ABC):
 
     def predict(self, X, from_idx=False):
         """Predict the scores of triples using a trained embedding model.
-
             The function returns raw scores generated by the model.
 
             .. note::
@@ -1377,7 +1360,7 @@ class EmbeddingModel(abc.ABC):
             msg = 'Model has not been fitted.'
             logger.error(msg)
             raise RuntimeError(msg)
-        #adapt the data with numpy adapter for internal use
+        # adapt the data with numpy adapter for internal use
         dataset_handle = NumpyDatasetAdapter()
         dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
         dataset_handle.set_data(X, "test", mapped_status=from_idx)
@@ -1386,9 +1369,9 @@ class EmbeddingModel(abc.ABC):
         
         # build tf graph for predictions
         if self.sess_predict is None:
-            #load the parameters
+            # load the parameters
             self._load_model_from_trained_params()
-            #build the eval graph
+            # build the eval graph
             self._initialize_eval_graph()
 
             sess = tf.Session()
@@ -1400,13 +1383,14 @@ class EmbeddingModel(abc.ABC):
                                                    
         for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
             score = self.sess_predict.run([self.score_positive])
-            if self.eval_config.get('default_protocol',DEFAULT_PROTOCOL_EVAL): 
+            if self.eval_config.get('default_protocol', DEFAULT_PROTOCOL_EVAL): 
                 scores.extend(list(score)) 
             else:
                 scores.append(score)
 
         return scores
     
+
 @register_model("RandomBaseline")
 class RandomBaseline(EmbeddingModel):
     """Random baseline
@@ -1514,7 +1498,6 @@ class RandomBaseline(EmbeddingModel):
 
         positive_scores = self.rnd.uniform(low=0, high=1, size=len(X)).tolist()
         return positive_scores
-    
     
     def get_ranks(self, dataset_handle):
         """ Used by evaluate_predictions to get the ranks for evaluation.
@@ -2244,7 +2227,6 @@ class ComplEx(EmbeddingModel):
         
         self.internal_k = self.k * 2
         
-
     def _initialize_parameters(self):
         """Initialize the complex embeddings.
         """
@@ -2257,7 +2239,7 @@ class ComplEx(EmbeddingModel):
             self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
                                            initializer=self.initializer)
             self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size * 2, self.internal_k],
-                                       initializer=self.initializer)
+                                           initializer=self.initializer)
 
     def _fn(self, e_s, e_p, e_o):
         r"""ComplEx scoring function.
@@ -2531,7 +2513,6 @@ class HolE(ComplEx):
                          verbose=verbose)
         self.internal_k = self.k * 2
         
-
     def _fn(self, e_s, e_p, e_o):
         """The Hole scoring function.
 
