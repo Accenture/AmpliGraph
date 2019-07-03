@@ -529,6 +529,16 @@ class EmbeddingModel(abc.ABC):
             entities_size = 0
             entities_list = None
 
+            x_pos = x_pos_tf
+            e_s_pos, e_p_pos, e_o_pos = self._lookup_embeddings(x_pos)
+            scores_pos = self._fn(e_s_pos, e_p_pos, e_o_pos)
+            
+            if self.loss.get_state('require_same_size_pos_neg'):
+                logger.debug('Requires the same size of postive and negative')
+                scores_pos = tf.reshape(tf.tile(scores_pos, [self.eta]), [tf.shape(scores_pos)[0] * self.eta])
+
+                
+            # look up embeddings from input training triples
             negative_corruption_entities = self.embedding_model_params.get('negative_corruption_entities',
                                                                            DEFAULT_CORRUPTION_ENTITIES)
 
@@ -539,7 +549,10 @@ class EmbeddingModel(abc.ABC):
                 that are selected from all entities (since a total of batch_size*2 entity embeddings are loaded in memory)
                 '''
                 logger.debug('Using all entities for generation of corruptions during training')
-                entities_size = tf.shape(self.ent_emb)[0]
+                if self.dealing_with_large_graphs:
+                    entities_list=tf.squeeze(self.unique_entities)
+                else:
+                    entities_size = tf.shape(self.ent_emb)[0]
             elif negative_corruption_entities=='batch':
                 # default is batch (entities_size=0 and entities_list=None)
                 logger.debug('Using batch entities for generation of corruptions during training')
@@ -550,15 +563,7 @@ class EmbeddingModel(abc.ABC):
                 logger.debug('Using first {} entities for generation of corruptions during training'.format(negative_corruption_entities))
                 entities_size = negative_corruption_entities
 
-            if self.loss.get_state('require_same_size_pos_neg'):
-                logger.debug('Requires the same size of postive and negative')
-                x_pos = tf.reshape(tf.tile(tf.reshape(x_pos_tf, [-1]), [self.eta]), [tf.shape(x_pos_tf)[0] * self.eta, 3])
-            else:
-                x_pos = x_pos_tf
-            # look up embeddings from input training triples
-            e_s_pos, e_p_pos, e_o_pos = self._lookup_embeddings(x_pos)
-            scores_pos = self._fn(e_s_pos, e_p_pos, e_o_pos)
-
+            
             loss = 0
 
             corruption_sides = self.embedding_model_params.get('corrupt_sides', DEFAULT_CORRUPT_SIDE_TRAIN)
@@ -573,10 +578,12 @@ class EmbeddingModel(abc.ABC):
                                                         corrupt_side=side, 
                                                         entities_size=entities_size, 
                                                         rnd=self.seed)
+                
+                    
                 #compute corruption scores
                 e_s_neg, e_p_neg, e_o_neg = self._lookup_embeddings(x_neg_tf)
                 scores_neg = self._fn(e_s_neg, e_p_neg, e_o_neg)
-                
+
                 #Apply the loss function
                 loss += self.loss.apply(scores_pos, scores_neg)
 
@@ -772,8 +779,8 @@ class EmbeddingModel(abc.ABC):
                 entity_embeddings = np.concatenate((self.ent_emb_cpu[unique_entities,:], 
                                                     large_number), axis=0)
                 '''
-                entity_embeddings = np.concatenate((self.ent_emb_cpu[unique_entities,:], 
-                                                    self.ent_emb_cpu[self.leftover_entities[:needed],:]), axis=0)
+                unique_entities = np.int32(np.concatenate([unique_entities, self.leftover_entities[:needed]], axis=0))
+                entity_embeddings = self.ent_emb_cpu[unique_entities,:]
                 
                 unique_entities = unique_entities.reshape(-1,1)
 
