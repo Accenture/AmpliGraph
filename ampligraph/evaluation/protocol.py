@@ -7,7 +7,7 @@
 #
 
 from collections.abc import Iterable
-from itertools import product, islice
+from itertools import product
 import logging
 
 import numpy as np
