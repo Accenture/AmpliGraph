@@ -1,6 +1,4 @@
-#Make sure gcc is installed
-source /etc/profile 
-gcc --version
+#Make sure gcc is installed 
 conda --version
 pip --version
 # Cleanup old env (if any)
@@ -11,10 +9,23 @@ conda create --name ampligraph python=3.6
 source activate ampligraph
 
 # Install library
-pip install .[cpu] -v
+if [[ $# -eq 0 ]] ; then
+    echo "install tensorflow CPU mode"
+    pip install tensorflow==1.13.1
+else 
+    if [[ $1 == "gpu" ]] ; then
+        echo "install tensorflow GPU mode"
+        conda install tensorflow-gpu==1.13.1
+    fi
+fi
+
+pip install . -v
 
 # configure dataset location
 export AMPLIGRAPH_DATA_HOME=/var/datasets
+
+# run flake8 linter
+flake8 ampligraph --max-line-length 120 --ignore=W291,W293 # ignoring some white space related errors
 
 # run unit tests
 pytest tests
@@ -22,9 +33,6 @@ pytest tests
 # build documentation
 cd docs
 make clean autogen html
-
-# mode docs to dubaldeweb001 web server
-scp -r _build/html/* jenkinsuser@dubaldeweb001.techlabs.accenture.com:/var/www/html/docs/ampligraph/dev
 
 # cleanup: remove conda env
 source deactivate

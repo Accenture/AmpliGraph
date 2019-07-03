@@ -18,11 +18,7 @@ AbsoluteMarginLoss
    .. autosummary::
    
       ~AbsoluteMarginLoss.__init__
-      ~AbsoluteMarginLoss._init_hyperparams
-      ~AbsoluteMarginLoss._apply
    
    .. automethod:: AbsoluteMarginLoss.__init__
-   .. automethod:: AbsoluteMarginLoss._init_hyperparams
-   .. automethod:: AbsoluteMarginLoss._apply
    
    

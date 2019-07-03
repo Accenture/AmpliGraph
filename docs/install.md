@@ -17,26 +17,27 @@ source activate ampligraph
 
 #### Install TensorFlow
 
+AmpliGraph is built on TensorFlow 1.x.
 Install from pip or conda:
 
 **CPU-only**
 
 ```
-pip install tensorflow
+pip install tensorflow==1.13.1
 
 or 
 
-conda install tensorflow
+conda install tensorflow=1.13.1
 ```
 
 **GPU support**
 
 ```
-pip install tensorflow-gpu
+pip install tensorflow-gpu==1.13.1
 
 or 
 
-conda install tensorflow-gpu
+conda install tensorflow-gpu=1.13.1
 ```
 
 
@@ -49,34 +50,21 @@ Install the latest stable release from pip:
 pip install ampligraph
 ```
 
+
 If instead you want the most recent development version, you can clone the repository
-and install from source (your local working copy will be on the latest commit on the `develop` branch).
-The code snippet below will install the library in editable mode (`-e`):
+and install from source as: See the [How to Contribute guide](dev.md) for details.
 
 ```
 git clone https://github.com/Accenture/AmpliGraph.git
+git checkout develop
 cd AmpliGraph
 pip install -e .
 ```
-
-
-## Download the Datasets
-
-Datasets can be downloaded from [Google Drive](https://drive.google.com/drive/folders/16GBu89NCVyyYetry91tMntzpV_mSQ-gK?usp=sharing).
-
-Once downloaded, decompress the archives.
-
-**You must also set the following environment variable:**
-
-```
-export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
-```
-
 
 ## Sanity Check
 
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'1.0-dev'
+'1.0.3'
 ```

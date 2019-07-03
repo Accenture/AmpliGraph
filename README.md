@@ -1,5 +1,10 @@
 # AmpliGraph
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2595043.svg)](https://doi.org/10.5281/zenodo.2595043)
+
+[![Documentation Status](https://readthedocs.org/projects/ampligraph/badge/?version=latest)](http://ampligraph.readthedocs.io/?badge=latest)
+
+
 **Open source Python library that predicts links between concepts in a knowledge graph.**
 
 AmpliGraph is a suite of neural machine learning models for relational Learning, a branch of machine learning
@@ -31,20 +36,19 @@ It then combines embeddings with model-specific scoring functions to predict uns
 * **Extensible**: Roll your own knowledge graph embeddings model by extending AmpliGraph base estimators.
 
 
-## System Architecture
-
+## Modules
 
 AmpliGraph includes the following submodules:
 
 * **KG Loaders**: Helper functions to load datasets (knowledge graphs).
-* **Latent Feature Models**: knowledge graph embedding models. AmpliGraph contains: TransE, DistMult, ComplEx, ConvE, and RotatE.
+* **Latent Feature Models**: knowledge graph embedding models. AmpliGraph contains: TransE, DistMult, ComplEx, HolE. (More to come!)
 * **Evaluation**: Metrics and evaluation protocols to assess the predictive power of the models.
 
 
 
-# Installation
+## Installation
 
-## Prerequisites
+### Prerequisites
 
 * Linux Box
 * Python ≥ 3.6
@@ -60,30 +64,32 @@ source activate ampligraph
 
 #### Install TensorFlow
 
+AmpliGraph is built on TensorFlow 1.x.
 Install from pip or conda:
 
 **CPU-only**
 
 ```
-pip install tensorflow
+pip install tensorflow==1.13.1
 
-or 
+or
 
-conda install tensorflow
+conda install tensorflow=1.13.1
 ```
 
 **GPU support**
 
 ```
-pip install tensorflow-gpu
+pip install tensorflow-gpu==1.13.1
 
-or 
+or
 
-conda install tensorflow-gpu
+conda install tensorflow-gpu=1.13.1
 ```
 
 
-## Install AmpliGraph
+
+### Install AmpliGraph
 
 
 Install the latest stable release from pip:
@@ -103,53 +109,65 @@ pip install -e .
 ```
 
 
-## Download the Datasets
-
-Datasets can be downloaded from [Google Drive](https://drive.google.com/drive/folders/16GBu89NCVyyYetry91tMntzpV_mSQ-gK?usp=sharing).
-
-Once downloaded, decompress the archives.
-
-**You must also set the following environment variable:**
-
-```
-export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
-```
-
-
-## Sanity Check
+### Sanity Check
 
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'1.0-dev'
+'1.0.3'
 ```
 
 
 ## Predictive Power Evaluation (MRR Filtered)
 
-|          |FB15k |WN18   |WN18RR |FB15K-237|
-|----------|------|-------|-------|---------|
-| TransE   | 0.55 | 0.50  | 0.23  | 0.32    |
-| DistMult | 0.79 | 0.83  | 0.44  | 0.29    |
-| ComplEx  | 0.79 | 0.94  | 0.44  | 0.30    |
-| HolE     | 0.80 | 0.94  | 0.47  | 0.20    |
-
-##  Documentation
-
-**[Latest documentation available here](http://10.106.43.211/docs/ampligraph/dev/index.html)**
+|          |FB15k     |WN18       |WN18RR     |FB15K-237    |YAGO3-10     |
+|----------|----------|-----------|-----------|-------------|-------------|
+| TransE   | 0.55     | 0.50      | 0.23      | 0.31        | 0.24        |
+| DistMult | 0.79     | 0.83      | 0.44      | 0.29        | 0.49        |
+| ComplEx  | 0.79     | **0.94**  | **0.50**  | **0.33**    | **0.50**    |
+| HolE     | **0.80** | **0.94**  | 0.47      | 0.28        | **0.50**    |
 
 
-The project documentation can be built with Sphinx:
+## Documentation
+
+**[Documentation available here](http://docs.ampligraph.org)**
+
+The project documentation can be built from your local working copy with:
 
 ```
 cd docs
 make clean autogen html
 ```
 
-## Tests
+## How to contribute
 
+See [guidelines](http://docs.ampligraph.org) from AmpliGraph documentation.
+
+
+## How to Cite
+
+If you like AmpliGraph and you use it in your project, why not starring the project on GitHub!
+
+[![GitHub stars](https://img.shields.io/github/stars/Accenture/AmpliGraph.svg?style=social&label=Star&maxAge=3600)](https://GitHub.com/Accenture/AmpliGraph/stargazers/)
+
+
+If you instead use AmpliGraph in an academic publication, cite as:
 
 ```
-pytest -s tests
+@misc{ampligraph,
+ author= {Luca Costabello and
+          Sumit Pai and
+          Chan Le Van and
+          Rory McGrath and
+          Nicholas McCarthy},
+ title = {{AmpliGraph: a Library for Representation Learning on Knowledge Graphs}},
+ month = mar,
+ year  = 2019,
+ doi   = {10.5281/zenodo.2595043},
+ url   = {https://doi.org/10.5281/zenodo.2595043}
+}
 ```
 
+## License
+
+AmpliGraph is licensed under the Apache 2.0 License.

@@ -10,3 +10,4 @@ AmpliGraph includes the following submodules:
     ampligraph.datasets
     ampligraph.latent_features
     ampligraph.evaluation
+    ampligraph.utils
