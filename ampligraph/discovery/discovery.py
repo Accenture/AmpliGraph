@@ -351,25 +351,69 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None,
 
     Examples
     --------
+    >>> import requests
+    >>> import pandas as pd
     >>> import numpy as np
+    >>> from sklearn.manifold import TSNE
     >>> from sklearn.cluster import DBSCAN
-    >>> from ampligraph.discovery find_clusters
-    >>> from from ampligraph.latent_features.models import ComplEx
+    >>> import matplotlib.pyplot as plt
+    >>> import seaborn as sns
     >>>
-    >>> X = np.array([['a', 'y', 'b'],
-    >>>               ['b', 'y', 'a'],
-    >>>               ['a', 'y', 'c'],
-    >>>               ['c', 'y', 'a'],
-    >>>               ['a', 'y', 'd'],
-    >>>               ['c', 'y', 'd'],
-    >>>               ['b', 'y', 'c'],
-    >>>               ['f', 'y', 'e']])
+    >>> # adjustText lib: https://github.com/Phlya/adjustText
+    >>> from adjustText import adjust_text
     >>>
-    >>> model = ComplEx(k=2, batches_count=2)
+    >>> from ampligraph.datasets import load_from_csv
+    >>> from ampligraph.latent_features import ComplEx
+    >>> from ampligraph.discovery import find_clusters
+    >>>
+    >>> # Game of Thrones relations dataset
+    >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
+    >>> open('GoT.csv', 'wb').write(requests.get(url).content)
+    >>> X = load_from_csv('.', 'GoT.csv', sep=',')
+    >>>
+    >>> model = ComplEx(batches_count=10,
+    >>>                 seed=0,
+    >>>                 epochs=200,
+    >>>                 k=150,
+    >>>                 eta=5,
+    >>>                 optimizer='adam',
+    >>>                 optimizer_params={'lr':1e-3},
+    >>>                 loss='multiclass_nll',
+    >>>                 regularizer='LP',
+    >>>                 regularizer_params={'p':3, 'lambda':1e-5},
+    >>>                 verbose=True)
     >>> model.fit(X)
-    >>> clustering_algorithm = DBSCAN(min_samples=1)
-    >>> labels = find_clusters(X, model=model, clustering_algorithm=clustering_algorithm)
-    array([0, 1, 2, 3, 4, 5, 6, 7])
+    >>>
+    >>> # Find clusters of embeddings using DBSCAN
+    >>> clusters = find_clusters(X, model, clustering_algorithm=DBSCAN(eps=10))
+    >>>
+    >>> # Get embeddings
+    >>> s = model.get_embeddings(X[:, 0], embedding_type='entity')
+    >>> p = model.get_embeddings(X[:, 1], embedding_type='relation')
+    >>> o = model.get_embeddings(X[:, 2], embedding_type='entity')
+    >>>
+    >>> # Project embeddings into 2D space usint t-SNE
+    >>> embeddings_2d = TSNE(n_components=2).fit_transform(np.hstack((s, p, o)))
+    >>>
+    >>> # Plot results
+    >>> df = pd.DataFrame({"s": X[:, 0], "p": X[:, 1], "o": X[:, 2],
+    >>>                    "embedding1": embeddings_2d[:, 0], "embedding2": embeddings_2d[:, 1], "clusters": clusters})
+    >>>
+    >>> plt.figure(figsize=(15, 15))
+    >>> plt.title("Clustered embeddings")
+    >>>
+    >>> ax = sns.scatterplot(data=df.assign(clusters=df.clusters.apply(str)+'_'),
+    >>>                      x="embedding1", y="embedding2", hue="clusters")
+    >>>
+    >>> texts = []
+    >>>
+    >>> for i, point in df.iterrows():
+    >>>     if np.random.uniform() < 0.02:
+    >>>         texts.append(plt.text(point['embedding1']+.02, point['embedding2'], str(point['p'])))
+    >>>
+    >>> adjust_text(texts)
+
+    .. image:: ../../docs/img/clustering/clustered_embeddings_docstring.png
 
     """
 

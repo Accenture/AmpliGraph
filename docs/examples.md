@@ -265,3 +265,73 @@ X_test:  [['a' 'y' 'c']
 '''
 
 ```
+
+## Clustering and projectings embeddings into 2D space
+Please install lib adjustText first with `pip install adjustText`.
+```python
+import requests
+import numpy as np
+import pandas as pd
+from sklearn.manifold import TSNE
+from sklearn.cluster import DBSCAN
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# adjustText lib: https://github.com/Phlya/adjustText
+from adjustText import adjust_text
+
+from ampligraph.datasets import load_from_csv
+from ampligraph.latent_features import ComplEx
+from ampligraph.discovery import find_clusters
+
+# Game of Thrones relations dataset
+url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
+open('GoT.csv', 'wb').write(requests.get(url).content)
+X = load_from_csv('.', 'GoT.csv', sep=',')
+
+model = ComplEx(batches_count=10,
+                seed=0,
+                epochs=200,
+                k=150,
+                eta=5,
+                optimizer='adam',
+                optimizer_params={'lr':1e-3},
+                loss='multiclass_nll',
+                regularizer='LP',
+                regularizer_params={'p':3, 'lambda':1e-5},
+                verbose=True)
+model.fit(X)
+
+# Find clusters of embeddings using DBSCAN
+clusters = find_clusters(X, model, clustering_algorithm=DBSCAN(eps=10))
+
+# Get embeddings
+s = model.get_embeddings(X[:, 0], embedding_type='entity')
+p = model.get_embeddings(X[:, 1], embedding_type='relation')
+o = model.get_embeddings(X[:, 2], embedding_type='entity')
+
+# Project embeddings into 2D space usint t-SNE
+embeddings_2d = TSNE(n_components=2).fit_transform(np.hstack((s, p, o)))
+
+# Plot results
+df = pd.DataFrame({"subject": X[:, 0], "predicate": X[:, 1], "object": X[:, 2],
+                   "embedding1": embeddings_2d[:, 0], "embedding2": embeddings_2d[:, 1], "clusters": clusters})
+
+def plot_clusters(label):
+    plt.figure(figsize=(15, 15))
+    plt.title("Clustered {} embeddings".format(label))
+    ax = sns.scatterplot(data=df.assign(clusters=df.clusters.apply(str)+'_'),
+                         x="embedding1", y="embedding2", hue="clusters")
+    texts = []
+    for i, point in df.iterrows():
+        if np.random.uniform() < 0.02:
+            texts.append(plt.text(point['embedding1']+.02, point['embedding2'], str(point[label])))
+    adjust_text(texts)
+
+plot_clusters(label="subject")
+plot_clusters(label="predicate")
+plot_clusters(label="object")
+```
+![](img/clustering/clustering_subject.png "Clustering subjects")
+![](img/clustering/clustering_predicate.png "Clustering predicates")
+![](img/clustering/clustering_object.png "Clustering objects")
