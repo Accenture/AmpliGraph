@@ -406,7 +406,7 @@ class SGDOptimizer(Optimizer):
         
         #fixed rate decay
         elif self.decay_cycle_rate>0:
-            if epoch_num%self.next_cycle_epoch == 0 and batch_num==1:
+            if epoch_num%(self.next_cycle_epoch+1) == 0 and batch_num==1:
                 if self.current_lr > self.end_lr:
                     self.next_cycle_epoch = self.decay_cycle_rate + self.next_cycle_epoch * self.decay_cycle_expand_factor
                     self.current_lr = self.current_lr / self.decay_lr_rate
@@ -419,4 +419,6 @@ class SGDOptimizer(Optimizer):
             pass
                 
         feed_dict.update({self.lr_placeholder : self.current_lr})
+        
+
         

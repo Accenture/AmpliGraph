@@ -855,7 +855,7 @@ class EmbeddingModel(abc.ABC):
                 #    learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
             
             #CPU matrix of embeddings
-            self.ent_emb_cpu = np.random.normal(0, 0.1, size=(len(self.ent_to_idx), self.internal_k))
+            self.ent_emb_cpu = np.random.normal(0, 0.05, size=(len(self.ent_to_idx), self.internal_k))
                         
             if early_stopping:
                 logger.warning("Early stopping may introduce memory issues when many distinct entities are present."
