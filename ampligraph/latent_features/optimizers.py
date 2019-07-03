@@ -9,6 +9,7 @@ logger.setLevel(logging.DEBUG)
 
 OPTIMIZER_REGISTRY = {}
 
+
 def register_optimizer(name, external_params=[], class_params={}):
     def insert_in_registry(class_handle):
         OPTIMIZER_REGISTRY[name] = class_handle
@@ -18,6 +19,7 @@ def register_optimizer(name, external_params=[], class_params={}):
         return class_handle
 
     return insert_in_registry
+
 
 # Default learning rate for the optimizers
 DEFAULT_LR = 0.0005
@@ -79,7 +81,6 @@ class Optimizer(abc.ABC):
             for key, value in self._optimizer_params.items():
                 logger.info('{} : {}'.format(key, value))
 
-
     def minimize(self, loss):
         """Create an optimizer to minimize the model loss 
         
@@ -94,8 +95,7 @@ class Optimizer(abc.ABC):
             Node that needs to be evaluated for minimizing the loss during training
         """
         raise NotImplementedError('Abstract Method not implemented!')
-        
-        
+
     def update_feed_dict(self, feed_dict, batch_num, epoch_num):
         """Fills values of placeholders created by the optimizers.
         
@@ -110,7 +110,7 @@ class Optimizer(abc.ABC):
         """
         raise NotImplementedError('Abstract Method not implemented!')
     
-
+    
 @register_optimizer("adagrad", ['lr'])
 class AdagradOptimizer(Optimizer):
     """Wrapper around adagrad optimizer
@@ -131,7 +131,6 @@ class AdagradOptimizer(Optimizer):
         
         super(AdagradOptimizer, self).__init__(optimizer, hyperparam_dict, batches_count, verbose)
 
-
     def minimize(self, loss):
         """Create an optimizer to minimize the model loss 
         
@@ -148,8 +147,7 @@ class AdagradOptimizer(Optimizer):
         self.optimizer = tf.train.AdagradOptimizer(learning_rate=self._optimizer_params['lr'])
         train = self.optimizer.minimize(loss)
         return train
-        
-        
+            
     def update_feed_dict(self, feed_dict, batch_num, epoch_num):
         """Fills values of placeholders created by the optimizers.
         
@@ -163,6 +161,7 @@ class AdagradOptimizer(Optimizer):
             current epoch number
         """
         return
+    
     
 @register_optimizer("adam", ['lr'])    
 class AdamOptimizer(Optimizer):
@@ -183,8 +182,7 @@ class AdamOptimizer(Optimizer):
         """
         
         super(AdamOptimizer, self).__init__(optimizer, hyperparam_dict, batches_count, verbose)
-
-
+        
     def minimize(self, loss):
         """Create an optimizer to minimize the model loss 
         
@@ -203,7 +201,6 @@ class AdamOptimizer(Optimizer):
         train = self.optimizer.minimize(loss)
         return train
         
-        
     def update_feed_dict(self, feed_dict, batch_num, epoch_num):
         """Fills values of placeholders created by the optimizers.
         
@@ -218,6 +215,7 @@ class AdamOptimizer(Optimizer):
         """
         return
 
+    
 @register_optimizer("momentum", ['lr', 'momentum'])  
 class MomentumOptimizer(Optimizer):
     """Abstract class for loss function.
@@ -238,7 +236,6 @@ class MomentumOptimizer(Optimizer):
         
         super(MomentumOptimizer, self).__init__(optimizer, hyperparam_dict, batches_count, verbose)
         
-
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.
         
@@ -256,8 +253,7 @@ class MomentumOptimizer(Optimizer):
             logger.info('Name : {}'.format(self.name))
             for key, value in self._optimizer_params.items():
                 logger.info('{} : {}'.format(key, value))
-                
-                
+        
     def minimize(self, loss):
         """Create an optimizer to minimize the model loss 
         
@@ -277,7 +273,6 @@ class MomentumOptimizer(Optimizer):
         train = self.optimizer.minimize(loss)
         return train
         
-        
     def update_feed_dict(self, feed_dict, batch_num, epoch_num):
         """Fills values of placeholders created by the optimizers.
         
@@ -291,8 +286,8 @@ class MomentumOptimizer(Optimizer):
             current epoch number
         """
         return
-    
-
+        
+        
 @register_optimizer("sgd", ['lr', 'decay_cycle', 'end_lr', 'sine_decay', 'expand_factor', 'decay_lr_rate'])          
 class SGDOptimizer(Optimizer):
 
@@ -344,36 +339,35 @@ class SGDOptimizer(Optimizer):
             Node that needs to be evaluated for minimizing the loss during training
         """
         
-        #create a placeholder for learning rate
+        # create a placeholder for learning rate
         self.lr_placeholder = tf.placeholder(tf.float32)
-        #create the optimizer with the placeholder
+        # create the optimizer with the placeholder
         self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.lr_placeholder)
         
-        #load the hyperparameters that would be used while generating the learning rate per batch
-        #start learning rate
+        # load the hyperparameters that would be used while generating the learning rate per batch
+        # start learning rate
         self.start_lr = self._optimizer_params['lr']
         self.current_lr = self.start_lr
         
-        #cycle rate for learning rate decay
+        # cycle rate for learning rate decay
         self.decay_cycle_rate = self._optimizer_params['decay_cycle']
         self.end_lr = self._optimizer_params['end_lr']
         
-        #check if it is a sinudoidal decay or constant decay
+        # check if it is a sinudoidal decay or constant decay
         self.is_sine_decay = self._optimizer_params['sine_decay']
         self.next_cycle_epoch = self.decay_cycle_rate
         
-        #Get the cycle expand factor
+        # Get the cycle expand factor
         self.decay_cycle_expand_factor = self._optimizer_params['expand_factor']
         
-        #Get the LR decay factor at the start of each cycle
+        # Get the LR decay factor at the start of each cycle
         self.decay_lr_rate = self._optimizer_params['decay_lr_rate']
         self.curr_cycle_length = self.decay_cycle_rate
         self.curr_start = 0
         
-        #create the operation that minimizes the loss
+        # create the operation that minimizes the loss
         train = self.optimizer.minimize(loss)
         return train
-        
         
     def update_feed_dict(self, feed_dict, batch_num, epoch_num):
         """Fills values of placeholders created by the optimizers.
@@ -387,38 +381,36 @@ class SGDOptimizer(Optimizer):
         epoch_num: int
             current epoch number
         """
-        #Sinusoidal Decay
+        # Sinusoidal Decay
         if self.is_sine_decay:
-            #compute the cycle number
-            current_cycle_num = ((epoch_num-1 - self.curr_start)  + 
-                         (batch_num) / (1.0 * self.batches_count))/self.curr_cycle_length
+            # compute the cycle number
+            current_cycle_num = ((epoch_num - 1 - self.curr_start)  + 
+                         (batch_num) / (1.0 * self.batches_count)) / self.curr_cycle_length
             
-            #compute a learning rate for the current batch/epoch
+            # compute a learning rate for the current batch/epoch
             self.current_lr = self.end_lr + (self.start_lr - self.end_lr) * \
-                                0.5 *(1 + math.cos(math.pi * current_cycle_num))
+                                0.5 * (1 + math.cos(math.pi * current_cycle_num))
 
-            #Start the next cycle and Expand the cycle/Decay the learning rate
-            if epoch_num % self.next_cycle_epoch==0 and batch_num==self.batches_count:
+            # Start the next cycle and Expand the cycle/Decay the learning rate
+            if epoch_num % self.next_cycle_epoch == 0 and batch_num == self.batches_count:
                 self.curr_cycle_length = self.curr_cycle_length * self.decay_cycle_expand_factor
                 self.next_cycle_epoch = self.next_cycle_epoch + self.curr_cycle_length
                 self.curr_start = epoch_num
                 self.start_lr = self.start_lr / self.decay_lr_rate 
         
-        #fixed rate decay
-        elif self.decay_cycle_rate>0:
-            if epoch_num%(self.next_cycle_epoch+1) == 0 and batch_num==1:
+        # fixed rate decay
+        elif self.decay_cycle_rate > 0:
+            if epoch_num % (self.next_cycle_epoch + 1) == 0 and batch_num == 1:
                 if self.current_lr > self.end_lr:
-                    self.next_cycle_epoch = self.decay_cycle_rate + self.next_cycle_epoch * self.decay_cycle_expand_factor
+                    self.next_cycle_epoch = self.decay_cycle_rate + \
+                        self.next_cycle_epoch * self.decay_cycle_expand_factor
                     self.current_lr = self.current_lr / self.decay_lr_rate
                     
                     if self.current_lr < self.end_lr:
                         self.current_lr = self.end_lr
                         
-        #no change to the learning rate                 
+        # no change to the learning rate                 
         else:
             pass
-                
-        feed_dict.update({self.lr_placeholder : self.current_lr})
         
-
-        
+        feed_dict.update({self.lr_placeholder: self.current_lr})
