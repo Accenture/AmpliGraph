@@ -821,8 +821,8 @@ def scalars_into_lists(param_grid):
 
 def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid, max_combinations=None,
                               param_grid_random_seed=0, use_filter=False, early_stopping=False, 
-                              early_stopping_params=None, use_test_for_selection=True, rank_against_ent=None,
-                              corrupt_side='s+o', use_default_protocol=False, verbose=False):
+                              early_stopping_params=None, use_test_for_selection=False, rank_against_ent=None,
+                              corrupt_side='s+o', use_default_protocol=True, verbose=False):
     """Model selection routine for embedding models via either grid search or random search.
     
     For grid search, pass a fixed ``param_grid`` and leave ``max_combinations`` as `None`
@@ -919,7 +919,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
             * stop_interval: Stop if criteria is performing worse over n consecutive checks (default: 3)
 
     use_test_for_selection:bool
-        Use test set for model selection. If False, uses validation set (default: True).
+        Use test set for model selection. If False, uses validation set (default: False).
     rank_against_ent: array-like
         List of entities to use for corruptions. If None, will generate corruptions
         using all distinct entities (default: None).
@@ -929,7 +929,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         ``o`` is to corrupt only object.
         ``s+o`` is to corrupt both subject and object.
     use_default_protocol: bool
-        Flag to indicate whether to evaluate head and tail corruptions separately(default:False).
+        Flag to indicate whether to evaluate head and tail corruptions separately(default:True).
         If this is set to true, it will ignore corrupt_side argument and corrupt both head
         and tail separately and rank triples.
     verbose : bool
