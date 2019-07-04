@@ -1045,7 +1045,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     if best_model is not None:
         # Retraining
         best_model.fit(np.concatenate((X_train, X_valid)), early_stopping, early_stopping_params)
-        
+
         ranks_test = evaluate_performance(X_test, model=best_model,
                                           filter_triples=X_filter, verbose=verbose,
                                           rank_against_ent=rank_against_ent,
