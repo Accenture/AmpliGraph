@@ -69,11 +69,10 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         cur.execute("CREATE INDEX triples_table_type_idx ON triples_table (dataset_type);")
         
         cur.execute("CREATE TABLE integrity_check (validity integer primary key);")
-
-        conn.commit()
         
         cur.execute('INSERT INTO integrity_check VALUES (0)')
         conn.commit()
+        cur.close()
         conn.close()
     
     def generate_mappings(self, use_all=False, regenerate=False):
@@ -120,7 +119,7 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
             conn.commit()
         except sqlite3.Error:
             conn.rollback()
-            
+        cur.close()    
         conn.close()
     
     def use_mappings(self, rel_to_idx, ent_to_idx):
@@ -155,6 +154,7 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         cur1 = conn.cursor()
         cur1.execute(select_query.format(dataset_type))
         out = cur1.fetchall()
+        cur1.close()
         return out[0][0]
     
     def get_next_train_batch(self, batch_size, dataset_type="train"):
@@ -263,6 +263,7 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
             cur = conn.cursor()
             cur.executemany('INSERT INTO triples_table VALUES (?,?,?,?)', pg_triple_values)
             conn.commit()
+            cur.close()
             
         conn.close()
     
@@ -340,7 +341,7 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
                         END
                         ;
                     ''')
-            
+        cur.close()
         conn.close()
 
     def _validate_data(self, data):
@@ -434,6 +435,7 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         cur2 = conn.cursor()
         cur_integrity = conn.cursor()
         cur_integrity.execute("SELECT * FROM integrity_check")
+            
         if cur_integrity.fetchone()[0] == 0:
             raise Exception('Data integrity is corrupted. The tables have been modified.')
 
@@ -454,7 +456,9 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         if ent_participating_as_subjects.ndim>=1:
             ent_participating_as_subjects = np.squeeze(ent_participating_as_subjects)
         '''
-        
+        cur1.close()
+        cur2.close()
+        cur_integrity.close()
         conn.close()
         
         return ent_participating_as_objects, ent_participating_as_subjects
@@ -484,8 +488,7 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         cur.execute("drop index IF EXISTS triples_table_type_idx")
         cur.execute("drop table IF EXISTS triples_table")
         cur.execute("drop table IF EXISTS entity_table")
-        conn.commit()
-        conn.execute("VACUUM")
+        cur.close()
         conn.close()
         try:
             os.remove(self.dbname)

@@ -271,13 +271,11 @@ class EmbeddingModel(abc.ABC):
 
         self.optimizer_params = optimizer_params
 
-        if verbose:
-            logger.info('\n------- Optimizer ------')
-            logger.info('Name : {}'.format(optimizer))
-            logger.info('Learning rate : {}'.format(self.optimizer_params.get('lr', DEFAULT_LR)))
-
         try:
-            self.optimizer = OPTIMIZER_REGISTRY[optimizer](optimizer, self.optimizer_params, self.batches_count)
+            self.optimizer = OPTIMIZER_REGISTRY[optimizer](optimizer, 
+                                                           self.optimizer_params, 
+                                                           self.batches_count, 
+                                                           verbose)
         except KeyError:
             msg = 'Unsupported optimizer: {}'.format(optimizer)
             logger.error(msg)
