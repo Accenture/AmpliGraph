@@ -211,7 +211,7 @@ def test_generate_corruptions_for_eval():
     with tf.Session() as sess:
         all_ent = tf.constant(list(ent_to_idx.values()), dtype=tf.int64)
         x = tf.constant(np.array([X[0]]), dtype=tf.int64)
-        x_n_actual, _ = sess.run(generate_corruptions_for_eval(x, all_ent))
+        x_n_actual = sess.run(generate_corruptions_for_eval(x, all_ent))
         x_n_expected = np.array([[0, 0, 0],
                                  [0, 0, 1],
                                  [0, 0, 2],
