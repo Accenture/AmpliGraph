@@ -5,13 +5,17 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
+
+from collections.abc import Iterable
+from itertools import product
+import logging
+
 import numpy as np
 from tqdm import tqdm
+import tensorflow as tf
 
 from ..evaluation import mrr_score, hits_at_n_score, mr_score
-import itertools
-import tensorflow as tf
-import logging
+from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -174,40 +178,11 @@ def create_mappings(X):
     return _create_unique_mappings(unique_ent, unique_rel)
 
 
-def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o', table_entity_lookup_left=None,
-                                  table_entity_lookup_right=None, table_reln_lookup=None):
+def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'):
     """Generate corruptions for evaluation.
 
-    Create corruptions (subject and object) for a given triple x, in compliance with the
-    local closed world assumption (LCWA), as described in :cite:`nickel2016review`.
-
-    .. note::
-        For filtering the corruptions, we adopt a hashing-based strategy to handle the set difference problem.
-        This strategy is as described below:
-
-        * We compute unique entities and relations in our dataset.
-
-        * We assign unique prime numbers for entities (unique for subject and object separately) and for relations
-          and create three separate hash tables. (these hash maps are input to this function)
-
-        * For each triple in filter_triples, we get the prime numbers associated with subject, relation
-          and object by mapping to their respective hash tables. We then compute the **prime product for the
-          filter triple**. We store this triple product.
-
-        * Since the numbers assigned to subjects, relations and objects are unique, their prime product is also
-          unique. i.e. a triple :math:`(a, b, c)` would have a different product compared to triple
-          :math:`(c, b, a)` as :math:`a, c` of subject have different primes compared to :math:`a, c` of object.
-
-        * While generating corruptions for evaluation, we hash the triple's entities and relations and get
-          the associated prime number and compute the **prime product for the corrupted triple**.
-
-        * If this product is present in the products stored for the filter set, then we remove the corresponding
-          corrupted triple (as it is a duplicate i.e. the corruption triple is present in filter_triples)
-
-        * Using this approach we generate filtered corruptions for evaluation.
-
-        **Execution Time:** This method takes ~20 minutes on FB15K using ComplEx
-        (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
+        Create corruptions (subject and object) for a given triple x, in compliance with the
+        local closed world assumption (LCWA), as described in :cite:`nickel2016review`.
 
     Parameters
     ----------
@@ -221,23 +196,12 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
         - 's': corrupt only subject.
         - 'o': corrupt only object
         - 's+o': corrupt both subject and object
-    table_entity_lookup_left : tf.HashTable
-        Hash table of subject entities mapped to unique prime numbers.
-    table_entity_lookup_right : tf.HashTable
-        Hash table of object entities mapped to unique prime numbers.
-    table_reln_lookup : tf.HashTable
-        Hash table of relations mapped to unique prime numbers.
 
     Returns
     -------
-
     out : Tensor, shape [n, 3]
-        An array of corruptions for the triples for X.
+        An array of corruptions for the triples for x.
         
-    out_prime : Tensor, shape [n, 3]
-        An array of product of prime numbers associated with corruption triples or None 
-        based on filtered or non filtered version.
-
     """
 
     logger.debug('Generating corruptions for evaluation.')
@@ -287,32 +251,8 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
         stacked_out = tf.stack([rep_ent, repeated_relns, repeated_objs], 1)
 
     out = tf.reshape(tf.transpose(stacked_out, [0, 2, 1]), (-1, 3))
-    out_prime = tf.constant([])
 
-    logger.debug('Creating prime numbers associated with corruptions.')
-    if table_entity_lookup_left is not None and table_entity_lookup_right is not None and table_reln_lookup is not None:
-
-        if corrupt_side in ['s+o', 'o']:
-            prime_subj = tf.squeeze(table_entity_lookup_left.lookup(repeated_subjs))
-            prime_ent_right = tf.squeeze(table_entity_lookup_right.lookup(rep_ent))
-
-        if corrupt_side in ['s+o', 's']:
-            prime_obj = tf.squeeze(table_entity_lookup_right.lookup(repeated_objs))
-            prime_ent_left = tf.squeeze(table_entity_lookup_left.lookup(rep_ent))
-
-        prime_reln = tf.squeeze(table_reln_lookup.lookup(repeated_relns))
-
-        if corrupt_side == 's+o':
-            out_prime = tf.concat([prime_subj * prime_reln * prime_ent_right,
-                                   prime_ent_left * prime_reln * prime_obj], 0)
-
-        elif corrupt_side == 'o':
-            out_prime = prime_subj * prime_reln * prime_ent_right
-        else:
-            out_prime = prime_ent_left * prime_reln * prime_obj
-
-    logger.debug('Returning corruptions for evaluation.')
-    return out, out_prime
+    return out
 
 
 def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o', entities_size=0, rnd=None):
@@ -591,15 +531,24 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     """
 
     logger.debug('Evaluating the performance of the embedding model.')
-    X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
-
-    X_test = to_idx(X_test, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
-
+    if isinstance(X, np.ndarray):
+        
+        X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
+        
+        dataset_handle = NumpyDatasetAdapter()
+        dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
+        dataset_handle.set_data(X_test, "test")
+        
+    elif isinstance(X, AmpligraphDatasetAdapter):     
+        dataset_handle = X
+     
     if filter_triples is not None:
-        logger.debug('Getting filtered triples.')
-        filter_triples = to_idx(filter_triples, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
-
-    eval_dict = {'default_protocol': False}
+        if isinstance(filter_triples, np.ndarray):
+            logger.debug('Getting filtered triples.')
+            dataset_handle.set_filter(filter_triples)
+        
+    eval_dict = {}
+    eval_dict['default_protocol'] = False
 
     if use_default_protocol:
         corrupt_side = 's+o'
@@ -613,18 +562,15 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
     logger.debug('Evaluating the test set by corrupting side : {}'.format(corrupt_side))
     eval_dict['corrupt_side'] = corrupt_side
+    
     if filter_triples is not None:
-        model.set_filter_for_eval(filter_triples)
+        model.set_filter_for_eval()
+        
     logger.debug('Configuring evaluation protocol.')
     model.configure_evaluation_protocol(eval_dict)
     logger.debug('Making predictions.')
-    for i in tqdm(range(X_test.shape[0]), disable=(not verbose)):
-        _, rank = model.predict(X_test[i], from_idx=True, get_ranks=True)
-        if use_default_protocol:
-            ranks.extend(list(rank))
-            continue
 
-        ranks.append(rank)
+    ranks = model.get_ranks(dataset_handle)
 
     model.end_evaluation()
     logger.debug('Ending Evaluation')
@@ -679,134 +625,166 @@ def filter_unseen_entities(X, model, verbose=False, strict=True):
             return X[~mask_unseen]
 
 
-def yield_all_permutations(registry, category_type, category_type_params):
-    """Yields all the permutation of category type with their respective hyperparams.
+def _remove_unused_param(params, nested_keys, registry, category_type, category_type_params):
+    if category_type_params in params and category_type in registry:
+        expected_params = registry[category_type].external_params
+        params[category_type_params] = {k: v for k, v in params[category_type_params].items() if k in expected_params}
+    else:
+        params[category_type_params] = {}
+        nested_keys.add(category_type_params)
+
+
+def remove_unused_params(params, nested_keys, model_name):
+    """
+    Removed unused parameters considering the registries.
+
+    For example, if the regularization is None, there is no need for the regularization parameter lambda.
 
     Parameters
     ----------
-    registry: dictionary
-        Registry of the category type.
-    category_type: string
-        Category type values.
-    category_type_params: list
-        Category type hyperparams.
+    params: dict
+        Dictionary with parameters.
+    nested_keys: set
+        Set of keys of params that include nested params (i.e. a dict inside a dict).
+    model_name: str
+        The name of the model (e.g. 'ComplEx').
+
+    """
+    from ..latent_features import LOSS_REGISTRY, REGULARIZER_REGISTRY, MODEL_REGISTRY
+    if "loss" in params and "loss_params" in params:
+        _remove_unused_param(params, nested_keys, LOSS_REGISTRY, params["loss"], "loss_params")
+    if "regularizer" in params and "regularizer_params" in params:
+        _remove_unused_param(params, nested_keys, REGULARIZER_REGISTRY, params["regularizer"], "regularizer_params")
+    if "embedding_model_params" in params:
+        _remove_unused_param(params, nested_keys, MODEL_REGISTRY, model_name, "embedding_model_params")
+
+
+def next_hyperparam(model_name, param_grid):
+    """
+    Iterator that gets the next parameter combination from a dictionary containing lists of parameters.
+
+    Parameters
+    ----------
+    model_name: str
+        The name of the model (e.g. 'ComplEx').
+    param_grid: dict
+        Parameter configurations.
+        Example::
+            param_grid = {"k": [50, 100], "eta": [1, 2, 3]}
 
     Returns
     -------
-    name: str
-        Specific name of the category.
-    present_params: list
-        Names of hyperparameters of the category.
-    val: list
-        Values of the respective hyperparams.
+    params: iterator
+        One particular combination of parameters.
+
     """
-    for name in category_type:
-        present_params = []
-        present_params_vals = []
-        if name is not None:
-            for param in registry[name].external_params:
-                try:
-                    present_params_vals.append(category_type_params[param])
-                    present_params.append(param)
-                except KeyError as e:
-                    logger.debug('Key not found {}'.format(e))
-                    pass
-        for val in itertools.product(*present_params_vals):
-            yield name, present_params, val
+    # Make scalars into lists
+    param_grid = {k: v if isinstance(v, Iterable) and not isinstance(v, str) else [v] for k, v in param_grid.items()}
+
+    # Find the parameters that are nested dictionaries
+    nested_keys = {k for k, v in param_grid.items() if type(v) is dict}
+
+    # Flatten the nested values of a dictionary based on precomputed nested_keys
+    # E.g. {"a": {"b": [1], "c": [2]}} becomes
+    #      {("a", "b"): [1], ("a", "c"): [2]}
+    def flatten_nested_keys(dictionary):
+        flattened_nested_keys = {(nk, k): dictionary[nk][k] for nk in nested_keys for k in dictionary[nk]}
+        dictionary_without_nested_keys = {k: v for k, v in dictionary.items() if k not in nested_keys}
+        return {**dictionary_without_nested_keys, **flattened_nested_keys}
+
+    flattened_param_grid = flatten_nested_keys(param_grid)
+
+    param_history = set()
+
+    for values in product(*flattened_param_grid.values()):
+        # Get one single parameter combination as a flattened dictionary
+        param = dict(zip(flattened_param_grid.keys(), values))
+
+        # Select the parameters which were originally nested and unflatten them
+        nested_param = {nk: {k[1]: v for k, v in param.items() if k[0] == nk} for nk in nested_keys}
+
+        # Merge the original parameter combination with the unflattened combination
+        params_without_nested_keys = {k: v for k, v in param.items() if not type(k) is tuple}
+        param = {**params_without_nested_keys, **nested_param}
+
+        # Remove parameters that are not used by particular configurations
+        # For example, if the regularization is None, there is no need for the regularization lambda
+        remove_unused_params(param, nested_keys, model_name)
+
+        # Only yield unique parameter combinations
+        param_hash = hash(frozenset(flatten_nested_keys(param).items()))
+        if param_hash in param_history:
+            continue
+        else:
+            param_history.add(param_hash)
+            yield param
 
 
-def gridsearch_next_hyperparam(model_name, in_dict):
-    """Performs grid search on hyperparams
+def randomly_sample_params(param_grid, max_combinations):
+    """
+    For a param_grid with callables, call them creating lists of max_combinations size.
 
     Parameters
     ----------
-    model_name: string
-        Name of the embedding model.
-    in_dict: dictionary
-        Dictionary of all the parameters and the list of values to be searched.
+    param_grid: dict
+        Parameter configurations.
+        Example::
+            param_grid = {"k": [50, 100], "eta": lambda: np.random.choice([1, 2, 3]}
+    max_combinations: int
+        Maximum number of combinations to consider.
 
-    Returns
-    ----------
-    out_dict: dict
-        Dictionary containing an instance of model hyperparameters.
     """
-
-    from ..latent_features import LOSS_REGISTRY, REGULARIZER_REGISTRY, MODEL_REGISTRY
-    logger.debug('Starting gridsearch over hyperparameters. {}'.format(in_dict))
-    try:
-        verbose = in_dict["verbose"]
-    except KeyError:
-        logger.debug('Verbose key not found. Setting to False.')
-        verbose = False
-
-    try:
-        seed = in_dict["seed"]
-    except KeyError:
-        logger.debug('Seed key not found. Setting to -1.')
-        seed = -1
-
-    try:
-        for batch_count in in_dict["batches_count"]:
-            for epochs in in_dict["epochs"]:
-                for k in in_dict["k"]:
-                    for eta in in_dict["eta"]:
-                        for reg_type, reg_params, reg_param_values in \
-                                yield_all_permutations(REGULARIZER_REGISTRY, in_dict["regularizer"],
-                                                       in_dict["regularizer_params"]):
-                            for optimizer_type in in_dict["optimizer"]:
-                                for optimizer_lr in in_dict["optimizer_params"]["lr"]:
-                                    for loss_type, loss_params, loss_param_values in \
-                                            yield_all_permutations(LOSS_REGISTRY, in_dict["loss"],
-                                                                   in_dict["loss_params"]):
-                                        for model_type, model_params, model_param_values in \
-                                                yield_all_permutations(MODEL_REGISTRY, [model_name],
-                                                                       in_dict["embedding_model_params"]):
-                                            out_dict = {
-                                                "batches_count": batch_count,
-                                                "epochs": epochs,
-                                                "k": k,
-                                                "eta": eta,
-                                                "loss": loss_type,
-                                                "loss_params": {},
-                                                "embedding_model_params": {},
-                                                "regularizer": reg_type,
-                                                "regularizer_params": {},
-                                                "optimizer": optimizer_type,
-                                                "optimizer_params": {
-                                                    "lr": optimizer_lr
-                                                },
-                                                "verbose": verbose
-                                            }
-
-                                            if seed >= 0:
-                                                out_dict["seed"] = seed
-                                            # TODO - Revise this, use dict comprehension instead of for loops
-                                            for idx in range(len(loss_params)):
-                                                out_dict["loss_params"][loss_params[idx]] = loss_param_values[idx]
-                                            for idx in range(len(reg_params)):
-                                                out_dict["regularizer_params"][reg_params[idx]] = reg_param_values[idx]
-                                            for idx in range(len(model_params)):
-                                                out_dict["embedding_model_params"][model_params[idx]] = \
-                                                    model_param_values[idx]
-
-                                            yield (out_dict)
-    except KeyError as e:
-        logger.debug('Hyperparameters are missing from the input dictionary: {}'.format(e))
-        print('One or more of the hyperparameters was not passed:')
-        print(str(e))
+    for k, v in param_grid.items():
+        if callable(v):
+            if max_combinations is None:
+                raise ValueError("If a parameter in the `param_grid` is a function, "
+                                 "`max_combinations` must be set to a value")
+            param_grid[k] = [v() for _ in range(max_combinations)]
+        elif type(v) is dict:
+            randomly_sample_params(v, max_combinations)
 
 
-def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid, use_filter=False, early_stopping=False,
-                              early_stopping_params=None, use_test_for_selection=True, rank_against_ent=None,
-                              corrupt_side='s+o', use_default_protocol=False, verbose=False):
-    """Model selection routine for embedding models.
+def scalars_into_lists(param_grid):
+    """
+    For a param_grid with scalars (instead of lists or callables), transform scalars into lists of size one.
+
+    Parameters
+    ----------
+    param_grid: dict
+        Parameter configurations.
+        Example::
+            param_grid = {"k": [50, 100], "eta": lambda: np.random.choice([1, 2, 3]}
+    """
+    for k, v in param_grid.items():
+        if not (callable(v) or isinstance(v, Iterable)) or type(v) is str:
+            param_grid[k] = [v]
+        elif type(v) is dict:
+            scalars_into_lists(v)
+
+
+def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid, max_combinations=None,
+                              param_grid_random_seed=0, use_filter=True, early_stopping=False,
+                              early_stopping_params=None, use_test_for_selection=False, rank_against_ent=None,
+                              corrupt_side='s+o', use_default_protocol=True, verbose=False):
+    """Model selection routine for embedding models via either grid search or random search.
+    
+    For grid search, pass a fixed ``param_grid`` and leave ``max_combinations`` as `None`
+    so that all combinations will be explored.
+
+    For random search, delimit ``max_combinations`` to your computational budget
+    and optionally set some parameters to be callables instead of a list (see the documentation for ``param_grid``).
 
     .. note::
-        By default, model selection is done with raw MRR for better runtime performance (``use_filter=False``).
+        Random search is more efficient than grid search as the number of parameters grows :cite:`bergstra2012random`.
+        It is also a strong baseline against more advanced methods such as
+        Bayesian optimization :cite:`li2018hyperband`.
 
     The function also retrains the best performing model on the concatenation of training and validation sets.
 
-    Note we generate negatives at runtime according to the strategy described in ::cite:`bordes2013translating`).
+    Note we generate negatives at runtime according to the strategy described in :cite:`bordes2013translating`.
+
+    .. note::
+        By default, model selection is done with raw MRR for better runtime performance (``use_filter=False``).
 
     Parameters
     ----------
@@ -821,8 +799,21 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     param_grid : dict
         A grid of hyperparameters to use in model selection. The routine will train a model for each combination
         of these hyperparameters.
+
+        Parameters can be either callables or lists.
+        If callable, it must take no parameters and return a constant value.
+        If any parameter is a callable, ``max_combinations`` must be set to some value.
+
+        For example, the learning rate could either be ``"lr": [0.1, 0.01]``
+        or ``"lr": lambda: np.random.uniform(0.01, 0.1)``.
+    max_combinations: int
+        Maximum number of combinations to explore.
+        By default (None) all combinations will be explored, 
+        which makes it incompatible with random parameters for random search.
+    param_grid_random_seed: int
+        Random seed for the parameters that are callables and random.
     use_filter : bool
-        If True, will use the entire input dataset X to compute filtered MRR.
+        If True, will use the entire input dataset X to compute filtered MRR (default: True).
     early_stopping: bool
         Flag to enable early stopping (default:False).
 
@@ -871,7 +862,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
             * stop_interval: Stop if criteria is performing worse over n consecutive checks (default: 3)
 
     use_test_for_selection:bool
-        Use test set for model selection. If False, uses validation set (default: True).
+        Use test set for model selection. If False, uses validation set (default: False).
     rank_against_ent: array-like
         List of entities to use for corruptions. If None, will generate corruptions
         using all distinct entities (default: None).
@@ -881,11 +872,16 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         ``o`` is to corrupt only object.
         ``s+o`` is to corrupt both subject and object.
     use_default_protocol: bool
-        Flag to indicate whether to evaluate head and tail corruptions separately(default:False).
+        Flag to indicate whether to evaluate head and tail corruptions separately(default:True).
         If this is set to true, it will ignore corrupt_side argument and corrupt both head
         and tail separately and rank triples.
     verbose : bool
-        Verbose mode during evaluation of trained model.
+        Verbose mode for the model selection procedure (which is independent of the verbose mode in the model fit).
+
+        Verbose mode includes display of the progress bar, logging info for each iteration,
+        evaluation information, and exception details.
+
+        If you need verbosity inside the model training itself, change the verbose parameter within the ``param_grid``.
 
     Returns
     -------
@@ -905,11 +901,16 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         The MRR (filtered) of the best model, retrained on the concatenation of training and validation sets,
         computed over the test set.
 
+    experimental_history: list of dict
+        A list containing all the intermediate experimental results:
+        the model parameters and the corresponding validation metrics.
+
     Examples
     --------
     >>> from ampligraph.datasets import load_wn18
     >>> from ampligraph.latent_features import ComplEx
     >>> from ampligraph.evaluation import select_best_model_ranking
+    >>> import numpy as np
     >>>
     >>> X = load_wn18()
     >>> model_class = ComplEx
@@ -924,7 +925,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     >>>                         "margin": [2]
     >>>                     },
     >>>                     "embedding_model_params": {
-    >>> 
+    >>>
     >>>                     },
     >>>                     "regularizer": ["LP", None],
     >>>                     "regularizer_params": {
@@ -933,36 +934,36 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     >>>                     },
     >>>                     "optimizer": ["adagrad", "adam"],
     >>>                     "optimizer_params":{
-    >>>                         "lr": [0.01, 0.001, 0.0001]
+    >>>                         "lr": lambda: np.random.uniform(0.0001, 0.01)
     >>>                     },
-    >>>                     "verbose": false
+    >>>                     "verbose": False
     >>>                 }
     >>> select_best_model_ranking(model_class, X['train'], X['valid'], X['test'], param_grid,
-    >>>                           use_filter=True, verbose=True, early_stopping=True)
+    >>>                           max_combinations=100, use_filter=True, verbose=True, early_stopping=True)
 
     """
+    logger.debug('Starting gridsearch over hyperparameters. {}'.format(param_grid))
+
     if early_stopping_params is None:
         early_stopping_params = {}
 
-    hyperparams_list_keys = ["batches_count", "epochs", "k", "eta", "loss", "regularizer", "optimizer"]
-    hyperparams_dict_keys = ["loss_params", "embedding_model_params", "regularizer_params", "optimizer_params"]
+    # Verify missing parameters for the model class (default values will be used)
+    undeclared_args = set(model_class.__init__.__code__.co_varnames[1:]) - set(param_grid.keys())
+    if len(undeclared_args) != 0:
+        logger.debug("The following arguments were not defined in the parameter grid"
+                     " and thus the default values will be used: {}".format(', '.join(undeclared_args)))
 
-    for key in hyperparams_list_keys:
-        if key not in param_grid.keys() or param_grid[key] == []:
-            logger.debug('Hyperparameter key {} is missing.'.format(key))
-            raise ValueError('Please pass values for key {}'.format(key))
+    scalars_into_lists(param_grid)
 
-    for key in hyperparams_dict_keys:
-        if key not in param_grid.keys():
-            logger.debug('Hyperparameter key {} is missing, replacing with empty dictionary.'.format(key))
-            param_grid[key] = {}
+    np.random.seed(param_grid_random_seed)
+    randomly_sample_params(param_grid, max_combinations)
 
-    # this would be extended later to take multiple params for optimizers(currently only lr supported)
-    if 'lr' not in param_grid["optimizer_params"]:
-        logger.debug('Hypermater key {} is missing'.format(key))
-        raise ValueError('Please pass values for optimizer parameter - lr')
-
-    model_params_combinations = gridsearch_next_hyperparam(model_class.name, param_grid)
+    if max_combinations is not None:
+        model_params_combinations = list(next_hyperparam(model_class.name, param_grid))
+        np.random.shuffle(model_params_combinations)
+        model_params_combinations = model_params_combinations[:max_combinations]
+    else:
+        model_params_combinations = next_hyperparam(model_class.name, param_grid)
 
     best_mrr_train = 0
     best_model = None
@@ -985,11 +986,16 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     else:
         selection_dataset = X_valid
 
+    experimental_history = []
+
     for model_params in tqdm(model_params_combinations, disable=(not verbose)):
+        current_result = {
+            "model_name": type(model_class).__name__,
+            "model_params": model_params
+        }
         try:
             model = model_class(**model_params)
             model.fit(X_train, early_stopping, early_stopping_params)
-
             ranks = evaluate_performance(selection_dataset, model=model,
                                          filter_triples=X_filter, verbose=verbose,
                                          rank_against_ent=rank_against_ent,
@@ -1001,10 +1007,19 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
             hits_1 = hits_at_n_score(ranks, n=1)
             hits_3 = hits_at_n_score(ranks, n=3)
             hits_10 = hits_at_n_score(ranks, n=10)
-            info = 'mr:{} mrr: {} hits 1: {} hits 3: {} hits 10: {}, model: {}, params: {}'.format(mr, curr_mrr, hits_1,
-                                                                                                   hits_3, hits_10,
-                                                                                                   type(model).__name__,
-                                                                                                   model_params)
+
+            current_result["results"] = {
+                "mrr": curr_mrr,
+                "mr": mr,
+                "hits_1": hits_1,
+                "hits_3": hits_3,
+                "hits_10": hits_10
+            }
+
+            info = 'mr: {} mrr: {} hits 1: {} hits 3: {} hits 10: {}, model: {}, params: {}'.format(
+                mr, curr_mrr, hits_1, hits_3, hits_10, type(model).__name__, model_params
+            )
+
             logger.debug(info)
             if verbose:
                 logger.info(info)
@@ -1014,17 +1029,22 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
                 best_model = model
                 best_params = model_params
         except Exception as e:
+            current_result["results"] = {
+                "exception": str(e)
+            }
+
             if verbose:
-                logger.error('Exception occured for parameters:{}'.format(model_params))
+                logger.error('Exception occurred for parameters:{}'.format(model_params))
                 logger.error(str(e))
             else:
                 pass
+        experimental_history.append(current_result)
 
     ranks_test = []
     mrr_test = 0
     if best_model is not None:
         # Retraining
-        best_model.fit(np.concatenate((X_train, X_valid)))
+        best_model.fit(np.concatenate((X_train, X_valid)), early_stopping, early_stopping_params)
 
         ranks_test = evaluate_performance(X_test, model=best_model,
                                           filter_triples=X_filter, verbose=verbose,
@@ -1034,4 +1054,4 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
         mrr_test = mrr_score(ranks_test)
 
-    return best_model, best_params, best_mrr_train, ranks_test, mrr_test
+    return best_model, best_params, best_mrr_train, ranks_test, mrr_test, experimental_history
