@@ -193,3 +193,30 @@ print(y_pred_after)
 # Assert that the before and after values are same
 assert(y_pred_before==y_pred_after)
 ```
+
+## Predicting score for an unseen entity 
+
+```python
+# Support we need to predict score for an unseen entity z from trained embeddings of X
+import numpy as np
+
+from ampligraph.latent_features import TransE, DistMult, HolE, ComplEx
+
+model = ComplEx(batches_count=2, seed=555, epochs=20, k=10)
+
+X = np.array([["a", "y", "b"],
+            ["b", "y", "a"],
+            ["a", "y", "c"],
+            ["c", "y", "a"],
+            ["a", "y", "d"],
+            ["c", "y", "d"],
+            ["b", "y", "c"],
+            ["f", "y", "e"]])
+
+model.fit(X)
+
+print(model.predict(np.array(["z", "y", "f"]), approximate_unseen={
+        "pool": "avg", 
+        "neighbour_triples": [["z", "y", "c"],["z", "y", "d"]]
+}))
+```

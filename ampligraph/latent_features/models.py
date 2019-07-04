@@ -974,6 +974,10 @@ class EmbeddingModel(abc.ABC):
              If True, will skip conversion to internal IDs. (default: False).
          get_ranks : bool
              Flag to compute ranks by scoring against corruptions (default: False).
+        approximate_unseen : dict
+             dictionary contains parameters to predict score for unseen entity:
+                - **'pool'**: string : avg, sum or max
+                - **'neighbour_triples'**: 2d-array, shape(n,3), neighbour triples of unseen entity
 
          Returns
          -------
@@ -1391,6 +1395,11 @@ class TransE(EmbeddingModel):
          get_ranks : bool
              Flag to compute ranks by scoring against corruptions (default: False).
 
+        approximate_unseen : dict
+             dictionary contains parameters to predict score for unseen entity:
+                - **'pool'**: string : avg, sum or max
+                - **'neighbour_triples'**: 2d-array, shape(n,3), neighbour triples of unseen entity
+
          Returns
          -------
          scores_predict : ndarray, shape [n]
@@ -1620,6 +1629,11 @@ class DistMult(EmbeddingModel):
             If True, will skip conversion to internal IDs. (default: False).
         get_ranks : bool
             Flag to compute ranks by scoring against corruptions (default: False).
+
+        approximate_unseen : dict
+             dictionary contains parameters to predict score for unseen entity:
+                - **'pool'**: string : avg, sum or max
+                - **'neighbour_triples'**: 2d-array, shape(n,3), neighbour triples of unseen entity
 
         Returns
         -------
@@ -1867,6 +1881,10 @@ class ComplEx(EmbeddingModel):
              If True, will skip conversion to internal IDs. (default: False).
          get_ranks : bool
              Flag to compute ranks by scoring against corruptions (default: False).
+        approximate_unseen : dict
+             dictionary contains parameters to predict score for unseen entity:
+                - **'pool'**: string : avg, sum or max
+                - **'neighbour_triples'**: 2d-array, shape(n,3), neighbour triples of unseen entity
 
          Returns
          -------
@@ -2091,6 +2109,10 @@ class HolE(ComplEx):
              If True, will skip conversion to internal IDs. (default: False).
          get_ranks : bool
              Flag to compute ranks by scoring against corruptions (default: False).
+         approximate_unseen : dict
+             dictionary contains parameters to predict score for unseen entity:
+                - **'pool'**: string : avg, sum or max
+                - **'neighbour_triples'**: 2d-array, shape(n,3), neighbour triples of unseen entity
 
          Returns
          -------
