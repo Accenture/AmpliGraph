@@ -4,6 +4,8 @@ from sklearn.utils import check_random_state
 import abc
 from tqdm import tqdm
 import logging
+from functools import partial
+import functools
 
 MODEL_REGISTRY = {}
 
@@ -15,7 +17,7 @@ from .regularizers import REGULARIZER_REGISTRY
 from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, \
     hits_at_n_score, mrr_score
 import os
-
+import functools
 #######################################################################################################
 # If not specified, following defaults will be used at respective locations
 
@@ -780,7 +782,7 @@ class EmbeddingModel(abc.ABC):
         self.table_reln_lookup = None
 
         all_entities_np = np.int64(np.arange(len(self.ent_to_idx)))
-
+        
         if self.is_filtered:
             all_reln_np = np.int64(np.arange(len(self.rel_to_idx)))
             self.table_entity_lookup_left = tf.contrib.lookup.HashTable(
@@ -846,7 +848,107 @@ class EmbeddingModel(abc.ABC):
         self.is_filtered = False
         self.eval_config = {}
 
-    def predict(self, X, from_idx=False, get_ranks=False):
+    # using decorator will help not modifying code from other dev...@Chan
+    def _assign_unseen_idx(self, approximate_unseen):
+        def outer_dec(f):
+            @functools.wraps(f)
+            def inner_dec(*args, **kwargs):
+                if approximate_unseen is None:
+                    # print("approximate_unseen is None")
+                    return f(*args, **kwargs), None, None
+                else:
+                    print("approximate_unseen is triggered...")
+                    keys = list(approximate_unseen.keys())
+                    if "pool" not in keys and "neighbour_triples" not in keys:
+                        raise KeyError("pool or neighbour_triples key are wrongly specified...")
+                    e, app_emb, app_emb_idx = self._approximate_embeddings(args[0], 
+                                pool=approximate_unseen["pool"], 
+                                neighbour_triples=approximate_unseen["neighbour_triples"],
+                                k_size=approximate_unseen["k_size"])
+                    # unseen e is put in the end of seen ent array
+                    self.ent_to_idx[e] = app_emb_idx
+                    
+                    #return its tensor 
+                    return f(*args, **kwargs), e, app_emb
+            return inner_dec    
+        return outer_dec
+
+    # using decorator will help not modifying code from other dev...@Chan
+    def _add_app_embs(self, e, app_emb):
+        def outer_dec(f):
+            @functools.wraps(f)
+            def inner_dec(*args, **kwargs):
+                if app_emb is None:
+                    # print("approximate_unseen not in. No app emb to add...")
+                    f(*args, **kwargs)
+                else:
+                    # put in dictionary to predict
+                    f(*args, **kwargs)
+                    # print("approximate_unseen in, adding app emb to dict...")
+                    self.ent_emb = tf.concat([self.ent_emb, app_emb], axis=0)
+            return inner_dec
+        return outer_dec
+
+    def _approximate_embeddings(self, X, pool="avg", neighbour_triples=None, k_size=None):
+        """Generate approximate embeddings for entity, given neighbouring triples from auxiliary graph and a defined pooling function. 
+            
+                    
+        Parameters
+        ----------
+        entity : str
+            An entity label.
+        neighbouring_triples : ndarray, shape [n, 3]
+            The neighbouring triples. 
+        pool : str {'avg', 'max', 'sum'} : 
+            The pooling function to approximate the entity embedding. (Default: 'avg')
+        """
+
+        if pool.lower() not in ['avg', 'max', 'sum']:
+            raise ValueError("only support (avg, max, sum) for pool...")
+
+        if X[1] not in self.rel_to_idx:
+            msg = 'Input triples include one or more relation type not present in the training set.' \
+                  'We only support approximate unseen entities. '
+            raise ValueError(msg)
+        
+        e = X[0]
+        if X[0] not in self.ent_to_idx:
+            if X[2] not in self.ent_to_idx:
+                raise ValueError('predicted triples contain two OOKG entities: ', X)
+        else:
+            e = X[2]
+
+        # print("unseen entities: ", e)
+        # Get entity neighbours
+        neighbour_triples = np.array(neighbour_triples)
+        neighbour_entities = neighbour_triples[:,[0,2]]
+        N_ent = neighbour_entities[np.where(neighbour_entities != e)]
+
+        # Raise ValueError if a neighbour entity is not found in entity dict
+        if not np.all([x in self.ent_to_idx.keys() for x in N_ent]):
+            invalid_triples = neighbour_triples[np.where([x not in self.ent_to_idx for x in N_ent])]
+            raise ValueError('Neighbouring triples contain two OOKG entities: ', invalid_triples)
+
+        # Get embeddings of each set and concatenate
+        neighbour_vectors = self.get_embeddings(N_ent, embedding_type='entity')
+        # print("neighbour_vectors: ", neighbour_vectors)
+        if pool == 'avg':
+            pool_fn = partial(np.mean, axis=0)
+        elif pool == 'max':
+            pool_fn = partial(np.max, axis=0)
+        elif pool == 'sum':
+            pool_fn = partial(np.sum, axis=0)
+        else:
+            raise ValueError('Unsupported pooling function: %s' % pool)
+
+        # Apply pooling function
+        approximate_embedding = pool_fn(neighbour_vectors)
+        app_emb = tf.constant(approximate_embedding, shape=[1, k_size], dtype=self.ent_emb.dtype)
+        
+        # we have unseen, with app vector, and it's idx 
+        return e, app_emb, len(self.ent_to_idx)
+
+    def predict(self, X, from_idx=False, get_ranks=False, approximate_unseen=None):
         """Predict the scores of triples using a trained embedding model.
 
              The function returns raw scores generated by the model.
@@ -894,14 +996,13 @@ class EmbeddingModel(abc.ABC):
             raise RuntimeError(msg)
 
         if not from_idx:
-            X = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+            X, e, app_embs = self._assign_unseen_idx(approximate_unseen)(to_idx)(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
 
         # build tf graph for predictions
         if self.sess_predict is None:
-            self._load_model_from_trained_params()
-
+            self._add_app_embs(e, app_embs)(self._load_model_from_trained_params)()
             self._initialize_eval_graph()
-
+            
             sess = tf.Session()
             sess.run(tf.tables_initializer())
             sess.run(tf.global_variables_initializer())
@@ -1263,7 +1364,7 @@ class TransE(EmbeddingModel):
         """
         super().fit(X, early_stopping, early_stopping_params)
 
-    def predict(self, X, from_idx=False, get_ranks=False):
+    def predict(self, X, from_idx=False, get_ranks=False, approximate_unseen=None):
         """Predict the scores of triples using a trained embedding model.
 
              The function returns raw scores generated by the model.
@@ -1299,7 +1400,9 @@ class TransE(EmbeddingModel):
              Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
-        return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
+        return super().predict(X, from_idx=from_idx, 
+        get_ranks=get_ranks, 
+        approximate_unseen={**approximate_unseen, "k_size": self.k})
 
 
 @register_model("DistMult", ["normalize_ent_emb", "negative_corruption_entities"])
@@ -1491,7 +1594,7 @@ class DistMult(EmbeddingModel):
         """
         super().fit(X, early_stopping, early_stopping_params)
 
-    def predict(self, X, from_idx=False, get_ranks=False):
+    def predict(self, X, from_idx=False, get_ranks=False, approximate_unseen=None):
         """Predict the scores of triples using a trained embedding model.
 
             The function returns raw scores generated by the model.
@@ -1527,7 +1630,10 @@ class DistMult(EmbeddingModel):
             Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
-        return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
+        return super().predict(X, 
+        from_idx=from_idx, 
+        get_ranks=get_ranks, 
+        approximate_unseen={**approximate_unseen, "k_size": self.k})
 
 
 @register_model("ComplEx", ["negative_corruption_entities"])
@@ -1735,7 +1841,7 @@ class ComplEx(EmbeddingModel):
         """
         super().fit(X, early_stopping, early_stopping_params)
 
-    def predict(self, X, from_idx=False, get_ranks=False):
+    def predict(self, X, from_idx=False, get_ranks=False, approximate_unseen=None):
         """Predict the scores of triples using a trained embedding model.
 
              The function returns raw scores generated by the model.
@@ -1771,7 +1877,10 @@ class ComplEx(EmbeddingModel):
              Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
-        return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
+        return super().predict(X, 
+                from_idx=from_idx, 
+                get_ranks=get_ranks, 
+                approximate_unseen={**approximate_unseen, "k_size": 2 * self.k})
 
 
 @register_model("HolE", ["negative_corruption_entities"])
@@ -1956,7 +2065,7 @@ class HolE(ComplEx):
         """
         super().fit(X, early_stopping, early_stopping_params)
 
-    def predict(self, X, from_idx=False, get_ranks=False):
+    def predict(self, X, from_idx=False, get_ranks=False, approximate_unseen=None):
         """Predict the scores of triples using a trained embedding model.
 
              The function returns raw scores generated by the model.
@@ -1992,4 +2101,7 @@ class HolE(ComplEx):
              Ranks of the triples (only returned if ``get_ranks=True``.
 
         """
-        return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
+        return super().predict(X, \
+            from_idx=from_idx, \
+            get_ranks=get_ranks, \
+            approximate_unseen={**approximate_unseen, "k_size": 2 * self.k})
