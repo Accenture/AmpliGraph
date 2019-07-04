@@ -206,8 +206,8 @@ def generate_candidates(X, strategy, target_rel, max_candidates,
         Examples
         --------
         >>> import numpy as np
-        >>> from ampligraph.discovery import discover_facts
-
+        >>> from ampligraph.discovery.discovery import generate_candidates
+        >>>
         >>> X = np.array([['a', 'y', 'b'],
         >>>               ['b', 'y', 'a'],
         >>>               ['a', 'y', 'c'],
@@ -217,7 +217,8 @@ def generate_candidates(X, strategy, target_rel, max_candidates,
         >>>               ['b', 'y', 'c'],
         >>>               ['f', 'y', 'e']])
 
-        >>> X_pred = discover_facts(X)
+        >>> X_candidates = generate_candidates(X, strategy='graph_degree',
+        >>>                                     target_rel='y', max_candidates=3)
         >>> ([['a', 'y', 'e'],
         >>>  ['f', 'y', 'a'],
         >>>  ['c', 'y', 'e']])
