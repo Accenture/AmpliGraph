@@ -820,7 +820,7 @@ def scalars_into_lists(param_grid):
 
 
 def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid, max_combinations=None,
-                              param_grid_random_seed=0, use_filter=False, early_stopping=False, 
+                              param_grid_random_seed=0, use_filter=True, early_stopping=False,
                               early_stopping_params=None, use_test_for_selection=False, rank_against_ent=None,
                               corrupt_side='s+o', use_default_protocol=True, verbose=False):
     """Model selection routine for embedding models via either grid search or random search.
@@ -870,7 +870,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     param_grid_random_seed: int
         Random seed for the parameters that are callables and random.
     use_filter : bool
-        If True, will use the entire input dataset X to compute filtered MRR.
+        If True, will use the entire input dataset X to compute filtered MRR (default: True).
     early_stopping: bool
         Flag to enable early stopping (default:False).
 
