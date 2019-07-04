@@ -231,8 +231,7 @@ def generate_candidates(X, strategy, target_rel, max_candidates,
         raise ValueError(msg)
 
     if target_rel not in np.unique(X[:, 1]):
-        # Not raising error as may be case where target_rel is
-        # not in X
+        # No error as may be case where target_rel is not in X
         msg = 'Target relation is not found in triples.'
         logger.warning(msg)
 
@@ -249,6 +248,9 @@ def generate_candidates(X, strategy, target_rel, max_candidates,
         _max_candidates = int(max_candidates * len(X))
     elif isinstance(max_candidates, int):
         _max_candidates = max_candidates
+
+    # Set random seed
+    np.random.seed(seed)
 
     # Get entities linked with this relation
     if consolidate_sides:
@@ -273,18 +275,17 @@ def generate_candidates(X, strategy, target_rel, max_candidates,
             # Filter statements that are in X
             X_candidates = _setdiff2d(X_candidates, X)
 
-            # NB: May want to consider filtering triples of form:
-            #     <ent_id1, target_rel, ent_id1>, but
-            # this seems less of a problem if considering a single
-            # relationship at time, and with consolidate_sides=False
+            # Filter statements that are ['x', rel, 'x']
+            keep_idx = np.where(X_candidates[:, 0] != X_candidates[:, 2])
+            X_candidates = X_candidates[keep_idx]
 
             yield X_candidates
 
     elif strategy == 'random_uniform':
 
-        # Take sqrt of max_candidates so that:
+        # Take close to sqrt of max_candidates so that:
         #   len(meshgrid result) == max_candidates
-        sample_size = int(np.sqrt(_max_candidates))
+        sample_size = int(np.sqrt(_max_candidates) + 1)
 
         sample_e_s = np.random.choice(e_s, size=sample_size, replace=False)
         sample_e_o = np.random.choice(e_o, size=sample_size, replace=False)
@@ -295,15 +296,22 @@ def generate_candidates(X, strategy, target_rel, max_candidates,
         # Filter out statements that are in X
         X_candidates = _setdiff2d(X_candidates, X)
 
+        # Filter statements that are ['x', rel, 'x']
+        keep_idx = np.where(X_candidates[:, 0] != X_candidates[:, 2])
+        X_candidates = X_candidates[keep_idx]
+
+        if len(X_candidates) > max_candidates:
+            X_candidates = X_candidates[0:max_candidates]
+
         yield X_candidates
 
     elif strategy == 'entity_frequency':
 
         # Get entity counts and sort them in ascending order
         ent_counts = np.array(np.unique(X[:, [0, 2]], return_counts=True)).T
-        ent_counts = ent_counts[ent_counts[:,1].argsort()]
+        ent_counts = ent_counts[ent_counts[:, 1].argsort()]
 
-        sample_size = int(np.sqrt(_max_candidates))
+        sample_size = int(np.sqrt(_max_candidates) + 1)
 
         sample_e_s = np.random.choice(ent_counts[0:max_candidates, 0],
                                       size=sample_size, replace=False)
@@ -316,6 +324,13 @@ def generate_candidates(X, strategy, target_rel, max_candidates,
 
         # Filter out statements that are in X
         X_candidates = _setdiff2d(X_candidates, X)
+
+        # Filter statements that are ['x', rel, 'x']
+        keep_idx = np.where(X_candidates[:, 0] != X_candidates[:, 2])
+        X_candidates = X_candidates[keep_idx]
+
+        if len(X_candidates) > max_candidates:
+            X_candidates = X_candidates[0:max_candidates]
 
         yield X_candidates
 
@@ -343,7 +358,7 @@ def generate_candidates(X, strategy, target_rel, max_candidates,
         C = np.array([[k, v] for k, v in zip(C.keys(), C.values())])
         C = C[C[:, 1].argsort()]
 
-        sample_size = int(np.sqrt(_max_candidates))
+        sample_size = int(np.sqrt(_max_candidates) + 1)
 
         sample_e_s = np.random.choice(C[0:max_candidates, 0],
                                       size=sample_size, replace=False)
@@ -356,6 +371,13 @@ def generate_candidates(X, strategy, target_rel, max_candidates,
 
         # Filter out statements that are in X
         X_candidates = _setdiff2d(X_candidates, X)
+
+        # Filter statements that are ['x', rel, 'x']
+        keep_idx = np.where(X_candidates[:, 0] != X_candidates[:, 2])
+        X_candidates = X_candidates[keep_idx]
+
+        if len(X_candidates) > max_candidates:
+            X_candidates = X_candidates[0:max_candidates]
 
         yield X_candidates
 
@@ -386,11 +408,13 @@ def _setdiff2d(A, B):
     return A[~ np.sum(np.cumsum(tmp, axis=0) * tmp == 1, axis=1).astype(bool)]
 
 
-def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None, relations_subset=None):
+def find_clusters(X, model, clustering_algorithm=DBSCAN(),
+                  entities_subset=None, relations_subset=None):
     """
     Perform link-based cluster analysis on a knowledge graph.
 
-    Clustering is exclusive (i.e. a triple is assigned to one and only one cluster).
+    Clustering is exclusive (i.e. a triple is assigned to one and only one
+    cluster).
 
     Parameters
     ----------
@@ -399,22 +423,26 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None,
         The input knowledge graph (triples) to be clustered.
     model : EmbeddingModel
         The fitted model that will be used to generate the embeddings.
-        This model must have been fully trained already, be it directly with `fit` or from
-        a helper function such as `select_best_model_ranking`.
+        This model must have been fully trained already, be it directly with
+        `fit` or from a helper function such as `select_best_model_ranking`.
     clustering_algorithm : object
         The initialized object of the clustering algorithm.
         It should be ready to apply the `fit_predict` method.
-        Please see https://scikit-learn.org/stable/modules/clustering.html#clustering
+        Please see:
+         https://scikit-learn.org/stable/modules/clustering.html#clustering
         to understand the clustering API provided by scikit-learn.
-        The default clustering model is sklearn's DBSCAN with its default parameters.
+        The default clustering model is sklearn's DBSCAN with its default
+        parameters.
     entities_subset: ndarray, shape [n]
-        The entities to consider for clustering. This is a subset of all the entities included in X.
+        The entities to consider for clustering. This is a subset of all the
+        entities included in X.
         If None, all entities will be clustered.
         To exclude all relations from clustering, pass an empty array.
     relations_subset: ndarray, shape [n]
-        The relation types to consider for clustering. This is a subset of all the relation types included in X.
+        The relation types to consider for clustering. This is a subset of
+        all the relation types included in X.
         If None, all relations will be clustered.
-         To exclude all relations from clustering, pass an empty array.
+        To exclude all relations from clustering, pass an empty array.
 
     Returns
     -------
@@ -439,7 +467,7 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None,
     >>>
     >>> model = ComplEx(k=2, batches_count=2)
     >>> model.fit(X)
-    >>> clustering_algorithm = DBSCAN(min_samples=1)
+    >>> cluster_algorithm = DBSCAN(min_samples=1)
     >>> labels = find_clusters(X, model=model, clustering_algorithm=clustering_algorithm)
     array([0, 1, 2, 3, 4, 5, 6, 7])
 
@@ -449,7 +477,8 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None,
         raise ValueError("Model has not been fitted.")
 
     if not hasattr(clustering_algorithm, "fit_predict"):
-        raise ValueError("Clustering algorithm does not have the `fit_predict` method.")
+        raise ValueError("Clustering algorithm does not have the "
+                         "`fit_predict` method.")
 
     s = model.get_embeddings(X[:, 0], embedding_type='entity')
     p = model.get_embeddings(X[:, 1], embedding_type='relation')
@@ -462,7 +491,8 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None,
             s = np.empty(p.shape)
             o = np.empty(p.shape)
         else:
-            mask &= ~(np.isin(X[:, 0], entities_subset) | np.isin(X[:, 2], entities_subset))
+            mask &= ~(np.isin(X[:, 0], entities_subset) |
+                      np.isin(X[:, 2], entities_subset))
 
     if relations_subset is not None:
         if len(relations_subset) == 0:
