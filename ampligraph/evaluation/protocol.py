@@ -15,6 +15,7 @@ from tqdm import tqdm
 import tensorflow as tf
 
 from ..evaluation import mrr_score, hits_at_n_score, mr_score
+from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -177,40 +178,11 @@ def create_mappings(X):
     return _create_unique_mappings(unique_ent, unique_rel)
 
 
-def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o', table_entity_lookup_left=None,
-                                  table_entity_lookup_right=None, table_reln_lookup=None):
+def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'):
     """Generate corruptions for evaluation.
 
-    Create corruptions (subject and object) for a given triple x, in compliance with the
-    local closed world assumption (LCWA), as described in :cite:`nickel2016review`.
-
-    .. note::
-        For filtering the corruptions, we adopt a hashing-based strategy to handle the set difference problem.
-        This strategy is as described below:
-
-        * We compute unique entities and relations in our dataset.
-
-        * We assign unique prime numbers for entities (unique for subject and object separately) and for relations
-          and create three separate hash tables. (these hash maps are input to this function)
-
-        * For each triple in filter_triples, we get the prime numbers associated with subject, relation
-          and object by mapping to their respective hash tables. We then compute the **prime product for the
-          filter triple**. We store this triple product.
-
-        * Since the numbers assigned to subjects, relations and objects are unique, their prime product is also
-          unique. i.e. a triple :math:`(a, b, c)` would have a different product compared to triple
-          :math:`(c, b, a)` as :math:`a, c` of subject have different primes compared to :math:`a, c` of object.
-
-        * While generating corruptions for evaluation, we hash the triple's entities and relations and get
-          the associated prime number and compute the **prime product for the corrupted triple**.
-
-        * If this product is present in the products stored for the filter set, then we remove the corresponding
-          corrupted triple (as it is a duplicate i.e. the corruption triple is present in filter_triples)
-
-        * Using this approach we generate filtered corruptions for evaluation.
-
-        **Execution Time:** This method takes ~20 minutes on FB15K using ComplEx
-        (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
+        Create corruptions (subject and object) for a given triple x, in compliance with the
+        local closed world assumption (LCWA), as described in :cite:`nickel2016review`.
 
     Parameters
     ----------
@@ -224,23 +196,12 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
         - 's': corrupt only subject.
         - 'o': corrupt only object
         - 's+o': corrupt both subject and object
-    table_entity_lookup_left : tf.HashTable
-        Hash table of subject entities mapped to unique prime numbers.
-    table_entity_lookup_right : tf.HashTable
-        Hash table of object entities mapped to unique prime numbers.
-    table_reln_lookup : tf.HashTable
-        Hash table of relations mapped to unique prime numbers.
 
     Returns
     -------
-
     out : Tensor, shape [n, 3]
-        An array of corruptions for the triples for X.
-
-    out_prime : Tensor, shape [n, 3]
-        An array of product of prime numbers associated with corruption triples or None
-        based on filtered or non filtered version.
-
+        An array of corruptions for the triples for x.
+        
     """
 
     logger.debug('Generating corruptions for evaluation.')
@@ -290,32 +251,8 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
         stacked_out = tf.stack([rep_ent, repeated_relns, repeated_objs], 1)
 
     out = tf.reshape(tf.transpose(stacked_out, [0, 2, 1]), (-1, 3))
-    out_prime = tf.constant([])
 
-    logger.debug('Creating prime numbers associated with corruptions.')
-    if table_entity_lookup_left is not None and table_entity_lookup_right is not None and table_reln_lookup is not None:
-
-        if corrupt_side in ['s+o', 'o']:
-            prime_subj = tf.squeeze(table_entity_lookup_left.lookup(repeated_subjs))
-            prime_ent_right = tf.squeeze(table_entity_lookup_right.lookup(rep_ent))
-
-        if corrupt_side in ['s+o', 's']:
-            prime_obj = tf.squeeze(table_entity_lookup_right.lookup(repeated_objs))
-            prime_ent_left = tf.squeeze(table_entity_lookup_left.lookup(rep_ent))
-
-        prime_reln = tf.squeeze(table_reln_lookup.lookup(repeated_relns))
-
-        if corrupt_side == 's+o':
-            out_prime = tf.concat([prime_subj * prime_reln * prime_ent_right,
-                                   prime_ent_left * prime_reln * prime_obj], 0)
-
-        elif corrupt_side == 'o':
-            out_prime = prime_subj * prime_reln * prime_ent_right
-        else:
-            out_prime = prime_ent_left * prime_reln * prime_obj
-
-    logger.debug('Returning corruptions for evaluation.')
-    return out, out_prime
+    return out
 
 
 def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o', entities_size=0, rnd=None):
@@ -594,15 +531,24 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     """
 
     logger.debug('Evaluating the performance of the embedding model.')
-    X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
-
-    X_test = to_idx(X_test, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
-
+    if isinstance(X, np.ndarray):
+        
+        X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
+        
+        dataset_handle = NumpyDatasetAdapter()
+        dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
+        dataset_handle.set_data(X_test, "test")
+        
+    elif isinstance(X, AmpligraphDatasetAdapter):     
+        dataset_handle = X
+     
     if filter_triples is not None:
-        logger.debug('Getting filtered triples.')
-        filter_triples = to_idx(filter_triples, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
-
-    eval_dict = {'default_protocol': False}
+        if isinstance(filter_triples, np.ndarray):
+            logger.debug('Getting filtered triples.')
+            dataset_handle.set_filter(filter_triples)
+        
+    eval_dict = {}
+    eval_dict['default_protocol'] = False
 
     if use_default_protocol:
         corrupt_side = 's+o'
@@ -616,18 +562,15 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
     logger.debug('Evaluating the test set by corrupting side : {}'.format(corrupt_side))
     eval_dict['corrupt_side'] = corrupt_side
+    
     if filter_triples is not None:
-        model.set_filter_for_eval(filter_triples)
+        model.set_filter_for_eval()
+        
     logger.debug('Configuring evaluation protocol.')
     model.configure_evaluation_protocol(eval_dict)
     logger.debug('Making predictions.')
-    for i in tqdm(range(X_test.shape[0]), disable=(not verbose)):
-        _, rank = model.predict(X_test[i], from_idx=True, get_ranks=True)
-        if use_default_protocol:
-            ranks.extend(list(rank))
-            continue
 
-        ranks.append(rank)
+    ranks = model.get_ranks(dataset_handle)
 
     model.end_evaluation()
     logger.debug('Ending Evaluation')

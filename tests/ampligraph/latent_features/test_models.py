@@ -25,7 +25,7 @@ def test_fit_predict_TransE_early_stopping_with_filter():
                                  'burn_in': 1,
                                  'check_interval': 2})
     
-    y, _ = model.predict(X['test'][:1], get_ranks=True)
+    y = model.predict(X['test'][:1])
     print(y)
     
 
@@ -39,7 +39,7 @@ def test_fit_predict_TransE_early_stopping_without_filter():
                                  'burn_in': 1,
                                  'check_interval': 2})
     
-    y, _ = model.predict(X['test'][:1], get_ranks=True)
+    y = model.predict(X['test'][:1])
     print(y)
 
 
@@ -54,7 +54,7 @@ def test_evaluate_RandomBaseline():
                                  verbose=False)
     hits10 = hits_at_n_score(ranks, n=10)
     hits1 = hits_at_n_score(ranks, n=1)
-    assert hits10 == 0.0002 and hits1 == 0.0
+    assert hits10 < 0.01 and hits1 == 0.0
 
 
 def test_fit_predict_transE():
@@ -69,7 +69,7 @@ def test_fit_predict_transE():
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
     model.fit(X)
-    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
+    y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
     print(y_pred)
     assert y_pred[0] > y_pred[1]
 
@@ -86,7 +86,7 @@ def test_fit_predict_DistMult():
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
     model.fit(X)
-    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
+    y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
     print(y_pred)
     assert y_pred[0] > y_pred[1]
 
@@ -105,7 +105,7 @@ def test_fit_predict_CompleEx():
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
     model.fit(X)
-    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
+    y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
     print(y_pred)
     assert y_pred[0] > y_pred[1]
 
@@ -124,7 +124,7 @@ def test_fit_predict_HolE():
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
     model.fit(X)
-    y_pred, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
+    y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
     print(y_pred)
     assert y_pred[0] > y_pred[1]
 
@@ -143,9 +143,9 @@ def test_retrain():
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
     model.fit(X)
-    y_pred_1st, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
+    y_pred_1st = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
     model.fit(X)
-    y_pred_2nd, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
+    y_pred_2nd = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
     np.testing.assert_array_equal(y_pred_1st, y_pred_2nd)
 
 
@@ -154,7 +154,7 @@ def test_fit_predict_wn18_TransE():
     model = TransE(batches_count=1, seed=555, epochs=5, k=100, loss='pairwise', loss_params={'margin': 5},
                    verbose=True, optimizer='adagrad', optimizer_params={'lr': 0.1})
     model.fit(X['train'])
-    y, _ = model.predict(X['test'][:1], get_ranks=True)
+    y = model.predict(X['test'][:1])
 
     print(y)
 
@@ -186,7 +186,7 @@ def test_fit_predict_wn18_ComplEx():
                     regularizer_params={'lambda': 0.1, 'p': 2}, 
                     optimizer='adagrad', optimizer_params={'lr': 0.1})
     model.fit(X['train'])
-    y = model.predict(X['test'][:1], get_ranks=True)
+    y = model.predict(X['test'][:1])
     print(y)
 
 
