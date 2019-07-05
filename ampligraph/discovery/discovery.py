@@ -342,7 +342,7 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None,
     relations_subset: ndarray, shape [n]
         The relation types to consider for clustering. This is a subset of all the relation types included in X.
         If None, all relations will be clustered.
-         To exclude all relations from clustering, pass an empty array.
+        To exclude all relations from clustering, pass an empty array.
 
     Returns
     -------

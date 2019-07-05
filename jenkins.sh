@@ -24,6 +24,9 @@ pip install . -v
 # configure dataset location
 export AMPLIGRAPH_DATA_HOME=/var/datasets
 
+# run flake8 linter
+flake8 ampligraph --max-line-length 120 --ignore=W291,W293 # ignoring some white space related errors
+
 # run unit tests
 pytest tests
 

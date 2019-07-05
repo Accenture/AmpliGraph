@@ -120,7 +120,9 @@ def main():
     best_model, best_params, best_mrr_train, \
     ranks_test, mrr_test = select_best_model_ranking(model_class, # Class handle of the model to be used
                                                      # Dataset 
-                                                     X_dict,          
+                                                     X_dict['train'],
+                                                     X_dict['valid'],
+                                                     X_dict['test'],          
                                                      # Parameter grid
                                                      param_grid,      
                                                      # Use filtered set for eval

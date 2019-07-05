@@ -28,7 +28,15 @@ FB15K-237
                                                          norm: 1;
                                                          normalize_ent_emb: false;
                                                          seed: 0;
-                                                         batches_count: 60
+                                                         batches_count: 60;
+                                                         early_stopping:{
+                                                         x_valid: validation[::10],
+                                                         criteria: mrr,
+                                                         x_filter: train + validation + test,
+                                                         stop_interval: 2,
+                                                         burn_in: 0,
+                                                         check_interval: 100
+                                                         };
 
  DistMult   568     0.29      0.20     0.32      0.47    k: 400;
                                                          epochs: 4000;
@@ -46,12 +54,20 @@ FB15K-237
                                                          lr: 0.0005;
                                                          seed: 0;
                                                          normalize_ent_emb: false;
-                                                         batches_count: 50
+                                                         batches_count: 50;
+                                                         early_stopping:{
+                                                         x_valid: validation[::10],
+                                                         criteria: mrr,
+                                                         x_filter: train + validation + test,
+                                                         stop_interval: 2,
+                                                         burn_in: 0,
+                                                         check_interval: 100
+                                                         };
 
-   ComplEx  519     0.30      0.20     0.33      0.48    k: 350;
+   ComplEx  158     0.33      0.23     0.36      0.51    k: 350;
                                                          epochs: 4000;
                                                          eta: 30;
-                                                         loss: self_adversarial;
+                                                         loss: multiclass_nll;
                                                          loss_params:
                                                          alpha: 1;
                                                          margin: 0.5;
@@ -59,7 +75,18 @@ FB15K-237
                                                          optimizer_params:
                                                          lr: 0.0001;
                                                          seed: 0;
-                                                         batches_count: 50
+                                                         regularizer_params:
+                                                         lambda: 0.05;
+                                                         p: 3;
+                                                         batches_count: 50;
+                                                         early_stopping:{
+                                                         x_valid: validation[::10],
+                                                         criteria: mrr,
+                                                         x_filter: train + validation + test,
+                                                         stop_interval: 2,
+                                                         burn_in: 0,
+                                                         check_interval: 100
+                                                         };
                                                          
 
    HolE     297     0.28       0.19     0.31       0.46  k: 350;
@@ -73,7 +100,15 @@ FB15K-237
                                                          optimizer_params:
                                                          lr: 0.0001;
                                                          seed: 0;
-                                                         batches_count: 50
+                                                         batches_count: 50;
+                                                         early_stopping:{
+                                                         x_valid: validation[::10],
+                                                         criteria: mrr,
+                                                         x_filter: train + validation + test,
+                                                         stop_interval: 2,
+                                                         burn_in: 0,
+                                                         check_interval: 100
+                                                         };
                                                          
 
 ========== ======== ====== ======== ======== ========== ========================
@@ -109,6 +144,14 @@ WN18RR
                                                           embedding_model_params:
                                                           norm: 1;
                                                           batches_count: 100;
+                                                          early_stopping:{
+                                                          x_valid: validation[::10],
+                                                          criteria: mrr,
+                                                          x_filter: train + validation + test,
+                                                          stop_interval: 2,
+                                                          burn_in: 0,
+                                                          check_interval: 100
+                                                          };
 
  DistMult   6853      0.44    0.42     0.45      0.50     k: 200;
                                                           epochs: 4000;
@@ -121,19 +164,38 @@ WN18RR
                                                           lr: 0.0005;
                                                           seed: 0;
                                                           normalize_ent_emb: false;
-                                                          batches_count: 25
+                                                          batches_count: 25;
+                                                          early_stopping:{
+                                                          x_valid: validation[::10],
+                                                          criteria: mrr,
+                                                          x_filter: train + validation + test,
+                                                          stop_interval: 2,
+                                                          burn_in: 0,
+                                                          check_interval: 100
+                                                          };
 
- ComplEx    8214      0.44    0.41     0.45      0.50     k: 200;
+ ComplEx    4550      0.50    0.47     0.52      0.57     k: 200;
                                                           epochs: 4000;
                                                           eta: 20;
-                                                          loss: nll;
+                                                          loss: multiclass_nll;
                                                           loss_params:
                                                           margin: 1;
                                                           optimizer: adam;
                                                           optimizer_params:
                                                           lr: 0.0005;
                                                           seed: 0;
+                                                          regularizer_params:
+                                                          lambda: 0.05;
+                                                          p: 3;
                                                           batches_count: 10;
+                                                          early_stopping:{
+                                                          x_valid: validation[::10],
+                                                          criteria: mrr,
+                                                          x_filter: train + validation + test,
+                                                          stop_interval: 2,
+                                                          burn_in: 0,
+                                                          check_interval: 100
+                                                          };
                                                           
    HolE     7305      0.47    0.43     0.48      0.53     k: 200;
                                                           epochs: 4000;
@@ -145,7 +207,15 @@ WN18RR
                                                           optimizer_params:
                                                           lr: 0.0005;
                                                           seed: 0;
-                                                          batches_count: 50
+                                                          batches_count: 50;
+                                                          early_stopping:{
+                                                          x_valid: validation[::10],
+                                                          criteria: mrr,
+                                                          x_filter: train + validation + test,
+                                                          stop_interval: 2,
+                                                          burn_in: 0,
+                                                          check_interval: 100
+                                                          };
 
 ========== ========= ====== ======== ======== ========== =======================
 
@@ -175,7 +245,15 @@ TransE   574      0.24   0.15     0.26     0.41       k: 1000;
                                                       norm: 1;
                                                       normalize_ent_emb: false;
                                                       seed: 0;
-                                                      batches_count: 150
+                                                      batches_count: 150;
+                                                      early_stopping:{
+                                                      x_valid: validation[::10],
+                                                      criteria: mrr,
+                                                      x_filter: train + validation + test,
+                                                      stop_interval: 2,
+                                                      burn_in: 0,
+                                                      check_interval: 100
+                                                      };
                                                       
 DistMult 4903     0.49   0.41     0.54     0.63       k: 400;
                                                       epochs: 4000;
@@ -193,7 +271,15 @@ DistMult 4903     0.49   0.41     0.54     0.63       k: 400;
                                                       p: 2;
                                                       seed: 0;
                                                       normalize_ent_emb: false;
-                                                      batches_count: 100
+                                                      batches_count: 100;
+                                                      early_stopping:{
+                                                      x_valid: validation[::10],
+                                                      criteria: mrr,
+                                                      x_filter: train + validation + test,
+                                                      stop_interval: 2,
+                                                      burn_in: 0,
+                                                      check_interval: 100
+                                                      };
 
 ComplEx  7266     0.50   0.42     0.55     0.65       k: 350;
                                                       epochs: 4000;
@@ -207,6 +293,14 @@ ComplEx  7266     0.50   0.42     0.55     0.65       k: 350;
                                                       lr: 0.0001;
                                                       seed: 0;
                                                       batches_count: 100
+                                                      early_stopping:{
+                                                      x_valid: validation[::10],
+                                                      criteria: mrr,
+                                                      x_filter: train + validation + test,
+                                                      stop_interval: 2,
+                                                      burn_in: 0,
+                                                      check_interval: 100
+                                                      };
 
 HolE     6201     0.50   0.41     0.55     0.65       k: 350;
                                                       epochs: 4000;
@@ -220,6 +314,14 @@ HolE     6201     0.50   0.41     0.55     0.65       k: 350;
                                                       lr: 0.0001;
                                                       seed: 0;
                                                       batches_count: 100
+                                                      early_stopping:{
+                                                      x_valid: validation[::10],
+                                                      criteria: mrr,
+                                                      x_filter: train + validation + test,
+                                                      stop_interval: 2,
+                                                      burn_in: 0,
+                                                      check_interval: 100
+                                                      };
 ======== ======== ====== ======== ======== ========= =========================                                                        
 
 
@@ -259,7 +361,8 @@ FB15K
                                                          embedding_model_params:
                                                          norm: 1;
                                                          normalize_ent_emb: false;
-                                                         batches_count: 10
+                                                         batches_count: 10;
+                                                         early_stopping: None;
 
  DistMult   177      0.79    0.74     0.82      0.86     k: 200;
                                                          epochs: 4000;
@@ -272,7 +375,15 @@ FB15K
                                                          lr: 0.0005;
                                                          seed: 0;
                                                          normalize_ent_emb: false;
-                                                         batches_count: 50
+                                                         batches_count: 50;
+                                                         early_stopping:{
+                                                         x_valid: validation[::10],
+                                                         criteria: mrr,
+                                                         x_filter: train + validation + test,
+                                                         stop_interval: 2,
+                                                         burn_in: 0,
+                                                         check_interval: 100
+                                                         };
 
  ComplEx    188      0.79    0.76     0.82      0.86     k: 200;
                                                          epochs: 4000;
@@ -284,7 +395,15 @@ FB15K
                                                          optimizer_params:
                                                          lr: 0.0005;
                                                          seed: 0;
-                                                         batches_count: 100
+                                                         batches_count: 100;
+                                                         early_stopping:{
+                                                         x_valid: validation[::10],
+                                                         criteria: mrr,
+                                                         x_filter: train + validation + test,
+                                                         stop_interval: 2,
+                                                         burn_in: 0,
+                                                         check_interval: 100
+                                                         };
 
    HolE     212      0.80    0.76     0.83      0.87     k: 200;
                                                          epochs: 4000;
@@ -296,7 +415,15 @@ FB15K
                                                          optimizer_params:
                                                          lr: 0.0005;
                                                          seed: 0;
-                                                         batches_count: 50
+                                                         batches_count: 50;
+                                                         early_stopping:{
+                                                         x_valid: validation[::10],
+                                                         criteria: mrr,
+                                                         x_filter: train + validation + test,
+                                                         stop_interval: 2,
+                                                         burn_in: 0,
+                                                         check_interval: 100
+                                                         };
 
 ========== ======== ====== ======== ======== ========== ========================
 
@@ -328,7 +455,8 @@ TransE     446      0.50    0.18     0.81      0.89     k: 150;
                                                         norm: 1;
                                                         normalize_ent_emb: false;
                                                         seed: 0;
-                                                        batches_count: 10
+                                                        batches_count: 10;
+                                                        early_stopping: None;
                                                         
  DistMult   746      0.83    0.73     0.92      0.95     k: 200;
                                                          epochs: 4000;
@@ -341,7 +469,15 @@ TransE     446      0.50    0.18     0.81      0.89     k: 150;
                                                          lr: 0.0005;
                                                          seed: 0;
                                                          normalize_ent_emb: false;
-                                                         batches_count: 50
+                                                         batches_count: 50;
+                                                         early_stopping:{
+                                                         x_valid: validation[::10],
+                                                         criteria: mrr,
+                                                         x_filter: train + validation + test,
+                                                         stop_interval: 2,
+                                                         burn_in: 0,
+                                                         check_interval: 100
+                                                         };
 
  ComplEx    715      0.94    0.94     0.95      0.95     k: 200;
                                                          epochs: 4000;
@@ -353,7 +489,15 @@ TransE     446      0.50    0.18     0.81      0.89     k: 150;
                                                          optimizer_params:
                                                          lr: 0.0005;
                                                          seed: 0;
-                                                         batches_count: 50
+                                                         batches_count: 50;
+                                                         early_stopping:{
+                                                         x_valid: validation[::10],
+                                                         criteria: mrr,
+                                                         x_filter: train + validation + test,
+                                                         stop_interval: 2,
+                                                         burn_in: 0,
+                                                         check_interval: 100
+                                                         };
                                                          
    HolE     658      0.94    0.93     0.94      0.95     k: 200;
                                                          epochs: 4000;
@@ -365,7 +509,15 @@ TransE     446      0.50    0.18     0.81      0.89     k: 150;
                                                          optimizer_params:
                                                          lr: 0.0005;
                                                          seed: 0;
-                                                         batches_count: 50
+                                                         batches_count: 50;
+                                                         early_stopping:{
+                                                         x_valid: validation[::10],
+                                                         criteria: mrr,
+                                                         x_filter: train + validation + test,
+                                                         stop_interval: 2,
+                                                         burn_in: 0,
+                                                         check_interval: 100
+                                                         };
                                                          
 ========== ======== ====== ======== ======== ========== ========================
 
