@@ -546,6 +546,14 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         if isinstance(filter_triples, np.ndarray):
             logger.debug('Getting filtered triples.')
             dataset_handle.set_filter(filter_triples)
+            model.set_filter_for_eval()
+        elif isinstance(X, AmpligraphDatasetAdapter):
+            if not isinstance(filter_triples, bool):
+                raise Exception('Expected a boolean type')
+            if filter_triples is True:
+                model.set_filter_for_eval()
+        else:
+            raise Exception('Invalid datatype for filter. Expected a numpy array or preset data in the adapter.')
         
     eval_dict = {}
     eval_dict['default_protocol'] = False
@@ -562,9 +570,6 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
     logger.debug('Evaluating the test set by corrupting side : {}'.format(corrupt_side))
     eval_dict['corrupt_side'] = corrupt_side
-    
-    if filter_triples is not None:
-        model.set_filter_for_eval()
         
     logger.debug('Configuring evaluation protocol.')
     model.configure_evaluation_protocol(eval_dict)
