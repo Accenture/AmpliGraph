@@ -990,7 +990,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
     for model_params in tqdm(model_params_combinations, disable=(not verbose)):
         current_result = {
-            "model_name": type(model_class).__name__,
+            "model_name": model_class.__name__,
             "model_params": model_params
         }
         try:
