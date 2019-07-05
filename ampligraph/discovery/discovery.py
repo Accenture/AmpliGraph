@@ -325,7 +325,6 @@ def generate_candidates(X, strategy, target_rel, max_candidates,
         if strategy == 'graph_degree':
             C = {i: j for i, j in G.degree()}
         elif strategy == 'cluster_coefficient':
-            nx.algorithms.cluster.clustering(G)
             C = nx.algorithms.cluster.clustering(G)
         elif strategy == 'cluster_triangles':
             C = nx.algorithms.cluster.triangles(G)
