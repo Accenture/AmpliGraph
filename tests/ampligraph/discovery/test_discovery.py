@@ -57,7 +57,7 @@ def test_generate_candidates():
     Xhat = next(gen)
 
     # Max_candidates shape ..
-    assert Xhat.shape == (4, 3)
+    assert Xhat.shape == (3, 3)
 
     gen = generate_candidates(X, strategy='random_uniform', target_rel='y',
                               max_candidates=4, consolidate_sides=False)
