@@ -267,7 +267,6 @@ def generate_candidates(X, strategy, target_rel, max_candidates,
         keep_idx = np.where(X_candidates[:, 0] != X_candidates[:, 2])
         return X_candidates[keep_idx]
 
-
     if strategy == 'exhaustive':
 
         # Exhaustive, generate all combinations of subject and object
@@ -499,8 +498,7 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(),
             s = np.empty(p.shape)
             o = np.empty(p.shape)
         else:
-            mask &= ~(np.isin(X[:, 0], entities_subset) |
-                      np.isin(X[:, 2], entities_subset))
+            mask &= ~(np.isin(X[:, 0], entities_subset) | np.isin(X[:, 2], entities_subset))
 
     if relations_subset is not None:
         if len(relations_subset) == 0:
