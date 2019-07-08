@@ -483,9 +483,9 @@ def find_duplicates(X, model, entities_subset=None, metric='l2',
     Returns
     -------
     duplicates : set of frozensets
-        Each entry in the duplicates set is a set containing all entities that were found to be duplicates
+        Each entry in the duplicates set is a frozenset containing all entities that were found to be duplicates
         according to the metric and tolerance.
-        A set containing just one element means no duplicates were found for this entity.
+        Each frozenset will contain at least two entities.
 
     tolerance: float
         Tolerance used to find the duplicates (useful in the case of the automatic tolerance option).
