@@ -2,6 +2,7 @@ import logging
 import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn.neighbors import NearestNeighbors
+from scipy import optimize
 
 from ..evaluation import evaluate_performance, filter_unseen_entities
 
@@ -448,7 +449,8 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None,
     return clustering_algorithm.fit_predict(X)
 
 
-def find_duplicates(X, model, entities_subset=None, tolerance=1.0, metric='l2'):
+def find_duplicates(X, model, entities_subset=None, metric='l2',
+                    tolerance='auto', expected_fraction_duplicates=0.1):
     """
     Find duplicate entities in a graph based on their embeddings.
 
@@ -465,12 +467,18 @@ def find_duplicates(X, model, entities_subset=None, tolerance=1.0, metric='l2'):
         The entities to consider for duplicate finding.
         This is a subset of all the entities included in X.
         If None, all entities will be clustered.
-    tolerance: int
-        Minimum distance (depending on the chosen metric) to define one entity as the duplicate of another.
     metric: str
         A distance metric used to compare entity distance in the embedding space.
         See https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html
         for the whole list of options.
+    tolerance: int or str
+        Minimum distance (depending on the chosen metric) to define one entity as the duplicate of another.
+        If `'auto'`, it will be determined automatically in a way that you get the `expected_fraction_duplicates`.
+        The `'auto'` option can be much slower than the regular one, as the finding duplicate internal procedure
+        will be repeated multiple times.
+    expected_fraction_duplicates: float
+        Expected fraction of duplicates to be found. It is used only when `tolerance` is `'auto'`.
+        Should be betweeen 0 and 1 (default: 0.1).
 
     Returns
     -------
@@ -478,6 +486,10 @@ def find_duplicates(X, model, entities_subset=None, tolerance=1.0, metric='l2'):
         Each entry in the duplicates set is a set containing all entities that were found to be duplicates
         according to the metric and tolerance.
         A set containing just one element means no duplicates were found for this entity.
+
+    tolerance: float
+        Tolerance used to find the duplicates (useful in the case of the automatic tolerance option).
+
     Examples
     --------
     >>> import requests
@@ -524,13 +536,22 @@ def find_duplicates(X, model, entities_subset=None, tolerance=1.0, metric='l2'):
         raise ValueError("Model has not been fitted.")
 
     entities = np.setdiff1d(np.unique(np.concatenate((X[:, 0], X[:, 2]))), entities_subset)
-
     ent_embeddings = model.get_embeddings(entities, embedding_type='entity')
 
-    nn = NearestNeighbors(metric=metric, radius=tolerance)
-    nn.fit(ent_embeddings)
-    neighbors = nn.radius_neighbors(ent_embeddings)[1]
+    def get_dups(tol):
+        nn = NearestNeighbors(metric=metric, radius=tol)
+        nn.fit(ent_embeddings)
+        neighbors = nn.radius_neighbors(ent_embeddings)[1]
 
-    duplicates = {frozenset(entities[idx] for idx in row) for i, row in enumerate(neighbors)}
+        return {frozenset(entities[idx] for idx in row) for i, row in enumerate(neighbors) if len(row) > 1}
 
-    return duplicates
+    def opt(tol):
+        duplicates = get_dups(tol)
+        fraction_duplicates = len(set().union(*duplicates)) / len(entities)
+        return fraction_duplicates - expected_fraction_duplicates
+
+    if tolerance == 'auto':
+        max_distance = np.linalg.norm(ent_embeddings.max(axis=1) - ent_embeddings.min(axis=1))
+        tolerance = optimize.bisect(opt, 0.0, max_distance, xtol=1e-3, maxiter=50)
+
+    return get_dups(tolerance), tolerance
