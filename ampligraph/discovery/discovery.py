@@ -539,13 +539,34 @@ def find_duplicates(X, model, entities_subset=None, metric='l2',
     ent_embeddings = model.get_embeddings(entities, embedding_type='entity')
 
     def get_dups(tol):
+        """
+         Given tolerance, finds duplicate entities in a graph based on their embeddings.
+
+         Parameters
+         ----------
+         tol: float
+             Minimum distance (depending on the chosen metric) to define one entity as the duplicate of another.
+
+         Returns
+         -------
+         duplicates : set of frozensets
+             Each entry in the duplicates set is a frozenset containing all entities that were found to be duplicates
+             according to the metric and tolerance.
+             Each frozenset will contain at least two entities.
+
+        """
         nn = NearestNeighbors(metric=metric, radius=tol)
         nn.fit(ent_embeddings)
         neighbors = nn.radius_neighbors(ent_embeddings)[1]
-
         return {frozenset(entities[idx] for idx in row) for i, row in enumerate(neighbors) if len(row) > 1}
 
     def opt(tol):
+        """
+        Auxiliary function for the optimization procedure to find the tolerance that corresponds to the expected
+        number of duplicates.
+
+        Returns the difference between actual and expected fraction of duplicates.
+        """
         duplicates = get_dups(tol)
         fraction_duplicates = len(set().union(*duplicates)) / len(entities)
         return fraction_duplicates - expected_fraction_duplicates
