@@ -220,7 +220,7 @@ def test_find_duplicates():
 
     assert len(dups) <= len(entities)
     assert all(len(d) <= len(entities) for d in dups)
-    assert all(d in entities for d in dups)
+    assert all(d.issubset(entities) for d in dups)
 
 
 def test_find_duplicates_auto():
@@ -242,7 +242,7 @@ def test_find_duplicates_auto():
     assert tol > 0.0
     assert len(dups) <= len(entities)
     assert all(len(d) <= len(entities) for d in dups)
-    assert all(d in entities for d in dups)
+    assert all(d.issubset(entities) for d in dups)
 
 
 if __name__ == '__main__':
