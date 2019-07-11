@@ -1,12 +1,9 @@
 import logging
 import numpy as np
 from sklearn.cluster import DBSCAN
-<<<<<<< HEAD
 from sklearn.neighbors import NearestNeighbors
 from scipy import optimize
-=======
 import networkx as nx
->>>>>>> 17951fcd44d3a2b48f9ac4039a26e0b51a337188
 
 from ..evaluation import evaluate_performance, filter_unseen_entities
 
