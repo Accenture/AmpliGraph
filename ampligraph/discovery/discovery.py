@@ -1,7 +1,12 @@
 import logging
 import numpy as np
 from sklearn.cluster import DBSCAN
+<<<<<<< HEAD
+from sklearn.neighbors import NearestNeighbors
+from scipy import optimize
+=======
 import networkx as nx
+>>>>>>> 17951fcd44d3a2b48f9ac4039a26e0b51a337188
 
 from ..evaluation import evaluate_performance, filter_unseen_entities
 
@@ -509,3 +514,132 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(),
     X = np.hstack((s, p, o))[mask]
 
     return clustering_algorithm.fit_predict(X)
+
+
+def find_duplicates(X, model, entities_subset=None, metric='l2',
+                    tolerance='auto', expected_fraction_duplicates=0.1):
+    """
+    Find duplicate entities in a graph based on their embeddings.
+
+    Parameters
+    ----------
+
+    X : ndarray, shape [n, 3]
+        The input knowledge graph (triples) to find the duplicate entities.
+    model : EmbeddingModel
+        The fitted model that will be used to generate the embeddings.
+        This model must have been fully trained already, be it directly with `fit` or from
+        a helper function such as `select_best_model_ranking`.
+    entities_subset: ndarray, shape [n]
+        The entities to consider for duplicate finding.
+        This is a subset of all the entities included in X.
+        If None, all entities will be clustered.
+    metric: str
+        A distance metric used to compare entity distance in the embedding space.
+        See https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html
+        for the whole list of options.
+    tolerance: int or str
+        Minimum distance (depending on the chosen metric) to define one entity as the duplicate of another.
+        If `'auto'`, it will be determined automatically in a way that you get the `expected_fraction_duplicates`.
+        The `'auto'` option can be much slower than the regular one, as the finding duplicate internal procedure
+        will be repeated multiple times.
+    expected_fraction_duplicates: float
+        Expected fraction of duplicates to be found. It is used only when `tolerance` is `'auto'`.
+        Should be betweeen 0 and 1 (default: 0.1).
+
+    Returns
+    -------
+    duplicates : set of frozensets
+        Each entry in the duplicates set is a frozenset containing all entities that were found to be duplicates
+        according to the metric and tolerance.
+        Each frozenset will contain at least two entities.
+
+    tolerance: float
+        Tolerance used to find the duplicates (useful in the case of the automatic tolerance option).
+
+    Examples
+    --------
+    >>> import requests
+    >>> from ampligraph.datasets import load_from_csv
+    >>> from ampligraph.latent_features import ComplEx
+    >>> from ampligraph.discovery import find_duplicates
+    >>>
+    >>> # Game of Thrones relations dataset
+    >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
+    >>> open('GoT.csv', 'wb').write(requests.get(url).content)
+    >>> X = load_from_csv('.', 'GoT.csv', sep=',')
+    >>>
+    >>> model = ComplEx(batches_count=10,
+    >>>                 seed=0,
+    >>>                 epochs=200,
+    >>>                 k=150,
+    >>>                 eta=5,
+    >>>                 optimizer='adam',
+    >>>                 optimizer_params={'lr':1e-3},
+    >>>                 loss='multiclass_nll',
+    >>>                 regularizer='LP',
+    >>>                 regularizer_params={'p':3, 'lambda':1e-5},
+    >>>                 verbose=True)
+    >>> model.fit(X)
+    >>>
+    >>> dups = find_duplicates(train, model, tolerance=1.0)
+    >>> sorted([(len(i), i) for i in dups], reverse=True)
+    [(53, frozenset({
+        'Addam Frey',
+        'Aegon Frey',
+        'Aemon Rivers',
+        'Alesander Frey',
+        'Alyn Frey',
+        'Androw Frey',
+        'Arwyn Frey',
+        'Bradamar Frey',
+        'Brenett',
+        'Bryan Frey',
+        'Cersei Frey',
+        ...
+
+    """
+    if not model.is_fitted:
+        raise ValueError("Model has not been fitted.")
+
+    entities = np.setdiff1d(np.unique(np.concatenate((X[:, 0], X[:, 2]))), entities_subset)
+    ent_embeddings = model.get_embeddings(entities, embedding_type='entity')
+
+    def get_dups(tol):
+        """
+         Given tolerance, finds duplicate entities in a graph based on their embeddings.
+
+         Parameters
+         ----------
+         tol: float
+             Minimum distance (depending on the chosen metric) to define one entity as the duplicate of another.
+
+         Returns
+         -------
+         duplicates : set of frozensets
+             Each entry in the duplicates set is a frozenset containing all entities that were found to be duplicates
+             according to the metric and tolerance.
+             Each frozenset will contain at least two entities.
+
+        """
+        nn = NearestNeighbors(metric=metric, radius=tol)
+        nn.fit(ent_embeddings)
+        neighbors = nn.radius_neighbors(ent_embeddings)[1]
+        return {frozenset(entities[idx] for idx in row) for i, row in enumerate(neighbors) if len(row) > 1}
+
+    def opt(tol):
+        """
+        Auxiliary function for the optimization procedure to find the tolerance that corresponds to the expected
+        number of duplicates.
+
+        Returns the difference between actual and expected fraction of duplicates.
+        """
+        duplicates = get_dups(tol)
+        fraction_duplicates = len(set().union(*duplicates)) / len(entities)
+        return fraction_duplicates - expected_fraction_duplicates
+
+    if tolerance == 'auto':
+        max_distance = np.linalg.norm(ent_embeddings.max(axis=1) - ent_embeddings.min(axis=1))
+        tolerance = optimize.bisect(opt, 0.0, max_distance, xtol=1e-3, maxiter=50)
+
+    return get_dups(tolerance), tolerance
