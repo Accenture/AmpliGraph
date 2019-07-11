@@ -1,27 +1,26 @@
 import tensorflow as tf
 import abc
 import logging
-
-import math
+import numpy as np
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 INITIALIZER_REGISTRY = {}
 
-#Default value of lower bound for uniform sampling
+# Default value of lower bound for uniform sampling
 DEFAULT_UNIFORM_LOW = -0.05
 
-#Default value of upper bound for uniform sampling
+# Default value of upper bound for uniform sampling
 DEFAULT_UNIFORM_HIGH = 0.05
 
-#Default value of mean for Gaussian sampling
+# Default value of mean for Gaussian sampling
 DEFAULT_NORMAL_MEAN = 0
 
-#Default value of mean for Gaussian sampling
+# Default value of mean for Gaussian sampling
 DEFAULT_NORMAL_STD = 0.05
 
-#Default value indicating whether to use xavier uniform or normal
+# Default value indicating whether to use xavier uniform or normal
 DEFAULT_XAVIER_IS_UNIFORM = False
 
 
@@ -34,7 +33,6 @@ def register_initializer(name, external_params=[], class_params={}):
         return class_handle
 
     return insert_in_registry
-
 
 
 class Initializer(abc.ABC):
@@ -178,6 +176,7 @@ class RandomUniform(Initializer):
                                  self._initializer_params['high'], 
                                  size=(in_shape, out_shape))
 
+
 @register_initializer("xavier", ["uniform"])             
 class Xavier(Initializer):
     """Abstract class for initializer .
@@ -222,12 +221,12 @@ class Xavier(Initializer):
         
     def get_np_initializer(self, in_shape, out_shape):
         if self._initializer_params['uniform']:
-            limit = sqrt(6 / (in_shape + out_shape))
+            limit = np.sqrt(6 / (in_shape + out_shape))
             return np.random.uniform(-limit,
                                      limit, 
                                      size=(in_shape, out_shape))
         else:
-            std = sqrt(2 / (in_shape + out_shape))
+            std = np.sqrt(2 / (in_shape + out_shape))
             return np.random.normal(0,
                                     std, 
                                     size=(in_shape, out_shape))

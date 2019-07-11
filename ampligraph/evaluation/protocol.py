@@ -655,11 +655,17 @@ def remove_unused_params(params, nested_keys, model_name):
         The name of the model (e.g. 'ComplEx').
 
     """
-    from ..latent_features import LOSS_REGISTRY, REGULARIZER_REGISTRY, MODEL_REGISTRY
+    from ..latent_features import LOSS_REGISTRY, REGULARIZER_REGISTRY, MODEL_REGISTRY, \
+        OPTIMIZER_REGISTRY, INITIALIZER_REGISTRY
+        
     if "loss" in params and "loss_params" in params:
         _remove_unused_param(params, nested_keys, LOSS_REGISTRY, params["loss"], "loss_params")
     if "regularizer" in params and "regularizer_params" in params:
         _remove_unused_param(params, nested_keys, REGULARIZER_REGISTRY, params["regularizer"], "regularizer_params")
+    if "optimizer" in params and "optimizer_params" in params:
+        _remove_unused_param(params, nested_keys, OPTIMIZER_REGISTRY, params["optimizer"], "optimizer_params")
+    if "initializer" in params and "initializer_params" in params:
+        _remove_unused_param(params, nested_keys, INITIALIZER_REGISTRY, params["initializer"], "initializer_params")
     if "embedding_model_params" in params:
         _remove_unused_param(params, nested_keys, MODEL_REGISTRY, model_name, "embedding_model_params")
 

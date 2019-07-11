@@ -31,10 +31,10 @@ logger.setLevel(logging.DEBUG)
 # Default learning rate for the optimizers
 DEFAULT_LR = 0.0005
 
-#Default value indicating whether to use xavier uniform or normal
+# Default value indicating whether to use xavier uniform or normal
 DEFAULT_XAVIER_IS_UNIFORM = False
 
-#Default value for the type of initializer to use
+# Default value for the type of initializer to use
 DEFAULT_INITIALIZER = 'xavier'
 
 # Default burn in for early stopping
