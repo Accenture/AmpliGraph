@@ -14,6 +14,7 @@ import logging
 from .loss_functions import LOSS_REGISTRY
 from .regularizers import REGULARIZER_REGISTRY
 from .optimizers import OPTIMIZER_REGISTRY, SGDOptimizer
+from .initializers import INITIALIZER_REGISTRY
 from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, \
     hits_at_n_score, mrr_score
 from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
@@ -29,6 +30,12 @@ logger.setLevel(logging.DEBUG)
 
 # Default learning rate for the optimizers
 DEFAULT_LR = 0.0005
+
+#Default value indicating whether to use xavier uniform or normal
+DEFAULT_XAVIER_IS_UNIFORM = False
+
+#Default value for the type of initializer to use
+DEFAULT_INITIALIZER = 'xavier'
 
 # Default burn in for early stopping
 DEFAULT_BURN_IN_EARLY_STOPPING = 100
@@ -140,6 +147,8 @@ class EmbeddingModel(abc.ABC):
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER,
                  regularizer_params={},
+                 initializer=DEFAULT_INITIALIZER,
+                 initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
@@ -285,8 +294,17 @@ class EmbeddingModel(abc.ABC):
 
         self.rnd = check_random_state(self.seed)
         np.random.seed(self.seed)
-
-        self.initializer = tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed)
+        self.initializer_params = initializer_params
+        
+        try:
+            self.initializer = INITIALIZER_REGISTRY[initializer](initializer, 
+                                                                 self.initializer_params, 
+                                                                 verbose,
+                                                                 self.seed)
+        except KeyError:
+            msg = 'Unsupported initializer: {}'.format(initializer)
+            logger.error(msg)
+            raise ValueError(msg)
         
         self.tf_config = tf.ConfigProto(allow_soft_placement=True)
         self.tf_config.gpu_options.allow_growth = True
@@ -485,15 +503,15 @@ class EmbeddingModel(abc.ABC):
         if not self.dealing_with_large_graphs:
             
             self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer())
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer())
         else:
             
             self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer())
             self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size * 2, self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer())
 
     def _get_model_loss(self, dataset_iterator):
         """Get the current loss including loss due to regularization.
@@ -863,8 +881,8 @@ class EmbeddingModel(abc.ABC):
                 # learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
             
             # CPU matrix of embeddings
-            self.ent_emb_cpu = np.random.normal(0, 0.05, size=(len(self.ent_to_idx), self.internal_k))
-                        
+            self.ent_emb_cpu = self.initializer.get_np_initializer(len(self.ent_to_idx), self.internal_k)
+            
             if early_stopping:
                 logger.warning("Early stopping may introduce memory issues when many distinct entities are present."
                                " Disable early stopping with `early_stopping_params={'early_stopping'=False}` or set "
@@ -1594,6 +1612,8 @@ class TransE(EmbeddingModel):
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER,
                  regularizer_params={},
+                 initializer=DEFAULT_INITIALIZER,
+                 initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  verbose=DEFAULT_VERBOSE):
         """
         Initialize an EmbeddingModel.
@@ -1682,6 +1702,7 @@ class TransE(EmbeddingModel):
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
+                         initializer=initializer, initializer_params=initializer_params,
                          verbose=verbose)
 
     def _fn(self, e_s, e_p, e_o):
@@ -1863,6 +1884,8 @@ class DistMult(EmbeddingModel):
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER,
                  regularizer_params={},
+                 initializer=DEFAULT_INITIALIZER,
+                 initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
@@ -1950,6 +1973,7 @@ class DistMult(EmbeddingModel):
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
+                         initializer=initializer, initializer_params=initializer_params,
                          verbose=verbose)
 
     def _fn(self, e_s, e_p, e_o):
@@ -2141,6 +2165,8 @@ class ComplEx(EmbeddingModel):
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER,
                  regularizer_params={},
+                 initializer=DEFAULT_INITIALIZER,
+                 initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
@@ -2221,6 +2247,7 @@ class ComplEx(EmbeddingModel):
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
+                         initializer=initializer, initializer_params=initializer_params,
                          verbose=verbose)
         
         self.internal_k = self.k * 2
@@ -2230,14 +2257,14 @@ class ComplEx(EmbeddingModel):
         """
         if not self.dealing_with_large_graphs:
             self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer())
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer())
         else:
             self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer())
             self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size * 2, self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer())
 
     def _fn(self, e_s, e_p, e_o):
         r"""ComplEx scoring function.
@@ -2427,6 +2454,8 @@ class HolE(ComplEx):
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER,
                  regularizer_params={},
+                 initializer=DEFAULT_INITIALIZER,
+                 initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
@@ -2508,6 +2537,7 @@ class HolE(ComplEx):
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
+                         initializer=initializer, initializer_params=initializer_params,
                          verbose=verbose)
         self.internal_k = self.k * 2
         
