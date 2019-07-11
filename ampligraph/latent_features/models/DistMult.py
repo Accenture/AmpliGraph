@@ -1,5 +1,5 @@
 from .EmbeddingModel import EmbeddingModel
-from ampligraph.latent_features import constants as CONSTANTS
+from ampligraph.latent_features import constants as constants
 import tensorflow as tf
 
 class DistMult(EmbeddingModel):
@@ -43,21 +43,21 @@ class DistMult(EmbeddingModel):
     """
 
     def __init__(self,
-                 k=CONSTANTS.DEFAULT_EMBEDDING_SIZE,
-                 eta=CONSTANTS.DEFAULT_ETA,
-                 epochs=CONSTANTS.DEFAULT_EPOCH,
-                 batches_count=CONSTANTS.DEFAULT_BATCH_COUNT,
-                 seed=CONSTANTS.DEFAULT_SEED,
-                 embedding_model_params={'normalize_ent_emb': CONSTANTS.DEFAULT_NORMALIZE_EMBEDDINGS,
-                                         'negative_corruption_entities': CONSTANTS.DEFAULT_CORRUPTION_ENTITIES,
-                                         'corrupt_sides': CONSTANTS.DEFAULT_CORRUPT_SIDE_TRAIN},
-                 optimizer=CONSTANTS.DEFAULT_OPTIM,
-                 optimizer_params={'lr': CONSTANTS.DEFAULT_LR},
-                 loss=CONSTANTS.DEFAULT_LOSS,
+                 k=constants.DEFAULT_EMBEDDING_SIZE,
+                 eta=constants.DEFAULT_ETA,
+                 epochs=constants.DEFAULT_EPOCH,
+                 batches_count=constants.DEFAULT_BATCH_COUNT,
+                 seed=constants.DEFAULT_SEED,
+                 embedding_model_params={'normalize_ent_emb': constants.DEFAULT_NORMALIZE_EMBEDDINGS,
+                                         'negative_corruption_entities': constants.DEFAULT_CORRUPTION_ENTITIES,
+                                         'corrupt_sides': constants.DEFAULT_CORRUPT_SIDE_TRAIN},
+                 optimizer=constants.DEFAULT_OPTIM,
+                 optimizer_params={'lr': constants.DEFAULT_LR},
+                 loss=constants.DEFAULT_LOSS,
                  loss_params={},
-                 regularizer=CONSTANTS.DEFAULT_REGULARIZER,
+                 regularizer=constants.DEFAULT_REGULARIZER,
                  regularizer_params={},
-                 verbose=CONSTANTS.DEFAULT_VERBOSE):
+                 verbose=constants.DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
         Also creates a new Tensorflow session for training.

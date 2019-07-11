@@ -16,7 +16,7 @@ from ampligraph.latent_features.loss_functions import LOSS_REGISTRY
 from ampligraph.latent_features.regularizers import REGULARIZER_REGISTRY
 from ampligraph.evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, \
     hits_at_n_score, mrr_score
-from ampligraph.latent_features import constants as CONSTANTS
+from ampligraph.latent_features import constants as constants
 import os
 
 MODEL_REGISTRY = {}
@@ -32,19 +32,19 @@ class EmbeddingModel(abc.ABC):
     """
 
     def __init__(self,
-                 k=CONSTANTS.DEFAULT_EMBEDDING_SIZE,
-                 eta=CONSTANTS.DEFAULT_ETA,
-                 epochs=CONSTANTS.DEFAULT_EPOCH,
-                 batches_count=CONSTANTS.DEFAULT_BATCH_COUNT,
-                 seed=CONSTANTS.DEFAULT_SEED,
+                 k=constants.DEFAULT_EMBEDDING_SIZE,
+                 eta=constants.DEFAULT_ETA,
+                 epochs=constants.DEFAULT_EPOCH,
+                 batches_count=constants.DEFAULT_BATCH_COUNT,
+                 seed=constants.DEFAULT_SEED,
                  embedding_model_params={},
-                 optimizer=CONSTANTS.DEFAULT_OPTIM,
-                 optimizer_params={'lr': CONSTANTS.DEFAULT_LR},
-                 loss=CONSTANTS.DEFAULT_LOSS,
+                 optimizer=constants.DEFAULT_OPTIM,
+                 optimizer_params={'lr': constants.DEFAULT_LR},
+                 loss=constants.DEFAULT_LOSS,
                  loss_params={},
-                 regularizer=CONSTANTS.DEFAULT_REGULARIZER,
+                 regularizer=constants.DEFAULT_REGULARIZER,
                  regularizer_params={},
-                 verbose=CONSTANTS.DEFAULT_VERBOSE):
+                 verbose=constants.DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
         Also creates a new Tensorflow session for training.
@@ -174,20 +174,20 @@ class EmbeddingModel(abc.ABC):
         if verbose:
             logger.info('\n------- Optimizer ------')
             logger.info('Name : {}'.format(optimizer))
-            logger.info('Learning rate : {}'.format(self.optimizer_params.get('lr', CONSTANTS.DEFAULT_LR)))
+            logger.info('Learning rate : {}'.format(self.optimizer_params.get('lr', constants.DEFAULT_LR)))
 
         if optimizer == "adagrad":
-            self.optimizer = tf.train.AdagradOptimizer(learning_rate=self.optimizer_params.get('lr', CONSTANTS.DEFAULT_LR))
+            self.optimizer = tf.train.AdagradOptimizer(learning_rate=self.optimizer_params.get('lr', constants.DEFAULT_LR))
         elif optimizer == "adam":
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.optimizer_params.get('lr', CONSTANTS.DEFAULT_LR))
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.optimizer_params.get('lr', constants.DEFAULT_LR))
         elif optimizer == "sgd":
             self.optimizer = tf.train.GradientDescentOptimizer(
-                learning_rate=self.optimizer_params.get('lr', CONSTANTS.DEFAULT_LR))
+                learning_rate=self.optimizer_params.get('lr', constants.DEFAULT_LR))
         elif optimizer == "momentum":
-            self.optimizer = tf.train.MomentumOptimizer(learning_rate=self.optimizer_params.get('lr', CONSTANTS.DEFAULT_LR),
+            self.optimizer = tf.train.MomentumOptimizer(learning_rate=self.optimizer_params.get('lr', constants.DEFAULT_LR),
                                                         momentum=self.optimizer_params.get('momentum',
-                                                                                           CONSTANTS.DEFAULT_MOMENTUM))
-            logger.info('Momentum : {}'.format(self.optimizer_params.get('momentum', CONSTANTS.DEFAULT_MOMENTUM)))
+                                                                                           constants.DEFAULT_MOMENTUM))
+            logger.info('Momentum : {}'.format(self.optimizer_params.get('momentum', constants.DEFAULT_MOMENTUM)))
         else:
             msg = 'Unsupported optimizer: {}'.format(optimizer)
             logger.error(msg)
@@ -365,7 +365,7 @@ class EmbeddingModel(abc.ABC):
         entities_list = None
 
         negative_corruption_entities = self.embedding_model_params.get('negative_corruption_entities',
-                                                                       CONSTANTS.DEFAULT_CORRUPTION_ENTITIES)
+                                                                       constants.DEFAULT_CORRUPTION_ENTITIES)
 
         if negative_corruption_entities == 'all':
             logger.debug('Using all entities for generation of corruptions during training')
@@ -392,7 +392,7 @@ class EmbeddingModel(abc.ABC):
 
         loss = 0
 
-        corruption_sides = self.embedding_model_params.get('corrupt_sides', CONSTANTS.DEFAULT_CORRUPT_SIDE_TRAIN)
+        corruption_sides = self.embedding_model_params.get('corrupt_sides', constants.DEFAULT_CORRUPT_SIDE_TRAIN)
         if not isinstance(corruption_sides, list):
             corruption_sides = [corruption_sides]
 
@@ -433,14 +433,14 @@ class EmbeddingModel(abc.ABC):
             logger.error(msg)
             raise KeyError(msg)
 
-        self.early_stopping_criteria = self.early_stopping_params.get('criteria', CONSTANTS.DEFAULT_CRITERIA_EARLY_STOPPING)
+        self.early_stopping_criteria = self.early_stopping_params.get('criteria', constants.DEFAULT_CRITERIA_EARLY_STOPPING)
         if self.early_stopping_criteria not in ['hits10', 'hits1', 'hits3', 'mrr']:
             msg = 'Unsupported early stopping criteria.'
             logger.error(msg)
             raise ValueError(msg)
 
         self.eval_config['corruption_entities'] = self.early_stopping_params.get('corruption_entities',
-                                                                                 CONSTANTS.DEFAULT_CORRUPTION_ENTITIES)
+                                                                                 constants.DEFAULT_CORRUPTION_ENTITIES)
 
         if isinstance(self.eval_config['corruption_entities'], list):
             # convert from list of raw triples to entity indices
@@ -452,7 +452,7 @@ class EmbeddingModel(abc.ABC):
         elif self.eval_config['corruption_entities'] == 'batch':
             logger.debug('Using batch entities for generation of corruptions for early stopping')
 
-        self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', CONSTANTS.DEFAULT_CORRUPT_SIDE_EVAL)
+        self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL)
 
         self.early_stopping_best_value = None
         self.early_stopping_stop_counter = 0
@@ -479,9 +479,9 @@ class EmbeddingModel(abc.ABC):
             Flag to indicate if the early stopping criteria is achieved.
         """
 
-        if epoch >= self.early_stopping_params.get('burn_in', CONSTANTS.DEFAULT_BURN_IN_EARLY_STOPPING) \
+        if epoch >= self.early_stopping_params.get('burn_in', constants.DEFAULT_BURN_IN_EARLY_STOPPING) \
                 and epoch % self.early_stopping_params.get('check_interval',
-                                                           CONSTANTS.DEFAULT_CHECK_INTERVAL_EARLY_STOPPING) == 0:
+                                                           constants.DEFAULT_CHECK_INTERVAL_EARLY_STOPPING) == 0:
             # compute and store test_loss
             ranks = []
 
@@ -503,7 +503,7 @@ class EmbeddingModel(abc.ABC):
             elif self.early_stopping_best_value >= current_test_value:
                 self.early_stopping_stop_counter += 1
                 if self.early_stopping_stop_counter == self.early_stopping_params.get(
-                        'stop_interval', CONSTANTS.DEFAULT_STOP_INTERVAL_EARLY_STOPPING):
+                        'stop_interval', constants.DEFAULT_STOP_INTERVAL_EARLY_STOPPING):
 
                     # If the best value for the criteria has not changed from initial value then
                     # save the model before early stopping
@@ -589,7 +589,7 @@ class EmbeddingModel(abc.ABC):
         #  convert training set into internal IDs
         X = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
 
-        if len(self.ent_to_idx) > CONSTANTS.ENTITY_WARN_THRESHOLD:
+        if len(self.ent_to_idx) > constants.ENTITY_WARN_THRESHOLD:
             logger.warning('Your graph has a large number of distinct entities. '
                            'Found {} distinct entities'.format(len(self.ent_to_idx)))
             if early_stopping:
@@ -634,7 +634,7 @@ class EmbeddingModel(abc.ABC):
 
         normalize_rel_emb_op = self.rel_emb.assign(tf.clip_by_norm(self.rel_emb, clip_norm=1, axes=1))
 
-        if self.embedding_model_params.get('normalize_ent_emb', CONSTANTS.DEFAULT_NORMALIZE_EMBEDDINGS):
+        if self.embedding_model_params.get('normalize_ent_emb', constants.DEFAULT_NORMALIZE_EMBEDDINGS):
             self.sess_train.run(normalize_rel_emb_op)
             self.sess_train.run(normalize_ent_emb_op)
 
@@ -650,7 +650,7 @@ class EmbeddingModel(abc.ABC):
                     raise ValueError(msg)
 
                 losses.append(loss_batch)
-                if self.embedding_model_params.get('normalize_ent_emb', CONSTANTS.DEFAULT_NORMALIZE_EMBEDDINGS):
+                if self.embedding_model_params.get('normalize_ent_emb', constants.DEFAULT_NORMALIZE_EMBEDDINGS):
                     self.sess_train.run(normalize_ent_emb_op)
             if self.verbose:
                 msg = 'Average Loss: {:10f}'.format(sum(losses) / (batch_size * self.batches_count))
@@ -751,9 +751,9 @@ class EmbeddingModel(abc.ABC):
 
         """
         if config is None:
-            config = {'corruption_entities': CONSTANTS.DEFAULT_CORRUPTION_ENTITIES,
-                      'corrupt_side': CONSTANTS.DEFAULT_CORRUPT_SIDE_EVAL,
-                      'default_protocol': CONSTANTS.DEFAULT_PROTOCOL_EVAL}
+            config = {'corruption_entities': constants.DEFAULT_CORRUPTION_ENTITIES,
+                      'corrupt_side': constants.DEFAULT_CORRUPT_SIDE_EVAL,
+                      'default_protocol': constants.DEFAULT_PROTOCOL_EVAL}
         self.eval_config = config
 
     def _initialize_eval_graph(self):
@@ -791,7 +791,7 @@ class EmbeddingModel(abc.ABC):
                                                             np.zeros(len(self.filter_keys), dtype=np.int64)),
                 1)
 
-        corruption_entities = self.eval_config.get('corruption_entities', CONSTANTS.DEFAULT_CORRUPTION_ENTITIES)
+        corruption_entities = self.eval_config.get('corruption_entities', constants.DEFAULT_CORRUPTION_ENTITIES)
 
         if corruption_entities == 'all':
             corruption_entities = all_entities_np
@@ -804,7 +804,7 @@ class EmbeddingModel(abc.ABC):
 
         self.corruption_entities_tf = tf.constant(corruption_entities, dtype=tf.int64)
 
-        corrupt_side = self.eval_config.get('corrupt_side', CONSTANTS.DEFAULT_CORRUPT_SIDE_EVAL)
+        corrupt_side = self.eval_config.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL)
         self.out_corr, self.out_corr_prime = generate_corruptions_for_eval(self.X_test_tf,
                                                                            self.corruption_entities_tf,
                                                                            corrupt_side,
@@ -827,7 +827,7 @@ class EmbeddingModel(abc.ABC):
         e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
         self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
 
-        if self.eval_config.get('default_protocol', CONSTANTS.DEFAULT_PROTOCOL_EVAL):
+        if self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL):
             # For default protocol, the corrupt side is always s+o
             # corrupt_side == 's+o'
 
