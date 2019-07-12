@@ -43,22 +43,18 @@ class Initializer(abc.ABC):
     external_params = []
     class_params = {}
 
-    def __init__(self, initializer, hyperparam_dict={}, verbose=True, seed=0):
+    def __init__(self, initializer_params={}, verbose=True, seed=0):
         """Initialize the Class
         
         Parameters
         ----------
-        initializer: string
-            name of the initializer to use
-        hyperparam_dict : dict
+        initializer_params : dict
             dictionary of hyperparams that would be used by the initializer.
         """
-        
-        self.initializer = initializer
         self.verbose = verbose
         self._initializer_params = {}
         self.seed = seed
-        self._init_hyperparams(hyperparam_dict)
+        self._init_hyperparams(initializer_params)
         
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters.
@@ -86,18 +82,25 @@ class RandomNormal(Initializer):
     external_params = []
     class_params = {}
 
-    def __init__(self, initializer, hyperparam_dict={}, verbose=True, seed=0):
+    def __init__(self, initializer_params={}, verbose=True, seed=0):
         """Initialize the Class
         
         Parameters
         ----------
-        initializer: string
-            name of the initializer to use
-        hyperparam_dict : dict
-            dictionary of hyperparams that would be used by the initializer.
+        initializer_params : dict
+            Consists of key-value pairs. The initializer will check the keys to get the corresponding params:
+
+            - **'mean'**: (float). Mean of the weights(default: 0)
+            - **'std'**: (float): std if the weights (default: 0.05)
+
+            Example: ``initializer_params={'mean': 0, 'std': 0.01}``
+        verbose : bool
+            Enable/disable verbose mode
+        seed : int
+            random number generator seed
         """
         
-        super(RandomNormal, self).__init__(initializer, hyperparam_dict, verbose, seed)
+        super(RandomNormal, self).__init__(initializer_params, verbose, seed)
         
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters.
@@ -136,18 +139,25 @@ class RandomUniform(Initializer):
     external_params = []
     class_params = {}
 
-    def __init__(self, initializer, hyperparam_dict={}, verbose=True, seed=0):
+    def __init__(self, initializer_params={}, verbose=True, seed=0):
         """Initialize the Class
         
         Parameters
         ----------
-        initializer: string
-            name of the initializer to use
-        hyperparam_dict : dict
-            dictionary of hyperparams that would be used by the initializer.
+        initializer_params : dict
+            Consists of key-value pairs. The initializer will check the keys to get the corresponding params:
+
+            - **'low'**: (float). lower bound for uniform number (default: -0.05)
+            - **'high'**: (float): upper bound for uniform number (default: 0.05)
+
+            Example: ``initializer_params={'low': 0, 'high': 0.01}``
+        verbose : bool
+            Enable/disable verbose mode
+        seed : int
+            random number generator seed
         """
         
-        super(RandomUniform, self).__init__(initializer, hyperparam_dict, verbose, seed)
+        super(RandomUniform, self).__init__(initializer_params, verbose, seed)
         
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters.
@@ -186,18 +196,24 @@ class Xavier(Initializer):
     external_params = []
     class_params = {}
 
-    def __init__(self, initializer, hyperparam_dict={}, verbose=True, seed=0):
+    def __init__(self, initializer_params={}, verbose=True, seed=0):
         """Initialize the Class
         
         Parameters
         ----------
-        initializer: string
-            name of the initializer to use
-        hyperparam_dict : dict
-            dictionary of hyperparams that would be used by the initializer.
+        initializer_params : dict
+            Consists of key-value pairs. The initializer will check the keys to get the corresponding params:
+
+            - **'uniform'**: (bool). indicates whether to use Xavier Uniform or Xavier Normal initializer.
+
+            Example: ``initializer_params={'uniform': False}``
+        verbose : bool
+            Enable/disable verbose mode
+        seed : int
+            random number generator seed
         """
         
-        super(Xavier, self).__init__(initializer, hyperparam_dict, verbose, seed)
+        super(Xavier, self).__init__(initializer_params, verbose, seed)
         
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters.

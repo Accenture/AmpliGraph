@@ -281,8 +281,7 @@ class EmbeddingModel(abc.ABC):
         self.optimizer_params = optimizer_params
 
         try:
-            self.optimizer = OPTIMIZER_REGISTRY[optimizer](optimizer, 
-                                                           self.optimizer_params, 
+            self.optimizer = OPTIMIZER_REGISTRY[optimizer](self.optimizer_params, 
                                                            self.batches_count, 
                                                            verbose)
         except KeyError:
@@ -297,8 +296,7 @@ class EmbeddingModel(abc.ABC):
         self.initializer_params = initializer_params
         
         try:
-            self.initializer = INITIALIZER_REGISTRY[initializer](initializer, 
-                                                                 self.initializer_params, 
+            self.initializer = INITIALIZER_REGISTRY[initializer](self.initializer_params, 
                                                                  verbose,
                                                                  self.seed)
         except KeyError:
