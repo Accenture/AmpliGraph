@@ -35,7 +35,7 @@
         },
         "FB15K-237":{
             "TRANSE": {"batches_count": 64, "epochs": 4000, "k": 400, "eta": 30, "loss": "multiclass_nll", "embedding_model_params": {"norm": 1}, "optimizer": "adam", "optimizer_params": {"lr": 0.0001}, "verbose": false, "seed": 0, "regularizer": "LP", "regularizer_params": {"lambda": 0.0001, "p": 2}},
-            "DISTMULT": {"batches_count":64,"seed":0,"epochs":4000,"k":1000,"eta":30, "loss": "multiclass_nll", "optimizer":"adam","optimizer_params":{"lr":0.0001}, "regularizer":"LP","regularizer_params": {"lambda": 0.0001, "p":2},"verbose":false},
+            "DISTMULT": {"batches_count":50,"seed":0,"epochs":4000,"k":300,"eta":50, "loss": "multiclass_nll", "optimizer":"adam","optimizer_params":{"lr":0.00005}, "regularizer":"LP","regularizer_params": {"lambda": 0.0001, "p":3},"verbose":false},
             "COMPLEX": {"batches_count":50,"seed":0,"epochs":4000,"k":350,"eta":30,"loss": "multiclass_nll","optimizer":"adam","optimizer_params":{"lr":0.0001},"regularizer": "LP", "regularizer_params": {"lambda": 0.0001, "p": 2},"verbose":false},
             "HOLE": {"batches_count":64,"seed":0,"epochs":4000,"k":350,"eta":30,"loss": "multiclass_nll", "optimizer":"adam","optimizer_params":{"lr":0.0001},"verbose":false, "regularizer": "LP", "regularizer_params": {"lambda": 0.0001, "p": 2}}
         },    

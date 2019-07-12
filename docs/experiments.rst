@@ -39,19 +39,19 @@ FB15K-237
                                                          check_interval: 100
                                                          };
 
- DistMult   183     0.32      0.23     0.35      0.49    k: 1000;
+ DistMult   194     0.32      0.23     0.35      0.49    k: 300;
                                                          epochs: 4000;
-                                                         eta: 30;
+                                                         eta: 50;
                                                          loss: multiclass_nll;
                                                          regularizer: LP;
                                                          regularizer_params:
                                                          lambda: 0.0001;
-                                                         p: 2;
+                                                         p: 3;
                                                          optimizer: adam;
                                                          optimizer_params:
-                                                         lr: 0.0001;
+                                                         lr: 0.00005;
                                                          seed: 0;
-                                                         batches_count: 64;
+                                                         batches_count: 50;
                                                          normalize_ent_emb: false;
                                                          early_stopping:{
                                                          x_valid: validation[::10],
