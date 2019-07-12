@@ -643,7 +643,8 @@ def _remove_unused_params(params):
 
     Returns
     -------
-    Param dict without unused parameters.
+    params: dict
+        Param dict without unused parameters.
     """
     from ..latent_features import LOSS_REGISTRY, REGULARIZER_REGISTRY, MODEL_REGISTRY
 
@@ -699,6 +700,24 @@ def _unflatten_nested_keys(dictionary):
 
 
 def _get_param_hash(param):
+    """
+    Get the hash of a param dictionary.
+    It first unflattens nested dicts, removes unused nested parameters, nests them again and then create a frozenset
+    based on the resulting items (tuples).
+    Note that the flattening and unflattening dict functions are idempotent.
+
+    Parameters
+    ----------
+    param: dict
+        Parameter configuration.
+        Example::
+            param_grid = {"k": 50, "eta": 2, "optimizer_params": {"lr": 0.1}}
+
+    Returns
+    -------
+    str
+        Hash of the param dictionary.
+    """
     # Remove parameters that are not used by particular configurations
     # For example, if the regularization is None, there is no need for the regularization lambda
     flattened_params = _flatten_nested_keys(_remove_unused_params(_unflatten_nested_keys(param)))
@@ -706,19 +725,27 @@ def _get_param_hash(param):
 
 
 class ParamHistory(object):
+    """
+    Used to evaluates whether a particular parameter configuration has already been previously seen or not.
+    To achieve that, we hash each parameter configuration, removing unused parameters first.
+    """
     def __init__(self):
+        """The param history is a set of hashes."""
         self.param_hash_history = set()
 
     def add(self, param):
+        """Add hash of parameter configuration to history."""
         self.param_hash_history.add(_get_param_hash(param))
 
     def __contains__(self, other):
+        """Verify whether hash of parameter configuration is present in history."""
         return _get_param_hash(other) in self.param_hash_history
 
 
 def _next_hyperparam(param_grid):
     """
     Iterator that gets the next parameter combination from a dictionary containing lists of parameters.
+    The parameter combinations are deterministic and go over all possible combinations present in the parameter grid.
 
     Parameters
     ----------
@@ -747,6 +774,7 @@ def _next_hyperparam(param_grid):
             continue
         else:
             param_history.add(param)
+            # Yields nested configuration (unflattened) without useless parameters
             yield _remove_unused_params(_unflatten_nested_keys(param))
 
 
@@ -784,6 +812,23 @@ def _sample_parameters(param_grid):
 
 
 def _next_hyperparam_random(param_grid):
+    """
+    Iterator that gets the next parameter combination from a dictionary containing lists of parameters or callables.
+    The parameter combinations are randomly chosen each iteration.
+
+    Parameters
+    ----------
+    param_grid: dict
+        Parameter configurations.
+        Example::
+            param_grid = {"k": [50, 100], "eta": [1, 2, 3]}
+
+    Returns
+    -------
+    params: iterator
+        One particular combination of parameters.
+
+    """
     param_history = ParamHistory()
 
     while True:
