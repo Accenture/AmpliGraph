@@ -7,6 +7,7 @@
 #
 import numpy as np
 import pytest
+from itertools import islice
 
 from ampligraph.latent_features import TransE, ComplEx, RandomBaseline
 from ampligraph.evaluation import evaluate_performance, generate_corruptions_for_eval, \
@@ -17,8 +18,8 @@ from ampligraph.datasets import load_wn18, load_wn18rr
 import tensorflow as tf
 
 from ampligraph.evaluation import train_test_split_no_unseen
-from ampligraph.evaluation.protocol import next_hyperparam, remove_unused_params, randomly_sample_params, \
-    scalars_into_lists
+from ampligraph.evaluation.protocol import _next_hyperparam, _next_hyperparam_random, _remove_unused_params, \
+    ParamHistory, _get_param_hash, _sample_parameters, _scalars_into_lists, _flatten_nested_keys, _unflatten_nested_keys
 
 
 def test_evaluate_performance_default_protocol_without_filter():
@@ -401,36 +402,6 @@ def test_train_test_split():
     np.testing.assert_array_equal(X_test, expected_X_test)
 
 
-def test_next_hyperparam():
-    param_grid = {
-        "batches_count": [50],
-        "epochs": [4000],
-        "k": [100, 200],
-        "eta": [5, 10, 15],
-        "loss": ["pairwise", "nll"],
-        "loss_params": {
-            "margin": [2]
-        },
-        "embedding_model_params": {
-        },
-        "regularizer": ["LP", None],
-        "regularizer_params": {
-            "p": [1, 3],
-            "lambda": [1e-4, 1e-5]
-        },
-        "optimizer": ["adagrad", "adam"],
-        "optimizer_params": {
-            "lr": [0.01, 0.001, 0.0001]
-        },
-        "verbose": False
-    }
-
-    combinations = [i for i in next_hyperparam("ComplEx", param_grid)]
-    assert len(combinations) == 360
-    assert all(type(d) is dict for d in combinations)
-    assert all(all(type(k) is str for k in d.keys()) for d in combinations)
-
-
 def test_remove_unused_params():
     params1 = {
         "batches_count": 50,
@@ -452,19 +423,18 @@ def test_remove_unused_params():
         "optimizer_params": {
             "lr": 0.001
         },
-        "verbose": False
+        "verbose": False,
+        "model_name": "ComplEx"
     }
-    nested_keys = {"loss_params", "embedding_model_params", "regularizer_params", "optimizer_params"}
-    remove_unused_params(params1, nested_keys, "ComplEx")
+    param = _remove_unused_params(params1)
 
-    assert nested_keys == {"loss_params", "embedding_model_params", "regularizer_params", "optimizer_params"}
-    assert params1["loss_params"] == {}
-    assert params1["embedding_model_params"] == {}
-    assert params1["regularizer_params"] == {
+    assert param["loss_params"] == {}
+    assert param["embedding_model_params"] == {}
+    assert param["regularizer_params"] == {
         "p": 1,
         "lambda": 1e-5
     }
-    assert params1["optimizer_params"] == {
+    assert param["optimizer_params"] == {
         "lr": 0.001
     }
 
@@ -486,22 +456,279 @@ def test_remove_unused_params():
         "optimizer_params": {
             "lr": 0.001
         },
-        "verbose": False
+        "verbose": False,
+        "model_name": "unknown_model"
     }
-    nested_keys = {"loss_params", "regularizer_params", "optimizer_params"}
-    remove_unused_params(params2, nested_keys, "unknown_model")
 
-    assert nested_keys == {"loss_params", "regularizer_params", "optimizer_params"}
-    assert params2["loss_params"] == {
+    param = _remove_unused_params(params2)
+
+    assert param["loss_params"] == {
         "margin": 2
     }
-    assert params2["regularizer_params"] == {}
-    assert params2["optimizer_params"] == {
+    assert param["regularizer_params"] == {}
+    assert param["optimizer_params"] == {
         "lr": 0.001
     }
 
 
-def test_randomly_sample_params():
+def test_flatten_nested_keys():
+    params = {
+        "batches_count": 50,
+        "epochs": 4000,
+        "k": 200,
+        "eta": 15,
+        "loss": "nll",
+        "loss_params": {
+            "margin": 2
+        },
+        "embedding_model_params": {
+        },
+        "regularizer": "LP",
+        "regularizer_params": {
+            "p": 1,
+            "lambda": 1e-5
+        },
+        "optimizer": "adam",
+        "optimizer_params": {
+            "lr": 0.001
+        },
+        "verbose": False,
+        "model_name": "ComplEx"
+    }
+
+    flattened_params = _flatten_nested_keys(params)
+
+    expected = {
+        "batches_count": 50,
+        "epochs": 4000,
+        "k": 200,
+        "eta": 15,
+        "loss": "nll",
+        ("loss_params", "margin"): 2,
+        "regularizer": "LP",
+        ("regularizer_params", "p"): 1,
+        ("regularizer_params", "lambda"): 1e-5,
+        "optimizer": "adam",
+        ("optimizer_params", "lr"): 0.001,
+        "verbose": False,
+        "model_name": "ComplEx"
+    }
+
+    assert flattened_params == expected
+
+
+def test_unflatten_nested_keys():
+    flattened_params = {
+        "batches_count": 50,
+        "epochs": 4000,
+        "k": 200,
+        "eta": 15,
+        "loss": "nll",
+        ("loss_params", "margin"): 2,
+        "regularizer": "LP",
+        ("regularizer_params", "p"): 1,
+        ("regularizer_params", "lambda"): 1e-5,
+        "optimizer": "adam",
+        ("optimizer_params", "lr"): 0.001,
+        "verbose": False,
+        "model_name": "ComplEx"
+    }
+
+    params = _unflatten_nested_keys(flattened_params)
+
+    expected = {
+        "batches_count": 50,
+        "epochs": 4000,
+        "k": 200,
+        "eta": 15,
+        "loss": "nll",
+        "loss_params": {
+            "margin": 2
+        },
+        "regularizer": "LP",
+        "regularizer_params": {
+            "p": 1,
+            "lambda": 1e-5
+        },
+        "optimizer": "adam",
+        "optimizer_params": {
+            "lr": 0.001
+        },
+        "verbose": False,
+        "model_name": "ComplEx"
+    }
+
+    assert params == expected
+
+
+def test_get_param_hash():
+    params1 = {
+        "batches_count": 50,
+        "epochs": 4000,
+        "k": 200,
+        "eta": 15,
+        "loss": "nll",
+        "loss_params": {
+            "margin": 2
+        },
+        "embedding_model_params": {
+        },
+        "regularizer": "LP",
+        "regularizer_params": {
+            "p": 1,
+            "lambda": 1e-5
+        },
+        "optimizer": "adam",
+        "optimizer_params": {
+            "lr": 0.001
+        },
+        "verbose": False,
+        "model_name": "ComplEx"
+    }
+
+    params2 = {
+        "batches_count": 50,
+        "epochs": 4000,
+        "k": 200,
+        "eta": 15,
+        "loss": "nll",
+        "loss_params": {
+            "margin": 2
+        },
+        "embedding_model_params": {
+            "useless": 2
+        },
+        "regularizer": "LP",
+        "regularizer_params": {
+            "p": 1,
+            "lambda": 1e-5
+        },
+        "optimizer": "adam",
+        "optimizer_params": {
+            "lr": 0.001
+        },
+        "verbose": False,
+        "model_name": "ComplEx"
+    }
+
+    params3 = {
+        "batches_count": 50,
+        "epochs": 4000,
+        "k": 200,
+        "eta": 15,
+        "loss": "nll",
+        "loss_params": {
+            "margin": 2
+        },
+        "embedding_model_params": {
+            "useless": 2
+        },
+        "regularizer": "LP",
+        "regularizer_params": {
+            "p": 1,
+            "lambda": 1e-4
+        },
+        "optimizer": "adam",
+        "optimizer_params": {
+            "lr": 0.001
+        },
+        "verbose": False,
+        "model_name": "ComplEx"
+    }
+
+    assert _get_param_hash(params1) == _get_param_hash(params2)
+    assert _get_param_hash(params1) != _get_param_hash(params3)
+
+
+def test_param_hist():
+    ph = ParamHistory()
+
+    params1 = {
+        "batches_count": 50,
+        "epochs": 4000,
+        "k": 200,
+        "eta": 15,
+        "loss": "nll",
+        "loss_params": {
+            "margin": 2
+        },
+        "embedding_model_params": {
+        },
+        "regularizer": "LP",
+        "regularizer_params": {
+            "p": 1,
+            "lambda": 1e-5
+        },
+        "optimizer": "adam",
+        "optimizer_params": {
+            "lr": 0.001
+        },
+        "verbose": False,
+        "model_name": "ComplEx"
+    }
+
+    params2 = {
+        "batches_count": 50,
+        "epochs": 4000,
+        "k": 200,
+        "eta": 15,
+        "loss": "nll",
+        "loss_params": {
+            "margin": 2
+        },
+        "embedding_model_params": {
+            "useless": 2
+        },
+        "regularizer": "LP",
+        "regularizer_params": {
+            "p": 1,
+            "lambda": 1e-5
+        },
+        "optimizer": "adam",
+        "optimizer_params": {
+            "lr": 0.001
+        },
+        "verbose": False,
+        "model_name": "ComplEx"
+    }
+
+    params3 = {
+        "batches_count": 50,
+        "epochs": 4000,
+        "k": 200,
+        "eta": 15,
+        "loss": "nll",
+        "loss_params": {
+            "margin": 2
+        },
+        "embedding_model_params": {
+            "useless": 2
+        },
+        "regularizer": "LP",
+        "regularizer_params": {
+            "p": 1,
+            "lambda": 1e-4
+        },
+        "optimizer": "adam",
+        "optimizer_params": {
+            "lr": 0.001
+        },
+        "verbose": False,
+        "model_name": "ComplEx"
+    }
+
+    assert params1 not in ph
+    ph.add(params1)
+    assert params1 in ph
+    assert params2 in ph
+    assert params3 not in ph
+    ph.add(params3)
+    assert params1 in ph
+    assert params2 in ph
+    assert params3 in ph
+
+
+def test_sample_hyper_param():
     np.random.seed(0)
 
     param_grid = {
@@ -524,15 +751,93 @@ def test_randomly_sample_params():
         "optimizer_params": {
             "lr": lambda: np.random.uniform(0.001, 0.1)
         },
-        "verbose": False
+        "verbose": False,
+        "model_name": "ComplEx"
     }
-    
-    randomly_sample_params(param_grid, max_combinations=10)
 
-    assert len(param_grid["eta"]) == 10
-    assert len(set(param_grid["eta"])) == 3
-    assert len(param_grid["optimizer_params"]["lr"]) == 10
-    assert len(set(param_grid["optimizer_params"]["lr"])) == 10
+    for _ in range(10):
+        param = _sample_parameters(param_grid)
+        assert param["batches_count"] == 50
+        assert param["k"] in (100, 200)
+        assert param["eta"] in (5, 10, 15)
+        assert param["loss"] in ("pairwise", "nll")
+        if param["loss"] == "pairwise":
+            assert param["loss_params"]["margin"] == 2
+        assert param["embedding_model_params"] == {}
+        assert param["regularizer"] in ("LP", None)
+        if param["regularizer"] == "LP":
+            assert param["regularizer_params"]["p"] in (1, 3)
+            assert param["regularizer_params"]["lambda"] in (1e-4, 1e-5)
+        assert param["optimizer"] in ("adagrad", "adam")
+        assert 0.001 < param["optimizer_params"]["lr"] < 0.1
+        assert not param["verbose"]
+        assert param["model_name"] == "ComplEx"
+
+
+def test_next_hyperparam():
+    param_grid = {
+        "batches_count": [50],
+        "epochs": [4000],
+        "k": [100, 200],
+        "eta": [5, 10, 15],
+        "loss": ["pairwise", "nll"],
+        "loss_params": {
+            "margin": [2]
+        },
+        "embedding_model_params": {
+        },
+        "regularizer": ["LP", None],
+        "regularizer_params": {
+            "p": [1, 3],
+            "lambda": [1e-4, 1e-5]
+        },
+        "optimizer": ["adagrad", "adam"],
+        "optimizer_params": {
+            "lr": [0.01, 0.001, 0.0001]
+        },
+        "verbose": [False],
+        "model_name": ["ComplEx"]
+    }
+
+    combinations = [i for i in _next_hyperparam(param_grid)]
+
+    assert len(combinations) == 360
+    assert len(set(frozenset(_flatten_nested_keys(i).items()) for i in combinations)) == 360
+    assert all(type(d) is dict for d in combinations)
+    assert all(all(type(k) is str for k in d.keys()) for d in combinations)
+
+
+def test_next_hyperparam_random():
+    param_grid = {
+        "batches_count": [50],
+        "epochs": [4000],
+        "k": [100, 200],
+        "eta": [5, 10, 15],
+        "loss": ["pairwise", "nll"],
+        "loss_params": {
+            "margin": [2]
+        },
+        "embedding_model_params": {
+        },
+        "regularizer": ["LP", None],
+        "regularizer_params": {
+            "p": [1, 3],
+            "lambda": [1e-4, 1e-5]
+        },
+        "optimizer": ["adagrad", "adam"],
+        "optimizer_params": {
+            "lr": [0.01, 0.001, 0.0001]
+        },
+        "verbose": [False],
+        "model_name": ["ComplEx"]
+    }
+
+    combinations = [i for i in islice(_next_hyperparam_random(param_grid), 200)]
+
+    assert len(combinations) == 200
+    assert len(set(frozenset(_flatten_nested_keys(i).items()) for i in combinations)) == 200
+    assert all(type(d) is dict for d in combinations)
+    assert all(all(type(k) is str for k in d.keys()) for d in combinations)
 
 
 def test_scalars_into_lists():
@@ -561,7 +866,7 @@ def test_scalars_into_lists():
         "verbose": False
     }
 
-    scalars_into_lists(param_grid)
+    _scalars_into_lists(param_grid)
 
     expected = {
         "batches_count": [50],
@@ -620,11 +925,13 @@ def test_select_best_model_ranking_grid():
         X['test'][::10],
         param_grid
     )
+
     assert best_params['k'] in (2, 50)
     assert best_params['optimizer_params']['lr'] == 0.0001
     assert len(experimental_history) == 4
     assert set(i["model_params"]["k"] for i in experimental_history) == {2, 50}
     assert set(i["model_params"]["optimizer_params"]["lr"] for i in experimental_history) == {1000.0, 0.0001}
+    assert len(set(frozenset(_flatten_nested_keys(i["model_params"]).items()) for i in experimental_history)) == 4
 
 
 def test_select_best_model_ranking_random():
@@ -665,3 +972,4 @@ def test_select_best_model_ranking_random():
     assert set(i["model_params"]["k"] for i in experimental_history) == {2, 50}
     assert np.all([np.log(1.00001) <= i["model_params"]["optimizer_params"]["lr"] <= np.log(100)
                    for i in experimental_history])
+    assert len(set(frozenset(_flatten_nested_keys(i["model_params"]).items()) for i in experimental_history)) == 10
