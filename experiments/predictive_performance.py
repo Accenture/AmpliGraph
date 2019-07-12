@@ -10,7 +10,6 @@ import ampligraph.latent_features
 from ampligraph.evaluation import hits_at_n_score, mr_score, evaluate_performance, mrr_score
 
 import argparse
-import os
 import json
 import sys
 import yaml
@@ -21,10 +20,10 @@ from beautifultable import BeautifulTable
 from tqdm import tqdm
 import warnings
 
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-
-
-warnings.simplefilter(action="ignore", category=Warning)
+import os
+import tensorflow as tf
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+tf.logging.set_verbosity(tf.logging.ERROR)
 
 SUPPORT_DATASETS = ["fb15k", "fb15k-237", "wn18", "wn18rr", "yago310"]
 SUPPOORT_MODELS = ["complex", "transe", "distmult", "hole"]
@@ -70,14 +69,14 @@ def display_scores(scores):
 def run_single_exp(config, dataset, model):
     hyperparams = config["hyperparams"][dataset][model]
     if hyperparams is None:
-        logging.info("dataset {0}...model {1} \
+        print("dataset {0}...model {1} \
                       experiment is not conducted yet..." \
                      .format(dataset, config["model_name_map"][model]))
         return {
             "hyperparams": ".??"
         }
-    logging.info("dataset {0}...model {1}...\
-                  best hyperparameter:...{2}" \
+    print("dataset {0}...model {1}...\
+                  hyperparameter:...{2}" \
                  .format(dataset,
                          config["model_name_map"][model],
                          hyperparams))
