@@ -120,12 +120,26 @@ pip install -e .
 
 ## Predictive Power Evaluation (MRR Filtered)
 
-|          |FB15k     |WN18       |WN18RR     |FB15K-237    |YAGO3-10     |
+AmpliGraph incldues implementations of TransE, DistMult, ComplEx and HolE. 
+Their predictive power is reported below. 
+[More details available here](https://docs.ampligraph.org/en/latest/experiments.html).
+
+|          |FB15K-237  |WN18RR   |YAGO3-10         | FB15k     |WN18       |
 |----------|----------|-----------|-----------|-------------|-------------|
-| TransE   | 0.55     | 0.50      | 0.23      | 0.31        | 0.24        |
-| DistMult | 0.79     | 0.83      | 0.44      | 0.29        | 0.49        |
-| ComplEx  | 0.79     | **0.94**  | **0.50**  | **0.33**    | **0.50**    |
-| HolE     | **0.80** | **0.94**  | 0.47      | 0.28        | **0.50**    |
+| Literature Best |  **0.35***   | 0.48* | 0.49*   | **0.84**△ | **0.95***   |
+| TransE   |  0.32   | 0.23     | 0.50         | 0.55     | 0.51           |
+| DistMult |  0.32    | 0.48    | 0.50         | 0.78     | 0.82           |
+| ComplEx  |  0.33    | **0.50**    | **0.51**    | 0.80     | 0.94        |
+| HolE     |  0.32    | 0.47    | 0.50          | 0.80     | 0.93          |
+
+
+<sub>
+* Timothee Lacroix, Nicolas Usunier, and Guillaume Obozinski. Canonical tensor decomposition for knowledge base 
+completion. In International Conference on Machine Learning, 2869–2878. 2018. <br/>
+ <sup>△</sup>  Kadlec, Rudolf, Ondrej Bajgar, and Jan Kleindienst. "Knowledge base completion: Baselines strike back.
+ " arXiv preprint arXiv:1705.10744 (2017).
+
+</sub>
 
 
 ## Documentation
