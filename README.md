@@ -1,13 +1,13 @@
-# AmpliGraph
+# ![AmpliGraph](docs/img/ampligraph_logo_transparent.png | width=320)
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2595043.svg)](https://doi.org/10.5281/zenodo.2595043)
 
 [![Documentation Status](https://readthedocs.org/projects/ampligraph/badge/?version=latest)](http://ampligraph.readthedocs.io/?badge=latest)
 
 
-**Open source Python library that predicts links between concepts in a knowledge graph.**
+**Open source library based on TensorFlow that predicts links between concepts in a knowledge graph.**
 
-AmpliGraph is a suite of neural machine learning models for relational Learning, a branch of machine learning
+**AmpliGraph** is a suite of neural machine learning models for relational Learning, a branch of machine learning
 that deals with supervised learning on knowledge graphs.
 
 
@@ -126,7 +126,7 @@ Their predictive power is reported below.
 
 |          |FB15K-237  |WN18RR   |YAGO3-10         | FB15k     |WN18       |
 |----------|----------|-----------|-----------|-------------|-------------|
-| Literature Best |  **0.35***   | 0.48* | 0.49*   | **0.84**△ | **0.95***   |
+| Literature Best |  **0.35***   | 0.48* | 0.49*   | **0.84**** | **0.95***   |
 | TransE   |  0.32   | 0.23     | 0.50         | 0.55     | 0.51           |
 | DistMult |  0.32    | 0.48    | 0.50         | 0.78     | 0.82           |
 | ComplEx  |  0.33    | **0.50**    | **0.51**    | 0.80     | 0.94        |
@@ -136,7 +136,7 @@ Their predictive power is reported below.
 <sub>
 * Timothee Lacroix, Nicolas Usunier, and Guillaume Obozinski. Canonical tensor decomposition for knowledge base 
 completion. In International Conference on Machine Learning, 2869–2878. 2018. <br/>
- <sup>△</sup>  Kadlec, Rudolf, Ondrej Bajgar, and Jan Kleindienst. "Knowledge base completion: Baselines strike back.
+**  Kadlec, Rudolf, Ondrej Bajgar, and Jan Kleindienst. "Knowledge base completion: Baselines strike back.
  " arXiv preprint arXiv:1705.10744 (2017).
 
 </sub>
