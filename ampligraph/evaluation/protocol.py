@@ -1,3 +1,10 @@
+# Copyright 2019 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 import numpy as np
 from tqdm import tqdm
 
@@ -9,20 +16,25 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def train_test_split_no_unseen(X, test_size=5000, seed=0):
+
+def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False):
     """Split into train and test sets.
 
-     This function carves out a test set that contains only entities and relations which also occur
-     in the training set.
+     This function carves out a test set that contains only entities 
+     and relations which also occur in the training set.
 
     Parameters
     ----------
     X : ndarray, size[n, 3]
         The dataset to split.
     test_size : int, float
-        If int, the number of triples in the test set. If float, the percentage of total triples.
+        If int, the number of triples in the test set. 
+        If float, the percentage of total triples.
     seed : int
         A random seed used to split the dataset.
+    
+    allow_duplication: boolean
+        Flag to indicate if the test set can contain duplicated triples. 
 
     Returns
     -------
@@ -31,7 +43,51 @@ def train_test_split_no_unseen(X, test_size=5000, seed=0):
     X_test : ndarray, size[n, 3]
         The test set
 
+    Examples
+    --------
+
+    >>> import numpy as np
+    >>> from ampligraph.evaluation import train_test_split_no_unseen
+    >>> # load your dataset to X
+    >>> X = np.array([['a', 'y', 'b'],
+    >>>               ['f', 'y', 'e'],
+    >>>               ['b', 'y', 'a'],
+    >>>               ['a', 'y', 'c'],
+    >>>               ['c', 'y', 'a'],
+    >>>               ['a', 'y', 'd'],
+    >>>               ['c', 'y', 'd'],
+    >>>               ['b', 'y', 'c'],
+    >>>               ['f', 'y', 'e']])
+    >>> # if you want to split into train/test datasets
+    >>> X_train, X_test = train_test_split_no_unseen(X, test_size=2)
+    >>> X_train
+    array([['a', 'y', 'b'],
+        ['f', 'y', 'e'],
+        ['b', 'y', 'a'],
+        ['c', 'y', 'a'],
+        ['c', 'y', 'd'],
+        ['b', 'y', 'c'],
+        ['f', 'y', 'e']], dtype='<U1')
+    >>> X_test
+    array([['a', 'y', 'c'],
+        ['a', 'y', 'd']], dtype='<U1')
+    >>> # if you want to split into train/valid/test datasets, call it 2 times
+    >>> X_train_valid, X_test = train_test_split_no_unseen(X, test_size=2)
+    >>> X_train, X_valid = train_test_split_no_unseen(X_train_valid, test_size=2)
+    >>> X_train
+    array([['a', 'y', 'b'],
+        ['b', 'y', 'a'],
+        ['c', 'y', 'd'],
+        ['b', 'y', 'c'],
+        ['f', 'y', 'e']], dtype='<U1')
+    >>> X_valid
+    array([['f', 'y', 'e'],
+        ['c', 'y', 'a']], dtype='<U1')
+    >>> X_test
+    array([['a', 'y', 'c'],
+        ['a', 'y', 'd']], dtype='<U1')
     """
+
     logger.debug('Creating train test split.')
     if type(test_size) is float:
         logger.debug('Test size is of type float. Converting to int.')
@@ -46,19 +102,42 @@ def train_test_split_no_unseen(X, test_size=5000, seed=0):
     dict_objs = dict(zip(objs, objs_cnt))
     dict_rels = dict(zip(rels, rels_cnt))
 
-    idx_test = []
+    idx_test = np.array([], dtype=int)
     logger.debug('Selecting test cases using random search.')
-    while len(idx_test) < test_size:
+
+    loop_count = 0
+    tolerance = len(X) * 10
+    while idx_test.shape[0] < test_size:
         i = rnd.randint(len(X))
-        if dict_subs[X[i, 0]] > 1 and dict_objs[X[i, 2]] > 1 and dict_rels[X[i, 1]] > 1:
+        if dict_subs[X[i, 0]] > 1 and dict_objs[X[i, 2]] > 1 and dict_rels[X[i,1]] > 1:
             dict_subs[X[i, 0]] -= 1
             dict_objs[X[i, 2]] -= 1
             dict_rels[X[i, 1]] -= 1
-            idx_test.append(i)
+            if allow_duplication:
+                idx_test = np.append(idx_test, i)
+            else:
+                idx_test = np.unique(np.append(idx_test, i))
+        
+        loop_count += 1
+        
+        # in case can't find solution
+        if loop_count == tolerance:
+            if allow_duplication:
+                raise Exception("Cannot create a test split of the desired size. "
+                                "Some entities will not occur in both training and test set. "
+                                "Change seed values, or set test_size to a smaller value.")
+            else:
+                raise Exception("Cannot create a test split of the desired size. "
+                                "Some entities will not occur in both training and test set. "
+                                "Set allow_duplication=True, or "
+                                "change seed values, or set test_size to a smaller value.")
+
     logger.debug('Completed random search.')
+    
     idx = np.arange(len(X))
     idx_train = np.setdiff1d(idx, idx_test)
     logger.debug('Train test split completed.')
+
     return X[idx_train, :], X[idx_test, :]
 
 
@@ -102,6 +181,34 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
 
         Create corruptions (subject and object) for a given triple x, in compliance with the
         local closed world assumption (LCWA), as described in :cite:`nickel2016review`.
+        
+        .. note::
+            For filtering the corruptions, we adopt a hashing-based strategy to handle the set difference problem.
+            This strategy is as described below:
+
+            * We compute unique entities and relations in our dataset.
+
+            * We assign unique prime numbers for entities (unique for subject and object separately) and for relations
+              and create three separate hash tables. (these hash maps are input to this function)
+
+            * For each triple in filter_triples, we get the prime numbers associated with subject, relation
+              and object by mapping to their respective hash tables. We then compute the **prime product for the
+              filter triple**. We store this triple product.
+
+            * Since the numbers assigned to subjects, relations and objects are unique, their prime product is also
+              unique. i.e. a triple :math:`(a, b, c)` would have a different product compared to triple :math:`(c, b, a)`
+              as :math:`a, c` of subject have different primes compared to :math:`a, c` of object.
+
+            * While generating corruptions for evaluation, we hash the triple's entities and relations and get
+              the associated prime number and compute the **prime product for the corrupted triple**.
+
+            * If this product is present in the products stored for the filter set, then we remove the corresponding
+              corrupted triple (as it is a duplicate i.e. the corruption triple is present in filter_triples)
+
+            * Using this approach we generate filtered corruptions for evaluation.
+
+            **Execution Time:** This method takes ~20 minutes on FB15K using ComplEx
+            (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
 
     Parameters
     ----------
@@ -321,7 +428,21 @@ def _convert_to_idx(X, ent_to_idx, rel_to_idx, obj_to_idx):
     x_idx_s = np.vectorize(ent_to_idx.get)(X[:, 0])
     x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
     x_idx_o = np.vectorize(obj_to_idx.get)(X[:, 2])
-    logger.debug('Returning ids.')
+
+    if None in x_idx_s or None in x_idx_o:
+        msg = 'Input triples include one or more entities not present in the training set. ' \
+              'Please filter X using evaluation.filter_unseen_entities(), or retrain the model on a training set ' \
+              'that includes all the desired distinct entities.'
+        logger.error(msg)
+        raise ValueError(msg)
+
+    if None in x_idx_p:
+        msg = 'Input triples include one or more relation type not present in the training set. ' \
+              'Please filter all relation in X that do not occur in the training test. ' \
+              'or retrain the model on a training set that includes all the desired relation types.'
+        logger.error(msg)
+        raise ValueError(msg)
+
     return np.dstack([x_idx_s, x_idx_p, x_idx_o]).reshape((-1, 3))
 
 
@@ -353,9 +474,11 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
         Run the relational learning evaluation protocol defined in :cite:`bordes2013translating`.
 
-        It computes the ranks of each positive triple against all possible negatives created in compliance with
-        the local closed world assumption (LCWA), as described in :cite:`nickel2016review`.
-        
+        It computes the rank of each positive triple against a number of negatives generated on the fly.
+        Such negatives are compliant with the local closed world assumption (LCWA),
+        as described in :cite:`nickel2016review`. In practice, that means only one side of the triple is corrupted
+        (i.e. either the subject or the object).
+
         .. note::
             When *filtered* mode is enabled (i.e. `filtered_triples` is not ``None``),
             to speed up the procedure, we adopt a hashing-based strategy to handle the set difference problem.
@@ -387,7 +510,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
         .. hint::
             When ``rank_against_ent=None``, the method will use all distinct entities in the knowledge graph ``X``
-            to generate negatives to rank against. If ``X`` includes more than 1 million unique
+            to generate negatives to rank against. If ``X`` includes more than 2.5 million unique
             entities and relations, the method will return a runtime error.
             To solve the problem, it is recommended to pass the desired entities to use to generate corruptions
             to ``rank_against_ent``. Besides, trying to rank a positive against an extremely large number of negatives
@@ -415,37 +538,57 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
         - 's': corrupt only subject.
         - 'o': corrupt only object
-        - 's+o': corrupt both subject and object
+        - 's+o': corrupt both subject and object. The same behaviour is obtained with ``use_default_protocol=True``.
+
+        .. note::
+            If ``corrupt_side='s+o'`` the function will return 2*n ranks.
+            If ``corrupt_side='s'`` or ``corrupt_side='o'``, it will return n ranks, where n is the
+            number of statements in X.
+            The first n elements of ranks are obtained against subject corruptions. From n+1 until 2n ranks are obtained
+            against object corruptions.
+
     use_default_protocol: bool
-        Flag to indicate whether to evaluate head and tail corruptions separately (default: True).
-        If this is set to true, it will also ignore the ``corrupt_side`` argument and corrupt both head and tail
-        separately and rank triples.
+        Flag to indicate whether to use the standard protocol used in literature defined in
+        :cite:`bordes2013translating` (default: True).
+        If set to ``True`` it is equivalent to ``corrupt_side='s+o'``.
+        This corresponds to the evaluation protcol used in literature, where head and tail corruptions
+        are evaluated separately.
+
+        .. note::
+            When ``use_default_protocol=True`` the function will return 2*n ranks.
+            The first n elements of ranks are obtained against subject corruptions. From n+1 until 2n ranks are obtained
+            against object corruptions.
     Returns
     -------
-    ranks : ndarray, shape [n]
+    ranks : ndarray, shape [n] or [2*n]
         An array of ranks of positive test triples.
-
+        When ``use_default_protocol=True`` or ``corrupt_side='s+o'``, the function returns 2*n ranks instead of n.
+        In that case the first n elements of ranks are obtained against subject corruptions. From n+1 until 2n ranks
+        are obtained against object corruptions.
 
     Examples
     --------
     >>> import numpy as np
     >>> from ampligraph.datasets import load_wn18
     >>> from ampligraph.latent_features import ComplEx
-    >>> from ampligraph.evaluation import evaluate_performance
+    >>> from ampligraph.evaluation import evaluate_performance, mrr_score, hits_at_n_score
     >>>
     >>> X = load_wn18()
-    >>> model = ComplEx(batches_count=10, seed=0, epochs=1, k=150, eta=10,
-    >>>                 loss='pairwise', optimizer='adagrad')
+    >>> model = ComplEx(batches_count=10, seed=0, epochs=10, k=150, eta=1,
+    >>>                 loss='nll', optimizer='adam')
     >>> model.fit(np.concatenate((X['train'], X['valid'])))
     >>>
     >>> filter = np.concatenate((X['train'], X['valid'], X['test']))
-    >>> ranks = evaluate_performance(X['test'][:5], model=model, filter_triples=filter)
+    >>> ranks = evaluate_performance(X['test'][:5], model=model,
+                                     filter_triples=filter,
+                                     corrupt_side='s+o',
+                                     use_default_protocol=False)
     >>> ranks
-    array([    2,     4,     1,     1, 28550], dtype=int32)
+    [1, 582, 543, 6, 31]
     >>> mrr_score(ranks)
-    0.55000700525394053
+    0.24049691297347323
     >>> hits_at_n_score(ranks, n=10)
-    0.8
+    0.4
     """
 
     logger.debug('Evaluating the performance of the embedding model.')
@@ -456,34 +599,39 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     if filter_triples is not None:
         logger.debug('Getting filtered triples.')
         filter_triples = to_idx(filter_triples, ent_to_idx=model.ent_to_idx, rel_to_idx=model.rel_to_idx)
-
-    if use_default_protocol:
-        corruption_sides = ['s', 'o']
-    else:
-        corruption_sides = [corrupt_side]
-
+        
     eval_dict = {}
+    eval_dict['default_protocol'] = False
+    
+    if use_default_protocol:
+        corrupt_side = 's+o'
+        eval_dict['default_protocol'] = True
 
     if rank_against_ent is not None:
         idx_entities = np.asarray([idx for uri, idx in model.ent_to_idx.items() if uri in rank_against_ent])
         eval_dict['corruption_entities'] = idx_entities
 
     ranks = []
-    for side in corruption_sides:
-        logger.debug('Evaluating the test set by corrupting side : {}'.format(side))
-        eval_dict['corrupt_side'] = side
-        if filter_triples is not None:
-            model.set_filter_for_eval(filter_triples)
-        logger.debug('Configuring evaluation protocol.')
-        model.configure_evaluation_protocol(eval_dict)
-        logger.debug('Making predictions.')
-        for i in tqdm(range(X_test.shape[0]), disable=(not verbose)):
-            _, rank = model.predict(X_test[i], from_idx=True, get_ranks=True)
-            ranks.append(rank)
-        model.end_evaluation()
-        logger.debug('Ending Evaluation')
 
-    logger.info('Returning ranks of positive test triples obtained by corrupting {}.'.format(corruption_sides))
+    logger.debug('Evaluating the test set by corrupting side : {}'.format(corrupt_side))
+    eval_dict['corrupt_side'] = corrupt_side
+    if filter_triples is not None:
+        model.set_filter_for_eval(filter_triples)
+    logger.debug('Configuring evaluation protocol.')
+    model.configure_evaluation_protocol(eval_dict)
+    logger.debug('Making predictions.')
+    for i in tqdm(range(X_test.shape[0]), disable=(not verbose)):
+        _, rank = model.predict(X_test[i], from_idx=True, get_ranks=True)
+        if use_default_protocol :
+            ranks.extend(list(rank)) 
+            continue
+            
+        ranks.append(rank)
+            
+    model.end_evaluation()
+    logger.debug('Ending Evaluation')
+
+    logger.debug('Returning ranks of positive test triples obtained by corrupting {}.'.format(corrupt_side))
     return ranks
 
 
@@ -528,8 +676,7 @@ def filter_unseen_entities(X, model, verbose=False, strict=True):
 
             msg = 'Removing {} triples containing unseen entities. '.format(np.sum(mask_unseen))
             if verbose:
-                logger.info(msg)
-                print(msg)
+                logger.debug(msg)
             logger.debug(msg)
             return X[~mask_unseen]
 
@@ -563,7 +710,7 @@ def yield_all_permutations(registry, category_type, category_type_params):
                 try:
                     present_params_vals.append(category_type_params[param])
                     present_params.append(param)
-                except KeyErrori as e:
+                except KeyError as e:
                     logger.debug('Key not found {}'.format(e))
                     pass
         for val in itertools.product(*present_params_vals):
@@ -660,8 +807,7 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
 
         The function also retrains the best performing model on the concatenation of training and validation sets.
 
-        (note that we generate negatives at runtime according to the strategy described
-        in ::cite:`bordes2013translating`).
+        Note we generate negatives at runtime according to the strategy described in ::cite:`bordes2013translating`).
 
     Parameters
     ----------
@@ -676,7 +822,35 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
     use_filter : bool
         If True, will use the entire input dataset X to compute filtered MRR
     early_stopping: bool
-        Flag to enable early stopping(default:False)
+        Flag to enable early stopping (default:False).
+
+        If set to ``True``, the training loop adopts the following early stopping heuristic:
+
+        - The model will be trained regardless of early stopping for ``burn_in`` epochs.
+        - Every ``check_interval`` epochs the method will compute the metric specified in ``criteria``.
+
+        If such metric decreases for ``stop_interval`` checks, we stop training early.
+
+        Note the metric is computed on ``x_valid``. This is usually a validation set that you held out.
+
+        Also, because ``criteria`` is a ranking metric, it requires generating negatives.
+        Entities used to generate corruptions can be specified, as long as the side(s) of a triple to corrupt.
+        The method supports filtered metrics, by passing an array of positives to ``x_filter``. This will be used to
+        filter the negatives generated on the fly (i.e. the corruptions).
+
+        .. note::
+
+            Keep in mind the early stopping criteria may introduce a certain overhead
+            (caused by the metric computation).
+            The goal is to strike a good trade-off between such overhead and saving training epochs.
+
+            A common approach is to use MRR unfiltered: ::
+
+                early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}
+
+            Note the size of validation set also contributes to such overhead.
+            In most cases a smaller validation set would be enough.
+
     early_stopping_params: dict
         Dictionary of parameters for early stopping.
 
@@ -807,42 +981,52 @@ def select_best_model_ranking(model_class, X, param_grid, use_filter=False, earl
         selection_dataset = X['valid']
 
     for model_params in tqdm(model_params_combinations, disable=(not verbose)):
-        model = model_class(**model_params)
-        model.fit(X['train'], early_stopping, early_stopping_params)
+        try:
+            model = model_class(**model_params)
+            model.fit(X['train'], early_stopping, early_stopping_params)
 
-        ranks = evaluate_performance(selection_dataset, model=model,
-                                     filter_triples=X_filter, verbose=verbose,
-                                     rank_against_ent=rank_against_ent,
-                                     use_default_protocol=use_default_protocol,
-                                     corrupt_side=corrupt_side)
+            ranks = evaluate_performance(selection_dataset, model=model,
+                                         filter_triples=X_filter, verbose=verbose,
+                                         rank_against_ent=rank_against_ent,
+                                         use_default_protocol=use_default_protocol,
+                                         corrupt_side=corrupt_side)
 
-        curr_mrr = mrr_score(ranks)
-        mr = mr_score(ranks)
-        hits_1 = hits_at_n_score(ranks, n=1)
-        hits_3 = hits_at_n_score(ranks, n=3)
-        hits_10 = hits_at_n_score(ranks, n=10)
-        info = 'mr:{} mrr: {} hits 1: {} hits 3: {} hits 10: {}, model: {}, params: {}'.format(mr, curr_mrr, hits_1,
-                                                                                               hits_3, hits_10,
-                                                                                               type(model).__name__,
-                                                                                               model_params)
-        logger.debug(info)
-        if verbose:
-            logger.info(info)
+            curr_mrr = mrr_score(ranks)
+            mr = mr_score(ranks)
+            hits_1 = hits_at_n_score(ranks, n=1)
+            hits_3 = hits_at_n_score(ranks, n=3)
+            hits_10 = hits_at_n_score(ranks, n=10)
+            info = 'mr:{} mrr: {} hits 1: {} hits 3: {} hits 10: {}, model: {}, params: {}'.format(mr, curr_mrr, hits_1,
+                                                                                                   hits_3, hits_10,
+                                                                                                   type(model).__name__,
+                                                                                                   model_params)
+            logger.debug(info)
+            if verbose:
+                logger.info(info)
 
-        if curr_mrr > best_mrr_train:
-            best_mrr_train = curr_mrr
-            best_model = model
-            best_params = model_params
+            if curr_mrr > best_mrr_train:
+                best_mrr_train = curr_mrr
+                best_model = model
+                best_params = model_params
+        except Exception as e:
+            if verbose:
+                logger.error('Exception occured for parameters:{}'.format(model_params))
+                logger.error(str(e))
+            else:
+                pass
+    
+    ranks_test =[]
+    mrr_test = 0
+    if best_model is not None:
+        # Retraining
+        best_model.fit(np.concatenate((X['train'], X['valid'])))
 
-    # Retraining
-    best_model.fit(np.concatenate((X['train'], X['valid'])))
+        ranks_test = evaluate_performance(X['test'], model=best_model,
+                                          filter_triples=X_filter, verbose=verbose,
+                                          rank_against_ent=rank_against_ent,
+                                          use_default_protocol=use_default_protocol,
+                                          corrupt_side=corrupt_side)
 
-    ranks_test = evaluate_performance(X['test'], model=best_model,
-                                      filter_triples=X_filter, verbose=verbose,
-                                      rank_against_ent=rank_against_ent,
-                                      use_default_protocol=use_default_protocol,
-                                      corrupt_side=corrupt_side)
-
-    mrr_test = mrr_score(ranks_test)
+        mrr_test = mrr_score(ranks_test)
 
     return best_model, best_params, best_mrr_train, ranks_test, mrr_test

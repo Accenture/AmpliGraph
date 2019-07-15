@@ -18,7 +18,6 @@ AmpliGraph is a suite of neural machine learning models for relational Learning,
 that deals with supervised learning on knowledge graphs.
 
 .. image:: img/kg_lp.png
-   :scale: 40%
    :align: center
 
 

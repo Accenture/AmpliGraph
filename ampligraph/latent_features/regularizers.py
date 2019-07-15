@@ -1,3 +1,10 @@
+# Copyright 2019 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 import tensorflow as tf
 import numpy as np
 import abc
@@ -50,15 +57,10 @@ class Regularizer(abc.ABC):
         try:
             self._init_hyperparams(hyperparam_dict)
             if verbose:
-                print('------ Regularizer-----')
-                logger.info('------ Regularizer-----')
-                print('Name:', self.name)
-                logger.info('Name:{}'.format(self.name))
-                print('Parameters:')
-                logger.info('Parameters:')
+                logger.info('\n------ Regularizer -----')
+                logger.info('Name : {}'.format(self.name))
                 for key, value in self._regularizer_parameters.items():
-                    logger.info('\t{}:{}\n'.format(key, value))
-                    print("  ", key, ": ", value)
+                    logger.info('{} : {}'.format(key, value))
 
         except KeyError as e:
             msg = 'Some of the hyperparams for regularizer were not passed.\n{}'.format(e)

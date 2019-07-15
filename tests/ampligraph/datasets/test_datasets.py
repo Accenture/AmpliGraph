@@ -1,3 +1,10 @@
+# Copyright 2019 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 from ampligraph.datasets import load_wn18, load_fb15k, load_fb15k_237, load_yago3_10, load_wn18rr
 import numpy as np
 import pytest
@@ -51,13 +58,17 @@ def test_load_fb15k_237():
 
 def test_yago_3_10():
     yago_3_10 = load_yago3_10()
-    assert len(yago_3_10['train']) == 1079040
-    assert len(yago_3_10['valid']) == 5000
-    assert len(yago_3_10['test']) == 5000
+    assert len(yago_3_10['train']) == 1079040 
+    assert len(yago_3_10['valid']) == 5000 - 22
+    assert len(yago_3_10['test']) == 5000 - 18
 
     # ent_train = np.union1d(np.unique(yago_3_10["train"][:,0]), np.unique(yago_3_10["train"][:,2]))
     # ent_valid = np.union1d(np.unique(yago_3_10["valid"][:,0]), np.unique(yago_3_10["valid"][:,2]))
     # ent_test = np.union1d(np.unique(yago_3_10["test"][:,0]), np.unique(yago_3_10["test"][:,2]))
+
+    # assert len(set(ent_valid) - set(ent_train)) == 22
+    # assert len (set(ent_test) - ((set(ent_valid) & set(ent_train)) | set(ent_train))) == 18
+
     # distinct_ent = np.union1d(np.union1d(ent_train, ent_valid), ent_test)
     # distinct_rel = np.union1d(np.union1d(np.unique(yago_3_10["train"][:,1]), np.unique(yago_3_10["train"][:,1])), np.unique(yago_3_10["train"][:,1]))
 
