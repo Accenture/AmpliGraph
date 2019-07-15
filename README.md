@@ -1,4 +1,4 @@
-# ![AmpliGraph](docs/img/ampligraph_logo_transparent_300px.png)
+# ![AmpliGraph](docs/img/ampligraph_logo_transparent_300.png)
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2595043.svg)](https://doi.org/10.5281/zenodo.2595043)
 
