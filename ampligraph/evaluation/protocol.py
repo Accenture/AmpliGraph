@@ -789,7 +789,7 @@ def _sample_parameters(param_grid):
     param_grid: dict
         Parameter configurations.
         Example::
-            param_grid = {"k": [50, 100], "eta": lambda: np.random.choice([1, 2, 3]}
+            param_grid = {"k": [50, 100], "eta": lambda: np.random.choice([1, 2, 3])}
 
     Returns
     -------
@@ -1083,7 +1083,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
     experimental_history = []
 
-    for model_params in tqdm(model_params_combinations, disable=(not verbose)):
+    for model_params in tqdm(model_params_combinations, total=max_combinations, disable=(not verbose)):
         current_result = {
             "model_name": model_params["model_name"],
             "model_params": model_params

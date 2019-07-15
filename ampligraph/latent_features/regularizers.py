@@ -195,8 +195,8 @@ class LPRegularizer(Regularizer):
         """
         self._regularizer_parameters['lambda'] = hyperparam_dict.get('lambda', DEFAULT_LAMBDA)
         self._regularizer_parameters['p'] = hyperparam_dict.get('p', DEFAULT_NORM)
-        if type(self._regularizer_parameters['p']) is not int:
-            msg = 'Invalid value for regularizer parameter p:{}. Supported type int'.format(
+        if not isinstance(self._regularizer_parameters['p'], (int, np.integer)):
+            msg = 'Invalid value for regularizer parameter p:{}. Supported type int, np.int32 or np.int64'.format(
                 self._regularizer_parameters['p'])
             logger.error(msg)
             raise Exception(msg)
