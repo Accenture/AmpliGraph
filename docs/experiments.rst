@@ -257,20 +257,17 @@ TransE   1119      0.50   0.40     0.57     0.68      k: 350;
                                                       check_interval: 100
                                                       };
                                                       
-DistMult 4808     0.49   0.41     0.54     0.63       k: 400;
+DistMult 1348     0.50   0.41     0.55     0.67       k: 350;
                                                       epochs: 4000;
                                                       eta: 50;
-                                                      loss: self_adversarial;
-                                                      loss_params:
-                                                      alpha: 1;
-                                                      margin: 1;
+                                                      loss: multiclass_nll;
                                                       optimizer: adam;
                                                       optimizer_params:
-                                                      lr: 0.0005;
+                                                      lr: 5e-05;
                                                       regularizer: LP;
                                                       regularizer_params:
                                                       lambda: 0.0001;
-                                                      p: 2;
+                                                      p: 3;
                                                       seed: 0;
                                                       normalize_ent_emb: false;
                                                       batches_count: 100;
@@ -283,16 +280,17 @@ DistMult 4808     0.49   0.41     0.54     0.63       k: 400;
                                                       check_interval: 100
                                                       };
 
-ComplEx  7266     0.50   0.42     0.55     0.65       k: 350;
+ComplEx  1473     0.51   0.42     0.56     0.67       k: 350;
                                                       epochs: 4000;
                                                       eta: 30;
-                                                      loss: self_adversarial;
-                                                      loss_params:
-                                                      alpha: 1;
-                                                      margin: 0.5;
+                                                      loss: multiclass_nll;
                                                       optimizer: adam;
                                                       optimizer_params:
-                                                      lr: 0.0001;
+                                                      lr: 5e-05;
+                                                      regularizer: LP;
+                                                      regularizer_params:
+                                                      lambda: 0.0001;
+                                                      p: 3;
                                                       seed: 0;
                                                       batches_count: 100
                                                       early_stopping:{
