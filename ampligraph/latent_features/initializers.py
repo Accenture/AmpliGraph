@@ -2,6 +2,7 @@ import tensorflow as tf
 import abc
 import logging
 import numpy as np
+from sklearn.utils import check_random_state
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -53,7 +54,10 @@ class Initializer(abc.ABC):
         """
         self.verbose = verbose
         self._initializer_params = {}
-        self.seed = seed
+        if isinstance(seed, int):
+            self.random_generator = check_random_state(seed)
+        else:
+            self.random_generator = seed
         self._init_hyperparams(initializer_params)
         
     def _init_hyperparams(self, hyperparam_dict):
@@ -122,12 +126,12 @@ class RandomNormal(Initializer):
     def get_tf_initializer(self):
         return tf.random_normal_initializer(mean=self._initializer_params['mean'],
                                             stddev=self._initializer_params['std'],
-                                            seed=self.seed)
+                                            dtype=tf.float32)
         
     def get_np_initializer(self, in_shape, out_shape):
-        return np.random.normal(self._initializer_params['mean'],
-                                self._initializer_params['std'], 
-                                size=(in_shape, out_shape))
+        return self.random_generator.normal(self._initializer_params['mean'],
+                                            self._initializer_params['std'],
+                                            size=(in_shape, out_shape)).astype(np.float32)
 
 
 @register_initializer("uniform", ["low", "high"])             
@@ -178,13 +182,13 @@ class RandomUniform(Initializer):
                 
     def get_tf_initializer(self):
         return tf.random_uniform_initializer(minval=self._initializer_params['low'], 
-                                             maxval=self._initializer_params['high'], 
-                                             seed=self.seed)
+                                             maxval=self._initializer_params['high'],
+                                             dtype=tf.float32)
         
     def get_np_initializer(self, in_shape, out_shape):
-        return np.random.uniform(self._initializer_params['low'],
-                                 self._initializer_params['high'], 
-                                 size=(in_shape, out_shape))
+        return self.random_generator.uniform(self._initializer_params['low'],
+                                             self._initializer_params['high'],
+                                             size=(in_shape, out_shape)).astype(np.float32)
 
 
 @register_initializer("xavier", ["uniform"])             
@@ -232,17 +236,17 @@ class Xavier(Initializer):
                 logger.info('{} : {}'.format(key, value))
                 
     def get_tf_initializer(self):
-        return tf.contrib.layers.xavier_initializer(uniform=self._initializer_params['uniform'], 
-                                                    seed=self.seed)
+        return tf.contrib.layers.xavier_initializer(uniform=self._initializer_params['uniform'],
+                                                    dtype=tf.float32)
         
     def get_np_initializer(self, in_shape, out_shape):
         if self._initializer_params['uniform']:
             limit = np.sqrt(6 / (in_shape + out_shape))
-            return np.random.uniform(-limit,
-                                     limit, 
-                                     size=(in_shape, out_shape))
+            return self.random_generator.uniform(-limit,
+                                                 limit,
+                                                 size=(in_shape, out_shape)).astype(np.float32)
         else:
             std = np.sqrt(2 / (in_shape + out_shape))
-            return np.random.normal(0,
-                                    std, 
-                                    size=(in_shape, out_shape))
+            return self.random_generator.normal(0,
+                                                std,
+                                                size=(in_shape, out_shape)).astype(np.float32)

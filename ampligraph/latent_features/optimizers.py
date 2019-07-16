@@ -410,13 +410,12 @@ class SGDOptimizer(Optimizer):
             if epoch_num % (self.next_cycle_epoch + 1) == 0 and batch_num == 1:
                 self.curr_cycle_length = self.curr_cycle_length * self.decay_cycle_expand_factor
                 self.next_cycle_epoch = self.next_cycle_epoch + self.curr_cycle_length
-                self.curr_start = epoch_num-1
-                self.start_lr = self.start_lr / self.decay_lr_rate 
-                
-                
+                self.curr_start = epoch_num - 1
+                self.start_lr = self.start_lr / self.decay_lr_rate
+
             # compute the cycle number
             current_cycle_num = \
-                ((epoch_num - 1 - self.curr_start) + (batch_num-1) / (1.0 * self.batches_count)) / self.curr_cycle_length
+                (epoch_num - 1 - self.curr_start + batch_num - 1) / (1.0 * self.batches_count * self.curr_cycle_length)
             
             # compute a learning rate for the current batch/epoch
             self.current_lr = \
