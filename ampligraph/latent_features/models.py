@@ -939,7 +939,7 @@ class EmbeddingModel(abc.ABC):
                     # print("approximate_unseen is None")
                     return f(*args, **kwargs), None, None
                 else:
-                    print("approximate_unseen is triggered...")
+                    # print("approximate_unseen is triggered...")
                     keys = list(approximate_unseen.keys())
                     if "pool" not in keys and "neighbour_triples" not in keys:
                         raise KeyError("pool or neighbour_triples key are wrongly specified...")
@@ -971,6 +971,9 @@ class EmbeddingModel(abc.ABC):
             return inner_dec
         return outer_dec
 
+    def _throw_away_unseen_vector(self, e):
+        self.ent_to_idx.pop(e, None)
+        
     def _approximate_embeddings(self, X, pool="avg", neighbour_triples=None, k_size=None):
         """Generate approximate embeddings for entity, given neighbouring triples from auxiliary graph and a defined pooling function. 
             
@@ -997,15 +1000,15 @@ class EmbeddingModel(abc.ABC):
         if X[0] not in self.ent_to_idx:
             if X[2] not in self.ent_to_idx:
                 raise ValueError('predicted triples contain two OOKG entities: ', X)
-        else:
+        elif X[2] not in self.ent_to_idx:
             e = X[2]
-
+        else:
+            raise ValueError('There is no unseen entity in the request...')
         # print("unseen entities: ", e)
         # Get entity neighbours
         neighbour_triples = np.array(neighbour_triples)
         neighbour_entities = neighbour_triples[:,[0,2]]
         N_ent = neighbour_entities[np.where(neighbour_entities != e)]
-
         # Raise ValueError if a neighbour entity is not found in entity dict
         if not np.all([x in self.ent_to_idx.keys() for x in N_ent]):
             invalid_triples = neighbour_triples[np.where([x not in self.ent_to_idx for x in N_ent])]
@@ -1085,11 +1088,11 @@ class EmbeddingModel(abc.ABC):
             raise RuntimeError(msg)
 
         if not from_idx:
-            X, e, app_embs = self._assign_unseen_idx(approximate_unseen)(to_idx)(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+            X, unseen, app_embs = self._assign_unseen_idx(approximate_unseen)(to_idx)(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
 
         # build tf graph for predictions
         if self.sess_predict is None:
-            self._add_app_embs(e, app_embs)(self._load_model_from_trained_params)()
+            self._add_app_embs(unseen, app_embs)(self._load_model_from_trained_params)()
             self._initialize_eval_graph()
             
             sess = tf.Session()
@@ -1112,6 +1115,8 @@ class EmbeddingModel(abc.ABC):
             scores = all_scores
             if get_ranks:
                 ranks = self.sess_predict.run(self.rank, feed_dict={self.X_test_tf: [X]})
+
+        self._throw_away_unseen_vector(unseen)        
 
         if get_ranks:
             return scores, ranks
