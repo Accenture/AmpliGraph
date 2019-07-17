@@ -7,7 +7,7 @@
 #
 
 from collections.abc import Iterable
-from itertools import product
+from itertools import product, islice
 import logging
 
 import numpy as np
@@ -630,16 +630,7 @@ def filter_unseen_entities(X, model, verbose=False, strict=True):
             return X[~mask_unseen]
 
 
-def _remove_unused_param(params, nested_keys, registry, category_type, category_type_params):
-    if category_type_params in params and category_type in registry:
-        expected_params = registry[category_type].external_params
-        params[category_type_params] = {k: v for k, v in params[category_type_params].items() if k in expected_params}
-    else:
-        params[category_type_params] = {}
-        nested_keys.add(category_type_params)
-
-
-def remove_unused_params(params, nested_keys, model_name):
+def _remove_unused_params(params):
     """
     Removed unused parameters considering the registries.
 
@@ -649,29 +640,115 @@ def remove_unused_params(params, nested_keys, model_name):
     ----------
     params: dict
         Dictionary with parameters.
-    nested_keys: set
-        Set of keys of params that include nested params (i.e. a dict inside a dict).
-    model_name: str
-        The name of the model (e.g. 'ComplEx').
 
+    Returns
+    -------
+    params: dict
+        Param dict without unused parameters.
     """
     from ..latent_features import LOSS_REGISTRY, REGULARIZER_REGISTRY, MODEL_REGISTRY
+
+    def _param_without_unused(param, registry, category_type, category_type_params):
+        """Remove one particular nested param (if unused) given a registry"""
+        if category_type_params in param and category_type in registry:
+            expected_params = registry[category_type].external_params
+            params[category_type_params] = {k: v for k, v in param[category_type_params].items() if
+                                            k in expected_params}
+        else:
+            params[category_type_params] = {}
+
+    params = params.copy()
+
     if "loss" in params and "loss_params" in params:
-        _remove_unused_param(params, nested_keys, LOSS_REGISTRY, params["loss"], "loss_params")
+        _param_without_unused(params, LOSS_REGISTRY, params["loss"], "loss_params")
     if "regularizer" in params and "regularizer_params" in params:
-        _remove_unused_param(params, nested_keys, REGULARIZER_REGISTRY, params["regularizer"], "regularizer_params")
-    if "embedding_model_params" in params:
-        _remove_unused_param(params, nested_keys, MODEL_REGISTRY, model_name, "embedding_model_params")
+        _param_without_unused(params, REGULARIZER_REGISTRY, params["regularizer"], "regularizer_params")
+    if "embedding_model_params" in params and "model_name" in params:
+        _param_without_unused(params, MODEL_REGISTRY, params["model_name"], "embedding_model_params")
+
+    return params
 
 
-def next_hyperparam(model_name, param_grid):
+def _flatten_nested_keys(dictionary):
     """
-    Iterator that gets the next parameter combination from a dictionary containing lists of parameters.
+    Flatten the nested values of a dictionary into tuple keys
+    E.g. {"a": {"b": [1], "c": [2]}} becomes {("a", "b"): [1], ("a", "c"): [2]}
+    """
+    # Find the parameters that are nested dictionaries
+    nested_keys = {k for k, v in dictionary.items() if type(v) is dict}
+    # Flatten them into tuples
+    flattened_nested_keys = {(nk, k): dictionary[nk][k] for nk in nested_keys for k in dictionary[nk]}
+    # Get original dictionary without the nested keys
+    dictionary_without_nested_keys = {k: v for k, v in dictionary.items() if k not in nested_keys}
+    # Return merged dicts
+    return {**dictionary_without_nested_keys, **flattened_nested_keys}
+
+
+def _unflatten_nested_keys(dictionary):
+    """
+    Unflatten the nested values of a dictionary based on the keys that are tuples
+    E.g. {("a", "b"): [1], ("a", "c"): [2]} becomes {"a": {"b": [1], "c": [2]}}
+    """
+    # Find the parameters that are nested dictionaries
+    nested_keys = {k[0] for k in dictionary if type(k) is tuple}
+    # Select the parameters which were originally nested and unflatten them
+    nested_dict = {nk: {k[1]: v for k, v in dictionary.items() if k[0] == nk} for nk in nested_keys}
+    # Get original dictionary without the nested keys
+    dictionary_without_nested_keys = {k: v for k, v in dictionary.items() if type(k) is not tuple}
+    # Return merged dicts
+    return {**dictionary_without_nested_keys, **nested_dict}
+
+
+def _get_param_hash(param):
+    """
+    Get the hash of a param dictionary.
+    It first unflattens nested dicts, removes unused nested parameters, nests them again and then create a frozenset
+    based on the resulting items (tuples).
+    Note that the flattening and unflattening dict functions are idempotent.
 
     Parameters
     ----------
-    model_name: str
-        The name of the model (e.g. 'ComplEx').
+    param: dict
+        Parameter configuration.
+        Example::
+            param_grid = {"k": 50, "eta": 2, "optimizer_params": {"lr": 0.1}}
+
+    Returns
+    -------
+    str
+        Hash of the param dictionary.
+    """
+    # Remove parameters that are not used by particular configurations
+    # For example, if the regularization is None, there is no need for the regularization lambda
+    flattened_params = _flatten_nested_keys(_remove_unused_params(_unflatten_nested_keys(param)))
+    return hash(frozenset(flattened_params.items()))
+
+
+class ParamHistory(object):
+    """
+    Used to evaluates whether a particular parameter configuration has already been previously seen or not.
+    To achieve that, we hash each parameter configuration, removing unused parameters first.
+    """
+    def __init__(self):
+        """The param history is a set of hashes."""
+        self.param_hash_history = set()
+
+    def add(self, param):
+        """Add hash of parameter configuration to history."""
+        self.param_hash_history.add(_get_param_hash(param))
+
+    def __contains__(self, other):
+        """Verify whether hash of parameter configuration is present in history."""
+        return _get_param_hash(other) in self.param_hash_history
+
+
+def _next_hyperparam(param_grid):
+    """
+    Iterator that gets the next parameter combination from a dictionary containing lists of parameters.
+    The parameter combinations are deterministic and go over all possible combinations present in the parameter grid.
+
+    Parameters
+    ----------
     param_grid: dict
         Parameter configurations.
         Example::
@@ -683,73 +760,89 @@ def next_hyperparam(model_name, param_grid):
         One particular combination of parameters.
 
     """
-    # Make scalars into lists
-    param_grid = {k: v if isinstance(v, Iterable) and not isinstance(v, str) else [v] for k, v in param_grid.items()}
+    param_history = ParamHistory()
 
-    # Find the parameters that are nested dictionaries
-    nested_keys = {k for k, v in param_grid.items() if type(v) is dict}
-
-    # Flatten the nested values of a dictionary based on precomputed nested_keys
-    # E.g. {"a": {"b": [1], "c": [2]}} becomes
-    #      {("a", "b"): [1], ("a", "c"): [2]}
-    def flatten_nested_keys(dictionary):
-        flattened_nested_keys = {(nk, k): dictionary[nk][k] for nk in nested_keys for k in dictionary[nk]}
-        dictionary_without_nested_keys = {k: v for k, v in dictionary.items() if k not in nested_keys}
-        return {**dictionary_without_nested_keys, **flattened_nested_keys}
-
-    flattened_param_grid = flatten_nested_keys(param_grid)
-
-    param_history = set()
+    # Flatten nested dictionaries so we can apply itertools.product to get all possible parameter combinations
+    flattened_param_grid = _flatten_nested_keys(param_grid)
 
     for values in product(*flattened_param_grid.values()):
         # Get one single parameter combination as a flattened dictionary
         param = dict(zip(flattened_param_grid.keys(), values))
 
-        # Select the parameters which were originally nested and unflatten them
-        nested_param = {nk: {k[1]: v for k, v in param.items() if k[0] == nk} for nk in nested_keys}
-
-        # Merge the original parameter combination with the unflattened combination
-        params_without_nested_keys = {k: v for k, v in param.items() if not type(k) is tuple}
-        param = {**params_without_nested_keys, **nested_param}
-
-        # Remove parameters that are not used by particular configurations
-        # For example, if the regularization is None, there is no need for the regularization lambda
-        remove_unused_params(param, nested_keys, model_name)
-
         # Only yield unique parameter combinations
-        param_hash = hash(frozenset(flatten_nested_keys(param).items()))
-        if param_hash in param_history:
+        if param in param_history:
             continue
         else:
-            param_history.add(param_hash)
-            yield param
+            param_history.add(param)
+            # Yields nested configuration (unflattened) without useless parameters
+            yield _remove_unused_params(_unflatten_nested_keys(param))
 
 
-def randomly_sample_params(param_grid, max_combinations):
+def _sample_parameters(param_grid):
     """
-    For a param_grid with callables, call them creating lists of max_combinations size.
+    Given a param_grid with callables and lists, execute callables and sample lists to return of random combination
+    of parameters.
+
+    Parameters
+    ----------
+
+    param_grid: dict
+        Parameter configurations.
+        Example::
+            param_grid = {"k": [50, 100], "eta": lambda: np.random.choice([1, 2, 3])}
+
+    Returns
+    -------
+
+    param: dict
+        Return dictionary containing sampled parameters.
+
+    """
+    param = {}
+    for k, v in param_grid.items():
+        if callable(v):
+            param[k] = v()
+        elif type(v) is dict:
+            param[k] = _sample_parameters(v)
+        elif isinstance(v, Iterable) and type(v) is not str:
+            param[k] = np.random.choice(v)
+        else:
+            param[k] = v
+    return param
+
+
+def _next_hyperparam_random(param_grid):
+    """
+    Iterator that gets the next parameter combination from a dictionary containing lists of parameters or callables.
+    The parameter combinations are randomly chosen each iteration.
 
     Parameters
     ----------
     param_grid: dict
         Parameter configurations.
         Example::
-            param_grid = {"k": [50, 100], "eta": lambda: np.random.choice([1, 2, 3]}
-    max_combinations: int
-        Maximum number of combinations to consider.
+            param_grid = {"k": [50, 100], "eta": [1, 2, 3]}
+
+    Returns
+    -------
+    params: iterator
+        One particular combination of parameters.
 
     """
-    for k, v in param_grid.items():
-        if callable(v):
-            if max_combinations is None:
-                raise ValueError("If a parameter in the `param_grid` is a function, "
-                                 "`max_combinations` must be set to a value")
-            param_grid[k] = [v() for _ in range(max_combinations)]
-        elif type(v) is dict:
-            randomly_sample_params(v, max_combinations)
+    param_history = ParamHistory()
+
+    while True:
+        param = _sample_parameters(param_grid)
+
+        # Only yield unique parameter combinations
+        if param in param_history:
+            continue
+        else:
+            param_history.add(param)
+            yield _remove_unused_params(param)
 
 
-def scalars_into_lists(param_grid):
+def _scalars_into_lists(param_grid):
     """
     For a param_grid with scalars (instead of lists or callables), transform scalars into lists of size one.
 
@@ -764,7 +857,7 @@ def scalars_into_lists(param_grid):
         if not (callable(v) or isinstance(v, Iterable)) or type(v) is str:
             param_grid[k] = [v]
         elif type(v) is dict:
-            scalars_into_lists(v)
+            _scalars_into_lists(v)
 
 
 def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid, max_combinations=None,
@@ -958,17 +1051,14 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         logger.debug("The following arguments were not defined in the parameter grid"
                      " and thus the default values will be used: {}".format(', '.join(undeclared_args)))
 
-    scalars_into_lists(param_grid)
-
-    np.random.seed(param_grid_random_seed)
-    randomly_sample_params(param_grid, max_combinations)
+    param_grid["model_name"] = model_class.name
+    _scalars_into_lists(param_grid)
 
     if max_combinations is not None:
-        model_params_combinations = list(next_hyperparam(model_class.name, param_grid))
-        np.random.shuffle(model_params_combinations)
-        model_params_combinations = model_params_combinations[:max_combinations]
+        np.random.seed(param_grid_random_seed)
+        model_params_combinations = islice(_next_hyperparam_random(param_grid), max_combinations)
     else:
-        model_params_combinations = next_hyperparam(model_class.name, param_grid)
+        model_params_combinations = _next_hyperparam(param_grid)
 
     best_mrr_train = 0
     best_model = None
@@ -993,11 +1083,12 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
     experimental_history = []
 
-    for model_params in tqdm(model_params_combinations, disable=(not verbose)):
+    for model_params in tqdm(model_params_combinations, total=max_combinations, disable=(not verbose)):
         current_result = {
-            "model_name": model_class.__name__,
+            "model_name": model_params["model_name"],
             "model_params": model_params
         }
+        del model_params["model_name"]
         try:
             model = model_class(**model_params)
             model.fit(X_train, early_stopping, early_stopping_params)
