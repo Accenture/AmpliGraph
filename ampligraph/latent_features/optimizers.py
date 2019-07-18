@@ -63,7 +63,15 @@ class Optimizer(abc.ABC):
         self._optimizer_params = {}
         self._init_hyperparams(optimizer_params)
         self.batches_count = batches_count
-        
+
+    def _display_params(self):
+        """Display the parameter values
+        """
+        logger.info('\n------ Optimizer -----')
+        logger.info('Name : {}'.format(self.name))
+        for key, value in self._optimizer_params.items():
+            logger.info('{} : {}'.format(key, value))
+            
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.
         
@@ -75,10 +83,7 @@ class Optimizer(abc.ABC):
         
         self._optimizer_params['lr'] = hyperparam_dict.get('lr', DEFAULT_LR)
         if self.verbose:
-            logger.info('\n------ Optimizer -----')
-            logger.info('Name : {}'.format(self.name))
-            for key, value in self._optimizer_params.items():
-                logger.info('{} : {}'.format(key, value))
+            self._display_params()
 
     def minimize(self, loss):
         """Create an optimizer to minimize the model loss 
@@ -261,10 +266,7 @@ class MomentumOptimizer(Optimizer):
         self._optimizer_params['momentum'] = hyperparam_dict.get('momentum', DEFAULT_MOMENTUM)
         
         if self.verbose:
-            logger.info('\n------ Optimizer -----')
-            logger.info('Name : {}'.format(self.name))
-            for key, value in self._optimizer_params.items():
-                logger.info('{} : {}'.format(key, value))
+            self._display_params()
         
     def minimize(self, loss):
         """Create an optimizer to minimize the model loss 
@@ -343,10 +345,7 @@ class SGDOptimizer(Optimizer):
         self._optimizer_params['end_lr'] = hyperparam_dict.get('end_lr', DEFAULT_END_LR)
         
         if self.verbose:
-            logger.info('\n------ Optimizer -----')
-            logger.info('Name : {}'.format(self.name))
-            for key, value in self._optimizer_params.items():
-                logger.info('{} : {}'.format(key, value))
+            self._display_params()
                 
     def minimize(self, loss):
         """Create an optimizer to minimize the model loss 

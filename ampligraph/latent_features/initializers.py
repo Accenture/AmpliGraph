@@ -18,7 +18,7 @@ DEFAULT_UNIFORM_HIGH = 0.05
 # Default value of mean for Gaussian sampling
 DEFAULT_NORMAL_MEAN = 0
 
-# Default value of mean for Gaussian sampling
+# Default value of std for Gaussian sampling
 DEFAULT_NORMAL_STD = 0.05
 
 # Default value indicating whether to use xavier uniform or normal
@@ -51,6 +51,10 @@ class Initializer(abc.ABC):
         ----------
         initializer_params : dict
             dictionary of hyperparams that would be used by the initializer.
+        verbose : bool
+            set/reset verbose mode
+        seed : int/np.random.RandomState
+            random state for random number generator
         """
         self.verbose = verbose
         self._initializer_params = {}
@@ -60,20 +64,39 @@ class Initializer(abc.ABC):
             self.random_generator = seed
         self._init_hyperparams(initializer_params)
         
+    def _display_params(self):
+        """Display the parameter values
+        """
+        logger.info('\n------ Initializer -----')
+        logger.info('Name : {}'.format(self.name))
+        for key, value in self._initializer_params.items():
+            logger.info('{} : {}'.format(key, value))
+        
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters.
         
         Parameters
         ----------
-        hyperparam_dict : dictionary
+        hyperparam_dict: dictionary
             Consists of key value pairs. The initializer will check the keys to get the corresponding params
         """
         raise NotImplementedError('Abstract Method not implemented!')
         
     def get_tf_initializer(self):
+        """Create a tensorflow node for initializer
+        """
         raise NotImplementedError('Abstract Method not implemented!')
         
     def get_np_initializer(self, in_shape, out_shape):
+        """Create an initialized numpy array 
+        
+        Parameters
+        ----------
+        in_shape: int
+            number of inputs to the layer (fan in)
+        out_shape: int
+            number of outputs of the layer (fan out)
+        """
         raise NotImplementedError('Abstract Method not implemented!')
 
 
@@ -100,8 +123,8 @@ class RandomNormal(Initializer):
             Example: ``initializer_params={'mean': 0, 'std': 0.01}``
         verbose : bool
             Enable/disable verbose mode
-        seed : int
-            random number generator seed
+        seed : int/np.random.RandomState
+            random state for random number generator
         """
         
         super(RandomNormal, self).__init__(initializer_params, verbose, seed)
@@ -118,17 +141,34 @@ class RandomNormal(Initializer):
         self._initializer_params['std'] = hyperparam_dict.get('std', DEFAULT_NORMAL_STD)
         
         if self.verbose:
-            logger.info('\n------ Initializer -----')
-            logger.info('Name : {}'.format(self.name))
-            for key, value in self._initializer_params.items():
-                logger.info('{} : {}'.format(key, value))
+            self._display_params()
                 
     def get_tf_initializer(self):
+        """Create a tensorflow node for initializer
+        
+        Returns
+        -------
+        out: An random normal initializer instance.
+        """
         return tf.random_normal_initializer(mean=self._initializer_params['mean'],
                                             stddev=self._initializer_params['std'],
                                             dtype=tf.float32)
         
     def get_np_initializer(self, in_shape, out_shape):
+        """Create an initialized numpy array 
+        
+        Parameters
+        ----------
+        in_shape: int
+            number of inputs to the layer (fan in)
+        out_shape: int
+            number of outputs of the layer (fan out)
+            
+        Returns
+        -------
+        out: n-d array
+            matrix initialized from a normal distribution of specified mean and std
+        """
         return self.random_generator.normal(self._initializer_params['mean'],
                                             self._initializer_params['std'],
                                             size=(in_shape, out_shape)).astype(np.float32)
@@ -157,8 +197,8 @@ class RandomUniform(Initializer):
             Example: ``initializer_params={'low': 0, 'high': 0.01}``
         verbose : bool
             Enable/disable verbose mode
-        seed : int
-            random number generator seed
+        seed : int/np.random.RandomState
+            random state for random number generator
         """
         
         super(RandomUniform, self).__init__(initializer_params, verbose, seed)
@@ -175,17 +215,34 @@ class RandomUniform(Initializer):
         self._initializer_params['high'] = hyperparam_dict.get('high', DEFAULT_UNIFORM_HIGH)
         
         if self.verbose:
-            logger.info('\n------ Initializer -----')
-            logger.info('Name : {}'.format(self.name))
-            for key, value in self._initializer_params.items():
-                logger.info('{} : {}'.format(key, value))
+            self._display_params()
                 
     def get_tf_initializer(self):
+        """Create a tensorflow node for initializer
+        
+        Returns
+        -------
+        out: An random uniform initializer instance.
+        """
         return tf.random_uniform_initializer(minval=self._initializer_params['low'], 
                                              maxval=self._initializer_params['high'],
                                              dtype=tf.float32)
         
     def get_np_initializer(self, in_shape, out_shape):
+        """Create an initialized numpy array 
+        
+        Parameters
+        ----------
+        in_shape: int
+            number of inputs to the layer (fan in)
+        out_shape: int
+            number of outputs of the layer (fan out)
+            
+        Returns
+        -------
+        out: n-d array
+            matrix initialized from a uniform distribution of specified low and high bounds
+        """
         return self.random_generator.uniform(self._initializer_params['low'],
                                              self._initializer_params['high'],
                                              size=(in_shape, out_shape)).astype(np.float32)
@@ -213,8 +270,8 @@ class Xavier(Initializer):
             Example: ``initializer_params={'uniform': False}``
         verbose : bool
             Enable/disable verbose mode
-        seed : int
-            random number generator seed
+        seed : int/np.random.RandomState
+            random state for random number generator
         """
         
         super(Xavier, self).__init__(initializer_params, verbose, seed)
@@ -230,16 +287,33 @@ class Xavier(Initializer):
         self._initializer_params['uniform'] = hyperparam_dict.get('uniform', DEFAULT_XAVIER_IS_UNIFORM)
         
         if self.verbose:
-            logger.info('\n------ Initializer -----')
-            logger.info('Name : {}'.format(self.name))
-            for key, value in self._initializer_params.items():
-                logger.info('{} : {}'.format(key, value))
+            self._display_params()
                 
     def get_tf_initializer(self):
+        """Create a tensorflow node for initializer
+        
+        Returns
+        -------
+        out: An xavier normal/uniform initializer instance.
+        """
         return tf.contrib.layers.xavier_initializer(uniform=self._initializer_params['uniform'],
                                                     dtype=tf.float32)
         
     def get_np_initializer(self, in_shape, out_shape):
+        """Create an initialized numpy array 
+        
+        Parameters
+        ----------
+        in_shape: int
+            number of inputs to the layer (fan in)
+        out_shape: int
+            number of outputs of the layer (fan out)
+            
+        Returns
+        -------
+        out: n-d array
+            matrix initialized using xavier uniform or xavier normal initializer
+        """
         if self._initializer_params['uniform']:
             limit = np.sqrt(6 / (in_shape + out_shape))
             return self.random_generator.uniform(-limit,

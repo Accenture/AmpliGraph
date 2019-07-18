@@ -13,8 +13,8 @@ from tqdm import tqdm
 import logging
 from .loss_functions import LOSS_REGISTRY
 from .regularizers import REGULARIZER_REGISTRY
-from .optimizers import OPTIMIZER_REGISTRY, SGDOptimizer
-from .initializers import INITIALIZER_REGISTRY
+from .optimizers import OPTIMIZER_REGISTRY, SGDOptimizer, DEFAULT_LR
+from .initializers import INITIALIZER_REGISTRY, DEFAULT_XAVIER_IS_UNIFORM
 from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, \
     hits_at_n_score, mrr_score
 from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
@@ -27,13 +27,6 @@ logger.setLevel(logging.DEBUG)
 
 #######################################################################################################
 # If not specified, following defaults will be used at respective locations
-
-# Default learning rate for the optimizers
-DEFAULT_LR = 0.0005
-
-# Default value indicating whether to use xavier uniform or normal
-DEFAULT_XAVIER_IS_UNIFORM = False
-
 # Default value for the type of initializer to use
 DEFAULT_INITIALIZER = 'xavier'
 
