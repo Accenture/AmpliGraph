@@ -13,7 +13,8 @@ from tqdm import tqdm
 import logging
 from .loss_functions import LOSS_REGISTRY
 from .regularizers import REGULARIZER_REGISTRY
-from .optimizers import OPTIMIZER_REGISTRY, SGDOptimizer
+from .optimizers import OPTIMIZER_REGISTRY, SGDOptimizer, DEFAULT_LR
+from .initializers import INITIALIZER_REGISTRY, DEFAULT_XAVIER_IS_UNIFORM
 from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, \
     hits_at_n_score, mrr_score
 from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
@@ -26,9 +27,8 @@ logger.setLevel(logging.DEBUG)
 
 #######################################################################################################
 # If not specified, following defaults will be used at respective locations
-
-# Default learning rate for the optimizers
-DEFAULT_LR = 0.0005
+# Default value for the type of initializer to use
+DEFAULT_INITIALIZER = 'xavier'
 
 # Default burn in for early stopping
 DEFAULT_BURN_IN_EARLY_STOPPING = 100
@@ -140,6 +140,8 @@ class EmbeddingModel(abc.ABC):
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER,
                  regularizer_params={},
+                 initializer=DEFAULT_INITIALIZER,
+                 initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
@@ -231,6 +233,9 @@ class EmbeddingModel(abc.ABC):
 
             }
         tf.reset_default_graph()
+        self.seed = seed
+        self.rnd = check_random_state(self.seed)
+        tf.random.set_random_seed(seed)
 
         self.is_filtered = False
         self.loss_params = loss_params
@@ -239,7 +244,6 @@ class EmbeddingModel(abc.ABC):
 
         self.k = k
         self.internal_k = k
-        self.seed = seed
         self.epochs = epochs
         self.eta = eta
         self.regularizer_params = regularizer_params
@@ -272,8 +276,7 @@ class EmbeddingModel(abc.ABC):
         self.optimizer_params = optimizer_params
 
         try:
-            self.optimizer = OPTIMIZER_REGISTRY[optimizer](optimizer, 
-                                                           self.optimizer_params, 
+            self.optimizer = OPTIMIZER_REGISTRY[optimizer](self.optimizer_params, 
                                                            self.batches_count, 
                                                            verbose)
         except KeyError:
@@ -283,10 +286,16 @@ class EmbeddingModel(abc.ABC):
 
         self.verbose = verbose
 
-        self.rnd = check_random_state(self.seed)
-        np.random.seed(self.seed)
-
-        self.initializer = tf.contrib.layers.xavier_initializer(uniform=False, seed=self.seed)
+        self.initializer_params = initializer_params
+        
+        try:
+            self.initializer = INITIALIZER_REGISTRY[initializer](self.initializer_params, 
+                                                                 verbose,
+                                                                 self.rnd)
+        except KeyError:
+            msg = 'Unsupported initializer: {}'.format(initializer)
+            logger.error(msg)
+            raise ValueError(msg)
         
         self.tf_config = tf.ConfigProto(allow_soft_placement=True)
         self.tf_config.gpu_options.allow_growth = True
@@ -485,15 +494,15 @@ class EmbeddingModel(abc.ABC):
         if not self.dealing_with_large_graphs:
             
             self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
         else:
             
             self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
             self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size * 2, self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
 
     def _get_model_loss(self, dataset_iterator):
         """Get the current loss including loss due to regularization.
@@ -776,7 +785,7 @@ class EmbeddingModel(abc.ABC):
                 # find the unique entities - these HAVE to be loaded
                 unique_entities = np.int32(np.unique(np.concatenate([out[:, 0], out[:, 2]], axis=0)))
                 # Load the remaining entities by randomly selecting from the rest of the entities
-                self.leftover_entities = np.random.permutation(np.setdiff1d(all_ent, unique_entities))
+                self.leftover_entities = self.rnd.permutation(np.setdiff1d(all_ent, unique_entities))
                 needed = (self.batch_size * 2 - unique_entities.shape[0])
                 '''
                 #this is for debugging
@@ -852,7 +861,7 @@ class EmbeddingModel(abc.ABC):
             logger.warning('Your graph has a large number of distinct entities. '
                            'Found {} distinct entities'.format(len(self.ent_to_idx)))
             
-            logger.warning('Changing the variable initialization strategy...')
+            logger.warning('Changing the variable initialization strategy.')
             logger.warning('Changing the strategy to use lazy loading of variables...')
             
             if not isinstance(self.optimizer, SGDOptimizer):
@@ -863,8 +872,8 @@ class EmbeddingModel(abc.ABC):
                 # learning_rate=self.optimizer_params.get('lr', DEFAULT_LR))
             
             # CPU matrix of embeddings
-            self.ent_emb_cpu = np.random.normal(0, 0.05, size=(len(self.ent_to_idx), self.internal_k))
-                        
+            self.ent_emb_cpu = self.initializer.get_np_initializer(len(self.ent_to_idx), self.internal_k)
+            
             if early_stopping:
                 logger.warning("Early stopping may introduce memory issues when many distinct entities are present."
                                " Disable early stopping with `early_stopping_params={'early_stopping'=False}` or set "
@@ -876,11 +885,16 @@ class EmbeddingModel(abc.ABC):
         # This is useful when we re-fit the same model (e.g. retraining in model selection)
         if self.is_fitted:
             tf.reset_default_graph()
+            self.rnd = check_random_state(self.seed)
+            tf.random.set_random_seed(self.seed)
 
         self.sess_train = tf.Session(config=self.tf_config)
 
         batch_size = int(np.ceil(self.dataset_handler.get_size("train") / self.batches_count))
         # dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(2)
+        
+        if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
+            logger.warning('Only {} embeddings would be loaded in memory per batch...'.format(batch_size * 2))
         
         self.batch_size = batch_size
         self._initialize_parameters()
@@ -1117,7 +1131,7 @@ class EmbeddingModel(abc.ABC):
                                                                                      (None, self.internal_k))) 
 
                 corruption_generator = corruption_generator.repeat()
-                corruption_generator = corruption_generator.prefetch(1)
+                corruption_generator = corruption_generator.prefetch(0)
                 
                 corruption_iter = corruption_generator.make_one_shot_iterator()
 
@@ -1136,14 +1150,15 @@ class EmbeddingModel(abc.ABC):
                                               scores_predict_s_corruptions_in, 
                                               scores_predict_o_corruptions_in):
                     corr_dependency = []
-                    all_ent, entity_embeddings_corrpt = corruption_iter.get_next()
+                    corr_batch, entity_embeddings_corrpt = corruption_iter.get_next()
                     # if self.dealing_with_large_graphs: #for debugging
                     # Add dependency to load the embeddings
                     init_ent_emb_corrpt = self.ent_emb.assign(entity_embeddings_corrpt)
                     corr_dependency.append(init_ent_emb_corrpt)
+
                     # Add dependency to remap the indices to the corresponding indices on the GPU
-                    insert_lookup_op2 = self.sparse_mappings.insert(all_ent, 
-                                                                    tf.reshape(tf.range(tf.shape(all_ent)[0], 
+                    insert_lookup_op2 = self.sparse_mappings.insert(corr_batch, 
+                                                                    tf.reshape(tf.range(tf.shape(corr_batch)[0], 
                                                                                         dtype=tf.int32), 
                                                                                (-1, 1)))
                     corr_dependency.append(insert_lookup_op2)
@@ -1151,18 +1166,18 @@ class EmbeddingModel(abc.ABC):
                     
                     # Execute the dependency
                     with tf.control_dependencies(corr_dependency):
-                        emb_corr = tf.squeeze(self._entity_lookup(all_ent))
+                        emb_corr = tf.squeeze(self._entity_lookup(corr_batch))
                         if corrupt_side == 's+o' or corrupt_side == 's':
                             # compute and store the scores batch wise
                             scores_predict_s_c = self._fn(emb_corr, e_p, e_o)
                             scores_predict_s_corruptions_in = \
-                                scores_predict_s_corruptions_in.scatter(tf.squeeze(all_ent), 
+                                scores_predict_s_corruptions_in.scatter(tf.squeeze(corr_batch), 
                                                                         tf.squeeze(scores_predict_s_c))
                         
                         if corrupt_side == 's+o' or corrupt_side == 'o':
                             scores_predict_o_c = self._fn(e_s, e_p, emb_corr)
                             scores_predict_o_corruptions_in = \
-                                scores_predict_o_corruptions_in.scatter(tf.squeeze(all_ent), 
+                                scores_predict_o_corruptions_in.scatter(tf.squeeze(corr_batch), 
                                                                         tf.squeeze(scores_predict_o_c))
 
                     return i + 1, scores_predict_s_corruptions_in, scores_predict_o_corruptions_in
@@ -1234,8 +1249,8 @@ class EmbeddingModel(abc.ABC):
                                                   [tf.shape(self.scores_predict)[0] // 2])
                 
         # this is to remove the positives from corruptions - while ranking with filter
-        positives_among_obj_corruptions_ranked_higher = 0
-        positives_among_sub_corruptions_ranked_higher = 0    
+        positives_among_obj_corruptions_ranked_higher = tf.constant(0, dtype=tf.int32)
+        positives_among_sub_corruptions_ranked_higher = tf.constant(0, dtype=tf.int32)
 
         if self.is_filtered:
             # get the scores of positives present in corruptions
@@ -1258,8 +1273,7 @@ class EmbeddingModel(abc.ABC):
                     tf.cast(scores_pos_sub >= self.score_positive, tf.int32)) 
                 
         # compute the rank of the test triple and subtract the positives(from corruptions) that are ranked higher
-        if use_default_protocol:
-
+        if use_default_protocol:       
             self.rank = tf.stack([tf.reduce_sum(tf.cast(
                 subj_corruption_scores >= self.score_positive, 
                 tf.int32)) + 1 - positives_among_sub_corruptions_ranked_higher,
@@ -1302,6 +1316,9 @@ class EmbeddingModel(abc.ABC):
         
         # build tf graph for predictions
         if self.sess_predict is None:
+            tf.reset_default_graph()
+            self.rnd = check_random_state(self.seed)
+            tf.random.set_random_seed(self.seed)
             # load the parameters
             self._load_model_from_trained_params()
             # build the eval graph
@@ -1317,9 +1334,7 @@ class EmbeddingModel(abc.ABC):
         for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
             rank = self.sess_predict.run(self.rank)
             if self.eval_config.get('default_protocol', DEFAULT_PROTOCOL_EVAL): 
-                # ranks.append(np.mean(rank[0])) 
-                # ranks.extend(list(rank[0])) 
-                ranks.extend(list(rank)) 
+                ranks.append(list(rank))
             else:
                 ranks.append(rank)
         return ranks
@@ -1367,6 +1382,9 @@ class EmbeddingModel(abc.ABC):
         
         # build tf graph for predictions
         if self.sess_predict is None:
+            tf.reset_default_graph()
+            self.rnd = check_random_state(self.seed)
+            tf.random.set_random_seed(self.seed)
             # load the parameters
             self._load_model_from_trained_params()
             # build the eval graph
@@ -1594,6 +1612,8 @@ class TransE(EmbeddingModel):
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER,
                  regularizer_params={},
+                 initializer=DEFAULT_INITIALIZER,
+                 initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  verbose=DEFAULT_VERBOSE):
         """
         Initialize an EmbeddingModel.
@@ -1682,6 +1702,7 @@ class TransE(EmbeddingModel):
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
+                         initializer=initializer, initializer_params=initializer_params,
                          verbose=verbose)
 
     def _fn(self, e_s, e_p, e_o):
@@ -1863,6 +1884,8 @@ class DistMult(EmbeddingModel):
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER,
                  regularizer_params={},
+                 initializer=DEFAULT_INITIALIZER,
+                 initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
@@ -1950,6 +1973,7 @@ class DistMult(EmbeddingModel):
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
+                         initializer=initializer, initializer_params=initializer_params,
                          verbose=verbose)
 
     def _fn(self, e_s, e_p, e_o):
@@ -2141,6 +2165,8 @@ class ComplEx(EmbeddingModel):
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER,
                  regularizer_params={},
+                 initializer=DEFAULT_INITIALIZER,
+                 initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
@@ -2221,6 +2247,7 @@ class ComplEx(EmbeddingModel):
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
+                         initializer=initializer, initializer_params=initializer_params,
                          verbose=verbose)
         
         self.internal_k = self.k * 2
@@ -2230,14 +2257,14 @@ class ComplEx(EmbeddingModel):
         """
         if not self.dealing_with_large_graphs:
             self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
         else:
             self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
             self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size * 2, self.internal_k],
-                                           initializer=self.initializer)
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
 
     def _fn(self, e_s, e_p, e_o):
         r"""ComplEx scoring function.
@@ -2427,6 +2454,8 @@ class HolE(ComplEx):
                  loss_params={},
                  regularizer=DEFAULT_REGULARIZER,
                  regularizer_params={},
+                 initializer=DEFAULT_INITIALIZER,
+                 initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
@@ -2508,6 +2537,7 @@ class HolE(ComplEx):
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
+                         initializer=initializer, initializer_params=initializer_params,
                          verbose=verbose)
         self.internal_k = self.k * 2
         

@@ -78,7 +78,7 @@ def hits_at_n_score(ranks, n):
     if isinstance(ranks, list):
         logger.debug('Converting ranks to numpy array.')
         ranks = np.asarray(ranks)
-
+    ranks = ranks.reshape(-1)
     return np.sum(ranks <= n) / len(ranks)
 
 
@@ -146,7 +146,7 @@ def mrr_score(ranks):
     if isinstance(ranks, list):
         logger.debug('Converting ranks to numpy array.')
         ranks = np.asarray(ranks)
-
+    ranks = ranks.reshape(-1)
     return np.sum(1 / ranks) / len(ranks)
 
 
@@ -244,4 +244,5 @@ def mr_score(ranks):
     if isinstance(ranks, list):
         logger.debug('Converting ranks to numpy array.')
         ranks = np.asarray(ranks)
+    ranks = ranks.reshape(-1)
     return np.sum(ranks) / len(ranks)

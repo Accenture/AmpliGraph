@@ -33,7 +33,7 @@ DEFAULT_DECAY_CYCLE_MULTIPLE = 1
 
 DEFAULT_LR_DECAY_FACTOR = 2
 
-DEFAULT_END_LR = 0.00000001
+DEFAULT_END_LR = 1e-8
 
 DEFAULT_SINE = False
 
@@ -46,25 +46,32 @@ class Optimizer(abc.ABC):
     external_params = []
     class_params = {}
 
-    def __init__(self, optimizer, hyperparam_dict, batches_count, verbose):
+    def __init__(self, optimizer_params, batches_count, verbose):
         """Initialize the Optimizer
         
         Parameters
         ----------
-        optimizer: string
-            name of the optimizer to use
-        hyperparam_dict : dict
-            dictionary of hyperparams that would be used by the optimizer.
+        optimizer_params : dict
+            Consists of key-value pairs. The initializer will check the keys to get the corresponding params.
         batches_count: int
             number of batches in an epoch
+        verbose : bool
+            Enable/disable verbose mode
         """
         
-        self.optimizer = optimizer
         self.verbose = verbose
         self._optimizer_params = {}
-        self._init_hyperparams(hyperparam_dict)
+        self._init_hyperparams(optimizer_params)
         self.batches_count = batches_count
-        
+
+    def _display_params(self):
+        """Display the parameter values
+        """
+        logger.info('\n------ Optimizer -----')
+        logger.info('Name : {}'.format(self.name))
+        for key, value in self._optimizer_params.items():
+            logger.info('{} : {}'.format(key, value))
+            
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.
         
@@ -76,10 +83,7 @@ class Optimizer(abc.ABC):
         
         self._optimizer_params['lr'] = hyperparam_dict.get('lr', DEFAULT_LR)
         if self.verbose:
-            logger.info('\n------ Optimizer -----')
-            logger.info('Name : {}'.format(self.name))
-            for key, value in self._optimizer_params.items():
-                logger.info('{} : {}'.format(key, value))
+            self._display_params()
 
     def minimize(self, loss):
         """Create an optimizer to minimize the model loss 
@@ -116,20 +120,24 @@ class AdagradOptimizer(Optimizer):
     """Wrapper around adagrad optimizer
     """
 
-    def __init__(self, optimizer, hyperparam_dict, batches_count, verbose=False):
+    def __init__(self, optimizer_params, batches_count, verbose=False):
         """Initialize the Optimizer
         
         Parameters
         ----------
-        optimizer: string
-            name of the optimizer to use
-        hyperparam_dict : dict
-            dictionary of hyperparams that would be used by the optimizer.
+        optimizer_params : dict
+            Consists of key-value pairs. The optimizer will check the keys to get the corresponding params:
+
+            - **'lr'**: (float). Learning Rate (default: 0.0005)
+
+            Example: ``optimizer_params={'lr': 0.001}``
         batches_count: int
             number of batches in an epoch
+        verbose : bool
+            Enable/disable verbose mode
         """
         
-        super(AdagradOptimizer, self).__init__(optimizer, hyperparam_dict, batches_count, verbose)
+        super(AdagradOptimizer, self).__init__(optimizer_params, batches_count, verbose)
 
     def minimize(self, loss):
         """Create an optimizer to minimize the model loss 
@@ -168,20 +176,24 @@ class AdamOptimizer(Optimizer):
     """Abstract class for loss function.
     """
 
-    def __init__(self, optimizer, hyperparam_dict, batches_count, verbose=False):
+    def __init__(self, optimizer_params, batches_count, verbose=False):
         """Initialize the Optimizer
         
         Parameters
         ----------
-        optimizer: string
-            name of the optimizer to use
-        hyperparam_dict : dict
-            dictionary of hyperparams that would be used by the optimizer.
+        optimizer_params : dict
+            Consists of key-value pairs. The optimizer will check the keys to get the corresponding params:
+
+            - **'lr'**: (float). Learning Rate (default: 0.0005)
+
+            Example: ``optimizer_params={'lr': 0.001}``
         batches_count: int
             number of batches in an epoch
+        verbose : bool
+            Enable/disable verbose mode
         """
         
-        super(AdamOptimizer, self).__init__(optimizer, hyperparam_dict, batches_count, verbose)
+        super(AdamOptimizer, self).__init__(optimizer_params, batches_count, verbose)
         
     def minimize(self, loss):
         """Create an optimizer to minimize the model loss 
@@ -221,20 +233,25 @@ class MomentumOptimizer(Optimizer):
     """Abstract class for loss function.
     """
 
-    def __init__(self, optimizer, hyperparam_dict, batches_count, verbose=False):
+    def __init__(self, optimizer_params, batches_count, verbose=False):
         """Initialize the Optimizer
         
         Parameters
         ----------
-        optimizer: string
-            name of the optimizer to use
-        hyperparam_dict : dict
-            dictionary of hyperparams that would be used by the optimizer.
+        optimizer_params : dict
+            Consists of key-value pairs. The optimizer will check the keys to get the corresponding params:
+
+            - **'lr'**: (float). Learning Rate (default: 0.0005)
+            - **'momentum'**: (float). Momentum (default: 0.9)
+
+            Example: ``optimizer_params={'lr': 0.001, 'momentum':0.90}``
         batches_count: int
             number of batches in an epoch
+        verbose : bool
+            Enable/disable verbose mode
         """
         
-        super(MomentumOptimizer, self).__init__(optimizer, hyperparam_dict, batches_count, verbose)
+        super(MomentumOptimizer, self).__init__(optimizer_params, batches_count, verbose)
         
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.
@@ -249,10 +266,7 @@ class MomentumOptimizer(Optimizer):
         self._optimizer_params['momentum'] = hyperparam_dict.get('momentum', DEFAULT_MOMENTUM)
         
         if self.verbose:
-            logger.info('\n------ Optimizer -----')
-            logger.info('Name : {}'.format(self.name))
-            for key, value in self._optimizer_params.items():
-                logger.info('{} : {}'.format(key, value))
+            self._display_params()
         
     def minimize(self, loss):
         """Create an optimizer to minimize the model loss 
@@ -291,17 +305,28 @@ class MomentumOptimizer(Optimizer):
 @register_optimizer("sgd", ['lr', 'decay_cycle', 'end_lr', 'sine_decay', 'expand_factor', 'decay_lr_rate'])          
 class SGDOptimizer(Optimizer):
 
-    def __init__(self, optimizer, hyperparam_dict, batches_count, verbose=False):
+    def __init__(self, optimizer_params, batches_count, verbose=False):
         """Initialize the Optimizer
         
         Parameters
         ----------
-        optimizer: string
-            name of the optimizer to use
-        hyperparam_dict : dict
-            dictionary of hyperparams that would be used by the optimizer.
+        optimizer_params : dict
+            Consists of key-value pairs. The optimizer will check the keys to get the corresponding params:
+
+            - **'lr'**: (float). Learning Rate upper bound (default: 0.0005)
+            - **'decay_cycle'**: (int). Cycle of epoch over which to decay (default: 0)
+            - **'end_lr'**: (float). Learning Rate lower bound (default: 1e-8)
+            - **'cosine_decay'**: (bool). Use cosine decay or to fixed rate decay (default: False)
+            - **'expand_factor'**: (float). Expand the decay cycle length by this factor after each cycle (default: 1)
+            - **'decay_lr_rate'**: (float). Decay factor to decay the start lr after each cycle (default: 2)
+
+            Example: ``optimizer_params={'lr': 0.001}``
+        batches_count: int
+            number of batches in an epoch
+        verbose : bool
+            Enable/disable verbose mode
         """
-        super(SGDOptimizer, self).__init__(optimizer, hyperparam_dict, batches_count, verbose)
+        super(SGDOptimizer, self).__init__(optimizer_params, batches_count, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
         """ Initializes the hyperparameters needed by the algorithm.
@@ -314,16 +339,13 @@ class SGDOptimizer(Optimizer):
         
         self._optimizer_params['lr'] = hyperparam_dict.get('lr', DEFAULT_LR)
         self._optimizer_params['decay_cycle'] = hyperparam_dict.get('decay_cycle', DEFAULT_DECAY_CYCLE)
-        self._optimizer_params['sine_decay'] = hyperparam_dict.get('sine_decay', DEFAULT_SINE)
+        self._optimizer_params['cosine_decay'] = hyperparam_dict.get('cosine_decay', DEFAULT_SINE)
         self._optimizer_params['expand_factor'] = hyperparam_dict.get('expand_factor', DEFAULT_DECAY_CYCLE_MULTIPLE)
         self._optimizer_params['decay_lr_rate'] = hyperparam_dict.get('decay_lr_rate', DEFAULT_LR_DECAY_FACTOR)
         self._optimizer_params['end_lr'] = hyperparam_dict.get('end_lr', DEFAULT_END_LR)
         
         if self.verbose:
-            logger.info('\n------ Optimizer -----')
-            logger.info('Name : {}'.format(self.name))
-            for key, value in self._optimizer_params.items():
-                logger.info('{} : {}'.format(key, value))
+            self._display_params()
                 
     def minimize(self, loss):
         """Create an optimizer to minimize the model loss 
@@ -354,8 +376,8 @@ class SGDOptimizer(Optimizer):
         self.end_lr = self._optimizer_params['end_lr']
         
         # check if it is a sinudoidal decay or constant decay
-        self.is_sine_decay = self._optimizer_params['sine_decay']
-        self.next_cycle_epoch = self.decay_cycle_rate
+        self.is_cosine_decay = self._optimizer_params['cosine_decay']
+        self.next_cycle_epoch = self.decay_cycle_rate + 1
         
         # Get the cycle expand factor
         self.decay_cycle_expand_factor = self._optimizer_params['expand_factor']
@@ -382,28 +404,31 @@ class SGDOptimizer(Optimizer):
             current epoch number
         """
         # Sinusoidal Decay
-        if self.is_sine_decay:
+        if self.is_cosine_decay:
             # compute the cycle number
             current_cycle_num = \
-                ((epoch_num - 1 - self.curr_start) + (batch_num) / (1.0 * self.batches_count)) / self.curr_cycle_length
-            
+                ((epoch_num - 1 - self.curr_start) * self.batches_count + (batch_num - 1)) / \
+                (self.curr_cycle_length * self.batches_count)
             # compute a learning rate for the current batch/epoch
             self.current_lr = \
                 self.end_lr + (self.start_lr - self.end_lr) * 0.5 * (1 + math.cos(math.pi * current_cycle_num))
 
             # Start the next cycle and Expand the cycle/Decay the learning rate
-            if epoch_num % self.next_cycle_epoch == 0 and batch_num == self.batches_count:
+            if epoch_num % (self.next_cycle_epoch - 1) == 0 and batch_num == self.batches_count:
                 self.curr_cycle_length = self.curr_cycle_length * self.decay_cycle_expand_factor
                 self.next_cycle_epoch = self.next_cycle_epoch + self.curr_cycle_length
                 self.curr_start = epoch_num
-                self.start_lr = self.start_lr / self.decay_lr_rate 
+                self.start_lr = self.start_lr / self.decay_lr_rate
+
+            if self.current_lr < self.end_lr:
+                self.current_lr = self.end_lr
         
         # fixed rate decay
         elif self.decay_cycle_rate > 0:
-            if epoch_num % (self.next_cycle_epoch + 1) == 0 and batch_num == 1:
+            if epoch_num % (self.next_cycle_epoch) == 0 and batch_num == 1:
                 if self.current_lr > self.end_lr:
                     self.next_cycle_epoch = self.decay_cycle_rate + \
-                        self.next_cycle_epoch * self.decay_cycle_expand_factor
+                        ((self.next_cycle_epoch - 1) * self.decay_cycle_expand_factor) + 1
                     self.current_lr = self.current_lr / self.decay_lr_rate
                     
                     if self.current_lr < self.end_lr:

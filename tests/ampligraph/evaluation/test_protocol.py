@@ -302,6 +302,7 @@ def test_filter_unseen_entities_without_strict_mode():
 
 # @pytest.mark.skip(reason="excluded to try out jenkins.")   # TODO: re-enable this
 def test_generate_corruptions_for_fit_corrupt_side_so():
+    tf.reset_default_graph()
     X = np.array([['a', 'x', 'b'],
                   ['c', 'x', 'd'],
                   ['e', 'x', 'f'],
@@ -327,6 +328,7 @@ def test_generate_corruptions_for_fit_corrupt_side_so():
 
 
 def test_generate_corruptions_for_fit_curropt_side_s():
+    tf.reset_default_graph()
     X = np.array([['a', 'x', 'b'],
                   ['c', 'x', 'd'],
                   ['e', 'x', 'f'],
@@ -353,6 +355,7 @@ def test_generate_corruptions_for_fit_curropt_side_s():
 
 
 def test_generate_corruptions_for_fit_curropt_side_o():
+    tf.reset_default_graph()
     X = np.array([['a', 'x', 'b'],
                   ['c', 'x', 'd'],
                   ['e', 'x', 'f'],

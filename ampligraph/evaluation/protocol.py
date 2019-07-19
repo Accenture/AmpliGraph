@@ -646,7 +646,8 @@ def _remove_unused_params(params):
     params: dict
         Param dict without unused parameters.
     """
-    from ..latent_features import LOSS_REGISTRY, REGULARIZER_REGISTRY, MODEL_REGISTRY
+    from ..latent_features import LOSS_REGISTRY, REGULARIZER_REGISTRY, MODEL_REGISTRY, \
+        OPTIMIZER_REGISTRY, INITIALIZER_REGISTRY
 
     def _param_without_unused(param, registry, category_type, category_type_params):
         """Remove one particular nested param (if unused) given a registry"""
@@ -663,6 +664,10 @@ def _remove_unused_params(params):
         _param_without_unused(params, LOSS_REGISTRY, params["loss"], "loss_params")
     if "regularizer" in params and "regularizer_params" in params:
         _param_without_unused(params, REGULARIZER_REGISTRY, params["regularizer"], "regularizer_params")
+    if "optimizer" in params and "optimizer_params" in params:
+        _param_without_unused(params, OPTIMIZER_REGISTRY, params["optimizer"], "optimizer_params")
+    if "initializer" in params and "initializer_params" in params:
+        _param_without_unused(params, INITIALIZER_REGISTRY, params["initializer"], "initializer_params")
     if "embedding_model_params" in params and "model_name" in params:
         _param_without_unused(params, MODEL_REGISTRY, params["model_name"], "embedding_model_params")
 
