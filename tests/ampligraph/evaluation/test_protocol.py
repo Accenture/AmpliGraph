@@ -918,7 +918,7 @@ def test_select_best_model_ranking_grid():
         }
     }
 
-    best_model, best_params, best_mrr_train, ranks_test, mrr_test, experimental_history = select_best_model_ranking(
+    best_model, best_params, best_mrr_train, ranks_test, test_results, experimental_history = select_best_model_ranking(
         model_class,
         X['train'],
         X['valid'][::5],
@@ -932,6 +932,10 @@ def test_select_best_model_ranking_grid():
     assert set(i["model_params"]["k"] for i in experimental_history) == {2, 50}
     assert set(i["model_params"]["optimizer_params"]["lr"] for i in experimental_history) == {1000.0, 0.0001}
     assert len(set(frozenset(_flatten_nested_keys(i["model_params"]).items()) for i in experimental_history)) == 4
+    assert set(test_results.keys()) == {"mrr", "mr", "hits_1", "hits_3", "hits_10"}
+    print(test_results.values())
+    assert all(r >= 0 for r in test_results.values())
+    assert all(not np.isnan(r) for r in test_results.values())
 
 
 def test_select_best_model_ranking_random():
@@ -958,7 +962,7 @@ def test_select_best_model_ranking_random():
         }
     }
 
-    best_model, best_params, best_mrr_train, ranks_test, mrr_test, experimental_history = select_best_model_ranking(
+    best_model, best_params, best_mrr_train, ranks_test, test_results, experimental_history = select_best_model_ranking(
         model_class,
         X['train'],
         X['valid'][::5],
@@ -973,3 +977,6 @@ def test_select_best_model_ranking_random():
     assert np.all([np.log(1.00001) <= i["model_params"]["optimizer_params"]["lr"] <= np.log(100)
                    for i in experimental_history])
     assert len(set(frozenset(_flatten_nested_keys(i["model_params"]).items()) for i in experimental_history)) == 10
+    assert set(test_results.keys()) == {"mrr", "mr", "hits_1", "hits_3", "hits_10"}
+    assert all(r >= 0 for r in test_results.values())
+    assert all(not np.isnan(r) for r in test_results.values())

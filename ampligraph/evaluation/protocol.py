@@ -863,7 +863,7 @@ def _scalars_into_lists(param_grid):
 def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid, max_combinations=None,
                               param_grid_random_seed=0, use_filter=True, early_stopping=False,
                               early_stopping_params=None, use_test_for_selection=False, rank_against_ent=None,
-                              corrupt_side='s+o', use_default_protocol=True, verbose=False):
+                              corrupt_side='s+o', use_default_protocol=True, retrain_best_model=False, verbose=False):
     """Model selection routine for embedding models via either grid search or random search.
     
     For grid search, pass a fixed ``param_grid`` and leave ``max_combinations`` as `None`
@@ -973,6 +973,9 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         Flag to indicate whether to evaluate head and tail corruptions separately(default:True).
         If this is set to true, it will ignore corrupt_side argument and corrupt both head
         and tail separately and rank triples.
+    retrain_best_model: bool
+        Flag to indicate whether best model should be re-trained at the end with the validation set used in the search.
+        Default: False.
     verbose : bool
         Verbose mode for the model selection procedure (which is independent of the verbose mode in the model fit).
 
@@ -1083,6 +1086,14 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
     experimental_history = []
 
+    def evaluation(ranks):
+        mrr = mrr_score(ranks)
+        mr = mr_score(ranks)
+        hits_1 = hits_at_n_score(ranks, n=1)
+        hits_3 = hits_at_n_score(ranks, n=3)
+        hits_10 = hits_at_n_score(ranks, n=10)
+        return mrr, mr, hits_1, hits_3, hits_10
+
     for model_params in tqdm(model_params_combinations, total=max_combinations, disable=(not verbose)):
         current_result = {
             "model_name": model_params["model_name"],
@@ -1098,11 +1109,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
                                          use_default_protocol=use_default_protocol,
                                          corrupt_side=corrupt_side)
 
-            curr_mrr = mrr_score(ranks)
-            mr = mr_score(ranks)
-            hits_1 = hits_at_n_score(ranks, n=1)
-            hits_3 = hits_at_n_score(ranks, n=3)
-            hits_10 = hits_at_n_score(ranks, n=10)
+            curr_mrr, mr, hits_1, hits_3, hits_10 = evaluation(ranks)
 
             current_result["results"] = {
                 "mrr": curr_mrr,
@@ -1136,11 +1143,9 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
                 pass
         experimental_history.append(current_result)
 
-    ranks_test = []
-    mrr_test = 0
     if best_model is not None:
-        # Retraining
-        best_model.fit(np.concatenate((X_train, X_valid)), early_stopping, early_stopping_params)
+        if retrain_best_model:
+            best_model.fit(np.concatenate((X_train, X_valid)), early_stopping, early_stopping_params)
 
         ranks_test = evaluate_performance(X_test, model=best_model,
                                           filter_triples=X_filter, verbose=verbose,
@@ -1148,6 +1153,33 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
                                           use_default_protocol=use_default_protocol,
                                           corrupt_side=corrupt_side)
 
-        mrr_test = mrr_score(ranks_test)
+        test_mrr, test_mr, test_hits_1, test_hits_3, test_hits_10 = evaluation(ranks_test)
 
-    return best_model, best_params, best_mrr_train, ranks_test, mrr_test, experimental_history
+        info = \
+            'Best model test results: mr: {} mrr: {} hits 1: {} hits 3: {} hits 10: {}, model: {}, params: {}'.format(
+                test_mrr, test_mr, test_hits_1, test_hits_3, test_hits_10, type(best_model).__name__, best_params
+            )
+
+        logger.debug(info)
+        if verbose:
+            logger.info(info)
+
+        test_evaluation = {
+            "mrr": test_mrr,
+            "mr": test_mr,
+            "hits_1": test_hits_1,
+            "hits_3": test_hits_3,
+            "hits_10": test_hits_10
+        }
+    else:
+        ranks_test = []
+
+        test_evaluation = {
+            "mrr": np.nan,
+            "mr": np.nan,
+            "hits_1": np.nan,
+            "hits_3": np.nan,
+            "hits_10": np.nan
+        }
+
+    return best_model, best_params, best_mrr_train, ranks_test, test_evaluation, experimental_history
