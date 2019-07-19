@@ -885,6 +885,8 @@ class EmbeddingModel(abc.ABC):
         # This is useful when we re-fit the same model (e.g. retraining in model selection)
         if self.is_fitted:
             tf.reset_default_graph()
+            self.rnd = check_random_state(self.seed)
+            tf.random.set_random_seed(self.seed)
 
         self.sess_train = tf.Session(config=self.tf_config)
 
@@ -1314,6 +1316,9 @@ class EmbeddingModel(abc.ABC):
         
         # build tf graph for predictions
         if self.sess_predict is None:
+            tf.reset_default_graph()
+            self.rnd = check_random_state(self.seed)
+            tf.random.set_random_seed(self.seed)
             # load the parameters
             self._load_model_from_trained_params()
             # build the eval graph
@@ -1377,6 +1382,9 @@ class EmbeddingModel(abc.ABC):
         
         # build tf graph for predictions
         if self.sess_predict is None:
+            tf.reset_default_graph()
+            self.rnd = check_random_state(self.seed)
+            tf.random.set_random_seed(self.seed)
             # load the parameters
             self._load_model_from_trained_params()
             # build the eval graph
