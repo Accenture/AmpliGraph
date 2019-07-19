@@ -132,15 +132,12 @@ def discover_facts(X, model, top_n=10, strategy='exhaustive',
 
         for candidates in candidate_generator:
 
-            logger.debug('Generated %d candidate statements.' %
-                         len(candidates))
+            logger.debug('Generated %d candidate statements.' % len(candidates))
+
+            X = candidates
 
             # Get ranks of candidate statements
-            ranks = evaluate_performance(candidates,
-                                         model=model,
-                                         filter_triples=X,
-                                         use_default_protocol=True,
-                                         verbose=True)
+            ranks = evaluate_performance(X, model=model, filter_triples=X, use_default_protocol=True, verbose=True)
 
             # Select candidate statements within the top_n predicted ranks
             # standard protocol evaluates against corruptions on both sides,
@@ -149,11 +146,8 @@ def discover_facts(X, model, top_n=10, strategy='exhaustive',
             s_corruption_ranks = ranks[:num_ranks]
             o_corruption_ranks = ranks[num_ranks:]
 
-            avg_ranks = np.mean([s_corruption_ranks, o_corruption_ranks],
-                                axis=0)
-
+            avg_ranks = np.mean([s_corruption_ranks, o_corruption_ranks], axis=0)
             preds = np.array(avg_ranks) >= top_n
-
             discoveries.append(candidates[preds])
 
     logger.info('Discovered %d facts' % len(discoveries))
@@ -311,7 +305,7 @@ def generate_candidates(X, strategy, target_rel, max_candidates,
         X_candidates = np.array(np.meshgrid(sample_e_s, target_rel, sample_e_o)).T.reshape(-1, 3)
         X_candidates = _filter_candidates(X_candidates, X)
 
-        yield _filter_candidates(X_candidates, X)
+        yield X_candidates
 
     elif strategy in ['graph_degree', 'cluster_coefficient',
                       'cluster_triangles', 'cluster_squares']:
