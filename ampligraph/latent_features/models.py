@@ -1251,8 +1251,36 @@ class EmbeddingModel(abc.ABC):
         # this is to remove the positives from corruptions - while ranking with filter
         positives_among_obj_corruptions_ranked_higher = tf.constant(0, dtype=tf.int32)
         positives_among_sub_corruptions_ranked_higher = tf.constant(0, dtype=tf.int32)
-
+        
         if self.is_filtered:
+            # If a list of specified entities were used for corruption generation
+            if isinstance(self.eval_config.get('corruption_entities',
+                                               DEFAULT_CORRUPTION_ENTITIES), np.ndarray):
+                corruption_entities = self.eval_config.get('corruption_entities',
+                                                           DEFAULT_CORRUPTION_ENTITIES).astype(np.int32)
+                if corruption_entities.ndim == 1:
+                    corruption_entities = np.expand_dims(corruption_entities, 1)
+                # If the specified key is not present then it would return the length of corruption_entities
+                corruption_mapping = tf.contrib.lookup.MutableDenseHashTable(key_dtype=tf.int32,
+                                                                             value_dtype=tf.int32,
+                                                                             default_value=len(corruption_entities),
+                                                                             empty_key=-2,
+                                                                             deleted_key=-1)
+
+                insert_lookup_op = corruption_mapping.insert(corruption_entities, 
+                                                             tf.reshape(tf.range(tf.shape(corruption_entities)[0],
+                                                                                 dtype=tf.int32), (-1, 1)))
+
+                with tf.control_dependencies([insert_lookup_op]):
+                    # remap the indices of objects to the smaller set of corruptions
+                    indices_obj = corruption_mapping.lookup(indices_obj)
+                    # mask out the invalid indices (i.e. the entities that were not in corruption list
+                    indices_obj = tf.boolean_mask(indices_obj, indices_obj < len(corruption_entities))
+                    # remap the indices of subject to the smaller set of corruptions
+                    indices_sub = corruption_mapping.lookup(indices_sub)
+                    # mask out the invalid indices (i.e. the entities that were not in corruption list
+                    indices_sub = tf.boolean_mask(indices_sub, indices_sub < len(corruption_entities))
+
             # get the scores of positives present in corruptions
             if use_default_protocol:
                 scores_pos_obj = tf.gather(obj_corruption_scores, indices_obj) 
@@ -1260,7 +1288,7 @@ class EmbeddingModel(abc.ABC):
             else:
                 scores_pos_obj = tf.gather(self.scores_predict, indices_obj) 
                 if corrupt_side == 's+o':
-                    scores_pos_sub = tf.gather(self.scores_predict, indices_sub + len(self.ent_to_idx))
+                    scores_pos_sub = tf.gather(self.scores_predict, indices_sub + len(corruption_entities))
                 else:
                     scores_pos_sub = tf.gather(self.scores_predict, indices_sub)
             # compute the ranks of the positives present in the corruptions and 

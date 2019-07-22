@@ -22,6 +22,23 @@ from ampligraph.evaluation.protocol import _next_hyperparam, _next_hyperparam_ra
     ParamHistory, _get_param_hash, _sample_parameters, _scalars_into_lists, _flatten_nested_keys, _unflatten_nested_keys
 
 
+def test_evaluate_performance_ranking_against_specified_entities():
+    X = load_wn18()
+    model = ComplEx(batches_count=10, seed=0, epochs=1, k=20, eta=10, loss='nll',
+                    regularizer=None, optimizer='adam', optimizer_params={'lr': 0.01}, verbose=True)
+    model.fit(X['train'])
+
+    X_filter = np.concatenate((X['train'], X['valid'], X['test']))
+    rank_against_ent=np.concatenate([X['test'][::1000, 0], X['test'][::1000, 2]], 0)
+
+
+    from ampligraph.evaluation import hits_at_n_score, mrr_score, mr_score
+    ranks = evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s+o',
+                                 use_default_protocol=True, rank_against_ent=rank_against_ent)
+    ranks = np.array(ranks).reshape(-1)
+    assert(np.sum(ranks>len(rank_against_ent))==0)
+    
+
 def test_evaluate_performance_default_protocol_without_filter():
     wn18 = load_wn18()
 
