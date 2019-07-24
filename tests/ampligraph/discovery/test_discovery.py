@@ -185,21 +185,26 @@ def test_find_clusters():
     model.fit(X)
     clustering_algorithm = DBSCAN(min_samples=1)
 
-    expected_clusters = np.array([0, 1, 2, 3, 4, 5, 6, 7])
-
     labels = find_clusters(X, model, clustering_algorithm)
-    assert np.array_equal(labels, expected_clusters)
-    labels = find_clusters(X, model, clustering_algorithm, entities_subset=[])
-    assert np.array_equal(labels, expected_clusters)
-    labels = find_clusters(X, model, clustering_algorithm, relations_subset=[])
-    assert np.array_equal(labels, expected_clusters)
+    assert np.array_equal(labels, np.array([0, 1, 2, 3, 4, 5, 6, 7]))
 
-    labels = find_clusters(X, model, clustering_algorithm,
-                           entities_subset=['a', 'b'])
-    assert labels.shape == (2,)
-    labels = find_clusters(X, model, clustering_algorithm,
-                           relations_subset=['x'])
-    assert labels.shape == (7,)
+    labels = find_clusters(np.unique(X[:, 0]), model, clustering_algorithm, mode='entity')
+    assert np.array_equal(labels, np.array([0, 1, 2, 3]))
+
+    labels = find_clusters(np.unique(X[:, 1]), model, clustering_algorithm, mode='relation')
+    assert np.array_equal(labels, np.array([0, 1]))
+
+    labels = find_clusters(np.unique(X[:, 2]), model, clustering_algorithm, mode='entity')
+    assert np.array_equal(labels, np.array([0, 1, 2, 3, 4]))
+
+    with pytest.raises(ValueError):
+        find_clusters(X, model, clustering_algorithm, mode='hah')
+    with pytest.raises(ValueError):
+        find_clusters(X, model, clustering_algorithm, mode='entity')
+    with pytest.raises(ValueError):
+        find_clusters(X, model, clustering_algorithm, mode='relation')
+    with pytest.raises(ValueError):
+        find_clusters(np.unique(X[:, 0]), model, clustering_algorithm, mode='triple')
 
 
 def test_find_duplicates():
