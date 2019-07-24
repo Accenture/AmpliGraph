@@ -639,3 +639,126 @@ def find_duplicates(X, model, entities_subset=None, metric='l2',
         tolerance = optimize.bisect(opt, 0.0, max_distance, xtol=1e-3, maxiter=50)
 
     return get_dups(tolerance), tolerance
+
+
+def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_consider=None,
+                     rels_to_consider=None):
+    """Queries the model with two elements of a triple and returns the top_n results of all possible completions
+     ordered by score predicted by the model.
+
+    For example, given a <subject, predicate> pair in the arguments, the model will score all possible triples
+    <subject, predicate, ?>, filling in the missing element with known entities, and return the top_n triples ordered
+    by score. If given a <subject, object> pair it will fill in the missing element with known relations.
+
+    This function does not filter out true statements - triples returned can include those the model was trained on.
+
+    Parameters
+    ----------
+    model : EmbeddingModel
+        The trained model that will be used to score triple completions.
+    top_n : int
+        The number of completed triples to returned.
+    head : string
+        An entity string to query.
+    relation : string
+        A relation string to query.
+    tail :
+        An object string to query.
+    ents_to_consider: array-like
+        List of entities to use for triple completions. If None, will generate completions using all distinct entities.
+        (Default: None.)
+    rels_to_consider: array-like
+        List of relations to use for triple completions. If None, will generate completions using all distinct
+        relations. (Default: None.)
+
+    Returns
+    -------
+    X : ndarray, shape [n, 3]
+        A list of triples ordered by score.
+    S : ndarray, shape [n]
+       A list of scores.
+
+    """
+
+    if not model.is_fitted:
+        msg = 'Model is not fitted.'
+        logger.error(msg)
+        raise ValueError(msg)
+
+    if not np.sum([head is None, relation is None, tail is None]) == 1:
+        msg = 'Exactly one of `head`, `relation` or `tail` arguments must be None.'
+        logger.error(msg)
+        raise ValueError(msg)
+
+    if head:
+        if head not in list(model.ent_to_idx.keys()):
+            msg = 'Head entity `{}` not seen by model'.format(head)
+            logger.error(msg)
+            raise ValueError(msg)
+
+    if relation:
+        if relation not in list(model.rel_to_idx.keys()):
+            msg = 'Relation `{}` not seen by model'.format(relation)
+            logger.error(msg)
+            raise ValueError(msg)
+
+    if tail:
+        if tail not in list(model.ent_to_idx.keys()):
+            msg = 'Tail entity `{}` not seen by model'.format(tail)
+            logger.error(msg)
+            raise ValueError(msg)
+
+    if ents_to_consider:
+        if head and tail:
+            msg = 'Cannot specify `ents_to_consider` and both `subject` and `object` arguments.'
+            logger.error(msg)
+            raise ValueError(msg)
+        if not isinstance(ents_to_consider, (list, np.ndarray)):
+            msg = '`ents_to_consider` must be a list or numpy array.'
+            logger.error(msg)
+            raise ValueError(msg)
+        if not all(x in list(model.ent_to_idx.keys()) for x in ents_to_consider):
+            msg = 'Entities in `ents_to_consider` have not been seen by the model.'
+            logger.error(msg)
+            raise ValueError(msg)
+        if len(ents_to_consider) < top_n:
+            msg = '`ents_to_consider` contains less than top_n values, return set will be truncated.'
+            logger.warning(msg)
+
+    if rels_to_consider:
+        if relation:
+            msg = 'Cannot specify both `rels_to_consider` and `relation` arguments.'
+            logger.error(msg)
+            raise ValueError(msg)
+        if not isinstance(rels_to_consider, (list, np.ndarray)):
+            msg = '`rels_to_consider` must be a list or numpy array.'
+            logger.error(msg)
+            raise ValueError(msg)
+        if not all(x in list(model.rel_to_idx.keys()) for x in rels_to_consider):
+            msg = 'Relations in `rels_to_consider` have not been seen by the model.'
+            logger.error(msg)
+            raise ValueError(msg)
+        if len(rels_to_consider) < top_n:
+            msg = '`rels_to_consider` contains less than top_n values, return set will be truncated.'
+            logger.warning(msg)
+
+    # Complete triples from entity and relation dict
+    if relation is None:
+        rels = rels_to_consider or list(model.rel_to_idx.keys())
+        triples = np.array([[head, x, tail] for x in rels])
+    else:
+        ents = ents_to_consider or list(model.ent_to_idx.keys())
+        if head:
+            triples = np.array([[head, relation, x] for x in ents])
+        else:
+            triples = np.array([[x, relation, tail] for x in ents])
+
+    # Get scores for completed triples
+    scores = model.predict(triples)
+
+    # Join triples and scores, sort ascending by scores, then take top_n results
+    out = np.hstack([triples, scores])
+    out = out[out[:, 3].argsort()[::-1]]
+    out = out[0:top_n]
+
+    return out[:, 0:3], out[:, 3]
