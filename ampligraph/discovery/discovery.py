@@ -377,8 +377,22 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="triple"):
     """
     Perform link-based cluster analysis on a knowledge graph.
 
-    Clustering is exclusive (i.e. a triple is assigned to one and only one
-    cluster).
+    The clustering happens on the embedding space of the entities and relations.
+    For example, if we cluster some entities of a model that uses `k=100` (i.e. embedding space of size 100),
+    we will apply the chosen clustering algorithm on the 100-dimensional space of the provided input samples.
+
+    Clustering can be used to evaluate the quality of the knowledge embeddings, by comparing to natural clusters.
+    For example, in the example below we cluster the embeddings of international football matches and end up
+    finding geographical clusters very similar to the continents.
+    This comparison can be subjective by inspecting a 2D projection of the embedding space or objective using a
+    clustering metric, such as provided here:
+    https://scikit-learn.org/stable/modules/clustering.html#clustering-performance-evaluation
+
+    The choice of the clustering algorithm and its corresponding tuning will greatly impact the results.
+    Please see https://scikit-learn.org/stable/modules/clustering.html#clustering for a list of algorithms,
+    their parameters, and pros and cons.
+
+    Clustering is exclusive (i.e. a triple is assigned to one and only one cluster).
 
     Parameters
     ----------
