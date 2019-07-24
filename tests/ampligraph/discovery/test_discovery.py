@@ -270,50 +270,50 @@ def test_query_completion():
     with pytest.raises(ValueError):
         query_completion(model, top_n=2)
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, subject='a')
+        query_completion(model, top_n=2, head='a')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, predicate='y')
+        query_completion(model, top_n=2, relation='y')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, object='e')
+        query_completion(model, top_n=2, tail='e')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, subject='a', predicate='y', object='e')
+        query_completion(model, top_n=2, head='a', relation='y', tail='e')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, subject='xx', predicate='y')
+        query_completion(model, top_n=2, head='xx', relation='y')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, subject='a', predicate='yakkety')
+        query_completion(model, top_n=2, head='a', relation='yakkety')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, subject='a', object='sax')
+        query_completion(model, top_n=2, head='a', tail='sax')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, subject='a', predicate='x', rels_to_consider=['y', 'z'])
+        query_completion(model, top_n=2, head='a', relation='x', rels_to_consider=['y', 'z'])
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, subject='a', object='f', rels_to_consider=['y', 'z', 'error'])
+        query_completion(model, top_n=2, head='a', tail='f', rels_to_consider=['y', 'z', 'error'])
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, subject='a', object='e', rels_to_consider='y')
+        query_completion(model, top_n=2, head='a', tail='e', rels_to_consider='y')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, subject='a', predicate='x', ents_to_consider=['zz', 'top'])
+        query_completion(model, top_n=2, head='a', relation='x', ents_to_consider=['zz', 'top'])
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, subject='a', object='e', ents_to_consider=['a', 'b'])
+        query_completion(model, top_n=2, head='a', tail='e', ents_to_consider=['a', 'b'])
 
     subj, pred, obj, top_n = 'a', 'x', 'e', 3
 
-    Y, S = query_completion(model, top_n=top_n, subject=subj, predicate=pred)
+    Y, S = query_completion(model, top_n=top_n, head=subj, relation=pred)
     assert len(Y) == len(S)
     assert len(Y) == top_n
     assert np.all(Y[:, 0] == subj)
     assert np.all(Y[:, 1] == pred)
 
-    Y, S = query_completion(model, top_n=top_n, predicate=pred, object=obj)
+    Y, S = query_completion(model, top_n=top_n, relation=pred, tail=obj)
     assert np.all(Y[:, 1] == pred)
     assert np.all(Y[:, 2] == obj)
 
     ents_to_con = ['a', 'b', 'c', 'd']
-    Y, S = query_completion(model, top_n=top_n, predicate=pred, object=obj, ents_to_consider=ents_to_con)
+    Y, S = query_completion(model, top_n=top_n, relation=pred, tail=obj, ents_to_consider=ents_to_con)
     assert np.all([x in ents_to_con for x in Y[:, 0]])
 
     rels_to_con = ['y', 'x']
-    Y, S = query_completion(model, top_n=10, subject=subj, object=obj, rels_to_consider=rels_to_con)
+    Y, S = query_completion(model, top_n=10, head=subj, tail=obj, rels_to_consider=rels_to_con)
     assert np.all([x in rels_to_con for x in Y[:, 1]])
 
-    Y, S = query_completion(model, top_n=10, predicate=pred, object=obj)
+    Y, S = query_completion(model, top_n=10, relation=pred, tail=obj)
     assert all(S[i] >= S[i + 1] for i in range(len(S) - 1))
 
