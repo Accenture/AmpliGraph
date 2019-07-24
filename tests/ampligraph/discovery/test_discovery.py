@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 from sklearn.cluster import DBSCAN
-from ampligraph.discovery.discovery import discover_facts, \
-    generate_candidates, _setdiff2d, find_clusters, find_duplicates
+from ampligraph.discovery.discovery import discover_facts, generate_candidates, _setdiff2d, find_clusters, \
+    find_duplicates, query_completion
 from ampligraph.latent_features import ComplEx
 
 def test_discover_facts():
@@ -245,6 +245,75 @@ def test_find_duplicates_auto():
     assert all(d.issubset(entities) for d in dups)
 
 
-if __name__ == '__main__':
+def test_query_completion():
 
-    test_generate_candidates()
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'y', 'a'],
+                  ['a', 'y', 'd'],
+                  ['c', 'x', 'd'],
+                  ['b', 'y', 'c'],
+                  ['f', 'y', 'e'],
+                  ['a', 'z', 'f'],
+                  ['c', 'z', 'f'],
+                  ['b', 'z', 'f'],
+                  ])
+
+    model = ComplEx(k=2, batches_count=2)
+
+    with pytest.raises(ValueError): # Model not fitted
+        query_completion(model, top_n=2)
+
+    model.fit(X)
+
+    with pytest.raises(ValueError):
+        query_completion(model, top_n=2)
+    with pytest.raises(ValueError):
+        query_completion(model, top_n=2, subject='a')
+    with pytest.raises(ValueError):
+        query_completion(model, top_n=2, predicate='y')
+    with pytest.raises(ValueError):
+        query_completion(model, top_n=2, object='e')
+    with pytest.raises(ValueError):
+        query_completion(model, top_n=2, subject='a', predicate='y', object='e')
+    with pytest.raises(ValueError):
+        query_completion(model, top_n=2, subject='xx', predicate='y')
+    with pytest.raises(ValueError):
+        query_completion(model, top_n=2, subject='a', predicate='yakkety')
+    with pytest.raises(ValueError):
+        query_completion(model, top_n=2, subject='a', object='sax')
+    with pytest.raises(ValueError):
+        query_completion(model, top_n=2, subject='a', predicate='x', rels_to_consider=['y', 'z'])
+    with pytest.raises(ValueError):
+        query_completion(model, top_n=2, subject='a', object='f', rels_to_consider=['y', 'z', 'error'])
+    with pytest.raises(ValueError):
+        query_completion(model, top_n=2, subject='a', object='e', rels_to_consider='y')
+    with pytest.raises(ValueError):
+        query_completion(model, top_n=2, subject='a', predicate='x', ents_to_consider=['zz', 'top'])
+    with pytest.raises(ValueError):
+        query_completion(model, top_n=2, subject='a', object='e', ents_to_consider=['a', 'b'])
+
+    subj, pred, obj, top_n = 'a', 'x', 'e', 3
+
+    Y, S = query_completion(model, top_n=top_n, subject=subj, predicate=pred)
+    assert len(Y) == len(S)
+    assert len(Y) == top_n
+    assert np.all(Y[:, 0] == subj)
+    assert np.all(Y[:, 1] == pred)
+
+    Y, S = query_completion(model, top_n=top_n, predicate=pred, object=obj)
+    assert np.all(Y[:, 1] == pred)
+    assert np.all(Y[:, 2] == obj)
+
+    ents_to_con = ['a', 'b', 'c', 'd']
+    Y, S = query_completion(model, top_n=top_n, predicate=pred, object=obj, ents_to_consider=ents_to_con)
+    assert np.all([x in ents_to_con for x in Y[:, 0]])
+
+    rels_to_con = ['y', 'x']
+    Y, S = query_completion(model, top_n=10, subject=subj, object=obj, rels_to_consider=rels_to_con)
+    assert np.all([x in rels_to_con for x in Y[:, 1]])
+
+    Y, S = query_completion(model, top_n=10, predicate=pred, object=obj)
+    assert all(S[i] >= S[i + 1] for i in range(len(S) - 1))
+
