@@ -1,3 +1,10 @@
+# Copyright 2019 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 import os
 import importlib
 import numpy as np
@@ -16,7 +23,7 @@ def test_save_and_restore_model():
         class_ = getattr(module, model_name)
 
         model = class_(batches_count=2, seed=555, epochs=20, k=10,
-                       optimizer='adagrad', optimizer_params={'lr':0.1})
+                       optimizer='adagrad', optimizer_params={'lr': 0.1})
 
         X = np.array([['a', 'y', 'b'],
                       ['b', 'y', 'a'],
@@ -35,7 +42,7 @@ def test_save_and_restore_model():
 
         loaded_model = restore_model(model_name_path = example_name)
 
-        assert loaded_model != None
+        assert loaded_model is not None
         assert loaded_model.all_params == model.all_params
         assert loaded_model.is_fitted == model.is_fitted
         assert loaded_model.ent_to_idx == model.ent_to_idx
@@ -57,6 +64,7 @@ def test_save_and_restore_model():
 def test_create_tensorboard_visualizations():
     # TODO: This
     pass
+
 
 def test_write_metadata_tsv():
     # TODO: This

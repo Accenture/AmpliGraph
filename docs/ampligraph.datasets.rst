@@ -72,3 +72,8 @@ Functions to load custom knowledge graphs from disk.
     load_from_csv
     load_from_ntriples
     load_from_rdf
+
+
+.. hint::
+    AmpliGraph includes a helper function to split a generic knowledge graphs into **training**,
+    **validation**, and **test** sets. See :meth:`ampligraph.evaluation.train_test_split_no_unseen`.

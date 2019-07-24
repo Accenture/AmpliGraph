@@ -1,3 +1,10 @@
+# Copyright 2019 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 import tensorflow as tf
 import numpy as np
 import abc
@@ -9,7 +16,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def register_regularizer(name, external_params=[], class_params={}):
+def register_regularizer(name, external_params=None, class_params=None):
+    if external_params is None:
+        external_params = []
+    if class_params is None:
+        class_params = {}
+
     def insert_in_registry(class_handle):
         REGULARIZER_REGISTRY[name] = class_handle
         class_handle.name = name
@@ -81,7 +93,7 @@ class Regularizer(abc.ABC):
             raise Exception(msg)
 
     def _init_hyperparams(self, hyperparam_dict):
-        """ Initializes the hyperparameters needed by the algorithm.
+        """Initializes the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -92,7 +104,7 @@ class Regularizer(abc.ABC):
         NotImplementedError("This function is a placeholder in an abstract class")
 
     def _apply(self, trainable_params):
-        """ Apply the regularization function. Every inherited class must implement this function.
+        """Apply the regularization function. Every inherited class must implement this function.
         
         (All the TF code must go in this function.)
         
@@ -100,7 +112,7 @@ class Regularizer(abc.ABC):
         ----------
         trainable_params : list, shape [n]
             List of trainable params that should be reqularized
-        
+
         Returns
         -------
         loss : tf.Tensor
@@ -110,7 +122,7 @@ class Regularizer(abc.ABC):
         NotImplementedError("This function is a placeholder in an abstract class")
 
     def apply(self, trainable_params):
-        """ Interface to external world. This function performs input checks, input pre-processing, and
+        """Interface to external world. This function performs input checks, input pre-processing, and
         and applies the loss function.
 
         Parameters
@@ -129,22 +141,26 @@ class Regularizer(abc.ABC):
 
 @register_regularizer("LP", ['p', 'lambda'])
 class LPRegularizer(Regularizer):
-    """ Performs LP regularization
+    r"""Performs LP regularization
     
-        .. math::
+    .. math::
 
-               \mathcal{L}(Reg) =  \sum_{i=1}^{n}  \lambda_i * \mid w_i \mid_p
-           
-        where n is the number of model parameters, :math:`p \in{1,2,3}` is the p-norm and
-        :math:`\lambda` is the regularization weight.
-           
-        Example: if :math:`p=1` the function will perform L1 regularization.
-        L2 regularization is obtained with :math:`p=2`.
+           \mathcal{L}(Reg) =  \sum_{i=1}^{n}  \lambda_i * \mid w_i \mid_p
+
+    where n is the number of model parameters, :math:`p \in{1,2,3}` is the p-norm and
+    :math:`\lambda` is the regularization weight.
+
+    For example, if :math:`p=1` the function will perform L1 regularization.
+    L2 regularization is obtained with :math:`p=2`.
+
+    The nuclear 3-norm proposed in the ComplEx-N3 paper :cite:`lacroix2018canonical` can be obtained with
+    ``regularizer_params={'p': 3}``.
+
           
     """
 
-    def __init__(self, regularizer_params={'lambda': DEFAULT_LAMBDA, 'p': DEFAULT_NORM}, verbose=False):
-        """ Initializes the hyperparameters needed by the algorithm.
+    def __init__(self, regularizer_params=None, verbose=False):
+        """Initializes the hyperparameters needed by the algorithm.
 
         Parameters
         ----------
@@ -157,10 +173,12 @@ class LPRegularizer(Regularizer):
             Example: ``regularizer_params={'lambda': 1e-5, 'p': 1}``
             
         """
+        if regularizer_params is None:
+            regularizer_params = {'lambda': DEFAULT_LAMBDA, 'p': DEFAULT_NORM}
         super().__init__(regularizer_params, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
-        """ Initializes the hyperparameters needed by the algorithm.
+        """Initializes the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -168,12 +186,11 @@ class LPRegularizer(Regularizer):
             Consists of key value pairs. The regularizer will check the keys to get the corresponding params:
             
             'lambda': list or float
-            
-                weight for regularizer loss for each parameter(default: 1e-5). If list, size must be equal to no. of parameters.
+                weight for regularizer loss for each parameter(default: 1e-5).
+                If list, size must be equal to no. of parameters.
                 
             'p': int
-            
-                Norm of the regularizer (``1`` for L1 regularizer, ``2`` for L2 and so on.) (default:2) 
+                Norm of the regularizer (``1`` for L1 regularizer, ``2`` for L2 and so on.) (default:2)
                 
         """
         self._regularizer_parameters['lambda'] = hyperparam_dict.get('lambda', DEFAULT_LAMBDA)
@@ -185,7 +202,7 @@ class LPRegularizer(Regularizer):
             raise Exception(msg)
 
     def _apply(self, trainable_params):
-        """ Apply the regularizer to the params.
+        """Apply the regularizer to the params.
 
         Parameters
         ----------

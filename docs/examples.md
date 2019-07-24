@@ -120,7 +120,9 @@ def main():
     best_model, best_params, best_mrr_train, \
     ranks_test, mrr_test = select_best_model_ranking(model_class, # Class handle of the model to be used
                                                      # Dataset 
-                                                     X_dict,          
+                                                     X_dict['train'],
+                                                     X_dict['valid'],
+                                                     X_dict['test'],          
                                                      # Parameter grid
                                                      param_grid,      
                                                      # Use filtered set for eval
@@ -157,8 +159,8 @@ model.get_embeddings(['f','e'], embedding_type='entity')
 ## Save and restore a model
 ```python
 import numpy as np
-
-from ampligraph.latent_features import ComplEx, save_model, restore_model
+from ampligraph.latent_features import ComplEx
+from ampligraph.utils import save_model, restore_model
 
 model = ComplEx(batches_count=2, seed=555, epochs=20, k=10)
 
@@ -176,6 +178,7 @@ model.fit(X)
 #  Use the trained model to predict 
 y_pred_before = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
 print(y_pred_before)
+#[-0.29721245, 0.07865551]
 
 # Save the model
 example_name = "helloworld.pkl"
@@ -187,6 +190,7 @@ restored_model = restore_model(model_name_path = example_name)
 # Use the restored model to predict
 y_pred_after = restored_model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
 print(y_pred_after)
+# [-0.29721245, 0.07865551]
 ```
 
 ## Split dataset into train/test or train/valid/test 
@@ -195,50 +199,71 @@ import numpy as np
 from ampligraph.evaluation import train_test_split_no_unseen
 from ampligraph.datasets import load_from_csv
 
-# assume we have a dataset in csv format in folder dataset
-# a,y,b
-# f,y,e
-# b,y,a
-# a,y,c
-# c,y,a
-# a,y,d
-# c,y,d
-# b,y,c
-# f,y,e
-# then load it
-X = load_from_csv('dataset', 'dataset.csv', sep=',')
-# array([['a', 'y', 'b'],
-#        ['f', 'y', 'e'],
-#        ['b', 'y', 'a'],
-#        ['a', 'y', 'c'],
-#        ['c', 'y', 'a'],
-#        ['a', 'y', 'd'],
-#        ['c', 'y', 'd'],
-#        ['b', 'y', 'c'],
-#        ['f', 'y', 'e']], dtype='<U1')
+'''
+Assume we have a knowledge graph stored in my_folder/my_graph.csv,
+and that the content of such file is:
 
-# if you want to split into train/test datasets
+a,y,b
+f,y,e
+b,y,a
+a,y,c
+c,y,a
+a,y,d
+c,y,d
+b,y,c
+f,y,e
+'''
+
+# Load the graph in memory
+X = load_from_csv('my_folder', 'my_graph.csv', sep=',')
+
+# To split the graph in train and test sets:
+# (In this toy example the test set will include only two triples)
 X_train, X_test = train_test_split_no_unseen(X, test_size=2)
-# X_train:  [['a' 'y' 'b']
-#  ['f' 'y' 'e']
-#  ['b' 'y' 'a']
-#  ['c' 'y' 'a']
-#  ['c' 'y' 'd']
-#  ['b' 'y' 'c']
-#  ['f' 'y' 'e']]
-# X_test:  [['a' 'y' 'c']
-#  ['a' 'y' 'd']]
 
-# if you want to split into train/valid/test datasets, call it 2 times
+print(X_train)
+
+'''
+X_train:[['a' 'y' 'b']
+         ['f' 'y' 'e']
+         ['b' 'y' 'a']
+         ['c' 'y' 'a']
+         ['c' 'y' 'd']
+         ['b' 'y' 'c']
+         ['f' 'y' 'e']]
+'''
+
+print(X_test)
+
+'''
+X_test: [['a' 'y' 'c']
+         ['a' 'y' 'd']]
+'''
+
+
+# To split the graph in train, validation, and test the method must be called twice:
 X_train_valid, X_test = train_test_split_no_unseen(X, test_size=2)
 X_train, X_valid = train_test_split_no_unseen(X_train_valid, test_size=2)
-# X_train:  [['a' 'y' 'b']
-#  ['b' 'y' 'a']
-#  ['c' 'y' 'd']
-#  ['b' 'y' 'c']
-#  ['f' 'y' 'e']]
-# X_valid:  [['f' 'y' 'e']
-#  ['c' 'y' 'a']]
-# X_test:  [['a' 'y' 'c']
-#  ['a' 'y' 'd']]
+
+print(X_train)
+'''
+X_train:  [['a' 'y' 'b']
+           ['b' 'y' 'a']
+           ['c' 'y' 'd']
+           ['b' 'y' 'c']
+           ['f' 'y' 'e']]
+'''
+
+print(X_valid)
+'''
+X_valid:  [['f' 'y' 'e']
+           ['c' 'y' 'a']]
+'''
+
+print(X_test)
+'''
+X_test:  [['a' 'y' 'c']
+          ['a' 'y' 'd']]
+'''
+
 ```

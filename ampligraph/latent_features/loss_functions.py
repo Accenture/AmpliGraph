@@ -1,3 +1,10 @@
+# Copyright 2019 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 import tensorflow as tf
 import abc
 import logging
@@ -16,15 +23,21 @@ DEFAULT_ALPHA_ADVERSARIAL = 0.5
 # Default margin used by margin based adversarial loss
 DEFAULT_MARGIN_ADVERSARIAL = 3
 
-DEFAULT_CLASS_PARAMS = {'require_same_size_pos_neg': True, }
 
+def register_loss(name, external_params=None, class_params=None):
+    if external_params is None:
+        external_params = []
 
-def register_loss(name, external_params=[], class_params=DEFAULT_CLASS_PARAMS):
+    default_class_params = {'require_same_size_pos_neg': True}
+
+    if class_params is None:
+        class_params = default_class_params
+
     def populate_class_params():
-        LOSS_REGISTRY[name].class_params = {}
-        LOSS_REGISTRY[name].class_params['require_same_size_pos_neg'] = class_params.get('require_same_size_pos_neg',
-                                                                               DEFAULT_CLASS_PARAMS['require_same_size_pos_neg'])
-
+        LOSS_REGISTRY[name].class_params = {
+            'require_same_size_pos_neg': class_params.get('require_same_size_pos_neg',
+                                                          default_class_params['require_same_size_pos_neg'])
+        }
 
     def insert_in_registry(class_handle):
         LOSS_REGISTRY[name] = class_handle
@@ -78,11 +91,11 @@ class Loss(abc.ABC):
         Parameters
         ----------
         param_name : string
-            name of the state for which one wants to query the value
+            Name of the state for which one wants to query the value.
         Returns
         -------
         param_value:
-            the value of the corresponding state
+            The value of the corresponding state.
         """
         try:
             param_value = LOSS_REGISTRY[self.name].class_params.get(param_name)
@@ -93,19 +106,19 @@ class Loss(abc.ABC):
             raise Exception(msg)
 
     def _init_hyperparams(self, hyperparam_dict):
-        """ Initializes the hyperparameters needed by the algorithm.
+        """Initializes the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
         hyperparam_dict : dictionary
-            Consists of key value pairs. The Loss will check the keys to get the corresponding params
+            Consists of key value pairs. The Loss will check the keys to get the corresponding params.
         """
         msg = 'This function is a placeholder in an abstract class'
         logger.error(msg)
         NotImplementedError(msg)
 
     def _inputs_check(self, scores_pos, scores_neg):
-        """ Creates any dependencies that need to be checked before performing loss computations
+        """Creates any dependencies that need to be checked before performing loss computations
         
         Parameters
         ----------
@@ -122,7 +135,7 @@ class Loss(abc.ABC):
                                                 [tf.shape(scores_pos)[0], tf.shape(scores_neg)[0]]))
 
     def _apply(self, scores_pos, scores_neg):
-        """ Apply the loss function. Every inherited class must implement this function.
+        """Apply the loss function. Every inherited class must implement this function.
         (All the TF code must go in this function.)
         
         Parameters
@@ -142,7 +155,7 @@ class Loss(abc.ABC):
         NotImplementedError(msg)
 
     def apply(self, scores_pos, scores_neg):
-        """ Interface to external world. 
+        """Interface to external world. 
         This function does the input checks, preprocesses input and finally applies loss function.
         
         Parameters
@@ -165,26 +178,27 @@ class Loss(abc.ABC):
 
 @register_loss("pairwise", ['margin'])
 class PairwiseLoss(Loss):
-    """Pairwise, max-margin loss.
+    r"""Pairwise, max-margin loss.
 
-     Introduced in :cite:`bordes2013translating`.
+    Introduced in :cite:`bordes2013translating`.
 
     .. math::
 
-        \mathcal{L}(\Theta) = \sum_{t^+ \in \mathcal{G}}\sum_{t^- \in \mathcal{C}}max(0, [\gamma + f_{model}(t^-;\Theta) - f_{model}(t^+;\Theta)])
+        \mathcal{L}(\Theta) = \sum_{t^+ \in \mathcal{G}}\sum_{t^- \in \mathcal{C}}max(0, [\gamma + f_{model}(t^-;\Theta)
+         - f_{model}(t^+;\Theta)])
 
     where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives,
     :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
     """
 
-    def __init__(self, eta, loss_params={'margin': DEFAULT_MARGIN}, verbose=False):
+    def __init__(self, eta, loss_params=None, verbose=False):
         """Initialize Loss.
 
         Parameters
         ----------
         eta: int
-            number of negatives
+            Number of negatives.
         loss_params : dict
             Dictionary of loss-specific hyperparams:
 
@@ -192,10 +206,12 @@ class PairwiseLoss(Loss):
 
             Example: ``loss_params={'margin': 1}``
         """
+        if loss_params is None:
+            loss_params = {'margin': DEFAULT_MARGIN}
         super().__init__(eta, loss_params, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparameters needed by the algorithm.
+        """Verifies and stores the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -207,7 +223,8 @@ class PairwiseLoss(Loss):
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
 
     def _apply(self, scores_pos, scores_neg):
-        """ Apply the loss function.
+        """Apply the loss function.
+
         Parameters
         ----------
         scores_pos : tf.Tensor, shape [n, 1]
@@ -228,7 +245,7 @@ class PairwiseLoss(Loss):
 
 @register_loss("nll")
 class NLLLoss(Loss):
-    """Negative log-likelihood loss.
+    r"""Negative log-likelihood loss.
 
     As described in :cite:`trouillon2016complex`.
 
@@ -241,30 +258,33 @@ class NLLLoss(Loss):
 
     """
 
-    def __init__(self, eta, loss_params={}, verbose=False):
+    def __init__(self, eta, loss_params=None, verbose=False):
         """Initialize Loss.
 
         Parameters
         ----------
         eta: int
-            number of negatives
+            Number of negatives.
         loss_params : dict
-            dictionary of hyperparams. No hyperparameters are required for this loss.
+            Dictionary of hyperparams. No hyperparameters are required for this loss.
         """
+        if loss_params is None:
+            loss_params = {}
         super().__init__(eta, loss_params, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
-        """ Initializes the hyperparameters needed by the algorithm.
+        """Initializes the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
         hyperparam_dict : dictionary
-            Consists of key value pairs. The Loss will check the keys to get the corresponding params
+            Consists of key value pairs. The Loss will check the keys to get the corresponding params.
         """
         return
 
     def _apply(self, scores_pos, scores_neg):
-        """ Apply the loss function.
+        """Apply the loss function.
+
         Parameters
         ----------
         scores_pos : tf.Tensor, shape [n, 1]
@@ -284,26 +304,27 @@ class NLLLoss(Loss):
 
 @register_loss("absolute_margin", ['margin'])
 class AbsoluteMarginLoss(Loss):
-    """Absolute margin , max-margin loss.
+    r"""Absolute margin , max-margin loss.
 
-        Introduced in :cite:`Hamaguchi2017`.
+    Introduced in :cite:`Hamaguchi2017`.
 
-       .. math::
+    .. math::
 
-           \mathcal{L}(\Theta) = \sum_{t^+ \in \mathcal{G}}\sum_{t^- \in \mathcal{C}} f_{model}(t^-;\Theta) - max(0, [\gamma - f_{model}(t^+;\Theta)])
+        \mathcal{L}(\Theta) = \sum_{t^+ \in \mathcal{G}}\sum_{t^- \in \mathcal{C}} f_{model}(t^-;\Theta)
+        - max(0, [\gamma - f_{model}(t^+;\Theta)])
 
-       where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives,
-       :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
+    where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives, :math:`\mathcal{C}` is the
+    set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
     """
 
-    def __init__(self, eta, loss_params={'margin': DEFAULT_MARGIN}, verbose=False):
+    def __init__(self, eta, loss_params=None, verbose=False):
         """Initialize Loss
 
         Parameters
         ----------
         eta: int
-            number of negatives
+            Number of negatives.
         loss_params : dict
             Dictionary of loss-specific hyperparams:
 
@@ -311,10 +332,12 @@ class AbsoluteMarginLoss(Loss):
 
             Example: ``loss_params={'margin': 1}``
         """
+        if loss_params is None:
+            loss_params = {'margin': DEFAULT_MARGIN}
         super().__init__(eta, loss_params, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
-        """ Initializes the hyperparameters needed by the algorithm.
+        """Initializes the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -329,7 +352,7 @@ class AbsoluteMarginLoss(Loss):
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
 
     def _apply(self, scores_pos, scores_neg):
-        """ Apply the loss function.
+        """Apply the loss function.
 
         Parameters
         ----------
@@ -351,30 +374,32 @@ class AbsoluteMarginLoss(Loss):
 
 @register_loss("self_adversarial", ['margin', 'alpha'], {'require_same_size_pos_neg': False})
 class SelfAdversarialLoss(Loss):
-    """ Self adversarial sampling loss.
+    r"""Self adversarial sampling loss.
 
-        Introduced in :cite:`sun2018rotate`.
+    Introduced in :cite:`sun2018rotate`.
 
-       .. math::
+    .. math::
 
-           \mathcal{L} = -log\, \sigma(\gamma + f_{model} (\mathbf{s},\mathbf{o})) - \sum_{i=1}^{n} p(h_{i}^{'}, r, t_{i}^{'} ) \ log \ \sigma(-f_{model}(\mathbf{s}_{i}^{'},\mathbf{o}_{i}^{'}) - \gamma)
+        \mathcal{L} = -log\, \sigma(\gamma + f_{model} (\mathbf{s},\mathbf{o}))
+        - \sum_{i=1}^{n} p(h_{i}^{'}, r, t_{i}^{'} ) \ log \
+        \sigma(-f_{model}(\mathbf{s}_{i}^{'},\mathbf{o}_{i}^{'}) - \gamma)
 
-       where :math:`\mathbf{s}, \mathbf{o} \in \mathcal{R}^k` are the embeddings of the subject
-       and object of a triple :math:`t=(s,r,o)`, :math:`\gamma` is the margin, :math:`\sigma` the sigmoid function,
-       and :math:`p(s_{i}^{'}, r, o_{i}^{'} )` is the negatives sampling distribution which is defined as:
+    where :math:`\mathbf{s}, \mathbf{o} \in \mathcal{R}^k` are the embeddings of the subject
+    and object of a triple :math:`t=(s,r,o)`, :math:`\gamma` is the margin, :math:`\sigma` the sigmoid function,
+    and :math:`p(s_{i}^{'}, r, o_{i}^{'} )` is the negatives sampling distribution which is defined as:
 
-       .. math::
+    .. math::
 
-           p(s'_j, r, o'_j | \{(s_i, r_i, o_i)\}) = \\frac{\exp \\alpha \, f_{model}(\mathbf{s'_j}, \mathbf{o'_j})}{\sum_i \exp \\alpha \, f_{model}(\mathbf{s'_i}, \mathbf{o'_i})}
+        p(s'_j, r, o'_j | \{(s_i, r_i, o_i)\}) = \frac{\exp \alpha \, f_{model}(\mathbf{s'_j}, \mathbf{o'_j})}
+        {\sum_i \exp \alpha \, f_{model}(\mathbf{s'_i}, \mathbf{o'_i})}
 
-       where :math:`\\alpha` is the temperature of sampling, :math:`f_{model}` is the scoring function of
-       the desired embeddings model.
+    where :math:`\alpha` is the temperature of sampling, :math:`f_{model}` is the scoring function of
+    the desired embeddings model.
 
 
     """
 
-    def __init__(self, eta, loss_params={'margin': DEFAULT_MARGIN_ADVERSARIAL,
-                                         'alpha': DEFAULT_ALPHA_ADVERSARIAL}, verbose=False):
+    def __init__(self, eta, loss_params=None, verbose=False):
         """Initialize Loss
 
         Parameters
@@ -390,10 +415,12 @@ class SelfAdversarialLoss(Loss):
             Example: ``loss_params={'margin': 1, 'alpha': 0.5}``
 
         """
+        if loss_params is None:
+            loss_params = {'margin': DEFAULT_MARGIN_ADVERSARIAL, 'alpha': DEFAULT_ALPHA_ADVERSARIAL}
         super().__init__(eta, loss_params, verbose)
 
     def _init_hyperparams(self, hyperparam_dict):
-        """ Initializes the hyperparameters needed by the algorithm.
+        """Initializes the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -408,7 +435,7 @@ class SelfAdversarialLoss(Loss):
         self._loss_parameters['alpha'] = hyperparam_dict.get('alpha', DEFAULT_ALPHA_ADVERSARIAL)
 
     def _apply(self, scores_pos, scores_neg):
-        """ Apply the loss function.
+        """Apply the loss function.
 
        Parameters
        ----------
@@ -431,38 +458,35 @@ class SelfAdversarialLoss(Loss):
         p_neg = tf.nn.softmax(alpha * scores_neg_reshaped, axis=0)
 
         # Compute Loss based on eg 5
-        loss = tf.reduce_sum(-tf.log(tf.nn.sigmoid(margin - tf.negative(scores_pos)))) - \
-               tf.reduce_sum(tf.multiply(p_neg,
-                                         tf.log(tf.nn.sigmoid(tf.negative(scores_neg_reshaped) - margin))))
+        loss = tf.reduce_sum(-tf.log_sigmoid(margin - tf.negative(scores_pos))) - tf.reduce_sum(
+            tf.multiply(p_neg, tf.log_sigmoid(tf.negative(scores_neg_reshaped) - margin)))
         return loss
-    
-    
+
+
 @register_loss("multiclass_nll", [], {'require_same_size_pos_neg': False})
 class NLLMulticlass(Loss):
-    """ Multiclass NLL Loss.
+    r"""Multiclass NLL Loss.
     
-        Introduced in :cite:`chen2015` where both the subject and objects are corrupted (to use it in this way pass
-        corrupt_sides = ['s', 'o'] to embedding_model_params) .
-        
-        This loss was re-engineered in :cite:`kadlecBK17` where only the object was corrupted to get improved
-        performance (to use it in this way pass corrupt_sides = 'o' to embedding_model_params).
+    Introduced in :cite:`chen2015` where both the subject and objects are corrupted (to use it in this way pass
+    corrupt_sides = ['s', 'o'] to embedding_model_params) .
 
-        .. math::
-        
-            \mathcal{L(X)} = -\sum_{x_{e_1,e_2,r_k} \in X} log\,p(e_2|e_1,r_k) -\sum_{x_{e_1,e_2,r_k} \in X} log\,p(e_1|r_k, e_2)
-       
-       
-        
-        Examples
-        -------- 
-        >>> from ampligraph.latent_features import TransE
-        >>> model = TransE(batches_count=1, seed=555, epochs=20, k=10, 
-        >>>                embedding_model_params={'corrupt_sides':['s', 'o']},
-        >>>                loss='multiclass_nll', loss_params={})
-        
-         
+    This loss was re-engineered in :cite:`kadlecBK17` where only the object was corrupted to get improved
+    performance (to use it in this way pass corrupt_sides = 'o' to embedding_model_params).
+
+    .. math::
+
+        \mathcal{L(X)} = -\sum_{x_{e_1,e_2,r_k} \in X} log\,p(e_2|e_1,r_k)
+         -\sum_{x_{e_1,e_2,r_k} \in X} log\,p(e_1|r_k, e_2)
+
+    Examples
+    --------
+    >>> from ampligraph.latent_features import TransE
+    >>> model = TransE(batches_count=1, seed=555, epochs=20, k=10,
+    >>>                embedding_model_params={'corrupt_sides':['s', 'o']},
+    >>>                loss='multiclass_nll', loss_params={})
+
     """
-    def __init__(self, eta, loss_params={}, verbose=False):
+    def __init__(self, eta, loss_params=None, verbose=False):
         """Initialize Loss
 
         Parameters
@@ -473,10 +497,12 @@ class NLLMulticlass(Loss):
             Dictionary of loss-specific hyperparams:
 
         """
+        if loss_params is None:
+            loss_params = {}
         super().__init__(eta, loss_params, verbose)
-    
+
     def _init_hyperparams(self, hyperparam_dict):
-        """ Verifies and stores the hyperparameters needed by the algorithm.
+        """Verifies and stores the hyperparameters needed by the algorithm.
         
         Parameters
         ----------
@@ -486,7 +512,7 @@ class NLLMulticlass(Loss):
         pass
 
     def _apply(self, scores_pos, scores_neg):
-        """ Apply the loss function.
+        """Apply the loss function.
 
        Parameters
        ----------
@@ -504,7 +530,7 @@ class NLLMulticlass(Loss):
         scores_neg_reshaped = tf.reshape(scores_neg, [self._loss_parameters['eta'], tf.shape(scores_pos)[0]])
         neg_exp = tf.exp(scores_neg_reshaped)
         pos_exp = tf.exp(scores_pos)
-        softmax_score = pos_exp/(tf.reduce_sum(neg_exp, axis = 0) + pos_exp)
-        
+        softmax_score = pos_exp / (tf.reduce_sum(neg_exp, axis=0) + pos_exp)
+
         loss = -tf.reduce_sum(tf.log(softmax_score))
         return loss

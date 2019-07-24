@@ -97,9 +97,9 @@ and they can be thus used :ref:`during model selection <eval>`.
     :template: class.rst
 
     PairwiseLoss
-    NLLLoss
     AbsoluteMarginLoss
     SelfAdversarialLoss
+    NLLLoss
     NLLMulticlass
     
 .. _ref-reg:
@@ -129,15 +129,9 @@ We support SGD-based optimizers provided by TensorFlow, by setting the ``optimiz
 Best results are currently obtained with Adam.
 
 
-Utils Functions
----------------
+Saving/Restoring Models
+-----------------------
 
 Models can be saved and restored from disk. This is useful to avoid re-training a model.
 
-
-.. autosummary::
-    :toctree: generated
-    :template: function.rst
-
-    save_model
-    restore_model
+More details in the :mod:`.utils` module.

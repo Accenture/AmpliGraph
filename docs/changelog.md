@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3
+- Fixed regression in RandomBaseline (#94)
+- Added TensorBoard Embedding Projector support (#86)
+- Minor bugfixing (#87, #47)
+
+
 ## 1.0.2
 - Added multiclass loss (#24 and #22)
 - Updated the negative generation to speed up evaluation for default protocol.(#74)
@@ -16,14 +22,13 @@
 - Addressed issue of ambiguous dataset loaders (#59)
 - Renamed ‘type’ parameter in models.get_embeddings  to fix masking built-in function
 - Updated String comparison to use equality instead of identity.
-- Added tutorial notebook (includes nations.csv dataset)
 - Moved save_model and restore_model to ampligraph.utils (but existing API will remain for several releases).
 - Other minor issues (#63, #64, #65, #66)
 
 
 ## 1.0.1
 - evaluation protocol now ranks object and subjects corruptions separately
-- Corruption generation can now use entites from current batch only
+- Corruption generation can now use entities from current batch only
 - FB15k-237, WN18RR loaders filter out unseen triples by default
 - Removed some unused arguments
 - Improved documentation

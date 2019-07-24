@@ -11,11 +11,11 @@ source activate ampligraph
 # Install library
 if [[ $# -eq 0 ]] ; then
     echo "install tensorflow CPU mode"
-    pip install tensorflow==1.12.0
+    pip install tensorflow==1.13.1
 else 
     if [[ $1 == "gpu" ]] ; then
         echo "install tensorflow GPU mode"
-        conda install tensorflow-gpu==1.12.0
+        conda install tensorflow-gpu==1.13.1
     fi
 fi
 
@@ -23,6 +23,9 @@ pip install . -v
 
 # configure dataset location
 export AMPLIGRAPH_DATA_HOME=/var/datasets
+
+# run flake8 linter
+flake8 ampligraph --max-line-length 120 --ignore=W291,W293 # ignoring some white space related errors
 
 # run unit tests
 pytest tests
