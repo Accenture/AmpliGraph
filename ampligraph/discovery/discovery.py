@@ -643,14 +643,16 @@ def find_duplicates(X, model, entities_subset=None, metric='l2',
 
 def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_consider=None,
                      rels_to_consider=None):
-    """Queries the model with two elements of a triple and returns the top_n results of all possible completions
-     ordered by score predicted by the model.
+    """Queries the model with two elements of a triple and returns the top_n results of
+    all possible completions ordered by score predicted by the model.
 
-    For example, given a <subject, predicate> pair in the arguments, the model will score all possible triples
-    <subject, predicate, ?>, filling in the missing element with known entities, and return the top_n triples ordered
-    by score. If given a <subject, object> pair it will fill in the missing element with known relations.
+    For example, given a <subject, predicate> pair in the arguments, the model will score
+    all possible triples <subject, predicate, ?>, filling in the missing element with known
+    entities, and return the top_n triples ordered by score. If given a <subject, object>
+    pair it will fill in the missing element with known relations.
 
-    This function does not filter out true statements - triples returned can include those the model was trained on.
+    This function does not filter out true statements - triples returned can include those
+    the model was trained on.
 
     Parameters
     ----------
