@@ -641,8 +641,7 @@ def find_duplicates(X, model, entities_subset=None, metric='l2',
     return get_dups(tolerance), tolerance
 
 
-def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_consider=None,
-                     rels_to_consider=None):
+def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_consider=None, rels_to_consider=None):
     """Queries the model with two elements of a triple and returns the top_n results of
     all possible completions ordered by score predicted by the model.
 
