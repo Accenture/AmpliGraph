@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from sklearn.cluster import DBSCAN
 from ampligraph.discovery.discovery import discover_facts, generate_candidates, _setdiff2d, find_clusters, \
-    find_duplicates, query_completion
+    find_duplicates, query_topn
 from ampligraph.latent_features import ComplEx
 
 def test_discover_facts():
@@ -245,7 +245,7 @@ def test_find_duplicates_auto():
     assert all(d.issubset(entities) for d in dups)
 
 
-def test_query_completion():
+def test_query_topn():
 
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -263,57 +263,57 @@ def test_query_completion():
     model = ComplEx(k=2, batches_count=2)
 
     with pytest.raises(ValueError): # Model not fitted
-        query_completion(model, top_n=2)
+        query_topn(model, top_n=2)
 
     model.fit(X)
 
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2)
+        query_topn(model, top_n=2)
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, head='a')
+        query_topn(model, top_n=2, head='a')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, relation='y')
+        query_topn(model, top_n=2, relation='y')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, tail='e')
+        query_topn(model, top_n=2, tail='e')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, head='a', relation='y', tail='e')
+        query_topn(model, top_n=2, head='a', relation='y', tail='e')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, head='xx', relation='y')
+        query_topn(model, top_n=2, head='xx', relation='y')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, head='a', relation='yakkety')
+        query_topn(model, top_n=2, head='a', relation='yakkety')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, head='a', tail='sax')
+        query_topn(model, top_n=2, head='a', tail='sax')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, head='a', relation='x', rels_to_consider=['y', 'z'])
+        query_topn(model, top_n=2, head='a', relation='x', rels_to_consider=['y', 'z'])
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, head='a', tail='f', rels_to_consider=['y', 'z', 'error'])
+        query_topn(model, top_n=2, head='a', tail='f', rels_to_consider=['y', 'z', 'error'])
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, head='a', tail='e', rels_to_consider='y')
+        query_topn(model, top_n=2, head='a', tail='e', rels_to_consider='y')
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, head='a', relation='x', ents_to_consider=['zz', 'top'])
+        query_topn(model, top_n=2, head='a', relation='x', ents_to_consider=['zz', 'top'])
     with pytest.raises(ValueError):
-        query_completion(model, top_n=2, head='a', tail='e', ents_to_consider=['a', 'b'])
+        query_topn(model, top_n=2, head='a', tail='e', ents_to_consider=['a', 'b'])
 
     subj, pred, obj, top_n = 'a', 'x', 'e', 3
 
-    Y, S = query_completion(model, top_n=top_n, head=subj, relation=pred)
+    Y, S = query_topn(model, top_n=top_n, head=subj, relation=pred)
     assert len(Y) == len(S)
     assert len(Y) == top_n
     assert np.all(Y[:, 0] == subj)
     assert np.all(Y[:, 1] == pred)
 
-    Y, S = query_completion(model, top_n=top_n, relation=pred, tail=obj)
+    Y, S = query_topn(model, top_n=top_n, relation=pred, tail=obj)
     assert np.all(Y[:, 1] == pred)
     assert np.all(Y[:, 2] == obj)
 
     ents_to_con = ['a', 'b', 'c', 'd']
-    Y, S = query_completion(model, top_n=top_n, relation=pred, tail=obj, ents_to_consider=ents_to_con)
+    Y, S = query_topn(model, top_n=top_n, relation=pred, tail=obj, ents_to_consider=ents_to_con)
     assert np.all([x in ents_to_con for x in Y[:, 0]])
 
     rels_to_con = ['y', 'x']
-    Y, S = query_completion(model, top_n=10, head=subj, tail=obj, rels_to_consider=rels_to_con)
+    Y, S = query_topn(model, top_n=10, head=subj, tail=obj, rels_to_consider=rels_to_con)
     assert np.all([x in rels_to_con for x in Y[:, 1]])
 
-    Y, S = query_completion(model, top_n=10, relation=pred, tail=obj)
+    Y, S = query_topn(model, top_n=10, relation=pred, tail=obj)
     assert all(S[i] >= S[i + 1] for i in range(len(S) - 1))
 
