@@ -439,9 +439,9 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         if cur_integrity.fetchone()[0] == 0:
             raise Exception('Data integrity is corrupted. The tables have been modified.')
 
-        query1 = "select object from triples_table INDEXED BY triples_table_sp_idx \
+        query1 = "select distinct object from triples_table INDEXED BY triples_table_sp_idx \
                     where subject=" + str(x_triple[0]) + " and predicate=" + str(x_triple[1])
-        query2 = "select subject from triples_table INDEXED BY triples_table_po_idx \
+        query2 = "select distinct subject from triples_table INDEXED BY triples_table_po_idx \
                     where predicate=" + str(x_triple[1]) + " and object=" + str(x_triple[2])
         
         cur1.execute(query1)
