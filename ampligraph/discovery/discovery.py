@@ -555,15 +555,36 @@ def find_duplicates(X, model, entities_subset=None, metric='l2',
 
     Examples
     --------
-    >>> import requests
-    >>> from ampligraph.datasets import load_from_csv
-    >>> from ampligraph.latent_features import ComplEx
-    >>> from ampligraph.discovery import find_duplicates
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> import re
     >>>
-    >>> # Game of Thrones relations dataset
-    >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
-    >>> open('GoT.csv', 'wb').write(requests.get(url).content)
-    >>> X = load_from_csv('.', 'GoT.csv', sep=',')
+    >>> imdb = pd.read_csv("movies5/csv_files/imdb.csv") # CHANGE LATER TO S3 FILE
+    >>> imdb["directors"] = imdb["directors"].fillna("UnknownDirector")
+    >>> imdb["actors"] = imdb["actors"].fillna("UnknownActor")
+    >>> imdb["genre"] = imdb["genre"].fillna("UnknownGenre")
+    >>> imdb["duration"] = imdb["duration"].fillna("0")
+    >>>
+    >>> imdb_triples = []
+    >>>
+    >>> for _, row in imdb.iterrows():
+    >>>     movie_id = "ID" + str(row["id"])
+    >>>     directors = row["directors"].split(",")
+    >>>     actors = row["actors"].split(",")
+    >>>     genres = row["genre"].split(",")
+    >>>     duration = "Duration" + str(int(re.sub("\D", "", row["duration"])) // 30)
+    >>>
+    >>>     directors_triples = [(movie_id, "hasDirector", d) for d in directors]
+    >>>     actors_triples = [(movie_id, "hasActor", a) for a in actors]
+    >>>     genres_triples = [(movie_id, "hasGenre", g) for g in genres]
+    >>>     duration_triple = (movie_id, "hasDuration", duration)
+    >>>
+    >>>     imdb_triples.extend(directors_triples)
+    >>>     imdb_triples.extend(actors_triples)
+    >>>     imdb_triples.extend(genres_triples)
+    >>>     imdb_triples.append(duration_triple)
+    >>>
+    >>> from ampligraph.latent_features import ComplEx
     >>>
     >>> model = ComplEx(batches_count=10,
     >>>                 seed=0,
@@ -576,30 +597,54 @@ def find_duplicates(X, model, entities_subset=None, metric='l2',
     >>>                 regularizer='LP',
     >>>                 regularizer_params={'p':3, 'lambda':1e-5},
     >>>                 verbose=True)
-    >>> model.fit(X)
     >>>
-    >>> dups = find_duplicates(train, model, tolerance=1.0)
-    >>> sorted([(len(i), i) for i in dups], reverse=True)
-    [(53, frozenset({
-        'Addam Frey',
-        'Aegon Frey',
-        'Aemon Rivers',
-        'Alesander Frey',
-        'Alyn Frey',
-        'Androw Frey',
-        'Arwyn Frey',
-        'Bradamar Frey',
-        'Brenett',
-        'Bryan Frey',
-        'Cersei Frey',
-        ...
-
+    >>> imdb_triples = np.array(imdb_triples)
+    >>> model.fit(imdb_triples)
+    >>>
+    >>> from ampligraph.discovery import find_duplicates
+    >>>
+    >>> entities = np.unique(imdb_triples[:, 0])
+    >>> dups, _ = find_duplicates(entities, model, mode='entity', tolerance=0.4)
+    [frozenset({'ID4666', 'ID4665'}), frozenset({'ID2696', 'ID2697'}), frozenset({'ID4020', 'ID4021'})]
+    >>> print(list(dups)[:3])
+    >>>
+    >>> print(imdb[imdb.id.isin((4666, 4665, 2696, 2697, 4020, 4021))][['movie_name', 'year']])
+                    movie_name  year
+    2696  Romance of Their Own  2004
+    2697  Romance of Their Own  2004
+    4020  Midnight Confessions  1994
+    4021  Midnight Confessions  1994
+    4665        Skeleton Coast  1988
+    4666        Skeleton Coast  1988
     """
     if not model.is_fitted:
-        raise ValueError("Model has not been fitted.")
+        msg = "Model has not been fitted."
+        logger.error(msg)
+        raise ValueError(msg)
 
-    entities = np.setdiff1d(np.unique(np.concatenate((X[:, 0], X[:, 2]))), entities_subset)
-    ent_embeddings = model.get_embeddings(entities, embedding_type='entity')
+    modes = ("triple", "entity", "relation")
+    if mode not in modes:
+        msg = "Argument `mode` must be one of the following: {}.".format(", ".join(modes))
+        logger.error(msg)
+        raise ValueError(msg)
+
+    if mode == "triple" and (X.shape[1] != 3 or len(X.shape) != 2):
+        msg = "For 'triple' mode the input X must be a matrix with three columns."
+        logger.error(msg)
+        raise ValueError(msg)
+
+    if mode in ("entity", "relation") and len(X.shape) != 1:
+        msg = "For 'entity' or 'relation' mode the input X must be an array."
+        logger.error(msg)
+        raise ValueError(msg)
+
+    if mode == "triple":
+        s = model.get_embeddings(X[:, 0], embedding_type='entity')
+        p = model.get_embeddings(X[:, 1], embedding_type='relation')
+        o = model.get_embeddings(X[:, 2], embedding_type='entity')
+        emb = np.hstack((s, p, o))
+    else:
+        emb = model.get_embeddings(X, embedding_type=mode)
 
     def get_dups(tol):
         """
@@ -619,11 +664,16 @@ def find_duplicates(X, model, entities_subset=None, metric='l2',
 
         """
         nn = NearestNeighbors(metric=metric, radius=tol)
-        nn.fit(ent_embeddings)
-        neighbors = nn.radius_neighbors(ent_embeddings)[1]
-        return {frozenset(entities[idx] for idx in row) for i, row in enumerate(neighbors) if len(row) > 1}
+        nn.fit(emb)
+        neighbors = nn.radius_neighbors(emb)[1]
+        idx_dups = ((i, row) for i, row in enumerate(neighbors) if len(row) > 1)
+        if mode == "triple":
+            dups = {frozenset(tuple(X[idx]) for idx in row) for i, row in idx_dups}
+        else:
+            dups = {frozenset(X[idx] for idx in row) for i, row in idx_dups}
+        return dups
 
-    def opt(tol):
+    def opt(tol, info):
         """
         Auxiliary function for the optimization procedure to find the tolerance that corresponds to the expected
         number of duplicates.
@@ -631,15 +681,17 @@ def find_duplicates(X, model, entities_subset=None, metric='l2',
         Returns the difference between actual and expected fraction of duplicates.
         """
         duplicates = get_dups(tol)
-        fraction_duplicates = len(set().union(*duplicates)) / len(entities)
+        fraction_duplicates = len(set().union(*duplicates)) / len(emb)
+        if verbose:
+            info['Nfeval'] += 1
+            print("Eval {}: tol: {}, duplicate fraction: {}".format(info['Nfeval'], tol, fraction_duplicates))
         return fraction_duplicates - expected_fraction_duplicates
 
     if tolerance == 'auto':
-        max_distance = np.linalg.norm(ent_embeddings.max(axis=1) - ent_embeddings.min(axis=1))
-        tolerance = optimize.bisect(opt, 0.0, max_distance, xtol=1e-3, maxiter=50)
+        max_distance = spatial.distance_matrix(emb, emb).max()
+        tolerance = optimize.bisect(opt, 0.0, max_distance, xtol=1e-3, maxiter=50, args=({'Nfeval':0},))
 
     return get_dups(tolerance), tolerance
-
 
 def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_consider=None, rels_to_consider=None):
     """Queries the model with two elements of a triple and returns the top_n results of
