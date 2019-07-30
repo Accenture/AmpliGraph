@@ -2,7 +2,7 @@ import logging
 import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn.neighbors import NearestNeighbors
-from scipy import optimize
+from scipy import optimize, spatial
 import networkx as nx
 
 from ..evaluation import evaluate_performance, filter_unseen_entities
@@ -512,24 +512,48 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None,
     return clustering_algorithm.fit_predict(X)
 
 
-def find_duplicates(X, model, entities_subset=None, metric='l2',
-                    tolerance='auto', expected_fraction_duplicates=0.1):
-    """
-    Find duplicate entities in a graph based on their embeddings.
+def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
+                    expected_fraction_duplicates=0.1, verbose=False):
+    r"""
+    Find duplicate entities, relations or triples in a graph based on their embeddings.
+
+    For example, say you have a movie dataset that was scraped off the web with possible duplicate movies.
+    The movies in this case are the entities.
+    Therefore, you would use the 'entity' mode to find all the movies that could de duplicates of each other.
+
+    Duplicates are defined as points whose distance in the embedding space are smaller than
+    some given threshold (called the tolerance).
+
+    The tolerance can be defined a priori or be found via an optimisation procedure given
+    an expected fraction of duplicates. The optimisation algorithm applies a root-finding routine
+    to find the tolerance that gets to the closest expected fraction. The routine always converges.
+
+    Distance is defined by the chosen metric, which by default is the Euclidean distance (L2 norm).
+
+    As the distances are calculated on the embedding space,
+    the embeddings must be meaningful for this routine to work properly.
+    Therefore, it is suggested to evaluate the embeddings first using a metric such as MRR
+    before considering applying this method.
 
     Parameters
     ----------
 
-    X : ndarray, shape [n, 3]
-        The input knowledge graph (triples) to find the duplicate entities.
+    X : ndarray, shape [n, 3] or [n]
+        The input to be clustered.
+        X can either be the triples of a knowledge graph, its entities, or its relations.
+        The argument `mode` defines whether X is supposed an array of triples
+        or an array of either entities or relations.
     model : EmbeddingModel
         The fitted model that will be used to generate the embeddings.
         This model must have been fully trained already, be it directly with `fit` or from
         a helper function such as `select_best_model_ranking`.
-    entities_subset: ndarray, shape [n]
-        The entities to consider for duplicate finding.
-        This is a subset of all the entities included in X.
-        If None, all entities will be clustered.
+    mode: str
+        Clustering mode, whether 'triple', 'entity', or 'relation'.
+        For 'triple' clustering, the algorithm will cluster the concatenation
+        of the embeddings of the subject, predicate and object for each triple.
+        For 'entity' or 'relation' clustering, the algorithm will simply cluster
+        the embeddings of either the provided entities or relations.
+        Default: 'triple'.
     metric: str
         A distance metric used to compare entity distance in the embedding space.
         See https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html
@@ -542,6 +566,8 @@ def find_duplicates(X, model, entities_subset=None, metric='l2',
     expected_fraction_duplicates: float
         Expected fraction of duplicates to be found. It is used only when `tolerance` is `'auto'`.
         Should be betweeen 0 and 1 (default: 0.1).
+    verbose: bool
+        Whether to print evaluation messages during optimisation (if `tolerance` is `'auto'`). Default: False.
 
     Returns
     -------
@@ -628,7 +654,7 @@ def find_duplicates(X, model, entities_subset=None, metric='l2',
         logger.error(msg)
         raise ValueError(msg)
 
-    if mode == "triple" and (X.shape[1] != 3 or len(X.shape) != 2):
+    if mode == "triple" and (len(X.shape) != 2 or X.shape[1] != 3):
         msg = "For 'triple' mode the input X must be a matrix with three columns."
         logger.error(msg)
         raise ValueError(msg)
@@ -684,14 +710,15 @@ def find_duplicates(X, model, entities_subset=None, metric='l2',
         fraction_duplicates = len(set().union(*duplicates)) / len(emb)
         if verbose:
             info['Nfeval'] += 1
-            print("Eval {}: tol: {}, duplicate fraction: {}".format(info['Nfeval'], tol, fraction_duplicates))
+            logger.info("Eval {}: tol: {}, duplicate fraction: {}".format(info['Nfeval'], tol, fraction_duplicates))
         return fraction_duplicates - expected_fraction_duplicates
 
     if tolerance == 'auto':
         max_distance = spatial.distance_matrix(emb, emb).max()
-        tolerance = optimize.bisect(opt, 0.0, max_distance, xtol=1e-3, maxiter=50, args=({'Nfeval':0},))
+        tolerance = optimize.bisect(opt, 0.0, max_distance, xtol=1e-3, maxiter=50, args=({'Nfeval': 0}, ))
 
     return get_dups(tolerance), tolerance
+
 
 def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_consider=None, rels_to_consider=None):
     """Queries the model with two elements of a triple and returns the top_n results of
