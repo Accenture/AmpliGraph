@@ -409,8 +409,7 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="triple"):
     clustering_algorithm : object
         The initialized object of the clustering algorithm.
         It should be ready to apply the `fit_predict` method.
-        Please see:
-         https://scikit-learn.org/stable/modules/clustering.html#clustering
+        Please see: https://scikit-learn.org/stable/modules/clustering.html#clustering
         to understand the clustering API provided by scikit-learn.
         The default clustering model is sklearn's DBSCAN with its default
         parameters.
@@ -442,7 +441,7 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="triple"):
     >>>
     >>> from ampligraph.datasets import load_from_csv
     >>> from ampligraph.latent_features import ComplEx
-    >>> #from ampligraph.discovery import find_clusters
+    >>> from ampligraph.discovery import find_clusters
     >>>
     >>> # International football matches triples
     >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/football.csv'
