@@ -529,59 +529,66 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     >>> hits_at_n_score(ranks, n=10)
     0.4
     """
+    dataset_handle = None
+    # try-except block is mainly to handle clean up in case of exception or manual stop in jupyter notebook
+    try:
+        logger.debug('Evaluating the performance of the embedding model.')
+        if isinstance(X, np.ndarray):
 
-    logger.debug('Evaluating the performance of the embedding model.')
-    if isinstance(X, np.ndarray):
-        
-        X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
-        
-        dataset_handle = NumpyDatasetAdapter()
-        dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
-        dataset_handle.set_data(X_test, "test")
-        
-    elif isinstance(X, AmpligraphDatasetAdapter):     
-        dataset_handle = X
-     
-    if filter_triples is not None:
-        if isinstance(filter_triples, np.ndarray):
-            logger.debug('Getting filtered triples.')
-            dataset_handle.set_filter(filter_triples)
-            model.set_filter_for_eval()
-        elif isinstance(X, AmpligraphDatasetAdapter):
-            if not isinstance(filter_triples, bool):
-                raise Exception('Expected a boolean type')
-            if filter_triples is True:
+            X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
+
+            dataset_handle = NumpyDatasetAdapter()
+            dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
+            dataset_handle.set_data(X_test, "test")
+
+        elif isinstance(X, AmpligraphDatasetAdapter):     
+            dataset_handle = X
+
+        if filter_triples is not None:
+            if isinstance(filter_triples, np.ndarray):
+                logger.debug('Getting filtered triples.')
+                dataset_handle.set_filter(filter_triples)
                 model.set_filter_for_eval()
-        else:
-            raise Exception('Invalid datatype for filter. Expected a numpy array or preset data in the adapter.')
-        
-    eval_dict = {}
-    eval_dict['default_protocol'] = False
+            elif isinstance(X, AmpligraphDatasetAdapter):
+                if not isinstance(filter_triples, bool):
+                    raise Exception('Expected a boolean type')
+                if filter_triples is True:
+                    model.set_filter_for_eval()
+            else:
+                raise Exception('Invalid datatype for filter. Expected a numpy array or preset data in the adapter.')
 
-    if use_default_protocol:
-        corrupt_side = 's+o'
-        eval_dict['default_protocol'] = True
+        eval_dict = {}
+        eval_dict['default_protocol'] = False
 
-    if rank_against_ent is not None:
-        idx_entities = np.asarray([idx for uri, idx in model.ent_to_idx.items() if uri in rank_against_ent])
-        eval_dict['corruption_entities'] = idx_entities
+        if use_default_protocol:
+            corrupt_side = 's+o'
+            eval_dict['default_protocol'] = True
 
-    ranks = []
+        if rank_against_ent is not None:
+            idx_entities = np.asarray([idx for uri, idx in model.ent_to_idx.items() if uri in rank_against_ent])
+            eval_dict['corruption_entities'] = idx_entities
 
-    logger.debug('Evaluating the test set by corrupting side : {}'.format(corrupt_side))
-    eval_dict['corrupt_side'] = corrupt_side
-        
-    logger.debug('Configuring evaluation protocol.')
-    model.configure_evaluation_protocol(eval_dict)
-    logger.debug('Making predictions.')
+        ranks = []
 
-    ranks = model.get_ranks(dataset_handle)
+        logger.debug('Evaluating the test set by corrupting side : {}'.format(corrupt_side))
+        eval_dict['corrupt_side'] = corrupt_side
 
-    model.end_evaluation()
-    logger.debug('Ending Evaluation')
+        logger.debug('Configuring evaluation protocol.')
+        model.configure_evaluation_protocol(eval_dict)
+        logger.debug('Making predictions.')
 
-    logger.debug('Returning ranks of positive test triples obtained by corrupting {}.'.format(corrupt_side))
-    return ranks
+        ranks = model.get_ranks(dataset_handle)
+
+        model.end_evaluation()
+        logger.debug('Ending Evaluation')
+
+        logger.debug('Returning ranks of positive test triples obtained by corrupting {}.'.format(corrupt_side))
+        return ranks
+    except BaseException as e:
+        model.end_evaluation()
+        if dataset_handle is not None:
+            dataset_handle.cleanup()
+        raise e
 
 
 def filter_unseen_entities(X, model, verbose=False, strict=True):
