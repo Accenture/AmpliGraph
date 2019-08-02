@@ -530,7 +530,7 @@ class EmbeddingModel(abc.ABC):
         # if the graph is large
         if self.dealing_with_large_graphs:
             # Create a dependency to load the embeddings of the batch entities dynamically
-            init_ent_emb_batch = self.ent_emb.assign(ent_emb_batch)
+            init_ent_emb_batch = self.ent_emb.assign(ent_emb_batch, use_locking=True)
             dependencies.append(init_ent_emb_batch)
             
             # create a lookup dependency(to remap the entity indices to the corresponding indices of variables in memory
@@ -1102,7 +1102,7 @@ class EmbeddingModel(abc.ABC):
         # For large graphs
         if self.dealing_with_large_graphs:   
             # Add a dependency to load the embeddings on the GPU    
-            init_ent_emb_batch = self.ent_emb.assign(entity_embeddings)
+            init_ent_emb_batch = self.ent_emb.assign(entity_embeddings, use_locking=True)
             test_dependency.append(init_ent_emb_batch)
             
             # Add a dependency to create lookup tables(for remapping the entity indices to the order of variables on GPU
@@ -1157,7 +1157,7 @@ class EmbeddingModel(abc.ABC):
                     corr_batch, entity_embeddings_corrpt = corruption_iter.get_next()
                     # if self.dealing_with_large_graphs: #for debugging
                     # Add dependency to load the embeddings
-                    init_ent_emb_corrpt = self.ent_emb.assign(entity_embeddings_corrpt)
+                    init_ent_emb_corrpt = self.ent_emb.assign(entity_embeddings_corrpt, use_locking=True)
                     corr_dependency.append(init_ent_emb_corrpt)
 
                     # Add dependency to remap the indices to the corresponding indices on the GPU
