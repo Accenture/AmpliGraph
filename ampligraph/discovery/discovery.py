@@ -12,84 +12,85 @@ logger.setLevel(logging.DEBUG)
 
 
 def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates=.3, target_rel=None, seed=0):
-    """ Discover new facts from an existing knowledge graph.
+    """
+    Discover new facts from an existing knowledge graph.
 
-        The general procedure of this function is to generate a set of candidate statements `C` according to some
-        sampling strategy, then rank them against a set of corruptions using the `evaluate_performance` function.
-        Candidates that appear in the `top_n` ranked statements of this procedure are returned as likely true
-        statements.
+    The general procedure of this function is to generate a set of candidate statements `C` according to some
+    sampling strategy, then rank them against a set of corruptions using the `evaluate_performance` function.
+    Candidates that appear in the `top_n` ranked statements of this procedure are returned as likely true
+    statements.
 
-        The majority of the strategies are implemented with the same underlying principal of searching for
-        candidate statements from among the less frequent entities ('entity_frequency'), less connected entities
-        ('graph_degree', cluster_coefficient'), or less frequent local graph structures ('cluster_triangles',
-        'cluster_squares'), on the assumption that densely connected entities are less likely to have missing
-        true statements. The remaining strategies ('random_uniform', 'exhaustive') generate candidate statements
-        by a random sampling of entity and relations and exhaustively, respectively. Due to the significant amount of
-        computation required to evaluate all triples using the 'exhaustive' strategy, we do not recommend it's use
-        at this time.
+    The majority of the strategies are implemented with the same underlying principal of searching for
+    candidate statements from among the less frequent entities ('entity_frequency'), less connected entities
+    ('graph_degree', cluster_coefficient'), or less frequent local graph structures ('cluster_triangles',
+    'cluster_squares'), on the assumption that densely connected entities are less likely to have missing
+    true statements. The remaining strategies ('random_uniform', 'exhaustive') generate candidate statements
+    by a random sampling of entity and relations and exhaustively, respectively. Due to the significant amount of
+    computation required to evaluate all triples using the 'exhaustive' strategy, we do not recommend it's use
+    at this time.
 
-        This function will automatically filter entities that haven't been seen by the model, and operates on
-        the assumption that the model provided has been fit on the data `X` (determined heuristically), although `X`
-        may be a subset of the original data, in which case a warning is shown.
+    This function will automatically filter entities that haven't been seen by the model, and operates on
+    the assumption that the model provided has been fit on the data `X` (determined heuristically), although `X`
+    may be a subset of the original data, in which case a warning is shown.
 
-        The 'target_rel' argument indicates what relation to generate candidate statements for. If this is set to None
-        then all target relations will be considered for sampling.
+    The 'target_rel' argument indicates what relation to generate candidate statements for. If this is set to None
+    then all target relations will be considered for sampling.
 
-        Parameters
-        ----------
+    Parameters
+    ----------
 
-        X : ndarray, shape [n, 3]
-            The input knowledge graph used to train ``model``, or a subset of it.
-        model : EmbeddingModel
-            The trained model that will be used to score candidate facts.
-        top_n : int
-            The cutoff position in ranking to consider a candidate triple as true positive.
-        strategy: string
-            The candidates generation strategy.
-            - 'exhaustive' : generates all possible candidates given the ```target_rel``` and
-                ```consolidate_sides``` parameter.
-            - 'random_uniform' : generates N candidates (N <= max_candidates) based on a uniform random sampling of
-                head and tail entities.
-            - 'entity_frequency' : generates candidates by sampling entities with low frequency.
-            - 'graph_degree' : generates candidates by sampling entities with a low graph degree.
-            - 'cluster_coefficient' : generates candidates by sampling entities with a low clustering coefficient.
-            - 'cluster_triangles' : generates candidates by sampling entities with a low number of cluster triangles.
-            - 'cluster_squares' : generates candidates by sampling entities with a low number of cluster squares.
-        max_candidates: int or float
-            The maximum numbers of candidates generated by 'strategy'.
-            Can be an absolute number or a percentage [0,1].
-        target_rel : str
-            Target relation to focus on. The function will discover facts only for that specific relation type.
-            If None, the function attempts to discover new facts for all relation types in the graph.
-        seed : int
-            Seed to use for reproducible results.
-
-
-        Returns
-        -------
-        X_pred : ndarray, shape [n, 3]
-            A list of new facts predicted to be true.
+    X : ndarray, shape [n, 3]
+        The input knowledge graph used to train ``model``, or a subset of it.
+    model : EmbeddingModel
+        The trained model that will be used to score candidate facts.
+    top_n : int
+        The cutoff position in ranking to consider a candidate triple as true positive.
+    strategy: string
+        The candidates generation strategy.
+        - 'exhaustive' : generates all possible candidates given the ```target_rel``` and
+        ```consolidate_sides``` parameter.
+        - 'random_uniform' : generates N candidates (N <= max_candidates) based on a uniform random sampling of
+        head and tail entities.
+        - 'entity_frequency' : generates candidates by sampling entities with low frequency.
+        - 'graph_degree' : generates candidates by sampling entities with a low graph degree.
+        - 'cluster_coefficient' : generates candidates by sampling entities with a low clustering coefficient.
+        - 'cluster_triangles' : generates candidates by sampling entities with a low number of cluster triangles.
+        - 'cluster_squares' : generates candidates by sampling entities with a low number of cluster squares.
+    max_candidates: int or float
+        The maximum numbers of candidates generated by 'strategy'.
+        Can be an absolute number or a percentage [0,1].
+    target_rel : str
+        Target relation to focus on. The function will discover facts only for that specific relation type.
+        If None, the function attempts to discover new facts for all relation types in the graph.
+    seed : int
+        Seed to use for reproducible results.
 
 
-        Examples
-        --------
-        >>> import requests
-        >>> from ampligraph.datasets import load_from_csv
-        >>> from ampligraph.latent_features import ComplEx
-        >>> from ampligraph.discovery import discover_facts
-        >>>
-        >>> # Game of Thrones relations dataset
-        >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
-        >>> open('GoT.csv', 'wb').write(requests.get(url).content)
-        >>> X = load_from_csv('.', 'GoT.csv', sep=',')
-        >>>
-        >>> model = ComplEx(batches_count=10, seed=0, epochs=200, k=150, eta=5,
-        >>>                 optimizer='adam', optimizer_params={'lr':1e-3}, loss='multiclass_nll',
-        >>>                 regularizer='LP', regularizer_params={'p':3, 'lambda':1e-5}, verbose=True)
-        >>> model.fit(X)
-        >>>
-        >>> X_pred = discover_facts(X, model, top_n=10, max_candidates=100, strategy='entity_frequency',
-        >>>                         target_rel='SEAT_OF', seed=42)
+    Returns
+    -------
+    X_pred : ndarray, shape [n, 3]
+        A list of new facts predicted to be true.
+
+
+    Examples
+    --------
+    >>> import requests
+    >>> from ampligraph.datasets import load_from_csv
+    >>> from ampligraph.latent_features import ComplEx
+    >>> from ampligraph.discovery import discover_facts
+    >>>
+    >>> # Game of Thrones relations dataset
+    >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
+    >>> open('GoT.csv', 'wb').write(requests.get(url).content)
+    >>> X = load_from_csv('.', 'GoT.csv', sep=',')
+    >>>
+    >>> model = ComplEx(batches_count=10, seed=0, epochs=200, k=150, eta=5,
+    >>>                 optimizer='adam', optimizer_params={'lr':1e-3}, loss='multiclass_nll',
+    >>>                 regularizer='LP', regularizer_params={'p':3, 'lambda':1e-5}, verbose=True)
+    >>> model.fit(X)
+    >>>
+    >>> X_pred = discover_facts(X, model, top_n=10, max_candidates=100, strategy='entity_frequency',
+    >>>                         target_rel='SEAT_OF', seed=42)
 
     """
 
@@ -392,8 +393,7 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None,
     clustering_algorithm : object
         The initialized object of the clustering algorithm.
         It should be ready to apply the `fit_predict` method.
-        Please see:
-         https://scikit-learn.org/stable/modules/clustering.html#clustering
+        Please see: https://scikit-learn.org/stable/modules/clustering.html#clustering
         to understand the clustering API provided by scikit-learn.
         The default clustering model is sklearn's DBSCAN with its default
         parameters.
