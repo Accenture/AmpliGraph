@@ -124,13 +124,13 @@ AmpliGraph incldues implementations of TransE, DistMult, ComplEx and HolE.
 Their predictive power is reported below. 
 [More details available here](https://docs.ampligraph.org/en/latest/experiments.html).
 
-|          |FB15K-237  |WN18RR   |YAGO3-10         | FB15k     |WN18       |
-|----------|----------|-----------|-----------|-------------|-------------|
-| Literature Best |  **0.35***   | 0.48* | 0.49*   | **0.84**** | **0.95***   |
-| TransE   |  0.32   | 0.23     | 0.50         | 0.55     | 0.51           |
-| DistMult |  0.32    | 0.48    | 0.50         | 0.78     | 0.82           |
-| ComplEx  |  0.33    | **0.50**    | **0.51**    | 0.80     | 0.94        |
-| HolE     |  0.32    | 0.47    | 0.50          | 0.80     | 0.93          |
+|                 |FB15K-237 |WN18RR   |YAGO3-10   | FB15k      |WN18           |
+|-----------------|----------|---------|-----------|------------|---------------|
+| Literature Best | **0.35***| 0.48*   | 0.49*     | **0.84**** | **0.95***     |
+| TransE          |  0.31    | 0.22    | 0.49      | 0.63       | 0.65          |
+| DistMult        |  0.31    | 0.45    | 0.49      | 0.78       | 0.82          |
+| ComplEx         |  0.32    | **0.50**| **0.50**  | 0.80       | 0.94          |
+| HolE            |  0.31    | 0.47    | **0.50**  | 0.80       | 0.93          |
 
 
 <sub>
@@ -140,7 +140,6 @@ completion. In International Conference on Machine Learning, 2869–2878. 2018. 
  " arXiv preprint arXiv:1705.10744 (2017).
 
 </sub>
-
 
 ## Documentation
 

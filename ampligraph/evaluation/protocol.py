@@ -7,7 +7,7 @@
 #
 
 from collections.abc import Iterable
-from itertools import product
+from itertools import product, islice
 import logging
 
 import numpy as np
@@ -529,59 +529,66 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     >>> hits_at_n_score(ranks, n=10)
     0.4
     """
+    dataset_handle = None
+    # try-except block is mainly to handle clean up in case of exception or manual stop in jupyter notebook
+    try:
+        logger.debug('Evaluating the performance of the embedding model.')
+        if isinstance(X, np.ndarray):
 
-    logger.debug('Evaluating the performance of the embedding model.')
-    if isinstance(X, np.ndarray):
-        
-        X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
-        
-        dataset_handle = NumpyDatasetAdapter()
-        dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
-        dataset_handle.set_data(X_test, "test")
-        
-    elif isinstance(X, AmpligraphDatasetAdapter):     
-        dataset_handle = X
-     
-    if filter_triples is not None:
-        if isinstance(filter_triples, np.ndarray):
-            logger.debug('Getting filtered triples.')
-            dataset_handle.set_filter(filter_triples)
-            model.set_filter_for_eval()
-        elif isinstance(X, AmpligraphDatasetAdapter):
-            if not isinstance(filter_triples, bool):
-                raise Exception('Expected a boolean type')
-            if filter_triples is True:
+            X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
+
+            dataset_handle = NumpyDatasetAdapter()
+            dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
+            dataset_handle.set_data(X_test, "test")
+
+        elif isinstance(X, AmpligraphDatasetAdapter):     
+            dataset_handle = X
+
+        if filter_triples is not None:
+            if isinstance(filter_triples, np.ndarray):
+                logger.debug('Getting filtered triples.')
+                dataset_handle.set_filter(filter_triples)
                 model.set_filter_for_eval()
-        else:
-            raise Exception('Invalid datatype for filter. Expected a numpy array or preset data in the adapter.')
-        
-    eval_dict = {}
-    eval_dict['default_protocol'] = False
+            elif isinstance(X, AmpligraphDatasetAdapter):
+                if not isinstance(filter_triples, bool):
+                    raise Exception('Expected a boolean type')
+                if filter_triples is True:
+                    model.set_filter_for_eval()
+            else:
+                raise Exception('Invalid datatype for filter. Expected a numpy array or preset data in the adapter.')
 
-    if use_default_protocol:
-        corrupt_side = 's+o'
-        eval_dict['default_protocol'] = True
+        eval_dict = {}
+        eval_dict['default_protocol'] = False
 
-    if rank_against_ent is not None:
-        idx_entities = np.asarray([idx for uri, idx in model.ent_to_idx.items() if uri in rank_against_ent])
-        eval_dict['corruption_entities'] = idx_entities
+        if use_default_protocol:
+            corrupt_side = 's+o'
+            eval_dict['default_protocol'] = True
 
-    ranks = []
+        if rank_against_ent is not None:
+            idx_entities = np.asarray([idx for uri, idx in model.ent_to_idx.items() if uri in rank_against_ent])
+            eval_dict['corruption_entities'] = idx_entities
 
-    logger.debug('Evaluating the test set by corrupting side : {}'.format(corrupt_side))
-    eval_dict['corrupt_side'] = corrupt_side
-        
-    logger.debug('Configuring evaluation protocol.')
-    model.configure_evaluation_protocol(eval_dict)
-    logger.debug('Making predictions.')
+        ranks = []
 
-    ranks = model.get_ranks(dataset_handle)
+        logger.debug('Evaluating the test set by corrupting side : {}'.format(corrupt_side))
+        eval_dict['corrupt_side'] = corrupt_side
 
-    model.end_evaluation()
-    logger.debug('Ending Evaluation')
+        logger.debug('Configuring evaluation protocol.')
+        model.configure_evaluation_protocol(eval_dict)
+        logger.debug('Making predictions.')
 
-    logger.debug('Returning ranks of positive test triples obtained by corrupting {}.'.format(corrupt_side))
-    return ranks
+        ranks = model.get_ranks(dataset_handle)
+
+        model.end_evaluation()
+        logger.debug('Ending Evaluation')
+
+        logger.debug('Returning ranks of positive test triples obtained by corrupting {}.'.format(corrupt_side))
+        return ranks
+    except BaseException as e:
+        model.end_evaluation()
+        if dataset_handle is not None:
+            dataset_handle.cleanup()
+        raise e
 
 
 def filter_unseen_entities(X, model, verbose=False, strict=True):
@@ -630,16 +637,7 @@ def filter_unseen_entities(X, model, verbose=False, strict=True):
             return X[~mask_unseen]
 
 
-def _remove_unused_param(params, nested_keys, registry, category_type, category_type_params):
-    if category_type_params in params and category_type in registry:
-        expected_params = registry[category_type].external_params
-        params[category_type_params] = {k: v for k, v in params[category_type_params].items() if k in expected_params}
-    else:
-        params[category_type_params] = {}
-        nested_keys.add(category_type_params)
-
-
-def remove_unused_params(params, nested_keys, model_name):
+def _remove_unused_params(params):
     """
     Removed unused parameters considering the registries.
 
@@ -649,29 +647,120 @@ def remove_unused_params(params, nested_keys, model_name):
     ----------
     params: dict
         Dictionary with parameters.
-    nested_keys: set
-        Set of keys of params that include nested params (i.e. a dict inside a dict).
-    model_name: str
-        The name of the model (e.g. 'ComplEx').
 
+    Returns
+    -------
+    params: dict
+        Param dict without unused parameters.
     """
-    from ..latent_features import LOSS_REGISTRY, REGULARIZER_REGISTRY, MODEL_REGISTRY
+    from ..latent_features import LOSS_REGISTRY, REGULARIZER_REGISTRY, MODEL_REGISTRY, \
+        OPTIMIZER_REGISTRY, INITIALIZER_REGISTRY
+
+    def _param_without_unused(param, registry, category_type, category_type_params):
+        """Remove one particular nested param (if unused) given a registry"""
+        if category_type_params in param and category_type in registry:
+            expected_params = registry[category_type].external_params
+            params[category_type_params] = {k: v for k, v in param[category_type_params].items() if
+                                            k in expected_params}
+        else:
+            params[category_type_params] = {}
+
+    params = params.copy()
+
     if "loss" in params and "loss_params" in params:
-        _remove_unused_param(params, nested_keys, LOSS_REGISTRY, params["loss"], "loss_params")
+        _param_without_unused(params, LOSS_REGISTRY, params["loss"], "loss_params")
     if "regularizer" in params and "regularizer_params" in params:
-        _remove_unused_param(params, nested_keys, REGULARIZER_REGISTRY, params["regularizer"], "regularizer_params")
-    if "embedding_model_params" in params:
-        _remove_unused_param(params, nested_keys, MODEL_REGISTRY, model_name, "embedding_model_params")
+        _param_without_unused(params, REGULARIZER_REGISTRY, params["regularizer"], "regularizer_params")
+    if "optimizer" in params and "optimizer_params" in params:
+        _param_without_unused(params, OPTIMIZER_REGISTRY, params["optimizer"], "optimizer_params")
+    if "initializer" in params and "initializer_params" in params:
+        _param_without_unused(params, INITIALIZER_REGISTRY, params["initializer"], "initializer_params")
+    if "embedding_model_params" in params and "model_name" in params:
+        _param_without_unused(params, MODEL_REGISTRY, params["model_name"], "embedding_model_params")
+
+    return params
 
 
-def next_hyperparam(model_name, param_grid):
+def _flatten_nested_keys(dictionary):
     """
-    Iterator that gets the next parameter combination from a dictionary containing lists of parameters.
+    Flatten the nested values of a dictionary into tuple keys
+    E.g. {"a": {"b": [1], "c": [2]}} becomes {("a", "b"): [1], ("a", "c"): [2]}
+    """
+    # Find the parameters that are nested dictionaries
+    nested_keys = {k for k, v in dictionary.items() if type(v) is dict}
+    # Flatten them into tuples
+    flattened_nested_keys = {(nk, k): dictionary[nk][k] for nk in nested_keys for k in dictionary[nk]}
+    # Get original dictionary without the nested keys
+    dictionary_without_nested_keys = {k: v for k, v in dictionary.items() if k not in nested_keys}
+    # Return merged dicts
+    return {**dictionary_without_nested_keys, **flattened_nested_keys}
+
+
+def _unflatten_nested_keys(dictionary):
+    """
+    Unflatten the nested values of a dictionary based on the keys that are tuples
+    E.g. {("a", "b"): [1], ("a", "c"): [2]} becomes {"a": {"b": [1], "c": [2]}}
+    """
+    # Find the parameters that are nested dictionaries
+    nested_keys = {k[0] for k in dictionary if type(k) is tuple}
+    # Select the parameters which were originally nested and unflatten them
+    nested_dict = {nk: {k[1]: v for k, v in dictionary.items() if k[0] == nk} for nk in nested_keys}
+    # Get original dictionary without the nested keys
+    dictionary_without_nested_keys = {k: v for k, v in dictionary.items() if type(k) is not tuple}
+    # Return merged dicts
+    return {**dictionary_without_nested_keys, **nested_dict}
+
+
+def _get_param_hash(param):
+    """
+    Get the hash of a param dictionary.
+    It first unflattens nested dicts, removes unused nested parameters, nests them again and then create a frozenset
+    based on the resulting items (tuples).
+    Note that the flattening and unflattening dict functions are idempotent.
 
     Parameters
     ----------
-    model_name: str
-        The name of the model (e.g. 'ComplEx').
+    param: dict
+        Parameter configuration.
+        Example::
+            param_grid = {"k": 50, "eta": 2, "optimizer_params": {"lr": 0.1}}
+
+    Returns
+    -------
+    str
+        Hash of the param dictionary.
+    """
+    # Remove parameters that are not used by particular configurations
+    # For example, if the regularization is None, there is no need for the regularization lambda
+    flattened_params = _flatten_nested_keys(_remove_unused_params(_unflatten_nested_keys(param)))
+    return hash(frozenset(flattened_params.items()))
+
+
+class ParamHistory(object):
+    """
+    Used to evaluates whether a particular parameter configuration has already been previously seen or not.
+    To achieve that, we hash each parameter configuration, removing unused parameters first.
+    """
+    def __init__(self):
+        """The param history is a set of hashes."""
+        self.param_hash_history = set()
+
+    def add(self, param):
+        """Add hash of parameter configuration to history."""
+        self.param_hash_history.add(_get_param_hash(param))
+
+    def __contains__(self, other):
+        """Verify whether hash of parameter configuration is present in history."""
+        return _get_param_hash(other) in self.param_hash_history
+
+
+def _next_hyperparam(param_grid):
+    """
+    Iterator that gets the next parameter combination from a dictionary containing lists of parameters.
+    The parameter combinations are deterministic and go over all possible combinations present in the parameter grid.
+
+    Parameters
+    ----------
     param_grid: dict
         Parameter configurations.
         Example::
@@ -683,73 +772,89 @@ def next_hyperparam(model_name, param_grid):
         One particular combination of parameters.
 
     """
-    # Make scalars into lists
-    param_grid = {k: v if isinstance(v, Iterable) and not isinstance(v, str) else [v] for k, v in param_grid.items()}
+    param_history = ParamHistory()
 
-    # Find the parameters that are nested dictionaries
-    nested_keys = {k for k, v in param_grid.items() if type(v) is dict}
-
-    # Flatten the nested values of a dictionary based on precomputed nested_keys
-    # E.g. {"a": {"b": [1], "c": [2]}} becomes
-    #      {("a", "b"): [1], ("a", "c"): [2]}
-    def flatten_nested_keys(dictionary):
-        flattened_nested_keys = {(nk, k): dictionary[nk][k] for nk in nested_keys for k in dictionary[nk]}
-        dictionary_without_nested_keys = {k: v for k, v in dictionary.items() if k not in nested_keys}
-        return {**dictionary_without_nested_keys, **flattened_nested_keys}
-
-    flattened_param_grid = flatten_nested_keys(param_grid)
-
-    param_history = set()
+    # Flatten nested dictionaries so we can apply itertools.product to get all possible parameter combinations
+    flattened_param_grid = _flatten_nested_keys(param_grid)
 
     for values in product(*flattened_param_grid.values()):
         # Get one single parameter combination as a flattened dictionary
         param = dict(zip(flattened_param_grid.keys(), values))
 
-        # Select the parameters which were originally nested and unflatten them
-        nested_param = {nk: {k[1]: v for k, v in param.items() if k[0] == nk} for nk in nested_keys}
-
-        # Merge the original parameter combination with the unflattened combination
-        params_without_nested_keys = {k: v for k, v in param.items() if not type(k) is tuple}
-        param = {**params_without_nested_keys, **nested_param}
-
-        # Remove parameters that are not used by particular configurations
-        # For example, if the regularization is None, there is no need for the regularization lambda
-        remove_unused_params(param, nested_keys, model_name)
-
         # Only yield unique parameter combinations
-        param_hash = hash(frozenset(flatten_nested_keys(param).items()))
-        if param_hash in param_history:
+        if param in param_history:
             continue
         else:
-            param_history.add(param_hash)
-            yield param
+            param_history.add(param)
+            # Yields nested configuration (unflattened) without useless parameters
+            yield _remove_unused_params(_unflatten_nested_keys(param))
 
 
-def randomly_sample_params(param_grid, max_combinations):
+def _sample_parameters(param_grid):
     """
-    For a param_grid with callables, call them creating lists of max_combinations size.
+    Given a param_grid with callables and lists, execute callables and sample lists to return of random combination
+    of parameters.
+
+    Parameters
+    ----------
+
+    param_grid: dict
+        Parameter configurations.
+        Example::
+            param_grid = {"k": [50, 100], "eta": lambda: np.random.choice([1, 2, 3])}
+
+    Returns
+    -------
+
+    param: dict
+        Return dictionary containing sampled parameters.
+
+    """
+    param = {}
+    for k, v in param_grid.items():
+        if callable(v):
+            param[k] = v()
+        elif type(v) is dict:
+            param[k] = _sample_parameters(v)
+        elif isinstance(v, Iterable) and type(v) is not str:
+            param[k] = np.random.choice(v)
+        else:
+            param[k] = v
+    return param
+
+
+def _next_hyperparam_random(param_grid):
+    """
+    Iterator that gets the next parameter combination from a dictionary containing lists of parameters or callables.
+    The parameter combinations are randomly chosen each iteration.
 
     Parameters
     ----------
     param_grid: dict
         Parameter configurations.
         Example::
-            param_grid = {"k": [50, 100], "eta": lambda: np.random.choice([1, 2, 3]}
-    max_combinations: int
-        Maximum number of combinations to consider.
+            param_grid = {"k": [50, 100], "eta": [1, 2, 3]}
+
+    Returns
+    -------
+    params: iterator
+        One particular combination of parameters.
 
     """
-    for k, v in param_grid.items():
-        if callable(v):
-            if max_combinations is None:
-                raise ValueError("If a parameter in the `param_grid` is a function, "
-                                 "`max_combinations` must be set to a value")
-            param_grid[k] = [v() for _ in range(max_combinations)]
-        elif type(v) is dict:
-            randomly_sample_params(v, max_combinations)
+    param_history = ParamHistory()
+
+    while True:
+        param = _sample_parameters(param_grid)
+
+        # Only yield unique parameter combinations
+        if param in param_history:
+            continue
+        else:
+            param_history.add(param)
+            yield _remove_unused_params(param)
 
 
-def scalars_into_lists(param_grid):
+def _scalars_into_lists(param_grid):
     """
     For a param_grid with scalars (instead of lists or callables), transform scalars into lists of size one.
 
@@ -764,13 +869,13 @@ def scalars_into_lists(param_grid):
         if not (callable(v) or isinstance(v, Iterable)) or type(v) is str:
             param_grid[k] = [v]
         elif type(v) is dict:
-            scalars_into_lists(v)
+            _scalars_into_lists(v)
 
 
 def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid, max_combinations=None,
                               param_grid_random_seed=0, use_filter=True, early_stopping=False,
                               early_stopping_params=None, use_test_for_selection=False, rank_against_ent=None,
-                              corrupt_side='s+o', use_default_protocol=True, verbose=False):
+                              corrupt_side='s+o', use_default_protocol=True, retrain_best_model=False, verbose=False):
     """Model selection routine for embedding models via either grid search or random search.
     
     For grid search, pass a fixed ``param_grid`` and leave ``max_combinations`` as `None`
@@ -880,6 +985,9 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         Flag to indicate whether to evaluate head and tail corruptions separately(default:True).
         If this is set to true, it will ignore corrupt_side argument and corrupt both head
         and tail separately and rank triples.
+    retrain_best_model: bool
+        Flag to indicate whether best model should be re-trained at the end with the validation set used in the search.
+        Default: False.
     verbose : bool
         Verbose mode for the model selection procedure (which is independent of the verbose mode in the model fit).
 
@@ -958,17 +1066,14 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         logger.debug("The following arguments were not defined in the parameter grid"
                      " and thus the default values will be used: {}".format(', '.join(undeclared_args)))
 
-    scalars_into_lists(param_grid)
-
-    np.random.seed(param_grid_random_seed)
-    randomly_sample_params(param_grid, max_combinations)
+    param_grid["model_name"] = model_class.name
+    _scalars_into_lists(param_grid)
 
     if max_combinations is not None:
-        model_params_combinations = list(next_hyperparam(model_class.name, param_grid))
-        np.random.shuffle(model_params_combinations)
-        model_params_combinations = model_params_combinations[:max_combinations]
+        np.random.seed(param_grid_random_seed)
+        model_params_combinations = islice(_next_hyperparam_random(param_grid), max_combinations)
     else:
-        model_params_combinations = next_hyperparam(model_class.name, param_grid)
+        model_params_combinations = _next_hyperparam(param_grid)
 
     best_mrr_train = 0
     best_model = None
@@ -993,11 +1098,20 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
     experimental_history = []
 
-    for model_params in tqdm(model_params_combinations, disable=(not verbose)):
+    def evaluation(ranks):
+        mrr = mrr_score(ranks)
+        mr = mr_score(ranks)
+        hits_1 = hits_at_n_score(ranks, n=1)
+        hits_3 = hits_at_n_score(ranks, n=3)
+        hits_10 = hits_at_n_score(ranks, n=10)
+        return mrr, mr, hits_1, hits_3, hits_10
+
+    for model_params in tqdm(model_params_combinations, total=max_combinations, disable=(not verbose)):
         current_result = {
-            "model_name": model_class.__name__,
+            "model_name": model_params["model_name"],
             "model_params": model_params
         }
+        del model_params["model_name"]
         try:
             model = model_class(**model_params)
             model.fit(X_train, early_stopping, early_stopping_params)
@@ -1007,11 +1121,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
                                          use_default_protocol=use_default_protocol,
                                          corrupt_side=corrupt_side)
 
-            curr_mrr = mrr_score(ranks)
-            mr = mr_score(ranks)
-            hits_1 = hits_at_n_score(ranks, n=1)
-            hits_3 = hits_at_n_score(ranks, n=3)
-            hits_10 = hits_at_n_score(ranks, n=10)
+            curr_mrr, mr, hits_1, hits_3, hits_10 = evaluation(ranks)
 
             current_result["results"] = {
                 "mrr": curr_mrr,
@@ -1045,11 +1155,9 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
                 pass
         experimental_history.append(current_result)
 
-    ranks_test = []
-    mrr_test = 0
     if best_model is not None:
-        # Retraining
-        best_model.fit(np.concatenate((X_train, X_valid)), early_stopping, early_stopping_params)
+        if retrain_best_model:
+            best_model.fit(np.concatenate((X_train, X_valid)), early_stopping, early_stopping_params)
 
         ranks_test = evaluate_performance(X_test, model=best_model,
                                           filter_triples=X_filter, verbose=verbose,
@@ -1057,6 +1165,33 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
                                           use_default_protocol=use_default_protocol,
                                           corrupt_side=corrupt_side)
 
-        mrr_test = mrr_score(ranks_test)
+        test_mrr, test_mr, test_hits_1, test_hits_3, test_hits_10 = evaluation(ranks_test)
 
-    return best_model, best_params, best_mrr_train, ranks_test, mrr_test, experimental_history
+        info = \
+            'Best model test results: mr: {} mrr: {} hits 1: {} hits 3: {} hits 10: {}, model: {}, params: {}'.format(
+                test_mrr, test_mr, test_hits_1, test_hits_3, test_hits_10, type(best_model).__name__, best_params
+            )
+
+        logger.debug(info)
+        if verbose:
+            logger.info(info)
+
+        test_evaluation = {
+            "mrr": test_mrr,
+            "mr": test_mr,
+            "hits_1": test_hits_1,
+            "hits_3": test_hits_3,
+            "hits_10": test_hits_10
+        }
+    else:
+        ranks_test = []
+
+        test_evaluation = {
+            "mrr": np.nan,
+            "mr": np.nan,
+            "hits_1": np.nan,
+            "hits_3": np.nan,
+            "hits_10": np.nan
+        }
+
+    return best_model, best_params, best_mrr_train, ranks_test, test_evaluation, experimental_history

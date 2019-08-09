@@ -14,7 +14,7 @@ FB15K-237
 ========== ======== ====== ======== ======== ========== ========================
   Model       MR     MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
 ========== ======== ====== ======== ======== ========== ========================
-  TransE    199     0.32    0.23     0.36      0.50      k: 400;
+  TransE    208     0.31    0.22     0.35      0.50      k: 400;
                                                          epochs: 4000;
                                                          eta: 30;
                                                          loss: multiclass_nll;
@@ -39,7 +39,7 @@ FB15K-237
                                                          check_interval: 100
                                                          };
 
- DistMult   194     0.32      0.23     0.35      0.49    k: 300;
+ DistMult   201     0.31      0.22     0.34      0.49    k: 300;
                                                          epochs: 4000;
                                                          eta: 50;
                                                          loss: multiclass_nll;
@@ -62,22 +62,19 @@ FB15K-237
                                                          check_interval: 100
                                                          };
 
-   ComplEx  158     0.33      0.23     0.36      0.51    k: 350;
+   ComplEx  186     0.32      0.22     0.35      0.50    k: 350;
                                                          epochs: 4000;
                                                          eta: 30;
                                                          loss: multiclass_nll;
-                                                         loss_params:
-                                                         alpha: 1;
-                                                         margin: 0.5;
                                                          optimizer: adam;
                                                          optimizer_params:
-                                                         lr: 0.0001;
+                                                         lr: 0.00005;
                                                          seed: 0;
                                                          regularizer: LP;
                                                          regularizer_params:
                                                          lambda: 0.0001;
-                                                         p: 2;
-                                                         batches_count: 50;
+                                                         p: 3;
+                                                         batches_count: 64;
                                                          early_stopping:{
                                                          x_valid: validation[::10],
                                                          criteria: mrr,
@@ -88,7 +85,7 @@ FB15K-237
                                                          };
                                                          
 
-   HolE     175     0.32       0.22     0.35       0.49  k: 350;
+   HolE     182     0.31       0.21     0.34       0.48  k: 350;
                                                          epochs: 4000;
                                                          eta: 50;
                                                          loss: multiclass_nll;
@@ -126,7 +123,7 @@ WN18RR
 ========== ========= ====== ======== ======== ========== =======================
   Model       MR      MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
 ========== ========= ====== ======== ======== ========== =======================
-  TransE    2929      0.23    0.03     0.39      0.54     k: 350;
+  TransE    2929      0.22    0.03     0.39      0.54     k: 350;
                                                           epochs: 4000;
                                                           eta: 30;
                                                           loss: multiclass_nll;
@@ -151,7 +148,7 @@ WN18RR
                                                           check_interval: 100
                                                           };
 
- DistMult   5186      0.48    0.45     0.49      0.54     k: 350;
+ DistMult   5186      0.45    0.45     0.49      0.54     k: 350;
                                                           epochs: 4000;
                                                           eta: 30;
                                                           loss: multiclass_nll;
@@ -232,7 +229,7 @@ YAGO3-10
 ======== ======== ====== ======== ======== ========= =========================
  Model      MR     MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
 ======== ======== ====== ======== ======== ========= =========================
-TransE   1119      0.50   0.40     0.57     0.68      k: 350;
+TransE   1124      0.49   0.39     0.56     0.67      k: 350;
                                                       epochs: 4000;
                                                       eta: 30;
                                                       loss: multiclass_nll;
@@ -257,7 +254,7 @@ TransE   1119      0.50   0.40     0.57     0.68      k: 350;
                                                       check_interval: 100
                                                       };
                                                       
-DistMult 1348     0.50   0.41     0.55     0.67       k: 350;
+DistMult 1063     0.49   0.40     0.55     0.56       k: 350;
                                                       epochs: 4000;
                                                       eta: 50;
                                                       loss: multiclass_nll;
@@ -280,7 +277,7 @@ DistMult 1348     0.50   0.41     0.55     0.67       k: 350;
                                                       check_interval: 100
                                                       };
 
-ComplEx  1473     0.51   0.42     0.56     0.67       k: 350;
+ComplEx  1508     0.50   0.41     0.55     0.66       k: 350;
                                                       epochs: 4000;
                                                       eta: 30;
                                                       loss: multiclass_nll;
@@ -344,25 +341,30 @@ FB15K
 ========== ======== ====== ======== ======== ========== ========================
   Model       MR     MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
 ========== ======== ====== ======== ======== ========== ========================
-  TransE    105      0.55    0.38     0.68      0.79     k: 150;
-                                                         epochs: 4000;
-                                                         eta: 5;
-                                                         loss: pairwise;
-                                                         loss_params:
-                                                         margin: 0.5;
-                                                         optimizer: adam;
-                                                         optimizer_params:
-                                                         lr: 0.0001;
-                                                         regularizer: LP;
-                                                         regularizer_params:
-                                                         lambda: 0.0001;
-                                                         p: 2;
-                                                         seed: 0;
-                                                         embedding_model_params:
-                                                         norm: 1;
-                                                         normalize_ent_emb: false;
-                                                         batches_count: 10;
-                                                         early_stopping: None;
+  TransE    44      0.63    0.50     0.73      0.85     k: 150;
+                                                        epochs: 4000;
+                                                        eta: 10;
+                                                        loss: multiclass_nll;
+                                                        optimizer: adam;
+                                                        optimizer_params:
+                                                        lr: 5e-5;
+                                                        regularizer: LP;
+                                                        regularizer_params:
+                                                        lambda: 0.0001;
+                                                        p: 3;
+                                                        embedding_model_params:
+                                                        norm: 1;
+                                                        normalize_ent_emb: false;
+                                                        seed: 0;
+                                                        batches_count: 100;
+                                                        early_stopping:{
+                                                        x_valid: validation[::10],
+                                                        criteria: mrr,
+                                                        x_filter: train + validation + test,
+                                                        stop_interval: 2,
+                                                        burn_in: 0,
+                                                        check_interval: 100
+                                                        };
 
  DistMult   179      0.78    0.74     0.82      0.86     k: 200;
                                                          epochs: 4000;
@@ -438,25 +440,30 @@ WN18
 ========== ======== ====== ======== ======== ========== ========================
   Model       MR     MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
 ========== ======== ====== ======== ======== ========== ========================
-TransE     477      0.51    0.20     0.81      0.89     k: 150;
+TransE     262      0.65    0.41     0.88      0.95     k: 150;
                                                         epochs: 4000;
-                                                        eta: 5;
-                                                        loss: pairwise;
-                                                        loss_params:
-                                                        margin: 0.5;
+                                                        eta: 10;
+                                                        loss: multiclass_nll;
                                                         optimizer: adam;
                                                         optimizer_params:
-                                                        lr: 0.0001;
+                                                        lr: 5e-5;
                                                         regularizer: LP;
                                                         regularizer_params:
                                                         lambda: 0.0001;
-                                                        p: 2;
+                                                        p: 3;
                                                         embedding_model_params:
                                                         norm: 1;
                                                         normalize_ent_emb: false;
                                                         seed: 0;
-                                                        batches_count: 10;
-                                                        early_stopping: None;
+                                                        batches_count: 100;
+                                                        early_stopping:{
+                                                        x_valid: validation[::10],
+                                                        criteria: mrr,
+                                                        x_filter: train + validation + test,
+                                                        stop_interval: 2,
+                                                        burn_in: 0,
+                                                        check_interval: 100
+                                                        };
                                                         
  DistMult   755      0.82    0.72     0.92      0.94     k: 200;
                                                          epochs: 4000;
@@ -527,7 +534,7 @@ To reproduce the above results: ::
     $ python predictive_performance.py
 
 
-.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~43 hours on
+.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~53 hours on
     an Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box equipped with a Tesla V100 16GB.
 
 
@@ -546,14 +553,14 @@ Experiments can be limited to specific models-dataset combinations as follows: :
 Runtime Performance
 -------------------
 
-Training the models on FB15K-237 (``k=200, eta=2, batches_count=100, loss=nll``), on an Intel Xeon Gold 6142, 64 GB
+Training the models on FB15K-237 (``k=350, eta=30, batches_count=100, loss=multiclass_nll``), on an Intel Xeon Gold 6142, 64 GB
 Ubuntu 16.04 box equipped with a Tesla V100 16GB gives the following runtime report:
 
 ======== ==============
 model     seconds/epoch
 ======== ==============
-ComplEx     3.19
-TransE      3.26
-DistMult    2.61
-HolE        3.21
+ComplEx     3.40
+TransE      2.39
+DistMult    2.40
+HolE        3.30
 ======== ==============

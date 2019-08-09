@@ -1,6 +1,6 @@
 import numpy as np
 from ..datasets import AmpligraphDatasetAdapter
-
+import tempfile
 import sqlite3
 import time
 import os
@@ -30,6 +30,7 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         self.dbname = existing_db_name
         # flag indicating whether we are using existing db
         self.using_existing_db = False
+        self.temp_dir = None
         if self.dbname is not None:
             # If we are using existing db then the mappings need to be passed
             assert(self.rel_to_idx is not None)
@@ -38,7 +39,7 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
             self.using_existing_db = True
             self.rel_to_idx = rel_to_idx
             self.ent_to_idx = ent_to_idx
-            
+
     def get_db_name(self):
         """Returns the db name
         """
@@ -51,7 +52,9 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
             return
         if self.dbname is not None:
             self.cleanup()
-        self.dbname = 'Ampligraph_{}.db'.format(int(time.time()))
+
+        self.temp_dir = tempfile.TemporaryDirectory(suffix=None, prefix='ampligraph_', dir=None)
+        self.dbname = os.path.join(self.temp_dir.name, 'Ampligraph_{}.db'.format(int(time.time())))
 
         conn = sqlite3.connect("{}".format(self.dbname))
         cur = conn.cursor()
@@ -439,10 +442,10 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         if cur_integrity.fetchone()[0] == 0:
             raise Exception('Data integrity is corrupted. The tables have been modified.')
 
-        query1 = "select object from triples_table INDEXED BY triples_table_sp_idx \
-                    where subject=" + str(x_triple[0]) + " and predicate=" + str(x_triple[1])
-        query2 = "select subject from triples_table INDEXED BY triples_table_po_idx \
-                    where predicate=" + str(x_triple[1]) + " and object=" + str(x_triple[2])
+        query1 = "select " + str(x_triple[2]) + " union select distinct object from triples_table INDEXED BY \
+                    triples_table_sp_idx  where subject=" + str(x_triple[0]) + " and predicate=" + str(x_triple[1])
+        query2 = "select  " + str(x_triple[0]) + " union select distinct subject from triples_table INDEXED BY \
+                    triples_table_po_idx where predicate=" + str(x_triple[1]) + " and object=" + str(x_triple[2])
         
         cur1.execute(query1)
         cur2.execute(query2)
@@ -473,27 +476,29 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
             return
         
         # Drop the created tables
-        conn = sqlite3.connect("{}".format(self.dbname))         
-        cur = conn.cursor()
-        cur.execute("drop trigger IF EXISTS entity_table_del_integrity_check_trigger")
-        cur.execute("drop trigger IF EXISTS entity_table_ins_integrity_check_trigger")
-        cur.execute("drop trigger IF EXISTS entity_table_upd_integrity_check_trigger")
+        if self.dbname is not None:
+            conn = sqlite3.connect("{}".format(self.dbname))         
+            cur = conn.cursor()
+            cur.execute("drop trigger IF EXISTS entity_table_del_integrity_check_trigger")
+            cur.execute("drop trigger IF EXISTS entity_table_ins_integrity_check_trigger")
+            cur.execute("drop trigger IF EXISTS entity_table_upd_integrity_check_trigger")
 
-        cur.execute("drop trigger IF EXISTS triples_table_del_integrity_check_trigger")
-        cur.execute("drop trigger IF EXISTS triples_table_upd_integrity_check_trigger")
-        cur.execute("drop trigger IF EXISTS triples_table_ins_integrity_check_trigger")
-        cur.execute("drop table IF EXISTS integrity_check")
-        cur.execute("drop index IF EXISTS triples_table_po_idx")
-        cur.execute("drop index IF EXISTS triples_table_sp_idx")
-        cur.execute("drop index IF EXISTS triples_table_type_idx")
-        cur.execute("drop table IF EXISTS triples_table")
-        cur.execute("drop table IF EXISTS entity_table")
-        cur.close()
-        conn.close()
-        try:
-            os.remove(self.dbname)
-        except OSError:
-            logger.warning('Unable to remove the created temperory files.')
-            logger.warning('Filename:{}'.format(self.dbname))
-            
-        self.dbname = None
+            cur.execute("drop trigger IF EXISTS triples_table_del_integrity_check_trigger")
+            cur.execute("drop trigger IF EXISTS triples_table_upd_integrity_check_trigger")
+            cur.execute("drop trigger IF EXISTS triples_table_ins_integrity_check_trigger")
+            cur.execute("drop table IF EXISTS integrity_check")
+            cur.execute("drop index IF EXISTS triples_table_po_idx")
+            cur.execute("drop index IF EXISTS triples_table_sp_idx")
+            cur.execute("drop index IF EXISTS triples_table_type_idx")
+            cur.execute("drop table IF EXISTS triples_table")
+            cur.execute("drop table IF EXISTS entity_table")
+            cur.close()
+            conn.close()
+            try:
+                if self.temp_dir is not None:
+                    self.temp_dir.cleanup()
+            except OSError:
+                logger.warning('Unable to remove the created temperory files.')
+                logger.warning('Filename:{}'.format(self.dbname))
+
+            self.dbname = None
