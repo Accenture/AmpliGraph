@@ -130,6 +130,11 @@ def restore_model(model_name_path=None):
     model = None
     logger.info('Will load model {}.'.format(model_name_path))
 
+    if not os.path.exists(model_name_path):
+        msg = 'No model found: {}.'.format(model_name_path)
+        logger.debug(msg)
+        raise FileNotFoundError(msg)
+
     try:
         with open(model_name_path, 'rb') as fr:
             restored_obj = pickle.load(fr)
