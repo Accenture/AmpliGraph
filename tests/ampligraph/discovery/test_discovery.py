@@ -214,35 +214,39 @@ def test_find_duplicates():
     model = ComplEx(k=2, batches_count=2)
     model.fit(X)
 
-    dups, _ = find_duplicates(X, model, tolerance=1.0)
-
     entities = set('a b c d e f'.split())
+    relations = set('x y'.split())
 
-    assert len(dups) <= len(entities)
-    assert all(len(d) <= len(entities) for d in dups)
-    assert all(d.issubset(entities) for d in dups)
+    def asserts(tol, dups, ent_rel, subspace):
+        assert tol > 0.0
+        assert len(dups) <= len(ent_rel)
+        assert all(len(d) <= len(ent_rel) for d in dups)
+        assert all(d.issubset(subspace) for d in dups)
 
+    dups, tol = find_duplicates(X, model, mode='triple', tolerance='auto', expected_fraction_duplicates=0.5)
+    asserts(tol, dups, X, {tuple(x) for x in X})
 
-def test_find_duplicates_auto():
-    X = np.array([['a', 'y', 'b'],
-                  ['b', 'y', 'a'],
-                  ['a', 'y', 'c'],
-                  ['c', 'y', 'a'],
-                  ['a', 'y', 'd'],
-                  ['c', 'x', 'd'],
-                  ['b', 'y', 'c'],
-                  ['f', 'y', 'e']])
-    model = ComplEx(k=2, batches_count=2)
-    model.fit(X)
+    dups, tol = find_duplicates(X, model, mode='triple', tolerance=1.0)
+    assert tol == 1.0
+    asserts(tol, dups, X, {tuple(x) for x in X})
 
-    dups, tol = find_duplicates(X, model, tolerance='auto', expected_fraction_duplicates=0.5)
+    dups, tol = find_duplicates(np.unique(X[:, 0]), model, mode='entity', tolerance='auto', expected_fraction_duplicates=0.5)
+    asserts(tol, dups, entities, entities)
 
-    entities = set('a b c d e f'.split())
+    dups, tol = find_duplicates(np.unique(X[:, 2]), model, mode='entity', tolerance='auto', expected_fraction_duplicates=0.5)
+    asserts(tol, dups, entities, entities)
 
-    assert tol > 0.0
-    assert len(dups) <= len(entities)
-    assert all(len(d) <= len(entities) for d in dups)
-    assert all(d.issubset(entities) for d in dups)
+    dups, tol = find_duplicates(np.unique(X[:, 1]), model, mode='relation', tolerance='auto', expected_fraction_duplicates=0.5)
+    asserts(tol, dups, relations, relations)
+
+    with pytest.raises(ValueError):
+        find_duplicates(X, model, mode='hah')
+    with pytest.raises(ValueError):
+        find_duplicates(X, model, mode='entity')
+    with pytest.raises(ValueError):
+        find_duplicates(X, model, mode='relation')
+    with pytest.raises(ValueError):
+        find_duplicates(np.unique(X[:, 0]), model, mode='triple')
 
 
 def test_query_topn():
