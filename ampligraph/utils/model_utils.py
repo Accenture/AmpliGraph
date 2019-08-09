@@ -143,7 +143,9 @@ def restore_model(model_name_path=None):
         model.rel_to_idx = restored_obj['rel_to_idx']
         model.restore_model_params(restored_obj)
     except (IOError, pickle.UnpicklingError) as e:
-        logger.debug('No model found: {}.'.format(e))
+        msg = 'No model found: {}.'.format(e)
+        logger.debug(msg)
+        raise Exception(msg)
 
     return model
 
