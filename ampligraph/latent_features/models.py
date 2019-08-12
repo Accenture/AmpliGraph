@@ -211,7 +211,7 @@ class EmbeddingModel(abc.ABC):
             The regularization strategy to use with the loss function.
 
             - ``None``: the model will not use any regularizer (default)
-            - 'LP': the model will use L1, L2 or L3 based on the value of ``regularizer_params['p']`` (see below).
+            - ``LP``: the model will use L1, L2 or L3 based on the value of ``regularizer_params['p']`` (see below).
 
         regularizer_params : dict
             Dictionary of regularizer-specific hyperparameters. See the
@@ -219,6 +219,20 @@ class EmbeddingModel(abc.ABC):
             documentation for additional details.
 
             Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
+            
+        initializer : string
+            The type of initializer to use.
+
+            - ``normal``: The embeddings will be initialized from a normal distribution
+            - ``uniform``: The embeddings will be initialized from a uniform distribution
+            - ``xavier``: The embeddings will be initialized using xavier strategy (default)
+
+        initializer_params : dict
+            Dictionary of initializer-specific hyperparameters. See the
+            :ref:`initializer <ref-init>`
+            documentation for additional details.
+
+            Example: ``initializer_params={'mean': 0, 'std': 0.001}`` if ``initializer='normal'``.
 
         verbose : bool
             Verbose mode.
@@ -369,6 +383,7 @@ class EmbeddingModel(abc.ABC):
         """
 
         self.trained_model_params = in_dict['model_params']
+        # Try catch is for backward compatibility
         try:
             self.dealing_with_large_graphs = in_dict['large_graph']
         except KeyError:
@@ -1040,7 +1055,13 @@ class EmbeddingModel(abc.ABC):
         if self.eval_config['default_protocol']:
             self.eval_config['corrupt_side'] = 's+o'
 
-    def test_retrieve(self, mode):
+    def _test_generator(self, mode):
+        """Generates the test/validation data. If filter_triples are passed, then it returns the False Negatives 
+           that could be present in the generated corruptions.
+           
+           If we are dealing with large graphs, then along with the above, this method returns the idx of the 
+           entities present in the batch and their embeddings. 
+        """
         if self.is_filtered:
             test_generator = partial(self.eval_dataset_handle.get_next_batch_with_filter,
                                      batch_size=1, dataset_type=mode)
@@ -1068,9 +1089,9 @@ class EmbeddingModel(abc.ABC):
                 
             yield out, indices_obj, indices_sub, entity_embeddings, unique_ent
             
-    def generate_corruptions(self):
+    def _generate_corruptions(self):
         """Corruption generator for large graphs.
-           It generates corruptions in batches and loads corresponding variables on GPU
+           It generates corruptions in batches and also yields the corresponding entity embeddings.
         """
         
         corruption_entities = self.eval_config.get('corruption_entities', DEFAULT_CORRUPTION_ENTITIES)
@@ -1100,13 +1121,16 @@ class EmbeddingModel(abc.ABC):
     def _initialize_eval_graph(self, mode="test"):
         """Initialize the evaluation graph. 
         
-        Use prime number based filtering strategy (refer set_filter_for_eval()), if the filter is set
+        Parameters
+        ----------
+        mode: string
+            Indicates which data generator to use.
         """
 
         # Use a data generator which returns a test triple along with the subjects and objects indices for filtering
         # The last two data are used if the graph is large. They are the embeddings of the entities that must be 
         # loaded on the GPU before scoring and the indices of those embeddings. 
-        dataset = tf.data.Dataset.from_generator(partial(self.test_retrieve, mode=mode),
+        dataset = tf.data.Dataset.from_generator(partial(self._test_generator, mode=mode),
                                                  output_types=(tf.int32, tf.int32, tf.int32, tf.float32, tf.int32),
                                                  output_shapes=((1, 3), (None, 1), (None, 1), 
                                                                 (None, self.internal_k), (None, 1))) 
@@ -1149,7 +1173,7 @@ class EmbeddingModel(abc.ABC):
 
                 # Corruption generator - 
                 # returns corruptions and their corresponding embeddings that need to be loaded on the GPU
-                corruption_generator = tf.data.Dataset.from_generator(self.generate_corruptions, 
+                corruption_generator = tf.data.Dataset.from_generator(self._generate_corruptions, 
                                                                       output_types=(tf.int32, tf.float32),
                                                                       output_shapes=((None, 1), 
                                                                                      (None, self.internal_k))) 
@@ -1360,6 +1384,11 @@ class EmbeddingModel(abc.ABC):
         ----------
         dataset_handle : Object of AmpligraphDatasetAdapter
                          This contains handles of the generators that would be used to get test triples and filters
+                         
+        Returns
+        -------
+        ranks : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
+                An array of ranks of test triples.
         """
         if not self.is_fitted:
             msg = 'Model has not been fitted.'
@@ -1606,6 +1635,11 @@ class RandomBaseline(EmbeddingModel):
         ----------
         dataset_handle : Object of AmpligraphDatasetAdapter
                          This contains handles of the generators that would be used to get test triples and filters
+        
+        Returns
+        -------
+        ranks : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
+                An array of ranks of test triples.
         """
         self.eval_dataset_handle = dataset_handle
         test_data_size = self.eval_dataset_handle.get_size('test')
@@ -1782,6 +1816,20 @@ class TransE(EmbeddingModel):
 
             Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if
             ``regularizer='LP'``.
+            
+        initializer : string
+            The type of initializer to use.
+
+            - ``normal``: The embeddings will be initialized from a normal distribution
+            - ``uniform``: The embeddings will be initialized from a uniform distribution
+            - ``xavier``: The embeddings will be initialized using xavier strategy (default)
+
+        initializer_params : dict
+            Dictionary of initializer-specific hyperparameters. See the
+            :ref:`initializer <ref-init>`
+            documentation for additional details.
+
+            Example: ``initializer_params={'mean': 0, 'std': 0.001}`` if ``initializer='normal'``.
 
         verbose : bool
             Verbose mode
@@ -2071,6 +2119,20 @@ class DistMult(EmbeddingModel):
             documentation for additional details.
 
             Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
+            
+        initializer : string
+            The type of initializer to use.
+
+            - ``normal``: The embeddings will be initialized from a normal distribution
+            - ``uniform``: The embeddings will be initialized from a uniform distribution
+            - ``xavier``: The embeddings will be initialized using xavier strategy (default)
+
+        initializer_params : dict
+            Dictionary of initializer-specific hyperparameters. See the
+            :ref:`initializer <ref-init>`
+            documentation for additional details.
+
+            Example: ``initializer_params={'mean': 0, 'std': 0.001}`` if ``initializer='normal'``.
 
         verbose : bool
             Verbose mode.
@@ -2361,6 +2423,21 @@ class ComplEx(EmbeddingModel):
             documentation for additional details.
 
             Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
+            
+        initializer : string
+            The type of initializer to use.
+
+            - ``normal``: The embeddings will be initialized from a normal distribution
+            - ``uniform``: The embeddings will be initialized from a uniform distribution
+            - ``xavier``: The embeddings will be initialized using xavier strategy (default)
+
+        initializer_params : dict
+            Dictionary of initializer-specific hyperparameters. See the
+            :ref:`initializer <ref-init>`
+            documentation for additional details.
+
+            Example: ``initializer_params={'mean': 0, 'std': 0.001}`` if ``initializer='normal'``.
+            
         verbose : bool
             Verbose mode.
         """
@@ -2669,6 +2746,20 @@ class HolE(ComplEx):
             documentation for additional details.
 
             Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
+            
+        initializer : string
+            The type of initializer to use.
+
+            - ``normal``: The embeddings will be initialized from a normal distribution
+            - ``uniform``: The embeddings will be initialized from a uniform distribution
+            - ``xavier``: The embeddings will be initialized using xavier strategy (default)
+
+        initializer_params : dict
+            Dictionary of initializer-specific hyperparameters. See the
+            :ref:`initializer <ref-init>`
+            documentation for additional details.
+
+            Example: ``initializer_params={'mean': 0, 'std': 0.001}`` if ``initializer='normal'``.
 
         verbose : bool
             Verbose mode.

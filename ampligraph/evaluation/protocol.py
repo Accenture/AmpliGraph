@@ -432,8 +432,8 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         
         * We compute the rank of the test triple by comparing against ALL the corruptions. 
         
-        * We then compute the number of False negatives that are ranked higher than the test triple; and then  
-        subtract this value from the above computed rank to yield the final filtered rank.
+        * We then compute the number of False negatives that are ranked higher than the test triple; and then 
+          subtract this value from the above computed rank to yield the final filtered rank.
         
         **Execution Time:** This method takes ~4 minutes on FB15K using ComplEx
         (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
@@ -497,7 +497,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     Returns
     -------
     ranks : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
-        An array of ranks of positive test triples.
+        An array of ranks of test triples.
         When ``use_default_protocol=True`` the function returns [n,2]. The first column represents the rank against 
         subject corruptions and the second column represents the rank against object corruptions. 
         In other cases, it returns [n] i.e. rank against the specified corruptions.
@@ -1005,7 +1005,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         The MRR (unfiltered) of the best model computed over the validation set in the model selection loop.
 
     ranks_test : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
-        An array of ranks of positive test triples.
+        An array of ranks of test triples.
         When ``use_default_protocol=True`` the function returns [n,2]. The first column represents the rank against 
         subject corruptions and the second column represents the rank against object corruptions. 
         In other cases, it returns [n] i.e. rank against the specified corruptions.

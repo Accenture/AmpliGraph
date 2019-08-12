@@ -102,7 +102,12 @@ class Initializer(abc.ABC):
 
 @register_initializer("normal", ["mean", "std"])             
 class RandomNormal(Initializer):
-    """Abstract class for initializer .
+    """Initializes from a normal distribution with specified ``mean`` and ``std``
+    
+    .. math::
+
+           \mathcal{N} (\mu, \sigma)
+
     """
     
     name = ""
@@ -110,15 +115,15 @@ class RandomNormal(Initializer):
     class_params = {}
 
     def __init__(self, initializer_params={}, verbose=True, seed=0):
-        """Initialize the Class
+        """Initialize the Random Normal initialization strategy
         
         Parameters
         ----------
         initializer_params : dict
             Consists of key-value pairs. The initializer will check the keys to get the corresponding params:
 
-            - **'mean'**: (float). Mean of the weights(default: 0)
-            - **'std'**: (float): std if the weights (default: 0.05)
+            - **mean**: (float). Mean of the weights(default: 0)
+            - **std**: (float): std of the weights (default: 0.05)
 
             Example: ``initializer_params={'mean': 0, 'std': 0.01}``
         verbose : bool
@@ -176,7 +181,12 @@ class RandomNormal(Initializer):
 
 @register_initializer("uniform", ["low", "high"])             
 class RandomUniform(Initializer):
-    """Abstract class for initializer .
+    """Initializes from a uniform distribution with specified ``low`` and ``high``
+    
+    .. math::
+
+           \mathcal{U} (low, high)
+
     """
     
     name = ""
@@ -184,15 +194,15 @@ class RandomUniform(Initializer):
     class_params = {}
 
     def __init__(self, initializer_params={}, verbose=True, seed=0):
-        """Initialize the Class
+        """Initialize the Uniform initialization strategy
         
         Parameters
         ----------
         initializer_params : dict
             Consists of key-value pairs. The initializer will check the keys to get the corresponding params:
 
-            - **'low'**: (float). lower bound for uniform number (default: -0.05)
-            - **'high'**: (float): upper bound for uniform number (default: 0.05)
+            - **low**: (float). lower bound for uniform number (default: -0.05)
+            - **high**: (float): upper bound for uniform number (default: 0.05)
 
             Example: ``initializer_params={'low': 0, 'high': 0.01}``
         verbose : bool
@@ -250,7 +260,22 @@ class RandomUniform(Initializer):
 
 @register_initializer("xavier", ["uniform"])             
 class Xavier(Initializer):
-    """Abstract class for initializer .
+    r"""Follows the xavier strategy for initialization of layers :cite:`glorot2010understanding`.
+    
+    If ``uniform`` is set to True, then it initializes the layer from the following uniform distribution:
+    
+    .. math::
+        
+        \mathcal{U} ( - \sqrt{ \frac{6}{ fan_{in} + fan_{out} } }, \sqrt{ \frac{6}{ fan_{in} + fan_{out} } } )
+
+    If ``uniform`` is False, then it initializes the layer from the following normal distribution:
+    
+    .. math::
+    
+        \mathcal{N} ( 0, \sqrt{ \frac{2}{ fan_{in} + fan_{out} } } )
+        
+    where :math:`fan_{in}` and :math:`fan_{out}` are number of input units and output units of the layer respectively.
+
     """
     
     name = ""
@@ -258,14 +283,14 @@ class Xavier(Initializer):
     class_params = {}
 
     def __init__(self, initializer_params={}, verbose=True, seed=0):
-        """Initialize the Class
+        """Initialize the Xavier strategy
         
         Parameters
         ----------
         initializer_params : dict
             Consists of key-value pairs. The initializer will check the keys to get the corresponding params:
 
-            - **'uniform'**: (bool). indicates whether to use Xavier Uniform or Xavier Normal initializer.
+            - **uniform**: (bool). indicates whether to use Xavier Uniform or Xavier Normal initializer.
 
             Example: ``initializer_params={'uniform': False}``
         verbose : bool
