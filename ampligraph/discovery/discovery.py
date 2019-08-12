@@ -374,18 +374,35 @@ def _setdiff2d(A, B):
     return A[~ np.sum(np.cumsum(tmp, axis=0) * tmp == 1, axis=1).astype(bool)]
 
 
-def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None, relations_subset=None):
+def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="triple"):
     """
     Perform link-based cluster analysis on a knowledge graph.
 
-    Clustering is exclusive (i.e. a triple is assigned to one and only one
-    cluster).
+    The clustering happens on the embedding space of the entities and relations.
+    For example, if we cluster some entities of a model that uses `k=100` (i.e. embedding space of size 100),
+    we will apply the chosen clustering algorithm on the 100-dimensional space of the provided input samples.
+
+    Clustering can be used to evaluate the quality of the knowledge embeddings, by comparing to natural clusters.
+    For example, in the example below we cluster the embeddings of international football matches and end up
+    finding geographical clusters very similar to the continents.
+    This comparison can be subjective by inspecting a 2D projection of the embedding space or objective using a
+    clustering metric, such as provided here:
+    https://scikit-learn.org/stable/modules/clustering.html#clustering-performance-evaluation
+
+    The choice of the clustering algorithm and its corresponding tuning will greatly impact the results.
+    Please see https://scikit-learn.org/stable/modules/clustering.html#clustering for a list of algorithms,
+    their parameters, and pros and cons.
+
+    Clustering is exclusive (i.e. a triple is assigned to one and only one cluster).
 
     Parameters
     ----------
 
-    X : ndarray, shape [n, 3]
-        The input knowledge graph (triples) to be clustered.
+    X : ndarray, shape [n, 3] or [n]
+        The input to be clustered.
+        X can either be the triples of a knowledge graph, its entities, or its relations.
+        The argument `mode` defines whether X is supposed an array of triples
+        or an array of either entities or relations.
     model : EmbeddingModel
         The fitted model that will be used to generate the embeddings.
         This model must have been fully trained already, be it directly with
@@ -397,16 +414,13 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None,
         to understand the clustering API provided by scikit-learn.
         The default clustering model is sklearn's DBSCAN with its default
         parameters.
-    entities_subset: ndarray, shape [n]
-        The entities to consider for clustering. This is a subset of all the
-        entities included in X.
-        If None, all entities will be clustered.
-        To exclude all relations from clustering, pass an empty array.
-    relations_subset: ndarray, shape [n]
-        The relation types to consider for clustering. This is a subset of
-        all the relation types included in X.
-        If None, all relations will be clustered.
-        To exclude all relations from clustering, pass an empty array.
+    mode: str
+        Clustering mode, whether 'triple', 'entity', or 'relation'.
+        For 'triple' clustering, the algorithm will cluster the concatenation
+        of the embeddings of the subject, predicate and object for each triple.
+        For 'entity' or 'relation' clustering, the algorithm will simply cluster
+        the embeddings of either the provided entities or relations.
+        Default: 'triple'.
 
     Returns
     -------
@@ -418,8 +432,8 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None,
     >>> import requests
     >>> import pandas as pd
     >>> import numpy as np
-    >>> from sklearn.manifold import TSNE
-    >>> from sklearn.cluster import DBSCAN
+    >>> from sklearn.decomposition import PCA
+    >>> from sklearn.cluster import KMeans
     >>> import matplotlib.pyplot as plt
     >>> import seaborn as sns
     >>>
@@ -430,86 +444,88 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), entities_subset=None,
     >>> from ampligraph.latent_features import ComplEx
     >>> from ampligraph.discovery import find_clusters
     >>>
-    >>> # Game of Thrones relations dataset
-    >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
-    >>> open('GoT.csv', 'wb').write(requests.get(url).content)
-    >>> X = load_from_csv('.', 'GoT.csv', sep=',')
+    >>> # International football matches triples
+    >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/football.csv'
+    >>> open('football.csv', 'wb').write(requests.get(url).content)
+    >>> X = load_from_csv('.', 'football.csv', sep=',')[:, 1:]
     >>>
-    >>> model = ComplEx(batches_count=10,
-    >>>                 seed=0,
-    >>>                 epochs=200,
-    >>>                 k=150,
-    >>>                 eta=5,
+    >>> model = ComplEx(batches_count=50,
+    >>>                 epochs=300,
+    >>>                 k=100,
+    >>>                 eta=20,
     >>>                 optimizer='adam',
-    >>>                 optimizer_params={'lr':1e-3},
+    >>>                 optimizer_params={'lr':1e-4},
     >>>                 loss='multiclass_nll',
     >>>                 regularizer='LP',
     >>>                 regularizer_params={'p':3, 'lambda':1e-5},
+    >>>                 seed=0,
     >>>                 verbose=True)
     >>> model.fit(X)
     >>>
-    >>> # Find clusters of embeddings using DBSCAN
-    >>> clusters = find_clusters(X, model, clustering_algorithm=DBSCAN(eps=10))
+    >>> df = pd.DataFrame(X, columns=["s", "p", "o"])
     >>>
-    >>> # Get embeddings
-    >>> s = model.get_embeddings(X[:, 0], embedding_type='entity')
-    >>> p = model.get_embeddings(X[:, 1], embedding_type='relation')
-    >>> o = model.get_embeddings(X[:, 2], embedding_type='entity')
+    >>> teams = np.unique(np.concatenate((df.s[df.s.str.startswith("Team")],
+    >>>                                   df.o[df.o.str.startswith("Team")])))
+    >>> team_embeddings = model.get_embeddings(teams, embedding_type='entity')
     >>>
-    >>> # Project embeddings into 2D space usint t-SNE
-    >>> embeddings_2d = TSNE(n_components=2).fit_transform(np.hstack((s, p, o)))
+    >>> embeddings_2d = PCA(n_components=2).fit_transform(np.array([i for i in team_embeddings]))
+    >>>
+    >>> # Find clusters of embeddings using KMeans
+    >>> kmeans = KMeans(n_clusters=6, n_init=100, max_iter=500)
+    >>> clusters = find_clusters(teams, model, kmeans, mode='entity')
     >>>
     >>> # Plot results
-    >>> df = pd.DataFrame({"s": X[:, 0], "p": X[:, 1], "o": X[:, 2],
-    >>>                    "embedding1": embeddings_2d[:, 0], "embedding2": embeddings_2d[:, 1], "clusters": clusters})
+    >>> df = pd.DataFrame({"teams": teams, "clusters": "cluster" + pd.Series(clusters).astype(str),
+    >>>                    "embedding1": embeddings_2d[:, 0], "embedding2": embeddings_2d[:, 1]})
     >>>
-    >>> plt.figure(figsize=(15, 15))
-    >>> plt.title("Clustered embeddings")
+    >>> plt.figure(figsize=(10, 10))
+    >>> plt.title("Cluster embeddings")
     >>>
-    >>> ax = sns.scatterplot(data=df.assign(clusters=df.clusters.apply(str)+'_'),
-    >>>                      x="embedding1", y="embedding2", hue="clusters")
+    >>> ax = sns.scatterplot(data=df, x="embedding1", y="embedding2", hue="clusters")
     >>>
     >>> texts = []
-    >>>
     >>> for i, point in df.iterrows():
-    >>>     if np.random.uniform() < 0.02:
-    >>>         texts.append(plt.text(point['embedding1']+.02, point['embedding2'], str(point['p'])))
-    >>>
+    >>>     if np.random.uniform() < 0.1:
+    >>>         texts.append(plt.text(point['embedding1']+.02, point['embedding2'], str(point['teams'])))
     >>> adjust_text(texts)
 
     .. image:: ../../docs/img/clustering/clustered_embeddings_docstring.png
 
     """
-
     if not model.is_fitted:
-        raise ValueError("Model has not been fitted.")
+        msg = "Model has not been fitted."
+        logger.error(msg)
+        raise ValueError(msg)
 
     if not hasattr(clustering_algorithm, "fit_predict"):
-        raise ValueError("Clustering algorithm does not have the "
-                         "`fit_predict` method.")
+        msg = "Clustering algorithm does not have the `fit_predict` method."
+        logger.error(msg)
+        raise ValueError(msg)
 
-    s = model.get_embeddings(X[:, 0], embedding_type='entity')
-    p = model.get_embeddings(X[:, 1], embedding_type='relation')
-    o = model.get_embeddings(X[:, 2], embedding_type='entity')
+    modes = ("triple", "entity", "relation")
+    if mode not in modes:
+        msg = "Argument `mode` must be one of the following: {}.".format(", ".join(modes))
+        logger.error(msg)
+        raise ValueError(msg)
 
-    mask = np.ones(len(X), dtype=np.bool)
+    if mode == "triple" and (len(X.shape) != 2 or X.shape[1] != 3):
+        msg = "For 'triple' mode the input X must be a matrix with three columns."
+        logger.error(msg)
+        raise ValueError(msg)
 
-    if entities_subset is not None:
-        if len(entities_subset) == 0:
-            s = np.empty(p.shape)
-            o = np.empty(p.shape)
-        else:
-            mask &= ~(np.isin(X[:, 0], entities_subset) | np.isin(X[:, 2], entities_subset))
+    if mode in ("entity", "relation") and len(X.shape) != 1:
+        msg = "For 'entity' or 'relation' mode the input X must be an array."
+        raise ValueError(msg)
 
-    if relations_subset is not None:
-        if len(relations_subset) == 0:
-            p = np.empty(s.shape)
-        else:
-            mask &= ~np.isin(X[:, 1], relations_subset)
+    if mode == "triple":
+        s = model.get_embeddings(X[:, 0], embedding_type='entity')
+        p = model.get_embeddings(X[:, 1], embedding_type='relation')
+        o = model.get_embeddings(X[:, 2], embedding_type='entity')
+        emb = np.hstack((s, p, o))
+    else:
+        emb = model.get_embeddings(X, embedding_type=mode)
 
-    X = np.hstack((s, p, o))[mask]
-
-    return clustering_algorithm.fit_predict(X)
+    return clustering_algorithm.fit_predict(emb)
 
 
 def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
