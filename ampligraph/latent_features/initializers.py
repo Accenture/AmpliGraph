@@ -84,6 +84,10 @@ class Initializer(abc.ABC):
         
     def get_tf_initializer(self):
         """Create a tensorflow node for initializer
+        
+        Returns
+        -------
+        initializer_instance: An Initializer instance.
         """
         raise NotImplementedError('Abstract Method not implemented!')
         
@@ -96,18 +100,23 @@ class Initializer(abc.ABC):
             number of inputs to the layer (fan in)
         out_shape: int
             number of outputs of the layer (fan out)
+            
+        Returns
+        -------
+        initialized_values: n-d array
+            Initialized weights
         """
         raise NotImplementedError('Abstract Method not implemented!')
 
 
 @register_initializer("normal", ["mean", "std"])             
 class RandomNormal(Initializer):
-    """Initializes from a normal distribution with specified ``mean`` and ``std``
+    r"""Initializes from a normal distribution with specified ``mean`` and ``std``
     
     .. math::
-
-           \mathcal{N} (\mu, \sigma)
-
+    
+        \mathcal{N} (\mu, \sigma)
+        
     """
     
     name = ""
@@ -181,12 +190,12 @@ class RandomNormal(Initializer):
 
 @register_initializer("uniform", ["low", "high"])             
 class RandomUniform(Initializer):
-    """Initializes from a uniform distribution with specified ``low`` and ``high``
+    r"""Initializes from a uniform distribution with specified ``low`` and ``high``
     
     .. math::
-
-           \mathcal{U} (low, high)
-
+        
+        \mathcal{U} (low, high)
+        
     """
     
     name = ""

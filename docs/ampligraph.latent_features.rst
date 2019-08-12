@@ -46,6 +46,7 @@ AmpliGraph features a number of abstract classes that can be extended to design 
     EmbeddingModel
     Loss
     Regularizer
+    Initializer
 
 
 .. _scoring:
