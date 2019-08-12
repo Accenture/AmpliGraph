@@ -183,7 +183,7 @@ def test_find_clusters():
                   ['f', 'y', 'e']])
     model = ComplEx(k=2, batches_count=2)
     model.fit(X)
-    clustering_algorithm = DBSCAN(min_samples=1)
+    clustering_algorithm = DBSCAN(eps=1e-3, min_samples=1)
 
     labels = find_clusters(X, model, clustering_algorithm)
     assert np.array_equal(labels, np.array([0, 1, 2, 3, 4, 5, 6, 7]))
