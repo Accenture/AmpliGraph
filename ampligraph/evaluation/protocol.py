@@ -412,10 +412,13 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     """Evaluate the performance of an embedding model.
 
     The evaluation protocol follows the procedure defined in :cite:`bordes2013translating` and can be summarised as:
-    1. Artificially generate negative triples by corrupting first the subject and then the object
-    2. Remove the true triples from the set returned by (1)
-    (the true triples are usually the concatenation of training, validation and test sets)
-    3. Rank each test triple against all remaining triples return by (2)
+
+    #. Artificially generate negative triples by corrupting first the subject and then the object.
+
+    #. Remove the positive triples from the set returned by (1) -- positive triples are usually the concatenation of training, validation and test sets.
+
+    #. Rank each test triple against all remaining triples returned by (2).
+
 
     With the ranks of both object and subject corruptions, one may compute metrics such as the MRR by
     calculating them separately and then averaging them out.
@@ -480,14 +483,14 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         Specifies which side of the triple to corrupt:
 
         - 's': corrupt only subject.
-        - 'o': corrupt only object
+        - 'o': corrupt only object.
         - 's+o': corrupt both subject and object.
-        With ``use_default_protocol=True``, this mode is forced irrespective of the user choice.
+          With ``use_default_protocol`` set to `True`, this mode is forced irrespective of the user choice.
 
     use_default_protocol: bool
         Flag to indicate whether to use the standard protocol used in literature defined in
         :cite:`bordes2013translating` (default: True).
-        If set to ``True``, ``corrupt_side`` will be set to `'s+o'`.
+        If set to `True`, ``corrupt_side`` will be set to `'s+o'`.
         This corresponds to the evaluation protocol used in literature, where head and tail corruptions
         are evaluated separately.
 
