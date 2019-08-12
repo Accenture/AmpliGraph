@@ -420,41 +420,37 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
     .. note::
         When *filtered* mode is enabled (i.e. `filtered_triples` is not ``None``),
-        to speed up the procedure, we adopt a hashing-based strategy to handle the set difference problem.
-        This strategy is as described below:
+        to speed up the procedure, we use a database based filtering. This strategy is as described below:
 
-        * We compute unique entities and relations in our dataset.
+        * Store the filter_triples in the DB
 
-        * We assign unique prime numbers for entities (unique for subject and object separately) and for relations
-          and create three separate hash tables.
+        * For each test triple, we generate corruptions for evaluation and score them. 
 
-        * For each triple in ``filter_triples``, we get the prime numbers associated with subject, relation
-          and object by mapping to their respective hash tables. We then compute the **prime product for the
-          filter triple**. We store this triple product.
+        * The corruptions may contain some False Negatives. We find such statements by quering the database. 
 
-        * Since the numbers assigned to subjects, relations and objects are unique, their prime product is also
-          unique. i.e. a triple :math:`(a, b, c)` would have a different product compared to triple
-          :math:`(c, b, a)` as :math:`a, c` of subject have different primes compared to :math:`a, c` of object.
-
-        * While generating corruptions for evaluation, we hash the triple's entities and relations and get
-          the associated prime number and compute the **prime product for the corrupted triple**.
-
-        * If this product is present in the products stored for the filter set, then we remove the corresponding
-          corrupted triple (as it is a duplicate i.e. the corruption triple is present in ``filter_triples``)
-
-        * Using this approach we generate filtered corruptions for evaluation.
-
-        **Execution Time:** This method takes ~20 minutes on FB15K using ComplEx
+        * From the computed scores we retrieve the scores of the False Negatives.
+        
+        * We compute the rank of the test triple by comparing against ALL the corruptions. 
+        
+        * We then compute the number of False negatives that are ranked higher than the test triple; and then  
+        subtract this value from the above computed rank to yield the final filtered rank.
+        
+        **Execution Time:** This method takes ~4 minutes on FB15K using ComplEx
         (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
 
     .. hint::
         When ``rank_against_ent=None``, the method will use all distinct entities in the knowledge graph ``X``
-        to generate negatives to rank against. If ``X`` includes more than 1 million unique
-        entities and relations, the method will return a runtime error.
-        To solve the problem, it is recommended to pass the desired entities to use to generate corruptions
-        to ``rank_against_ent``. Besides, trying to rank a positive against an extremely large number of negatives
-        may be overkilling. As a reference, the popular FB15k-237 dataset has ~15k distinct entities. The evaluation
-        protocol ranks each positives against 15k corruptions per side.
+        to generate negatives to rank against. This might slow down the eval. Some of the corruptions may not even 
+        make sense for the task that one may be interested in. 
+        
+        For eg, consider the case <Actor, acted_in, ?>, where we are mainly interested in such movies that an actor 
+        has acted in. A sensible way to evaluate this would be to rank against all the movie entities and compute 
+        the desired metrics. In such cases, where focus us on particular task, it is recommended to pass the desired 
+        entities to use to generate corruptions to ``rank_against_ent``. Besides, trying to rank a positive against an 
+        extremely large number of negatives may be overkilling. 
+        
+        As a reference, the popular FB15k-237 dataset has ~15k distinct entities. The evaluation protocol ranks each 
+        positives against 15k corruptions per side.
 
     Parameters
     ----------
@@ -497,14 +493,15 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
             When ``use_default_protocol=True`` the function will return 2*n ranks.
             The first n elements of ranks are obtained against subject corruptions. From n+1 until 2n ranks are obtained
             against object corruptions.
+            
     Returns
     -------
-    ranks : ndarray, shape [n] or [2*n]
+    ranks : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
         An array of ranks of positive test triples.
-        When ``use_default_protocol=True`` or ``corrupt_side='s+o'``, the function returns 2*n ranks instead of n.
-        In that case the first n elements of ranks are obtained against subject corruptions. From n+1 until 2n ranks
-        are obtained against object corruptions.
-
+        When ``use_default_protocol=True`` the function returns [n,2]. The first column represents the rank against 
+        subject corruptions and the second column represents the rank against object corruptions. 
+        In other cases, it returns [n] i.e. rank against the specified corruptions.
+        
     Examples
     --------
     >>> import numpy as np
@@ -1007,9 +1004,12 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     best_mrr_train : float
         The MRR (unfiltered) of the best model computed over the validation set in the model selection loop.
 
-    ranks_test : ndarray, shape [n]
-        The ranks of each triple in the test set X['test].
-
+    ranks_test : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
+        An array of ranks of positive test triples.
+        When ``use_default_protocol=True`` the function returns [n,2]. The first column represents the rank against 
+        subject corruptions and the second column represents the rank against object corruptions. 
+        In other cases, it returns [n] i.e. rank against the specified corruptions.
+        
     mrr_test : float
         The MRR (filtered) of the best model, retrained on the concatenation of training and validation sets,
         computed over the test set.
