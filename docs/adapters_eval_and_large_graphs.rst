@@ -51,7 +51,7 @@ With our adapter, users can persist the data, in parts (if required), into the d
 
 Once the data is created this way, the user can pass the adapter handle to the fit and evaluate function. These functions will internally use the required APIs and consume data appropriately as specified (i.e. train/test/valid). 
 
-.. highlight:: python
+.. code-block:: python
 
     #Usage for extremely large datasets:
     from ampligraph.datasets import SQLiteAdapter
