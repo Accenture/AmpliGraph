@@ -269,7 +269,6 @@ X_test:  [['a' 'y' 'c']
 ```
 
 ## Clustering and projectings embeddings into 2D space
-For more information see Football dataset tutorial at:
 
 ### Embedding training
 
