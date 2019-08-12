@@ -415,7 +415,8 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
     #. Artificially generate negative triples by corrupting first the subject and then the object.
 
-    #. Remove the positive triples from the set returned by (1) -- positive triples are usually the concatenation of training, validation and test sets.
+    #. Remove the positive triples from the set returned by (1) -- positive triples \
+    are usually the concatenation of training, validation and test sets.
 
     #. Rank each test triple against all remaining triples returned by (2).
 
