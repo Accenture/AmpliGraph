@@ -407,15 +407,27 @@ def to_idx(X, ent_to_idx, rel_to_idx):
     return _convert_to_idx(X, ent_to_idx, rel_to_idx, ent_to_idx)
 
 
-def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=True, rank_against_ent=None,
+def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=True, entities_subset=None,
                          corrupt_side='s+o', use_default_protocol=True):
     """Evaluate the performance of an embedding model.
 
-    Run the relational learning evaluation protocol defined in :cite:`bordes2013translating`.
+    The evaluation protocol follows the procedure defined in :cite:`bordes2013translating` and can be summarised as:
 
-    It computes the rank of each positive triple against a number of negatives generated on the fly.
-    Such negatives are compliant with the local closed world assumption (LCWA),
-    as described in :cite:`nickel2016review`. In practice, that means only one side of the triple is corrupted
+    #. Artificially generate negative triples by corrupting first the subject and then the object.
+
+    #. Remove the positive triples from the set returned by (1) -- positive triples \
+    are usually the concatenation of training, validation and test sets.
+
+    #. Rank each test triple against all remaining triples returned by (2).
+
+
+    With the ranks of both object and subject corruptions, one may compute metrics such as the MRR by
+    calculating them separately and then averaging them out.
+    Note that the metrics implemented in AmpliGraph's ``evaluate.metrics`` module will already work that way
+    when provided with the input returned by ``evaluate_performance``.
+
+    The artificially generated negatives are compliant with the local closed world assumption (LCWA),
+    as described in :cite:`nickel2016review`. In practice, that means only one side of the triple is corrupted at a time
     (i.e. either the subject or the object).
 
     .. note::
@@ -424,32 +436,32 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
         * Store the filter_triples in the DB
 
-        * For each test triple, we generate corruptions for evaluation and score them. 
+        * For each test triple, we generate corruptions for evaluation and score them.
 
-        * The corruptions may contain some False Negatives. We find such statements by quering the database. 
+        * The corruptions may contain some False Negatives. We find such statements by quering the database.
 
         * From the computed scores we retrieve the scores of the False Negatives.
-        
-        * We compute the rank of the test triple by comparing against ALL the corruptions. 
-        
-        * We then compute the number of False negatives that are ranked higher than the test triple; and then 
+
+        * We compute the rank of the test triple by comparing against ALL the corruptions.
+
+        * We then compute the number of False negatives that are ranked higher than the test triple; and then
           subtract this value from the above computed rank to yield the final filtered rank.
-        
+
         **Execution Time:** This method takes ~4 minutes on FB15K using ComplEx
         (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
 
     .. hint::
-        When ``rank_against_ent=None``, the method will use all distinct entities in the knowledge graph ``X``
-        to generate negatives to rank against. This might slow down the eval. Some of the corruptions may not even 
-        make sense for the task that one may be interested in. 
-        
-        For eg, consider the case <Actor, acted_in, ?>, where we are mainly interested in such movies that an actor 
-        has acted in. A sensible way to evaluate this would be to rank against all the movie entities and compute 
-        the desired metrics. In such cases, where focus us on particular task, it is recommended to pass the desired 
-        entities to use to generate corruptions to ``rank_against_ent``. Besides, trying to rank a positive against an 
-        extremely large number of negatives may be overkilling. 
-        
-        As a reference, the popular FB15k-237 dataset has ~15k distinct entities. The evaluation protocol ranks each 
+        When ``entities_subset=None``, the method will use all distinct entities in the knowledge graph ``X``
+        to generate negatives to rank against. This might slow down the eval. Some of the corruptions may not even
+        make sense for the task that one may be interested in.
+
+        For eg, consider the case <Actor, acted_in, ?>, where we are mainly interested in such movies that an actor
+        has acted in. A sensible way to evaluate this would be to rank against all the movie entities and compute
+        the desired metrics. In such cases, where focus us on particular task, it is recommended to pass the desired
+        entities to use to generate corruptions to ``entities_subset``. Besides, trying to rank a positive against an
+        extremely large number of negatives may be overkilling.
+
+        As a reference, the popular FB15k-237 dataset has ~15k distinct entities. The evaluation protocol ranks each
         positives against 15k corruptions per side.
 
     Parameters
@@ -465,43 +477,38 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     strict : bool
         Strict mode. If True then any unseen entity will cause a RuntimeError.
         If False then triples containing unseen entities will be filtered out.
-    rank_against_ent: array-like
+    entities_subset: array-like
         List of entities to use for corruptions. If None, will generate corruptions
         using all distinct entities. Default is None.
     corrupt_side: string
         Specifies which side of the triple to corrupt:
 
         - 's': corrupt only subject.
-        - 'o': corrupt only object
-        - 's+o': corrupt both subject and object. The same behaviour is obtained with ``use_default_protocol=True``.
-
-        .. note::
-            If ``corrupt_side='s+o'`` the function will return 2*n ranks.
-            If ``corrupt_side='s'`` or ``corrupt_side='o'``, it will return n ranks, where n is the
-            number of statements in X.
-            The first n elements of ranks are obtained against subject corruptions. From n+1 until 2n ranks are obtained
-            against object corruptions.
+        - 'o': corrupt only object.
+        - 's+o': corrupt both subject and object.
+          With ``use_default_protocol`` set to `True`, this mode is forced irrespective of the user choice.
 
     use_default_protocol: bool
         Flag to indicate whether to use the standard protocol used in literature defined in
         :cite:`bordes2013translating` (default: True).
-        If set to ``True`` it is equivalent to ``corrupt_side='s+o'``.
-        This corresponds to the evaluation protcol used in literature, where head and tail corruptions
+        If set to `True`, ``corrupt_side`` will be set to `'s+o'`.
+        This corresponds to the evaluation protocol used in literature, where head and tail corruptions
         are evaluated separately.
 
         .. note::
-            When ``use_default_protocol=True`` the function will return 2*n ranks.
-            The first n elements of ranks are obtained against subject corruptions. From n+1 until 2n ranks are obtained
-            against object corruptions.
-            
+            When ``use_default_protocol=True`` the function will return 2*n ranks as a [n, 2] array.
+            The first column of the array represents the subject corruptions.
+            The second column of the array represents the object corruptions.
+            Otherwise, the function returns n ranks as [n] array.
+
     Returns
     -------
     ranks : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
         An array of ranks of test triples.
-        When ``use_default_protocol=True`` the function returns [n,2]. The first column represents the rank against 
-        subject corruptions and the second column represents the rank against object corruptions. 
+        When ``use_default_protocol=True`` the function returns [n,2]. The first column represents the rank against
+        subject corruptions and the second column represents the rank against object corruptions.
         In other cases, it returns [n] i.e. rank against the specified corruptions.
-        
+
     Examples
     --------
     >>> import numpy as np
@@ -520,7 +527,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     >>>                              corrupt_side='s+o',
     >>>                              use_default_protocol=False)
     >>> ranks
-    [1, 582, 543, 6, 31]
+    array([  1, 582, 543,   6,  31])
     >>> mrr_score(ranks)
     0.24049691297347323
     >>> hits_at_n_score(ranks, n=10)
@@ -538,7 +545,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
             dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
             dataset_handle.set_data(X_test, "test")
 
-        elif isinstance(X, AmpligraphDatasetAdapter):     
+        elif isinstance(X, AmpligraphDatasetAdapter):
             dataset_handle = X
 
         if filter_triples is not None:
@@ -554,18 +561,15 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
             else:
                 raise Exception('Invalid datatype for filter. Expected a numpy array or preset data in the adapter.')
 
-        eval_dict = {}
-        eval_dict['default_protocol'] = False
+        eval_dict = {'default_protocol': False}
 
         if use_default_protocol:
             corrupt_side = 's+o'
             eval_dict['default_protocol'] = True
 
-        if rank_against_ent is not None:
-            idx_entities = np.asarray([idx for uri, idx in model.ent_to_idx.items() if uri in rank_against_ent])
+        if entities_subset is not None:
+            idx_entities = np.asarray([idx for uri, idx in model.ent_to_idx.items() if uri in entities_subset])
             eval_dict['corruption_entities'] = idx_entities
-
-        ranks = []
 
         logger.debug('Evaluating the test set by corrupting side : {}'.format(corrupt_side))
         eval_dict['corrupt_side'] = corrupt_side
@@ -580,7 +584,8 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         logger.debug('Ending Evaluation')
 
         logger.debug('Returning ranks of positive test triples obtained by corrupting {}.'.format(corrupt_side))
-        return ranks
+        return np.array(ranks)
+
     except BaseException as e:
         model.end_evaluation()
         if dataset_handle is not None:
@@ -871,7 +876,7 @@ def _scalars_into_lists(param_grid):
 
 def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid, max_combinations=None,
                               param_grid_random_seed=0, use_filter=True, early_stopping=False,
-                              early_stopping_params=None, use_test_for_selection=False, rank_against_ent=None,
+                              early_stopping_params=None, use_test_for_selection=False, entities_subset=None,
                               corrupt_side='s+o', use_default_protocol=True, retrain_best_model=False, verbose=False):
     """Model selection routine for embedding models via either grid search or random search.
     
@@ -970,7 +975,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
     use_test_for_selection:bool
         Use test set for model selection. If False, uses validation set (default: False).
-    rank_against_ent: array-like
+    entities_subset: array-like
         List of entities to use for corruptions. If None, will generate corruptions
         using all distinct entities (default: None).
     corrupt_side: string
@@ -1117,7 +1122,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
             model.fit(X_train, early_stopping, early_stopping_params)
             ranks = evaluate_performance(selection_dataset, model=model,
                                          filter_triples=X_filter, verbose=verbose,
-                                         rank_against_ent=rank_against_ent,
+                                         entities_subset=entities_subset,
                                          use_default_protocol=use_default_protocol,
                                          corrupt_side=corrupt_side)
 
@@ -1161,7 +1166,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
         ranks_test = evaluate_performance(X_test, model=best_model,
                                           filter_triples=X_filter, verbose=verbose,
-                                          rank_against_ent=rank_against_ent,
+                                          entities_subset=entities_subset,
                                           use_default_protocol=use_default_protocol,
                                           corrupt_side=corrupt_side)
 
