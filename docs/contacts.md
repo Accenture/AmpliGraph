@@ -24,7 +24,8 @@ If you instead use AmpliGraph in an academic publication, cite as:
           Sumit Pai and
           Chan Le Van and
           Rory McGrath and
-          Nicholas McCarthy},
+          Nicholas McCarthy and
+          Pedro Tabacof},
  title = {{AmpliGraph: a Library for Representation Learning on Knowledge Graphs}},
  month = mar,
  year  = 2019,
@@ -44,6 +45,7 @@ Active contributors (in alphabetical order)
 + [Nicholas McCarthy](http://github.com/NicholasMcCarthy)
 + [Rory McGrath](http://github.com/rorymcgrath)
 + [Sumit Pai](http://github.com/sumitpai)
++ [Pedro Tabacof](http://github.com/tabacof)
 
 
 ## License
