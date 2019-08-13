@@ -151,12 +151,9 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
 
             # Select candidate statements within the top_n predicted ranks standard protocol evaluates against
             # corruptions on both sides, we just average the ranks here
-            num_ranks = len(ranks) // 2
-            s_corruption_ranks = ranks[:num_ranks]
-            o_corruption_ranks = ranks[num_ranks:]
+            avg_ranks = np.mean(ranks, axis=1)
 
-            avg_ranks = np.mean([s_corruption_ranks, o_corruption_ranks], axis=0)
-            preds = np.array(avg_ranks) >= top_n
+            preds = np.array(avg_ranks) <= top_n
             discoveries.append(candidates[preds])
 
     logger.info('Discovered %d facts' % len(discoveries))

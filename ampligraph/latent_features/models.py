@@ -1420,6 +1420,7 @@ class EmbeddingModel(abc.ABC):
                 ranks.append(list(rank))
             else:
                 ranks.append(rank)
+
         return ranks
 
     def predict(self, X, from_idx=False):
