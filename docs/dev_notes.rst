@@ -10,7 +10,8 @@ Internally, AmpliGraph uses a set of methods that are defined within the base cl
 Every data adapter must be inherited from this class to be able to be used within AmpliGraph.
 
 
-**Training:**
+Training
+""""""""
 
 While fitting a model, AmpliGraph accepts either an object of ``AmpligraphDatasetAdapter`` class or a numpy array.
 To support backward compatibility, we support numpy arrays as inputs. However, internally we adapt this data in our
@@ -22,7 +23,8 @@ To get batches of train data, AmpliGraph uses the ``get_next_train_batch`` gener
 It uses the ``get_size method`` to determine the size of the dataset.
 
 
-**Evaluation Procedure:**
+Evaluation Procedure
+""""""""""""""""""""
 
 While evaluating the performance of the models, AmpliGraph supports either an object of ``AmpligraphDatasetAdapter``
 class or a numpy array as input. Just like the fit function, we first adapt the data with the ``NumpyAdapter`` before
@@ -77,8 +79,8 @@ In the large graph mode, the training/evaluation would be slower than usual as t
 from GPU every batch; however, it is still much faster than doing computations on CPU (using tensorflow cpu version and
 normal AmpliGraph mode).
 
-We have tested this approach with fb15k dataset by explicitly setting large graph mode to just 100 entities and using a
-batch count of 100. With batch count of 100, the batch size is approximately 4500. In other words we would load
+We have tested this approach with the fb15k dataset by explicitly setting large graph mode to just 100 entities and using
+ a batch count of 100. With batch count of 100, the batch size is approximately 4500. In other words we would load
 approximately 4500 entity embeddings in GPU memory per batch (out of a total 14951 entities). The training slows down
 by a small margin (it takes 1.5 times more per epoch than the usual mode due to the loading/unloading overhead).
 However the evaluation performance is worse, since for each test triple, we generate all the possible corruptions and
@@ -93,7 +95,7 @@ However, since all the computations happen on the CPU it will be much slower.
 
 
 A Note on SQLite Adapter
-------------------------
+""""""""""""""""""""""""
 
 This adapter can use an existing DB (if it uses AmpliGraph Schema) or can create a DB and store data in the
 AmpliGraph Schema. We are providing this adapter, especially for people who want to use graph which have
