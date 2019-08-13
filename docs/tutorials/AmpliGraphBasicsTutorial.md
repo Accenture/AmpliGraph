@@ -1,5 +1,8 @@
 
 > **_NOTE:_**  **An interactive version of this tutorial is [available on Colab]().**
+
+> **Download the [Jupyter notebook](https://github.com/Accenture/AmpliGraph/blob/master/docs/tutorials/AmpliGraphBasicsTutorial.ipynb)**
+
 ---
 
 

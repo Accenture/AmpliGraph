@@ -1,5 +1,7 @@
 
 > **_NOTE:_**  **An interactive version of this tutorial is [available on Colab]().**
+
+> **Download the [Jupyter notebook](https://github.com/Accenture/AmpliGraph/blob/master/docs/tutorials/ClusteringAndClassificationWithEmbeddings.ipynb)**
 ---
 
 # Clustering and Classification using Knowledge Graph Embeddings
