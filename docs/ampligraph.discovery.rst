@@ -12,6 +12,7 @@ Discovery
     discover_facts
     find_clusters
     find_duplicates
+    query_topn
 
 
 
