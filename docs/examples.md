@@ -1,5 +1,9 @@
 # Examples
 
+These examples show how to get started with AmpliGraph APIs, and cover a range of useful tasks. 
+Note that additional tutorials are also [available](tutorials.md).
+
+
 ## Train and evaluate an embedding model
 
 ```python
