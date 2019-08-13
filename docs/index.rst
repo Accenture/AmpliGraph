@@ -103,6 +103,7 @@ If you instead use AmpliGraph in an academic publication, cite as:
    api
    dev
    examples
+   tutorials
    experiments
    biblio
    changelog
