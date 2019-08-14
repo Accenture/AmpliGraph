@@ -15,6 +15,9 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
     """
     Discover new facts from an existing knowledge graph.
 
+    You should use this function when you already have a model trained on a knowledge graph and you want to
+    discover potentially true statements in that knowledge graph.
+
     The general procedure of this function is to generate a set of candidate statements `C` according to some
     sampling strategy, then rank them against a set of corruptions using the `evaluate_performance` function.
     Candidates that appear in the `top_n` ranked statements of this procedure are returned as likely true
