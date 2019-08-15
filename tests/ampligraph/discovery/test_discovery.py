@@ -185,7 +185,7 @@ def test_find_clusters():
     model.fit(X)
     clustering_algorithm = DBSCAN(eps=1e-3, min_samples=1)
 
-    labels = find_clusters(X, model, clustering_algorithm)
+    labels = find_clusters(X, model, clustering_algorithm, mode='triple')
     assert np.array_equal(labels, np.array([0, 1, 2, 3, 4, 5, 6, 7]))
 
     labels = find_clusters(np.unique(X[:, 0]), model, clustering_algorithm, mode='entity')

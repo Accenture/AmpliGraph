@@ -587,12 +587,12 @@ def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
         This model must have been fully trained already, be it directly with ``fit()``
         or from a helper function such as :meth:`ampligraph.evaluation.select_best_model_ranking`.
     mode: string
-        Clustering mode. Choose from:
+        Choose from:
 
-        - | 'entity' (default): the algorithm will cluster the embeddings of the provided entities.
-        - | 'relation': the algorithm will cluster the embeddings of the provided relations.
-        - | 'triple' : the algorithm will cluster the concatenation
-            of the embeddings of the subject, predicate and object for each triple.
+        - | 'entity' (default): the algorithm will find duplicates of the provided entities based on their embeddings.
+        - | 'relation': the algorithm will find duplicates of the provided relations based on their embeddings.
+        - | 'triple' : the algorithm will find duplicates of the concatenation
+            of the embeddings of the subject, predicate and object for each provided triple.
 
     metric: str
         A distance metric used to compare entity distance in the embedding space.
