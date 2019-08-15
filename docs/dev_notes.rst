@@ -56,7 +56,8 @@ GPU to do the computations which would slow down the training/evaluation.
 
 To avoid this, and make use of GPU cores for faster computations, we have introduced a mode to deal with large graphs.
 As of now, you can specify whether a graph is large or not depending on the number of distinct entities.
-It's set to 500,000 but can be changed using the ``set_warning_threshold()`` method in the ``latent_features`` module.
+It's set to 500,000 but can be changed using the ``set_entity_threshold()`` method in the ``latent_features`` module.
+To reset it back to the default threshold, use the ``reset_entity_threshold()`` method.
 
 In this mode, the entity embeddings are not created on the GPU. Instead, the embeddings are created on the CPU.
 While training, we load embeddings of batch_size * 2 entities. In other words, in a batch we can get only a max of
@@ -89,7 +90,7 @@ using tensorflow cpu.
 
 If the user does not want to use this mode and prefers to use the normal mode (say, to make use of other optimizers
 like Adam, etc while training), they can use the CPU version of the tensorflow and run AmpliGraph as usual.
-They can increase the entity warning threshold to a number greater than the distinct entites in their use case and
+They can increase the entity threshold to a number greater than the distinct entites in their use case and
 then run AmpliGraph, so as to use the normal mode (instead of large graph mode - by default set to 500,000 entities).
 However, since all the computations happen on the CPU it will be much slower.
 

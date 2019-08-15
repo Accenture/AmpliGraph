@@ -9,10 +9,39 @@ import numpy as np
 import pytest
 
 from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline
+from ampligraph.latent_features import set_entity_threshold, reset_entity_threshold
 from ampligraph.datasets import load_wn18
 from ampligraph.evaluation import evaluate_performance, hits_at_n_score
 
 
+def test_large_graph_mode():
+    set_entity_threshold(10)
+    X = load_wn18()
+    model = ComplEx(batches_count=100, seed=555, epochs=1, k=50, loss='multiclass_nll', loss_params={'margin': 5},
+                   verbose=True, optimizer='sgd', optimizer_params={'lr': 0.001})
+    model.fit(X['train'])
+    X_filter = np.concatenate((X['train'], X['valid'], X['test']), axis=0)
+    ranks_all = evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s+o',
+                                 use_default_protocol=True)
+    
+    y = model.predict(X['test'][:1])
+    print(y)
+    reset_entity_threshold()
+    
+    
+def test_large_graph_mode_adam():
+    set_entity_threshold(10)
+    X = load_wn18()
+    model = ComplEx(batches_count=100, seed=555, epochs=1, k=50, loss='multiclass_nll', loss_params={'margin': 5},
+                   verbose=True, optimizer='adam', optimizer_params={'lr': 0.001})
+    try:
+        model.fit(X['train'])
+    except Exception as e:
+        print(str(e))
+        
+    reset_entity_threshold()
+    
+    
 def test_fit_predict_TransE_early_stopping_with_filter():
     X = load_wn18()
     model = TransE(batches_count=1, seed=555, epochs=7, k=50, loss='pairwise', loss_params={'margin': 5},

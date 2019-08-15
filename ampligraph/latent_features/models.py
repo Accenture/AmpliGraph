@@ -58,17 +58,21 @@ DEFAULT_CORRUPTION_ENTITIES = 'all'
 
 # Threshold (on number of unique entities) to categorize the data as Huge
 # Dataset (to warn user)
-ENTITY_WARN_THRESHOLD = 5e5
+ENTITY_THRESHOLD = 5e5
 
 
-def set_warning_threshold(threshold):
-    global ENTITY_WARN_THRESHOLD
-    ENTITY_WARN_THRESHOLD = threshold
+def set_entity_threshold(threshold):
+    """Sets the entity threshold (threshold after which large graph mode is initiated)
+    """
+    global ENTITY_THRESHOLD
+    ENTITY_THRESHOLD = threshold
 
     
-def reset_warning_threshold():
-    global ENTITY_WARN_THRESHOLD
-    ENTITY_WARN_THRESHOLD = 5e5
+def reset_entity_threshold():
+    """Resets the entity threshold
+    """
+    global ENTITY_THRESHOLD
+    ENTITY_THRESHOLD = 5e5
     
     
 # Default value for k (embedding size)
@@ -412,7 +416,7 @@ class EmbeddingModel(abc.ABC):
         # Generate the batch size based on entity length and batch_count
         self.batch_size = int(np.ceil(len(self.ent_to_idx) / self.batches_count))
         
-        if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
+        if len(self.ent_to_idx) > ENTITY_THRESHOLD:
             self.dealing_with_large_graphs = True
             
             logger.warning('Your graph has a large number of distinct entities. '
@@ -899,7 +903,7 @@ class EmbeddingModel(abc.ABC):
             self.rel_to_idx, self.ent_to_idx = self.train_dataset_handle.generate_mappings()
             prefetch_batches = 1
 
-            if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
+            if len(self.ent_to_idx) > ENTITY_THRESHOLD:
                 self.dealing_with_large_graphs = True
                 prefetch_batches = 0
 
@@ -913,8 +917,8 @@ class EmbeddingModel(abc.ABC):
                     raise Exception('Early stopping not supported for large graphs')
 
                 if not isinstance(self.optimizer, SGDOptimizer):
-                    raise Exception("This mode works well only with SGD optimizer with decay(read docs for details). \
-                    Kindly change the optimizer and restart the experiment")
+                    raise Exception("This mode works well only with SGD optimizer with decay (read docs for details).\
+ Kindly change the optimizer and restart the experiment")
 
                 # CPU matrix of embeddings
                 self.ent_emb_cpu = self.initializer.get_np_initializer(len(self.ent_to_idx), self.internal_k)
@@ -932,7 +936,7 @@ class EmbeddingModel(abc.ABC):
             batch_size = int(np.ceil(self.train_dataset_handle.get_size("train") / self.batches_count))
             # dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(2)
 
-            if len(self.ent_to_idx) > ENTITY_WARN_THRESHOLD:
+            if len(self.ent_to_idx) > ENTITY_THRESHOLD:
                 logger.warning('Only {} embeddings would be loaded in memory per batch...'.format(batch_size * 2))
 
             self.batch_size = batch_size
@@ -943,10 +947,6 @@ class EmbeddingModel(abc.ABC):
                                                      output_shapes=((None, 3), (None, 1), (None, self.internal_k)))
 
             dataset = dataset.repeat().prefetch(prefetch_batches)
-
-            '''
-            dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(0)
-            '''
 
             dataset_iterator = dataset.make_one_shot_iterator()
             # init tf graph/dataflow for training
@@ -970,8 +970,6 @@ class EmbeddingModel(abc.ABC):
 
             self.sess_train.run(tf.tables_initializer())
             self.sess_train.run(tf.global_variables_initializer())
-
-            # X_batches = np.array_split(X, self.batches_count)
 
             normalize_rel_emb_op = self.rel_emb.assign(tf.clip_by_norm(self.rel_emb, clip_norm=1, axes=1))
 
@@ -1089,7 +1087,7 @@ class EmbeddingModel(abc.ABC):
                 
             yield out, indices_obj, indices_sub, entity_embeddings, unique_ent
             
-    def _generate_corruptions(self):
+    def _generate_corruptions_for_large_graphs(self):
         """Corruption generator for large graphs.
            It generates corruptions in batches and also yields the corresponding entity embeddings.
         """
@@ -1173,7 +1171,7 @@ class EmbeddingModel(abc.ABC):
 
                 # Corruption generator - 
                 # returns corruptions and their corresponding embeddings that need to be loaded on the GPU
-                corruption_generator = tf.data.Dataset.from_generator(self._generate_corruptions, 
+                corruption_generator = tf.data.Dataset.from_generator(self._generate_corruptions_for_large_graphs, 
                                                                       output_types=(tf.int32, tf.float32),
                                                                       output_shapes=((None, 1), 
                                                                                      (None, self.internal_k))) 
@@ -1705,12 +1703,12 @@ class TransE(EmbeddingModel):
     >>>               ['f', 'y', 'e']])
     >>> model.fit(X)
     >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-    [-4.6903257, -3.9047198]
+    [[-3.557618], [-5.8582983]]
     >>> model.get_embeddings(['f','e'], embedding_type='entity')
-    array([[ 0.10673896, -0.28916815,  0.6278883 , -0.1194713 , -0.10372276,
-    -0.37258488,  0.06460134, -0.27879423,  0.25456288,  0.18665907],
-    [-0.64494324, -0.12939683,  0.3181001 ,  0.16745451, -0.03766293,
-     0.24314676, -0.23038973, -0.658638  ,  0.5680542 , -0.05401703]],
+    array([[ 0.20124815,  0.07667076,  0.13765174,  0.359908  ,  0.47391438,
+    0.60537165, -0.1865169 ,  0.19727449,  0.05368415,  0.10683826],
+    [-0.00791226, -0.02880736,  0.33046484,  0.4772845 ,  0.09900524,
+    -0.07427583, -0.44486347,  0.25502214,  0.40891314, -0.02437211]],
     dtype=float32)
 
     """
@@ -2011,12 +2009,12 @@ class DistMult(EmbeddingModel):
     >>>               ['f', 'y', 'e']])
     >>> model.fit(X)
     >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-    [-0.13863425, -0.09917116]
+    [[0.058701605], [-0.10233512]]
     >>> model.get_embeddings(['f','e'], embedding_type='entity')
-    array([[ 0.10137264, -0.28248304,  0.6153027 , -0.13133956, -0.11675504,
-    -0.37876177,  0.06027773, -0.26390398,  0.254603  ,  0.1888549 ],
-    [-0.6467299 , -0.13729756,  0.3074872 ,  0.16966867, -0.04098966,
-     0.25289047, -0.2212451 , -0.6527815 ,  0.5657673 , -0.03876532]],
+    array([[ 0.19615895,  0.07597926,  0.14666814,  0.36448222,  0.47333726,
+    0.5959326 , -0.17780843,  0.19690041,  0.0491438 ,  0.10963907],
+    [-0.0024636 , -0.02851205,  0.3170391 ,  0.47619066,  0.08189293,
+    -0.06766094, -0.42974684,  0.241551  ,  0.42310238, -0.00800811]],
     dtype=float32)
 
     """
@@ -2306,9 +2304,9 @@ class ComplEx(EmbeddingModel):
     >>> import numpy as np
     >>> from ampligraph.latent_features import ComplEx
     >>>
-    >>> model = ComplEx(batches_count=1, seed=555, epochs=20, k=10,
+    >>> model = ComplEx(batches_count=2, seed=555, epochs=100, k=20, eta=5,
     >>>             loss='pairwise', loss_params={'margin':1},
-    >>>             regularizer='LP', regularizer_params={'p': 3, 'lambda':0.1})
+    >>>             regularizer='LP', regularizer_params={'p': 2, 'lambda':0.1})
     >>> X = np.array([['a', 'y', 'b'],
     >>>               ['b', 'y', 'a'],
     >>>               ['a', 'y', 'c'],
@@ -2319,16 +2317,24 @@ class ComplEx(EmbeddingModel):
     >>>               ['f', 'y', 'e']])
     >>> model.fit(X)
     >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-    [-0.3136923, 0.078388765]
+    [[0.019520484], [-0.14998421]]
     >>> model.get_embeddings(['f','e'], embedding_type='entity')
-    array([[ 0.17530274,  0.15865138,  0.2559045 ,  0.21435979, -0.00982418,
-         0.06216379, -0.2602038 ,  0.01115429, -0.10862222,  0.40523437,
-        -0.12347769, -0.11028474,  0.28538892,  0.34305975,  0.58568525,
-         0.0340597 , -0.37842   ,  0.13549514,  0.50580424, -0.26587492],
-       [-0.19215044,  0.20638846,  0.04732068,  0.4367251 ,  0.07201706,
-         0.5745204 ,  0.2822151 ,  0.32835224, -0.0671052 ,  0.29105374,
-        -0.21271947,  0.5722657 , -0.05323813,  0.04409647,  0.01575985,
-        -0.11947805,  0.3062414 ,  0.34990367,  0.23658516, -0.5502773 ]],
+    array([[-0.33021057,  0.26524785,  0.0446662 , -0.07932718, -0.15453218,
+        -0.22342539, -0.03382565,  0.17444217,  0.03009969, -0.33569157,
+         0.3200497 ,  0.03803705,  0.05536304, -0.00929996,  0.24446663,
+         0.34408194,  0.16192885, -0.15033236, -0.19703785, -0.00783876,
+         0.1495124 , -0.3578853 , -0.04975723, -0.03930473,  0.1663541 ,
+        -0.24731971, -0.141296  ,  0.03150219,  0.15328223, -0.18549544,
+        -0.39240393, -0.10824018,  0.03394471, -0.11075485,  0.1367736 ,
+         0.10059565, -0.32808647, -0.00472086,  0.14231135, -0.13876757],
+       [-0.09483694,  0.3531292 ,  0.04992269, -0.07774793,  0.1635035 ,
+         0.30610007,  0.3666711 , -0.13785957, -0.3143734 , -0.36909637,
+        -0.13792469, -0.07069954, -0.0368113 , -0.16743314,  0.4090072 ,
+        -0.03407392,  0.3113114 , -0.08418448,  0.21435146,  0.12006859,
+         0.08447982, -0.02025972,  0.38752195,  0.11451488, -0.0258422 ,
+        -0.10990044, -0.22661531, -0.00478273, -0.0238297 , -0.14207476,
+         0.11064807,  0.20135397,  0.22501846, -0.1731076 , -0.2770435 ,
+         0.30784574, -0.15043163, -0.11599299,  0.05718031, -0.1300622 ]],
       dtype=float32)
 
     """
@@ -2626,7 +2632,7 @@ class HolE(ComplEx):
     --------
     >>> import numpy as np
     >>> from ampligraph.latent_features import HolE
-    >>> model = HolE(batches_count=1, seed=555, epochs=20, k=10,
+    >>> model = HolE(batches_count=1, seed=555, epochs=100, k=10, eta=5,
     >>>             loss='pairwise', loss_params={'margin':1},
     >>>             regularizer='LP', regularizer_params={'lambda':0.1})
     >>>
@@ -2639,20 +2645,17 @@ class HolE(ComplEx):
     >>>               ['b', 'y', 'c'],
     >>>               ['f', 'y', 'e']])
     >>> model.fit(X)
-    >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]),
-    get_ranks=True)
-    ([-0.06213863, 0.01563319], [13, 3])
-    >>> model.get_embeddings(['f','e'], embedding_type='entity')
-        array([[ 0.17335348,  0.15826802,  0.24862595,  0.21404941, -0.009813,
-         0.06185953, -0.24956754,  0.01114257, -0.1038138 ,  0.40461722,
-        -0.12298391, -0.10997348,  0.28220937,  0.34238952,  0.58363295,
-         0.03315138, -0.37830347,  0.13480346,  0.49922466, -0.26328272],
-        [-0.19098252,  0.20133668,  0.04635337,  0.4364128 ,  0.07014864,
-         0.5713923 ,  0.28131518,  0.31721675, -0.06636801,  0.2848032 ,
-        -0.2121708 ,  0.56917167, -0.05311433,  0.03093261,  0.01571475,
-        -0.11373658,  0.29417998,  0.34896123,  0.22993243, -0.5499186 ]],
-        dtype=float32)
-
+    >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+    [[0.009254738], [0.00023370088]]
+    array([[ 0.2503009 , -0.2598746 , -0.27378836,  0.15603328,  0.28826827,
+        -0.19956978,  0.3039347 , -0.2473412 ,  0.08970609, -0.186578  ,
+         0.13491984,  0.267222  ,  0.3285695 , -0.26081076, -0.2255996 ,
+        -0.42164195,  0.02948518, -0.5940778 , -0.36562866,  0.14355545],
+       [-0.18769145,  0.23636112, -0.43104184, -0.32185245,  0.07910233,
+         0.20204252,  0.3211268 ,  0.10365302,  0.3958077 , -0.19850788,
+        -0.06766941, -0.1205449 ,  0.09295252, -0.45956728, -0.03207169,
+        -0.39183694,  0.04791561, -0.11758145, -0.3373933 ,  0.01187571]],
+      dtype=float32)
     """
     def __init__(self,
                  k=DEFAULT_EMBEDDING_SIZE,
