@@ -783,7 +783,7 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
     entities, and return the top_n triples ordered by score. If given a <subject, object>
     pair it will fill in the missing element with known relations.
 
-    .. info:
+    .. note::
         This function does not filter out true statements - triples returned can include those
         the model was trained on.
 
@@ -812,6 +812,41 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
         A list of triples ordered by score.
     S : ndarray, shape [n]
        A list of scores.
+
+    Examples
+    --------
+
+    >>> import requests
+    >>> from ampligraph.datasets import load_from_csv
+    >>> from ampligraph.latent_features import ComplEx
+    >>> from ampligraph.discovery import discover_facts
+    >>> from ampligraph.discovery import query_topn
+    >>>
+    >>> # Game of Thrones relations dataset
+    >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
+    >>> open('GoT.csv', 'wb').write(requests.get(url).content)
+    >>> X = load_from_csv('.', 'GoT.csv', sep=',')
+    >>>
+    >>> model = ComplEx(batches_count=10, seed=0, epochs=200, k=150, eta=5,
+    >>>                 optimizer='adam', optimizer_params={'lr':1e-3}, loss='multiclass_nll',
+    >>>                 regularizer='LP', regularizer_params={'p':3, 'lambda':1e-5},
+    >>>                 verbose=True)
+    >>> model.fit(X)
+    >>>
+    >>> query_topn(model, top_n=5,
+    >>>            head='Catelyn Stark', relation='ALLIED_WITH', tail=None,
+    >>>            ents_to_consider=None, rels_to_consider=None)
+    >>>
+    (array([['Catelyn Stark', 'ALLIED_WITH', 'House Tully of Riverrun'],
+            ['Catelyn Stark', 'ALLIED_WITH', 'House Stark of Winterfell'],
+            ['Catelyn Stark', 'ALLIED_WITH', 'House Wayn'],
+            ['Catelyn Stark', 'ALLIED_WITH', 'House Mollen'],
+            ['Catelyn Stark', 'ALLIED_WITH', 'Orton Merryweather']],
+           dtype='<U44'), array([[10.261374 ],
+            [ 8.84298  ],
+            [ 2.78139  ],
+            [ 1.9809164],
+            [ 1.833096 ]], dtype=float32))
 
     """
 
