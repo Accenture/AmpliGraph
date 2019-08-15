@@ -130,16 +130,11 @@ def restore_model(model_name_path=None):
     model = None
     logger.info('Will load model {}.'.format(model_name_path))
 
-    if not os.path.exists(model_name_path):
-        msg = 'No model found: {}.'.format(model_name_path)
-        logger.debug(msg)
-        raise FileNotFoundError(msg)
-
     try:
         with open(model_name_path, 'rb') as fr:
             restored_obj = pickle.load(fr)
 
-        logger.debug('Restoring model...')
+        logger.debug('Restoring model ...')
         module = importlib.import_module("ampligraph.latent_features.models")
         class_ = getattr(module, restored_obj['class_name'])
         model = class_(**restored_obj['hyperparams'])
@@ -148,9 +143,13 @@ def restore_model(model_name_path=None):
         model.rel_to_idx = restored_obj['rel_to_idx']
         model.restore_model_params(restored_obj)
     except (IOError, pickle.UnpicklingError) as e:
-        msg = 'No model found: {}.'.format(e)
+        msg = 'Error unpickling model {} : {}.'.format(model_name_path, e)
         logger.debug(msg)
         raise Exception(msg)
+    except FileNotFoundError:
+        msg = 'No model found: {}.'.format(model_name_path)
+        logger.debug(msg)
+        raise FileNotFoundError(msg)
 
     return model
 
