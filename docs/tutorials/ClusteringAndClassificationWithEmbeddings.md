@@ -1,9 +1,8 @@
-
 > **_NOTE:_**  **An interactive version of this tutorial is [available on Colab](https://colab.research.google.com/drive/1QUphvcFvNsWyRZM_J5ahsLhEHJY4SjyS).**
 
 > **Download the [Jupyter notebook](https://github.com/Accenture/AmpliGraph/blob/master/docs/tutorials/ClusteringAndClassificationWithEmbeddings.ipynb)**
----
 
+---
 # Clustering and Classification using Knowledge Graph Embeddings
 ---
 
@@ -47,7 +46,7 @@ ampligraph.__version__
 
 ## Dataset
 
-We will use the [International football results from 1872 to 2019](https://www.kaggle.com/martj42/international-football-results-from-1872-to-2017) available at Kaggle (public domain). It contains over 40 thousand international football matches. Each row contains the following information:
+We will use the [International football results from 1872 to 2019](https://www.kaggle.com/martj42/international-football-results-from-1872-to-2017) available on Kaggle (public domain). It contains over 40 thousand international football matches. Each row contains the following information:
 1. Match date
 2. Home team name
 3. Away team name
@@ -62,7 +61,21 @@ This dataset comes in a tabular format, therefore we will need to construct the 
 
 
 ```python
-df = pd.read_csv("results.csv").sort_values("date")
+import requests
+url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/football_graph.csv'
+open('football_results.csv', 'wb').write(requests.get(url).content)
+```
+
+
+
+
+    3033782
+
+
+
+
+```python
+df = pd.read_csv("football_results.csv").sort_values("date")
 ```
 
 
@@ -352,7 +365,7 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 model.fit(X_train)
 ```
 
-    Average Loss:   0.400814: 100%|██████████| 300/300 [09:57<00:00,  1.96s/epoch]
+    Average Loss:   0.400814: 100%|██████████| 300/300 [09:58<00:00,  2.01s/epoch]
 
 
 ## Evaluating knowledge embeddings
@@ -385,7 +398,7 @@ ranks = evaluate_performance(X_valid,
                              verbose=True)
 ```
 
-    100%|██████████| 10000/10000 [02:10<00:00, 76.37it/s]
+    100%|██████████| 10000/10000 [02:09<00:00, 77.33it/s]
 
 
 We're going to use the mrr_score (mean reciprocal rank) and hits_at_n_score functions.
@@ -535,7 +548,7 @@ plot_clusters("continent")
 ```
 
 
-![png](img/output_52_0.png)
+![png](img/output_53_0.png)
 
 
 We can see above that the embeddings learned geographical similarities even though this information was not explicit on the original dataset.
@@ -548,7 +561,7 @@ plot_clusters("cluster")
 ```
 
 
-![png](img/output_54_0.png)
+![png](img/output_55_0.png)
 
 
 We can see that K-Means found very similar cluster to the natural geographical clusters by the continents. This shows that on the 200-dimensional embedding space, similar teams appear close together, which can be captured by a clustering algorithm.
@@ -674,12 +687,11 @@ clf_model.fit(clf_X_train, y_train)
 
 
     XGBClassifier(base_score=0.5, booster='gbtree', colsample_bylevel=1,
-                  colsample_bynode=1, colsample_bytree=1, gamma=0,
-                  learning_rate=0.1, max_delta_step=0, max_depth=5,
-                  min_child_weight=1, missing=None, n_estimators=500, n_jobs=1,
-                  nthread=None, objective='multi:softprob', random_state=0,
-                  reg_alpha=0, reg_lambda=1, scale_pos_weight=1, seed=None,
-                  silent=None, subsample=1, verbosity=1)
+                  colsample_bytree=1, gamma=0, learning_rate=0.1, max_delta_step=0,
+                  max_depth=5, min_child_weight=1, missing=None, n_estimators=500,
+                  n_jobs=1, nthread=None, objective='multi:softprob',
+                  random_state=0, reg_alpha=0, reg_lambda=1, scale_pos_weight=1,
+                  seed=None, silent=True, subsample=1)
 
 
 
