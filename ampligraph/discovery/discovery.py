@@ -843,7 +843,7 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
             logger.error(msg)
             raise ValueError(msg)
 
-    if ents_to_consider:
+    if ents_to_consider is not None:
         if head and tail:
             msg = 'Cannot specify `ents_to_consider` and both `subject` and `object` arguments.'
             logger.error(msg)
@@ -860,7 +860,7 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
             msg = '`ents_to_consider` contains less than top_n values, return set will be truncated.'
             logger.warning(msg)
 
-    if rels_to_consider:
+    if rels_to_consider is not None:
         if relation:
             msg = 'Cannot specify both `rels_to_consider` and `relation` arguments.'
             logger.error(msg)
@@ -892,8 +892,8 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
     scores = model.predict(triples)
 
     # Join triples and scores, sort ascending by scores, then take top_n results
-    out = np.hstack([triples, scores])
-    out = out[out[:, 3].argsort()[::-1]]
-    out = out[0:top_n]
+    topn_idx = np.squeeze(np.argsort(scores, axis=0)[::-1][:top_n])
+    scores_out = np.array(scores)[topn_idx]
+    triples_out = np.copy(triples[topn_idx, :])
 
-    return out[:, 0:3], out[:, 3]
+    return triples_out, scores_out
