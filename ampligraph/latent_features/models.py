@@ -1184,6 +1184,11 @@ class EmbeddingModel(abc.ABC):
                 scores_predict_s_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(self.ent_to_idx)))
                 scores_predict_o_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(self.ent_to_idx)))
 
+                def loop_cond(i,
+                              scores_predict_s_corruptions_in,
+                              scores_predict_o_corruptions_in):
+                    return i < self.corr_batches_count
+
                 def compute_score_corruptions(i,
                                               scores_predict_s_corruptions_in, 
                                               scores_predict_o_corruptions_in):
@@ -1222,7 +1227,7 @@ class EmbeddingModel(abc.ABC):
                 
                 # compute the scores for all the corruptions
                 counter, scores_predict_s_corr_out, scores_predict_o_corr_out = \
-                    tf.while_loop(lambda i: i < self.corr_batches_count,
+                    tf.while_loop(loop_cond,
                                   compute_score_corruptions, 
                                   (0, 
                                    scores_predict_s_corruptions, 
