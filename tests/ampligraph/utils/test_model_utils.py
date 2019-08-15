@@ -10,9 +10,11 @@ import importlib
 import numpy as np
 import numpy.testing as npt
 from ampligraph.utils import save_model, restore_model, create_tensorboard_visualizations, write_metadata_tsv
-
+import pytest
+import pickle
 
 def test_save_and_restore_model():
+
     models = ('ComplEx', 'TransE', 'DistMult')
 
     for model_name in models:
@@ -59,6 +61,12 @@ def test_save_and_restore_model():
                                model.get_embeddings(['a', 'b'], embedding_type='entity'))
 
         os.remove(example_name)
+
+
+def test_restore_model_errors():
+
+    with pytest.raises(FileNotFoundError):
+        model = restore_model(model_name_path='filenotfound.model')
 
 
 def test_create_tensorboard_visualizations():
