@@ -83,7 +83,8 @@ If you instead use AmpliGraph in an academic publication, cite as:
               Sumit Pai and
               Chan Le Van and
               Rory McGrath and
-              Nick McCarthy},
+              Nick McCarthy and
+              Pedro Tabacof},
      title = {{AmpliGraph: a Library for Representation Learning on Knowledge Graphs}},
      month = mar,
      year  = 2019,
