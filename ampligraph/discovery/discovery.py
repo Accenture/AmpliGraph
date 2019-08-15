@@ -389,7 +389,7 @@ def _setdiff2d(A, B):
     return A[~ np.sum(np.cumsum(tmp, axis=0) * tmp == 1, axis=1).astype(bool)]
 
 
-def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="triple"):
+def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="entity"):
     """
     Perform link-based cluster analysis on a knowledge graph.
 
@@ -401,12 +401,11 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="triple"):
     For example, in the example below we cluster the embeddings of international football matches and end up
     finding geographical clusters very similar to the continents.
     This comparison can be subjective by inspecting a 2D projection of the embedding space or objective using a
-    clustering metric, such as provided here:
-    https://scikit-learn.org/stable/modules/clustering.html#clustering-performance-evaluation
+    `clustering metric <https://scikit-learn.org/stable/modules/clustering.html#clustering-performance-evaluation>`_.
 
-    The choice of the clustering algorithm and its corresponding tuning will greatly impact the results.
-    Please see https://scikit-learn.org/stable/modules/clustering.html#clustering for a list of algorithms,
-    their parameters, and pros and cons.
+    | The choice of the clustering algorithm and its corresponding tuning will greatly impact the results.
+      Please see `scikit-learn documentation <https://scikit-learn.org/stable/modules/clustering.html#clustering>`_
+      for a list of algorithms, their parameters, and pros and cons.
 
     Clustering is exclusive (i.e. a triple is assigned to one and only one cluster).
 
@@ -415,27 +414,28 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="triple"):
 
     X : ndarray, shape [n, 3] or [n]
         The input to be clustered.
-        X can either be the triples of a knowledge graph, its entities, or its relations.
-        The argument `mode` defines whether X is supposed an array of triples
+        ``X`` can either be the triples of a knowledge graph, its entities, or its relations.
+        The argument ``mode`` defines whether ``X`` is supposed an array of triples
         or an array of either entities or relations.
     model : EmbeddingModel
         The fitted model that will be used to generate the embeddings.
         This model must have been fully trained already, be it directly with
-        `fit` or from a helper function such as `select_best_model_ranking`.
+        ``fit()`` or from a helper function such as :meth:`ampligraph.evaluation.select_best_model_ranking`.
     clustering_algorithm : object
         The initialized object of the clustering algorithm.
         It should be ready to apply the `fit_predict` method.
-        Please see: https://scikit-learn.org/stable/modules/clustering.html#clustering
+        Please see: `scikit-learn documentation <https://scikit-learn.org/stable/modules/clustering.html#clustering>`_
         to understand the clustering API provided by scikit-learn.
-        The default clustering model is sklearn's DBSCAN with its default
-        parameters.
-    mode: str
-        Clustering mode, whether 'triple', 'entity', or 'relation'.
-        For 'triple' clustering, the algorithm will cluster the concatenation
-        of the embeddings of the subject, predicate and object for each triple.
-        For 'entity' or 'relation' clustering, the algorithm will simply cluster
-        the embeddings of either the provided entities or relations.
-        Default: 'triple'.
+        The default clustering model is
+        `sklearn's DBSCAN <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html>`_
+        with its default parameters.
+    mode: string
+        Clustering mode. Choose from:
+
+        - | 'entity' (default): the algorithm will cluster the embeddings of the provided entities.
+        - | 'relation': the algorithm will cluster the embeddings of the provided relations.
+        - | 'triple' : the algorithm will cluster the concatenation
+            of the embeddings of the subject, predicate and object for each triple.
 
     Returns
     -------
@@ -444,6 +444,11 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="triple"):
 
     Examples
     --------
+    >>> # Note seaborn, matplotlib, adjustText are not AmpliGraph dependencies.
+    >>> # and must therefore be installed manually as:
+    >>> #
+    >>> # $ pip install seaborn matplotlib adjustText
+    >>>
     >>> import requests
     >>> import pandas as pd
     >>> import numpy as np
@@ -579,29 +584,29 @@ def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
         or an array of either entities or relations.
     model : EmbeddingModel
         The fitted model that will be used to generate the embeddings.
-        This model must have been fully trained already, be it directly with `fit` or from
-        a helper function such as `select_best_model_ranking`.
-    mode: str
-        Clustering mode, whether 'triple', 'entity', or 'relation'.
-        For 'triple' clustering, the algorithm will cluster the concatenation
-        of the embeddings of the subject, predicate and object for each triple.
-        For 'entity' or 'relation' clustering, the algorithm will simply cluster
-        the embeddings of either the provided entities or relations.
-        Default: 'triple'.
+        This model must have been fully trained already, be it directly with ``fit()``
+        or from a helper function such as :meth:`ampligraph.evaluation.select_best_model_ranking`.
+    mode: string
+        Clustering mode. Choose from:
+
+        - | 'entity' (default): the algorithm will cluster the embeddings of the provided entities.
+        - | 'relation': the algorithm will cluster the embeddings of the provided relations.
+        - | 'triple' : the algorithm will cluster the concatenation
+            of the embeddings of the subject, predicate and object for each triple.
+
     metric: str
         A distance metric used to compare entity distance in the embedding space.
-        See https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html
-        for the whole list of options.
+        `See options here <https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html>`_.
     tolerance: int or str
-        Minimum distance (depending on the chosen metric) to define one entity as the duplicate of another.
-        If `'auto'`, it will be determined automatically in a way that you get the `expected_fraction_duplicates`.
-        The `'auto'` option can be much slower than the regular one, as the finding duplicate internal procedure
+        Minimum distance (depending on the chosen ``metric``) to define one entity as the duplicate of another.
+        If 'auto', it will be determined automatically in a way that you get the ``expected_fraction_duplicates``.
+        The 'auto' option can be much slower than the regular one, as the finding duplicate internal procedure
         will be repeated multiple times.
     expected_fraction_duplicates: float
-        Expected fraction of duplicates to be found. It is used only when `tolerance` is `'auto'`.
-        Should be betweeen 0 and 1 (default: 0.1).
+        Expected fraction of duplicates to be found. It is used only when ``tolerance`` is 'auto'.
+        Should be between 0 and 1 (default: 0.1).
     verbose: bool
-        Whether to print evaluation messages during optimisation (if `tolerance` is `'auto'`). Default: False.
+        Whether to print evaluation messages during optimisation (if ``tolerance`` is 'auto'). Default: False.
 
     Returns
     -------
@@ -778,8 +783,9 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
     entities, and return the top_n triples ordered by score. If given a <subject, object>
     pair it will fill in the missing element with known relations.
 
-    This function does not filter out true statements - triples returned can include those
-    the model was trained on.
+    .. info:
+        This function does not filter out true statements - triples returned can include those
+        the model was trained on.
 
     Parameters
     ----------
