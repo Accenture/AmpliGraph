@@ -1159,7 +1159,6 @@ class EmbeddingModel(abc.ABC):
                                                                       dtype=tf.int32), (-1, 1)))
             test_dependency.append(insert_lookup_op)
         
-        # if True: # For debugging
             # Execute the dependency
             with tf.control_dependencies(test_dependency):
                 # Compute scores for positive - single triple
@@ -1181,16 +1180,9 @@ class EmbeddingModel(abc.ABC):
                 
                 corruption_iter = corruption_generator.make_one_shot_iterator()
 
-                loop_iterations = self.corr_batches_count
-                
                 # Create tensor arrays for storing the scores of subject and object evals
                 scores_predict_s_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(self.ent_to_idx)))
                 scores_predict_o_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(self.ent_to_idx)))
-
-                def loop_cond(i, 
-                              scores_predict_s_corruptions_in, 
-                              scores_predict_o_corruptions_in):
-                    return i < loop_iterations
 
                 def compute_score_corruptions(i,
                                               scores_predict_s_corruptions_in, 
@@ -1230,7 +1222,7 @@ class EmbeddingModel(abc.ABC):
                 
                 # compute the scores for all the corruptions
                 counter, scores_predict_s_corr_out, scores_predict_o_corr_out = \
-                    tf.while_loop(loop_cond, 
+                    tf.while_loop(lambda i: i < self.corr_batches_count,
                                   compute_score_corruptions, 
                                   (0, 
                                    scores_predict_s_corruptions, 
