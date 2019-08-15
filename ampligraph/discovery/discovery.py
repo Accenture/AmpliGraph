@@ -456,6 +456,9 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="triple"):
     >>> from ampligraph.discovery import find_clusters
     >>>
     >>> # International football matches triples
+    >>> # See tutorial here to understand how the triples are created from a tabular dataset:
+    >>> # https://github.com/Accenture/AmpliGraph/blob/master/docs/tutorials/\
+ClusteringAndClassificationWithEmbeddings.ipynb
     >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/football.csv'
     >>> open('football.csv', 'wb').write(requests.get(url).content)
     >>> X = load_from_csv('.', 'football.csv', sep=',')[:, 1:]
@@ -612,12 +615,24 @@ def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
     >>> import numpy as np
     >>> import re
     >>>
-    >>> imdb = pd.read_csv("movies5/csv_files/imdb.csv") # CHANGE LATER TO S3 FILE
+    >>> # The IMDB dataset used here is part of the Movies5 dataset found on:
+    >>> # The Magellan Data Repository (https://sites.google.com/site/anhaidgroup/projects/data)
+    >>> import requests
+    >>> url = 'http://pages.cs.wisc.edu/~anhai/data/784_data/movies5.tar.gz'
+    >>> open('movies5.tar.gz', 'wb').write(requests.get(url).content)
+    >>> import tarfile
+    >>> tar = tarfile.open('movies5.tar.gz', "r:gz")
+    >>> tar.extractall()
+    >>> tar.close()
+    >>>
+    >>> # Reading tabular dataset of IMDB movies and filling the missing values
+    >>> imdb = pd.read_csv("movies5/csv_files/imdb.csv")
     >>> imdb["directors"] = imdb["directors"].fillna("UnknownDirector")
     >>> imdb["actors"] = imdb["actors"].fillna("UnknownActor")
     >>> imdb["genre"] = imdb["genre"].fillna("UnknownGenre")
     >>> imdb["duration"] = imdb["duration"].fillna("0")
     >>>
+    >>> # Creating knowledge graph triples from tabular dataset
     >>> imdb_triples = []
     >>>
     >>> for _, row in imdb.iterrows():
@@ -637,6 +652,7 @@ def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
     >>>     imdb_triples.extend(genres_triples)
     >>>     imdb_triples.append(duration_triple)
     >>>
+    >>> # Training knowledge graph embedding with ComplEx model
     >>> from ampligraph.latent_features import ComplEx
     >>>
     >>> model = ComplEx(batches_count=10,
@@ -654,22 +670,24 @@ def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
     >>> imdb_triples = np.array(imdb_triples)
     >>> model.fit(imdb_triples)
     >>>
+    >>> # Finding duplicates movies (entities)
     >>> from ampligraph.discovery import find_duplicates
     >>>
     >>> entities = np.unique(imdb_triples[:, 0])
     >>> dups, _ = find_duplicates(entities, model, mode='entity', tolerance=0.4)
-    [frozenset({'ID4666', 'ID4665'}), frozenset({'ID2696', 'ID2697'}), frozenset({'ID4020', 'ID4021'})]
     >>> print(list(dups)[:3])
-    >>>
-    >>> print(imdb[imdb.id.isin((4666, 4665, 2696, 2697, 4020, 4021))][['movie_name', 'year']])
-                    movie_name  year
-    2696  Romance of Their Own  2004
-    2697  Romance of Their Own  2004
-    4020  Midnight Confessions  1994
-    4021  Midnight Confessions  1994
-    4665        Skeleton Coast  1988
-    4666        Skeleton Coast  1988
+    [frozenset({'ID4048', 'ID4049'}), frozenset({'ID5994', 'ID5993'}), frozenset({'ID6447', 'ID6448'})]
+    >>> print(imdb[imdb.id.isin((4048, 4049, 5994, 5993, 6447, 6448))][['movie_name', 'year']])
+                        movie_name  year
+    4048          Ulterior Motives  1993
+    4049          Ulterior Motives  1993
+    5993          Chinese Hercules  1973
+    5994          Chinese Hercules  1973
+    6447  The Stranglers of Bombay  1959
+    6448  The Stranglers of Bombay  1959
+
     """
+
     if not model.is_fitted:
         msg = "Model has not been fitted."
         logger.error(msg)
