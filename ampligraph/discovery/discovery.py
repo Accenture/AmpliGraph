@@ -28,8 +28,10 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
     candidate statements:
      - from among the less frequent entities ('entity_frequency'),
      - less connected entities ('graph_degree', cluster_coefficient'),
-     - less frequent local graph structures ('cluster_triangles', 'cluster_squares'), on the assumption that densely connected entities are less likely to have missing true statements.
-     - The remaining strategies ('random_uniform', 'exhaustive') generate candidate statements by a random sampling of entity and relations and exhaustively, respectively.
+     - | less frequent local graph structures ('cluster_triangles', 'cluster_squares'), on the assumption that densely
+         connected entities are less likely to have missing true statements.
+     - | The remaining strategies ('random_uniform', 'exhaustive') generate candidate statements by a random sampling of
+         entity and relations and exhaustively, respectively.
 
         .. warning::
             Due to the significant amount of
@@ -55,8 +57,10 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
     strategy: string
         The candidates generation strategy:
 
-        - 'exhaustive' : generates all possible candidates given the ```target_rel``` and ```consolidate_sides``` parameter.
-        - 'random_uniform' : generates N candidates (N <= max_candidates) based on a uniform random sampling of head and tail entities.
+        - | 'exhaustive' : generates all possible candidates given the ```target_rel```
+            and ```consolidate_sides``` parameter.
+        - | 'random_uniform' : generates N candidates (N <= max_candidates) based on a uniform random
+            sampling of head and tail entities.
         - 'entity_frequency' : generates candidates by sampling entities with low frequency.
         - 'graph_degree' : generates candidates by sampling entities with a low graph degree.
         - 'cluster_coefficient' : generates candidates by sampling entities with a low clustering coefficient.
