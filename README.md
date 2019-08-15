@@ -70,7 +70,7 @@ Install from pip or conda:
 **CPU-only**
 
 ```
-pip install tensorflow==1.13.1
+pip install "tensorflow>=1.13.1,<2.0"
 
 or
 
@@ -80,7 +80,7 @@ conda install tensorflow=1.13.1
 **GPU support**
 
 ```
-pip install tensorflow-gpu==1.13.1
+pip install "tensorflow-gpu>=1.13.1,<2.0"
 
 or
 
@@ -114,7 +114,7 @@ pip install -e .
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'1.0.3'
+'1.1.0'
 ```
 
 
