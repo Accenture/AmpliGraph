@@ -20,6 +20,7 @@
     command: |
       . venv/bin/activate
       venv/bin/python3 -m pip install .
+      venv/bin/python3 -m pip install tensorflow==1.13.1
 
 version: 2
 jobs:
@@ -85,6 +86,7 @@ jobs:
     - restore_cache: *restore-cache
     - run: *create-venv
     - save_cache: *save-cache
+    - run: *install-package
     - run:
           name: Making docs with Sphinx
           command: |
