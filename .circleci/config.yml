@@ -58,7 +58,7 @@ jobs:
     - save_cache: *save-cache
     - run: *install-package
     - run:
-          name: Install Python dependencies in a venv
+          name: Unit tests with Pytest
           command: |
             . venv/bin/activate
             venv/bin/python3 -m pytest tests
@@ -71,11 +71,28 @@ jobs:
     - run: *create-venv
     - save_cache: *save-cache
     - run:
-          name: linting with flake8
+          name: Linting with flake8
           command: |
             . venv/bin/activate
             venv/bin/python3 -m pip install flake8
             venv/bin/python3 -m flake8 ampligraph --max-line-length 120 --ignore=W291,W293
+
+  docs:
+    docker:
+      - image: *docker-image
+    steps:
+    - checkout
+    - restore_cache: *restore-cache
+    - run: *create-venv
+    - save_cache: *save-cache
+    - run:
+          name: Making docs with Sphinx
+          command: |
+            . venv/bin/activate
+            venv/bin/python3 -m pip install sphinx
+            cd docs
+            make clean autogen html
+
 
 workflows:
   version: 2
