@@ -46,6 +46,7 @@ AmpliGraph features a number of abstract classes that can be extended to design 
     EmbeddingModel
     Loss
     Regularizer
+    Initializer
 
 
 .. _scoring:
@@ -115,6 +116,23 @@ AmpliGraph includes a number of regularizers that can be used with the :ref:`los
     :template: class.rst
 
     LPRegularizer
+
+
+.. _ref-init:
+
+Initializers
+--------------
+
+AmpliGraph includes a number of initializers that can be used to initialize the embeddings. They can be passed as hyperparameter,
+and they can be thus used :ref:`during model selection <eval>`.
+
+.. autosummary::
+    :toctree: generated
+    :template: class.rst
+
+    RandomNormal
+    RandomUniform
+    Xavier
 
 
 .. _optimizer:

@@ -32,7 +32,10 @@ setup_params = dict(name='ampligraph',
                         'sphinxcontrib-bibtex>=0.4.0',
                         'beautifultable>=0.7.0',
                         'pyyaml>=3.13',
-                        'rdflib>=4.2.2'
+                        'rdflib>=4.2.2',
+                        'scipy>=1.3.0',
+                        'networkx>=2.3',
+                        'flake8>=3.7.7'
                     ])
 if __name__ == '__main__':
     setup(**setup_params)

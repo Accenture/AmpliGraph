@@ -4,6 +4,7 @@ Datasets
 
 .. automodule:: ampligraph.datasets
 
+
 .. note::
     It is recommended to set the ``AMPLIGRAPH_DATA_HOME`` environment variable::
 
@@ -17,8 +18,8 @@ Datasets
 
         ~/ampligraph_datasets
 
-Dataset-Specific Loaders
-^^^^^^^^^^^^^^^^^^^^^^^^
+Benchmark Datasets Loaders
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Use these helpers functions to load datasets used in graph representation learning literature.
 The functions will **automatically download** the datasets if they are not present in ``~/ampligraph_datasets`` or
@@ -30,12 +31,11 @@ at the location set in ``AMPLIGRAPH_DATA_HOME``.
     :toctree: generated
     :template: function.rst
 
-    load_wn18
-    load_fb15k
     load_fb15k_237
-    load_yago3_10
     load_wn18rr
-
+    load_yago3_10
+    load_fb15k
+    load_wn18
 
 
 **Datasets Summary**
@@ -51,7 +51,7 @@ YAGO3-10  1,079,040 5,000   5,000   123,182       37
 ========= ========= ======= ======= ============ ===========
 
 
-.. hint::
+.. warning::
     WN18 and FB15k include a large number of inverse relations, and its use in experiments has been deprecated.
     **Use WN18RR and FB15K-237 instead**.
 
@@ -60,8 +60,8 @@ YAGO3-10  1,079,040 5,000   5,000   123,182       37
         distributed over 28 triples. WN18RR's validation set contains 198 unseen entities over 210 triples. The test set
         has 209 unseen entities, distributed over 210 triples.
 
-Generic Loaders
-^^^^^^^^^^^^^^^
+Loaders for Custom Knowledge Graphs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Functions to load custom knowledge graphs from disk.
 

@@ -58,9 +58,10 @@ Modules
 
 AmpliGraph includes the following submodules:
 
-* **Input**: Helper functions to load datasets (knowledge graphs).
-* **Latent Feature Models**: knowledge graph embedding models. AmpliGraph contains: TransE, DistMult, ComplEx, HolE. (More to come!)
-* **Evaluation**: Metrics and evaluation protocols to assess the predictive power of the models.
+* **Datasets**: helper functions to load datasets (knowledge graphs).
+* **Models**: knowledge graph embedding models. AmpliGraph contains TransE, DistMult, ComplEx, HolE. (More to come!)
+* **Evaluation**: metrics and evaluation protocols to assess the predictive power of the models.
+* **Discovery**: High-level convenience APIs for knowledge discovery (discover new facts, cluster entities, predict near duplicates).
 
 
 How to Cite
@@ -82,7 +83,8 @@ If you instead use AmpliGraph in an academic publication, cite as:
               Sumit Pai and
               Chan Le Van and
               Rory McGrath and
-              Nick McCarthy},
+              Nick McCarthy and
+              Pedro Tabacof},
      title = {{AmpliGraph: a Library for Representation Learning on Knowledge Graphs}},
      month = mar,
      year  = 2019,
@@ -103,6 +105,7 @@ If you instead use AmpliGraph in an academic publication, cite as:
    api
    dev
    examples
+   tutorials
    experiments
    biblio
    changelog

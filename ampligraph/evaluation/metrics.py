@@ -15,7 +15,7 @@ logger.setLevel(logging.DEBUG)
 
 
 def hits_at_n_score(ranks, n):
-    """Hits@N
+    r"""Hits@N
 
     The function computes how many elements of a vector of rankings ``ranks`` make it to the top ``n`` positions.
 
@@ -26,7 +26,7 @@ def hits_at_n_score(ranks, n):
 
     .. math::
 
-        Hits@N = \sum_{i = 1}^{|Q|} 1 \, if rank_{(s, p, o)_i} \leq N
+        Hits@N = \sum_{i = 1}^{|Q|} 1 \, \text{if } rank_{(s, p, o)_i} \leq N
 
     where :math:`Q` is a set of triples and :math:`(s, p, o)` is a triple :math:`\in Q`.
 
@@ -55,8 +55,8 @@ def hits_at_n_score(ranks, n):
 
     Parameters
     ----------
-    ranks: ndarray, shape [n]
-        Input ranks of n positive statements.
+    ranks: ndarray or list, shape [n] or [n,2]
+        Input ranks of n test statements.
     n: int
         The maximum rank considered to accept a positive.
 
@@ -78,12 +78,12 @@ def hits_at_n_score(ranks, n):
     if isinstance(ranks, list):
         logger.debug('Converting ranks to numpy array.')
         ranks = np.asarray(ranks)
-
+    ranks = ranks.reshape(-1)
     return np.sum(ranks <= n) / len(ranks)
 
 
 def mrr_score(ranks):
-    """Mean Reciprocal Rank (MRR)
+    r"""Mean Reciprocal Rank (MRR)
 
     The function computes the mean of the reciprocal of elements of a vector of rankings ``ranks``.
 
@@ -94,7 +94,7 @@ def mrr_score(ranks):
 
     .. math::
 
-        MRR = \\frac{1}{|Q|}\sum_{i = 1}^{|Q|}\\frac{1}{rank_{(s, p, o)_i}}
+        MRR = \frac{1}{|Q|}\sum_{i = 1}^{|Q|}\frac{1}{rank_{(s, p, o)_i}}
 
     where :math:`Q` is a set of triples and :math:`(s, p, o)` is a triple :math:`\in Q`.
 
@@ -123,16 +123,14 @@ def mrr_score(ranks):
 
         MRR=0.75
 
-
-
     Parameters
     ----------
-    ranks: ndarray, shape [n]
-        Input ranks of n positive statements.
+    ranks: ndarray or list, shape [n] or [n,2]
+        Input ranks of n test statements.
 
     Returns
     -------
-    hits_n_score: float
+    mrr_score: float
         The MRR score
 
     Examples
@@ -148,7 +146,7 @@ def mrr_score(ranks):
     if isinstance(ranks, list):
         logger.debug('Converting ranks to numpy array.')
         ranks = np.asarray(ranks)
-
+    ranks = ranks.reshape(-1)
     return np.sum(1 / ranks) / len(ranks)
 
 
@@ -168,14 +166,12 @@ def rank_score(y_true, y_pred, pos_lab=1):
     y_pred : ndarray, shape [n]
         An array of scores, for the positive element and the n-1 negatives.
     pos_lab : int
-        The value of the positive label (default = 1)
-
+        The value of the positive label (default = 1).
 
     Returns
     -------
     rank : int
         The rank of the positive element against the negatives.
-
 
     Examples
     --------
@@ -196,7 +192,7 @@ def rank_score(y_true, y_pred, pos_lab=1):
 
 
 def mr_score(ranks):
-    """ Mean Rank (MR)
+    r"""Mean Rank (MR)
 
     The function computes the mean of of a vector of rankings ``ranks``.
 
@@ -206,7 +202,7 @@ def mr_score(ranks):
     It is formally defined as follows:
 
     .. math::
-        MR = \\frac{1}{|Q|}\sum_{i = 1}^{|Q|}rank_{(s, p, o)_i}
+        MR = \frac{1}{|Q|}\sum_{i = 1}^{|Q|}rank_{(s, p, o)_i}
 
     where :math:`Q` is a set of triples and :math:`(s, p, o)` is a triple :math:`\in Q`.
 
@@ -234,6 +230,15 @@ def mr_score(ranks):
 
         MR=1.5
 
+    Parameters
+    ----------
+    ranks: ndarray or list, shape [n] or [n,2]
+        Input ranks of n test statements.
+
+    Returns
+    -------
+    mr_score: float
+        The MR score
 
     Examples
     --------
@@ -248,4 +253,5 @@ def mr_score(ranks):
     if isinstance(ranks, list):
         logger.debug('Converting ranks to numpy array.')
         ranks = np.asarray(ranks)
+    ranks = ranks.reshape(-1)
     return np.sum(ranks) / len(ranks)

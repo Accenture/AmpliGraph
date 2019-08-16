@@ -10,9 +10,11 @@ import importlib
 import numpy as np
 import numpy.testing as npt
 from ampligraph.utils import save_model, restore_model, create_tensorboard_visualizations, write_metadata_tsv
-
+import pytest
+import pickle
 
 def test_save_and_restore_model():
+
     models = ('ComplEx', 'TransE', 'DistMult')
 
     for model_name in models:
@@ -23,7 +25,7 @@ def test_save_and_restore_model():
         class_ = getattr(module, model_name)
 
         model = class_(batches_count=2, seed=555, epochs=20, k=10,
-                       optimizer='adagrad', optimizer_params={'lr':0.1})
+                       optimizer='adagrad', optimizer_params={'lr': 0.1})
 
         X = np.array([['a', 'y', 'b'],
                       ['b', 'y', 'a'],
@@ -42,7 +44,7 @@ def test_save_and_restore_model():
 
         loaded_model = restore_model(model_name_path = example_name)
 
-        assert loaded_model != None
+        assert loaded_model is not None
         assert loaded_model.all_params == model.all_params
         assert loaded_model.is_fitted == model.is_fitted
         assert loaded_model.ent_to_idx == model.ent_to_idx
@@ -51,8 +53,8 @@ def test_save_and_restore_model():
         for i in range(len(loaded_model.trained_model_params)):
             npt.assert_array_equal(loaded_model.trained_model_params[i], model.trained_model_params[i])
 
-        y_pred_before, _ = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
-        y_pred_after, _ = loaded_model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
+        y_pred_before = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+        y_pred_after = loaded_model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
         npt.assert_array_equal(y_pred_after, y_pred_before)
 
         npt.assert_array_equal(loaded_model.get_embeddings(['a', 'b'], embedding_type='entity'),
@@ -61,9 +63,16 @@ def test_save_and_restore_model():
         os.remove(example_name)
 
 
+def test_restore_model_errors():
+
+    with pytest.raises(FileNotFoundError):
+        model = restore_model(model_name_path='filenotfound.model')
+
+
 def test_create_tensorboard_visualizations():
     # TODO: This
     pass
+
 
 def test_write_metadata_tsv():
     # TODO: This
