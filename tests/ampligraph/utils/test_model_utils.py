@@ -77,3 +77,7 @@ def test_create_tensorboard_visualizations():
 def test_write_metadata_tsv():
     # TODO: This
     pass
+
+
+if __name__ == '__main__':
+    print('x')
