@@ -142,11 +142,11 @@ def restore_model(model_name_path=None):
         model.ent_to_idx = restored_obj['ent_to_idx']
         model.rel_to_idx = restored_obj['rel_to_idx']
         model.restore_model_params(restored_obj)
-    except (IOError, pickle.UnpicklingError) as e:
+    except pickle.UnpicklingError as e:
         msg = 'Error unpickling model {} : {}.'.format(model_name_path, e)
         logger.debug(msg)
         raise Exception(msg)
-    except FileNotFoundError:
+    except (IOError, FileNotFoundError):
         msg = 'No model found: {}.'.format(model_name_path)
         logger.debug(msg)
         raise FileNotFoundError(msg)
