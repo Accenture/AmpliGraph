@@ -102,3 +102,4 @@ workflows:
       - test
       - pip-check
       - lint
+      - docs
