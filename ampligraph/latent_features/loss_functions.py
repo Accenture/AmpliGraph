@@ -468,7 +468,7 @@ class SelfAdversarialLoss(Loss):
 class NLLMulticlass(Loss):
     r"""Multiclass NLL Loss.
     
-    Introduced in :cite:`chen2015` where both the subject and objects are corrupted (to use it in this way pass sddddddddddddd
+    Introduced in :cite:`chen2015` where both the subject and objects are corrupted (to use it in this way pass
     corrupt_sides = ['s', 'o'] to embedding_model_params) .
 
     This loss was re-engineered in :cite:`kadlecBK17` where only the object was corrupted to get improved
