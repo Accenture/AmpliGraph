@@ -1,6 +1,6 @@
-from .EmbeddingModel import EmbeddingModel,register_model
+from .EmbeddingModel import EmbeddingModel, register_model
 from ampligraph.latent_features import constants as constants
-from ampligraph.latent_features.initializers import INITIALIZER_REGISTRY, DEFAULT_XAVIER_IS_UNIFORM
+from ampligraph.latent_features.initializers import DEFAULT_XAVIER_IS_UNIFORM
 import tensorflow as tf
 
 @register_model("TransE",
@@ -173,7 +173,6 @@ class TransE(EmbeddingModel):
                          initializer=initializer, initializer_params=initializer_params,
                          verbose=verbose)
 
-
     def _fn(self, e_s, e_p, e_o):
         r"""The TransE scoring function.
 
@@ -198,7 +197,8 @@ class TransE(EmbeddingModel):
         """
 
         return tf.negative(
-            tf.norm(e_s + e_p - e_o, ord=self.embedding_model_params.get('norm', constants.DEFAULT_NORM_TRANSE), axis=1))
+            tf.norm(e_s + e_p - e_o, ord=self.embedding_model_params.get('norm', constants.DEFAULT_NORM_TRANSE), 
+                                                                            axis=1))
 
     def fit(self, X, early_stopping=False, early_stopping_params={}):
         """Train an Translating Embeddings model.
@@ -297,5 +297,3 @@ class TransE(EmbeddingModel):
 
         """
         return super().predict(X, from_idx=from_idx)
-
-

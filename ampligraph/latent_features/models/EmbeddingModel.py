@@ -371,7 +371,6 @@ class EmbeddingModel(abc.ABC):
 
         self.rel_emb = tf.Variable(self.trained_model_params[1], dtype=tf.float32)
 
-
     def get_embeddings(self, entities, embedding_type='entity'):
         """Get the embeddings of entities or relations.
 
@@ -635,7 +634,7 @@ class EmbeddingModel(abc.ABC):
             logger.debug('Using batch entities for generation of corruptions for early stopping')
 
         self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', 
-                                                                            constants.DEFAULT_CORRUPT_SIDE_EVAL)
+                                                                        constants.DEFAULT_CORRUPT_SIDE_EVAL)
 
         self.early_stopping_best_value = None
         self.early_stopping_stop_counter = 0
