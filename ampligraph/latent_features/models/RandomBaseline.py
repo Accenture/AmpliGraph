@@ -119,8 +119,8 @@ class RandomBaseline(EmbeddingModel):
         return positive_scores
 
     def get_ranks(self, dataset_handle):
-                    """ Used by evaluate_predictions to get the ranks for evaluation.
-            Generates random ranks for each test triple based on the entity size.
+        """ Used by evaluate_predictions to get the ranks for evaluation.
+        Generates random ranks for each test triple based on the entity size.
 
         Parameters
         ----------

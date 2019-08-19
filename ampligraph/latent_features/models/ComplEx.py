@@ -1,5 +1,6 @@
 from .EmbeddingModel import EmbeddingModel
 from ampligraph.latent_features import constants as constants
+from ampligraph.latent_features.initializers import INITIALIZER_REGISTRY, DEFAULT_XAVIER_IS_UNIFORM
 import tensorflow as tf
 
 class ComplEx(EmbeddingModel):
@@ -70,7 +71,7 @@ class ComplEx(EmbeddingModel):
                  regularizer=constants.DEFAULT_REGULARIZER,
                  regularizer_params={},
                  initializer=constants.DEFAULT_INITIALIZER,
-                 initializer_params={'uniform': constants.DEFAULT_XAVIER_IS_UNIFORM},
+                 initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  verbose=constants.DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 

@@ -1,5 +1,6 @@
 from .ComplEx import ComplEx 
 from ampligraph.latent_features import constants as constants
+from ampligraph.latent_features.initializers import INITIALIZER_REGISTRY, DEFAULT_XAVIER_IS_UNIFORM
 import tensorflow as tf
 
 class HolE(ComplEx):
@@ -54,7 +55,7 @@ class HolE(ComplEx):
                  loss_params={},
                  regularizer=constants.DEFAULT_REGULARIZER,
                  regularizer_params={},
-                 initializer=DEFAULT_INITIALIZER,
+                 initializer=constants.DEFAULT_INITIALIZER,
                  initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  verbose=constants.DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel

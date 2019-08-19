@@ -48,7 +48,7 @@ class EmbeddingModel(abc.ABC):
                  regularizer=constants.DEFAULT_REGULARIZER,
                  regularizer_params={},
                  initializer=constants.DEFAULT_INITIALIZER,
-                 initializer_params={'uniform': constants.DEFAULT_XAVIER_IS_UNIFORM},
+                 initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  verbose=constants.DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
@@ -809,7 +809,7 @@ class EmbeddingModel(abc.ABC):
             self.rel_to_idx, self.ent_to_idx = self.train_dataset_handle.generate_mappings()
             prefetch_batches = 1
 
-            if len(self.ent_to_idx) > ENTITY_THRESHOLD:
+            if len(self.ent_to_idx) > constants.ENTITY_THRESHOLD:
                 self.dealing_with_large_graphs = True
                 prefetch_batches = 0
 
@@ -842,7 +842,7 @@ class EmbeddingModel(abc.ABC):
             batch_size = int(np.ceil(self.train_dataset_handle.get_size("train") / self.batches_count))
             # dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(2)
 
-            if len(self.ent_to_idx) > ENTITY_THRESHOLD:
+            if len(self.ent_to_idx) > constants.ENTITY_THRESHOLD:
                 logger.warning('Only {} embeddings would be loaded in memory per batch...'.format(batch_size * 2))
 
             self.batch_size = batch_size
