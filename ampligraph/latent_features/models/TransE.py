@@ -198,7 +198,7 @@ class TransE(EmbeddingModel):
 
         return tf.negative(
             tf.norm(e_s + e_p - e_o, ord=self.embedding_model_params.get('norm', constants.DEFAULT_NORM_TRANSE), 
-                                                                            axis=1))
+                                                                         axis=1))
 
     def fit(self, X, early_stopping=False, early_stopping_params={}):
         """Train an Translating Embeddings model.
