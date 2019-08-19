@@ -47,6 +47,10 @@ class RandomBaseline(EmbeddingModel):
         """
         self.seed = seed
         self.is_fitted = False
+        self.is_filtered = False
+        self.sess_train = None
+        self.sess_predict = None
+
         self.rnd = check_random_state(self.seed)
         self.eval_config = {}
 
@@ -87,13 +91,7 @@ class RandomBaseline(EmbeddingModel):
         self.rel_to_idx, self.ent_to_idx = create_mappings(X)
         self.is_fitted = True
 
-    def end_evaluation(self):
-        """End the evaluation
-        """
-        self.is_filtered = False
-        self.eval_config = {}
-
-    def predict(self, X, from_idx=False, get_ranks=False):
+    def predict(self, X, from_idx=False):
         """Assign random scores to candidate triples and then ranks them
 
         Parameters
@@ -118,29 +116,45 @@ class RandomBaseline(EmbeddingModel):
             X = np.expand_dims(X, 0)
 
         positive_scores = self.rnd.uniform(low=0, high=1, size=len(X)).tolist()
-        if get_ranks:
-            corruption_entities = self.eval_config.get('corruption_entities', constants.DEFAULT_CORRUPTION_ENTITIES)
-            if corruption_entities == "all":
-                corruption_length = len(self.ent_to_idx)
-            else:
-                corruption_length = len(corruption_entities)
-
-            corrupt_side = self.eval_config.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL)
-            if corrupt_side == 's+o':
-                # since we are corrupting both subject and object
-                corruption_length *= 2
-                # to account for the positive that we are testing
-                corruption_length -= 2
-            else:
-                # to account for the positive that we are testing
-                corruption_length -= 1
-            ranks = []
-            for i in range(len(X)):
-                rank = np.sum(self.rnd.uniform(low=0, high=1, size=corruption_length) >= positive_scores[i]) + 1
-                ranks.append(rank)
-
-            return positive_scores, ranks
-
         return positive_scores
 
+    def get_ranks(self, dataset_handle):
+                    """ Used by evaluate_predictions to get the ranks for evaluation.
+            Generates random ranks for each test triple based on the entity size.
 
+        Parameters
+        ----------
+        dataset_handle : Object of AmpligraphDatasetAdapter
+                         This contains handles of the generators that would be used to get test triples and filters
+
+        Returns
+        -------
+        ranks : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
+                An array of ranks of test triples.
+        """
+        self.eval_dataset_handle = dataset_handle
+        test_data_size = self.eval_dataset_handle.get_size('test')
+
+        positive_scores = self.rnd.uniform(low=0, high=1, size=test_data_size).tolist()
+
+        corruption_entities = self.eval_config.get('corruption_entities', constants.DEFAULT_CORRUPTION_ENTITIES)
+        if corruption_entities == "all":
+            corruption_length = len(self.ent_to_idx)
+        else:
+            corruption_length = len(corruption_entities)
+
+        corrupt_side = self.eval_config.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL)
+        if corrupt_side == 's+o':
+            # since we are corrupting both subject and object
+            corruption_length *= 2
+            # to account for the positive that we are testing
+            corruption_length -= 2
+        else:
+            # to account for the positive that we are testing
+            corruption_length -= 1
+        ranks = []
+        for i in range(len(X)):
+            rank = np.sum(self.rnd.uniform(low=0, high=1, size=corruption_length) >= positive_scores[i]) + 1
+            ranks.append(rank)
+
+        return ranks
