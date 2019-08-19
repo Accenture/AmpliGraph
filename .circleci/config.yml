@@ -19,8 +19,8 @@
     name: Install package
     command: |
       . venv/bin/activate
-      venv/bin/python3 -m pip install .
       venv/bin/python3 -m pip install tensorflow==1.13.1
+      venv/bin/python3 -m pip install .
 
 version: 2
 jobs:
@@ -91,7 +91,6 @@ jobs:
           name: Making docs with Sphinx
           command: |
             . venv/bin/activate
-            venv/bin/python3 -m pip install sphinx
             cd docs
             make clean autogen html
 

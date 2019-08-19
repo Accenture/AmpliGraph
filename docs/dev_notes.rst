@@ -80,8 +80,8 @@ In the large graph mode, the training/evaluation would be slower than usual as t
 from GPU every batch; however, it is still much faster than doing computations on CPU (using tensorflow cpu version and
 normal AmpliGraph mode).
 
-We have tested this approach with the fb15k dataset by explicitly setting large graph mode to just 100 entities and using
- a batch count of 100. With batch count of 100, the batch size is approximately 4500. In other words we would load
+We have tested this approach with the fb15k dataset by explicitly setting large graph mode to just 100 entities and
+using a batch count of 100. With batch count of 100, the batch size is approximately 4500. In other words we would load
 approximately 4500 entity embeddings in GPU memory per batch (out of a total 14951 entities). The training slows down
 by a small margin (it takes 1.5 times more per epoch than the usual mode due to the loading/unloading overhead).
 However the evaluation performance is worse, since for each test triple, we generate all the possible corruptions and

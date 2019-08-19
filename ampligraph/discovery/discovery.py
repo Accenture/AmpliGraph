@@ -26,17 +26,17 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
 
     The majority of the strategies are implemented with the same underlying principle of searching for
     candidate statements:
-     - from among the less frequent entities ('entity_frequency'),
-     - less connected entities ('graph_degree', cluster_coefficient'),
-     - | less frequent local graph structures ('cluster_triangles', 'cluster_squares'), on the assumption that densely
-         connected entities are less likely to have missing true statements.
-     - | The remaining strategies ('random_uniform', 'exhaustive') generate candidate statements by a random sampling of
-         entity and relations and exhaustively, respectively.
 
-        .. warning::
-            Due to the significant amount of
-            computation required to evaluate all triples using the 'exhaustive' strategy, we do not recommend its use
-            at this time.
+    - from among the less frequent entities ('entity_frequency'),
+    - less connected entities ('graph_degree', cluster_coefficient'),
+    - | less frequent local graph structures ('cluster_triangles', 'cluster_squares'), on the assumption that densely
+        connected entities are less likely to have missing true statements.
+    - | The remaining strategies ('random_uniform', 'exhaustive') generate candidate statements by a random sampling
+        of entity and relations and exhaustively, respectively.
+
+    .. warning::
+        Due to the significant amount of computation required to evaluate all triples using the 'exhaustive' strategy,
+        we do not recommend its use at this time.
 
     The function will automatically filter entities that haven't been seen by the model, and operates on
     the assumption that the model provided has been fit on the data ``X`` (determined heuristically), although ``X``
