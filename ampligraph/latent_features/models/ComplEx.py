@@ -1,6 +1,6 @@
-from .EmbeddingModel import EmbeddingModel,register_model
+from .EmbeddingModel import EmbeddingModel, register_model
 from ampligraph.latent_features import constants as constants
-from ampligraph.latent_features.initializers import INITIALIZER_REGISTRY, DEFAULT_XAVIER_IS_UNIFORM
+from ampligraph.latent_features.initializers import DEFAULT_XAVIER_IS_UNIFORM
 import tensorflow as tf
 
 
@@ -188,7 +188,6 @@ class ComplEx(EmbeddingModel):
             self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size * 2, self.internal_k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
 
-
     def _fn(self, e_s, e_p, e_o):
         r"""ComplEx scoring function.
 
@@ -320,5 +319,3 @@ class ComplEx(EmbeddingModel):
 
         """
         return super().predict(X, from_idx=from_idx)
-
-

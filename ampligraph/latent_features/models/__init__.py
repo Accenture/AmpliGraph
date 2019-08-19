@@ -5,4 +5,4 @@ from .ComplEx import ComplEx
 from .HolE import HolE
 from .RandomBaseline import RandomBaseline
 
-__all__ = [ 'EmbeddingModel', 'TransE', 'DistMult', 'ComplEx', 'HolE', 'RandomBaseline']
+__all__ = ['EmbeddingModel', 'TransE', 'DistMult', 'ComplEx', 'HolE', 'RandomBaseline']

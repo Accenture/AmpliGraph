@@ -1,6 +1,6 @@
-from .EmbeddingModel import EmbeddingModel,register_model
+from .EmbeddingModel import EmbeddingModel, register_model
 from ampligraph.latent_features import constants as constants
-from ampligraph.latent_features.initializers import INITIALIZER_REGISTRY, DEFAULT_XAVIER_IS_UNIFORM
+from ampligraph.latent_features.initializers import DEFAULT_XAVIER_IS_UNIFORM
 import tensorflow as tf
 
 @register_model("DistMult",
@@ -290,5 +290,3 @@ class DistMult(EmbeddingModel):
 
         """
         return super().predict(X, from_idx=from_idx)
-
-

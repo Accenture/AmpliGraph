@@ -13,9 +13,9 @@ from tqdm import tqdm
 import logging
 from ampligraph.latent_features.loss_functions import LOSS_REGISTRY
 from ampligraph.latent_features.regularizers import REGULARIZER_REGISTRY
-from ampligraph.latent_features.optimizers import OPTIMIZER_REGISTRY, SGDOptimizer, DEFAULT_LR
+from ampligraph.latent_features.optimizers import OPTIMIZER_REGISTRY, SGDOptimizer
 from ampligraph.latent_features.initializers import INITIALIZER_REGISTRY, DEFAULT_XAVIER_IS_UNIFORM
-from ampligraph.evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, \
+from ampligraph.evaluation import generate_corruptions_for_fit, to_idx, generate_corruptions_for_eval, \
     hits_at_n_score, mrr_score
 from ampligraph.datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
 from functools import partial
@@ -28,17 +28,20 @@ MODEL_REGISTRY = {}
 
 ENTITY_THRESHOLD = 5e5
 
+
 def set_entity_threshold(threshold):
     """Sets the entity threshold (threshold after which large graph mode is initiated)
     """
     global ENTITY_THRESHOLD
     ENTITY_THRESHOLD = threshold
 
+
 def reset_entity_threshold():
     """Resets the entity threshold
     """
     global ENTITY_THRESHOLD
     ENTITY_THRESHOLD = 5e5
+
 
 def register_model(name, external_params=None, class_params=None):
     if external_params is None:
@@ -369,7 +372,6 @@ class EmbeddingModel(abc.ABC):
         self.rel_emb = tf.Variable(self.trained_model_params[1], dtype=tf.float32)
 
 
-
     def get_embeddings(self, entities, embedding_type='entity'):
         """Get the embeddings of entities or relations.
 
@@ -581,7 +583,6 @@ class EmbeddingModel(abc.ABC):
 
             return loss
 
-
     def _initialize_early_stopping(self):
         """Initializes and creates evaluation graph for early stopping.
         """
@@ -633,7 +634,8 @@ class EmbeddingModel(abc.ABC):
         elif self.eval_config['corruption_entities'] == 'batch':
             logger.debug('Using batch entities for generation of corruptions for early stopping')
 
-        self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL)
+        self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', 
+                                                                            constants.DEFAULT_CORRUPT_SIDE_EVAL)
 
         self.early_stopping_best_value = None
         self.early_stopping_stop_counter = 0
@@ -1420,7 +1422,6 @@ class EmbeddingModel(abc.ABC):
                 scores.append(score)
 
         return scores
-
 
     def is_fitted_on(self, X):
         """ Determine heuristically if a model was fitted on the given triples.

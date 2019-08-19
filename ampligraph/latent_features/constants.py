@@ -69,4 +69,3 @@ DEFAULT_PROTOCOL_EVAL = False
 
 # Specifies how to generate corruptions for training - default does s and o together and applies the loss
 DEFAULT_CORRUPT_SIDE_TRAIN = ['s+o']
-
