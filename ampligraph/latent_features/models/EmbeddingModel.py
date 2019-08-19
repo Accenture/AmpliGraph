@@ -932,7 +932,7 @@ class EmbeddingModel(abc.ABC):
         """
         self.is_filtered = True
 
-   def configure_evaluation_protocol(self, config=None):
+    def configure_evaluation_protocol(self, config=None):
         """Set the configuration for evaluation
 
         Parameters
