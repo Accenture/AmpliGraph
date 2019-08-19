@@ -21,9 +21,9 @@ class ComplEx(EmbeddingModel):
     >>> import numpy as np
     >>> from ampligraph.latent_features import ComplEx
     >>>
-    >>> model = ComplEx(batches_count=1, seed=555, epochs=20, k=10,
+    >>> model = ComplEx(batches_count=2, seed=555, epochs=100, k=20, eta=5,
     >>>             loss='pairwise', loss_params={'margin':1},
-    >>>             regularizer='LP', regularizer_params={'lambda':0.1})
+    >>>             regularizer='LP', regularizer_params={'p': 2, 'lambda':0.1})
     >>> X = np.array([['a', 'y', 'b'],
     >>>               ['b', 'y', 'a'],
     >>>               ['a', 'y', 'c'],
@@ -34,17 +34,25 @@ class ComplEx(EmbeddingModel):
     >>>               ['f', 'y', 'e']])
     >>> model.fit(X)
     >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-    [-0.31336197, 0.07829369]
+    [[0.019520484], [-0.14998421]]
     >>> model.get_embeddings(['f','e'], embedding_type='entity')
-    array([[ 0.17496692,  0.15856805,  0.2549046 ,  0.21418071, -0.00980021,
-    0.06208976, -0.2573946 ,  0.01115128, -0.10728686,  0.40512595,
-    -0.12340491, -0.11021495,  0.28515074,  0.34275156,  0.58547366,
-    0.03383447, -0.37839213,  0.1353071 ,  0.50376487, -0.26477185],
-    [-0.19194135,  0.20568603,  0.04714957,  0.4366147 ,  0.07175589,
-     0.5740745 ,  0.28201544,  0.3266275 , -0.06701915,  0.29062983,
-    -0.21265475,  0.5720126 , -0.05321272,  0.04141249,  0.01574909,
-    -0.11786222,  0.30488515,  0.34970865,  0.23362857, -0.55025095]],
-    dtype=float32)
+    array([[-0.33021057,  0.26524785,  0.0446662 , -0.07932718, -0.15453218,
+        -0.22342539, -0.03382565,  0.17444217,  0.03009969, -0.33569157,
+         0.3200497 ,  0.03803705,  0.05536304, -0.00929996,  0.24446663,
+         0.34408194,  0.16192885, -0.15033236, -0.19703785, -0.00783876,
+         0.1495124 , -0.3578853 , -0.04975723, -0.03930473,  0.1663541 ,
+        -0.24731971, -0.141296  ,  0.03150219,  0.15328223, -0.18549544,
+        -0.39240393, -0.10824018,  0.03394471, -0.11075485,  0.1367736 ,
+         0.10059565, -0.32808647, -0.00472086,  0.14231135, -0.13876757],
+       [-0.09483694,  0.3531292 ,  0.04992269, -0.07774793,  0.1635035 ,
+         0.30610007,  0.3666711 , -0.13785957, -0.3143734 , -0.36909637,
+        -0.13792469, -0.07069954, -0.0368113 , -0.16743314,  0.4090072 ,
+        -0.03407392,  0.3113114 , -0.08418448,  0.21435146,  0.12006859,
+         0.08447982, -0.02025972,  0.38752195,  0.11451488, -0.0258422 ,
+        -0.10990044, -0.22661531, -0.00478273, -0.0238297 , -0.14207476,
+         0.11064807,  0.20135397,  0.22501846, -0.1731076 , -0.2770435 ,
+         0.30784574, -0.15043163, -0.11599299,  0.05718031, -0.1300622 ]],
+      dtype=float32)
 
     """
     def __init__(self,
@@ -61,6 +69,8 @@ class ComplEx(EmbeddingModel):
                  loss_params={},
                  regularizer=constants.DEFAULT_REGULARIZER,
                  regularizer_params={},
+                 initializer=constants.DEFAULT_INITIALIZER,
+                 initializer_params={'uniform': constants.DEFAULT_XAVIER_IS_UNIFORM},
                  verbose=constants.DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
@@ -133,6 +143,21 @@ class ComplEx(EmbeddingModel):
             documentation for additional details.
 
             Example: ``regularizer_params={'lambda': 1e-5, 'p': 2}`` if ``regularizer='LP'``.
+
+        initializer : string
+            The type of initializer to use.
+
+            - ``normal``: The embeddings will be initialized from a normal distribution
+            - ``uniform``: The embeddings will be initialized from a uniform distribution
+            - ``xavier``: The embeddings will be initialized using xavier strategy (default)
+
+        initializer_params : dict
+            Dictionary of initializer-specific hyperparameters. See the
+            :ref:`initializer <ref-init>`
+            documentation for additional details.
+
+            Example: ``initializer_params={'mean': 0, 'std': 0.001}`` if ``initializer='normal'``.
+
         verbose : bool
             Verbose mode.
         """
@@ -141,15 +166,25 @@ class ComplEx(EmbeddingModel):
                          optimizer=optimizer, optimizer_params=optimizer_params,
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
+                         initializer=initializer, initializer_params=initializer_params,
                          verbose=verbose)
+
+        self.internal_k = self.k * 2
 
     def _initialize_parameters(self):
         """Initialize the complex embeddings.
         """
-        self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k * 2],
-                                       initializer=self.initializer)
-        self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k * 2],
-                                       initializer=self.initializer)
+        if not self.dealing_with_large_graphs:
+            self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.internal_k],
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
+            self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
+        else:
+            self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
+            self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size * 2, self.internal_k],
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
+
 
     def _fn(self, e_s, e_p, e_o):
         r"""ComplEx scoring function.
@@ -250,7 +285,7 @@ class ComplEx(EmbeddingModel):
         """
         super().fit(X, early_stopping, early_stopping_params)
 
-    def predict(self, X, from_idx=False, get_ranks=False):
+    def predict(self, X, from_idx=False):
         """Predict the scores of triples using a trained embedding model.
 
          The function returns raw scores generated by the model.
@@ -274,18 +309,13 @@ class ComplEx(EmbeddingModel):
              The triples to score.
          from_idx : bool
              If True, will skip conversion to internal IDs. (default: False).
-         get_ranks : bool
-             Flag to compute ranks by scoring against corruptions (default: False).
 
          Returns
          -------
          scores_predict : ndarray, shape [n]
              The predicted scores for input triples X.
 
-         rank : ndarray, shape [n]
-             Ranks of the triples (only returned if ``get_ranks=True``.
-
         """
-        return super().predict(X, from_idx=from_idx, get_ranks=get_ranks)
+        return super().predict(X, from_idx=from_idx)
 
 
