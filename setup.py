@@ -33,7 +33,10 @@ setup_params = dict(name='ampligraph',
                         'beautifultable>=0.7.0',
                         'pyyaml>=3.13',
                         'rdflib>=4.2.2',
-                        'flake8>=3.7.7'
+                        'scipy>=1.3.0',
+                        'networkx>=2.3',
+                        'flake8>=3.7.7',
+                        'setuptools>=36'
                     ])
 if __name__ == '__main__':
     setup(**setup_params)

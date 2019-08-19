@@ -101,7 +101,7 @@ class Regularizer(abc.ABC):
             Consists of key value pairs. The regularizer will check the keys to get the corresponding params
         """
         logger.error('This function is a placeholder in an abstract class')
-        NotImplementedError("This function is a placeholder in an abstract class")
+        raise NotImplementedError("This function is a placeholder in an abstract class")
 
     def _apply(self, trainable_params):
         """Apply the regularization function. Every inherited class must implement this function.
@@ -119,7 +119,7 @@ class Regularizer(abc.ABC):
             Regularization Loss
         """
         logger.error('This function is a placeholder in an abstract class')
-        NotImplementedError("This function is a placeholder in an abstract class")
+        raise NotImplementedError("This function is a placeholder in an abstract class")
 
     def apply(self, trainable_params):
         """Interface to external world. This function performs input checks, input pre-processing, and
@@ -150,8 +150,12 @@ class LPRegularizer(Regularizer):
     where n is the number of model parameters, :math:`p \in{1,2,3}` is the p-norm and
     :math:`\lambda` is the regularization weight.
 
-    Example: if :math:`p=1` the function will perform L1 regularization.
+    For example, if :math:`p=1` the function will perform L1 regularization.
     L2 regularization is obtained with :math:`p=2`.
+
+    The nuclear 3-norm proposed in the ComplEx-N3 paper :cite:`lacroix2018canonical` can be obtained with
+    ``regularizer_params={'p': 3}``.
+
           
     """
 
@@ -191,8 +195,8 @@ class LPRegularizer(Regularizer):
         """
         self._regularizer_parameters['lambda'] = hyperparam_dict.get('lambda', DEFAULT_LAMBDA)
         self._regularizer_parameters['p'] = hyperparam_dict.get('p', DEFAULT_NORM)
-        if type(self._regularizer_parameters['p']) is not int:
-            msg = 'Invalid value for regularizer parameter p:{}. Supported type int'.format(
+        if not isinstance(self._regularizer_parameters['p'], (int, np.integer)):
+            msg = 'Invalid value for regularizer parameter p:{}. Supported type int, np.int32 or np.int64'.format(
                 self._regularizer_parameters['p'])
             logger.error(msg)
             raise Exception(msg)

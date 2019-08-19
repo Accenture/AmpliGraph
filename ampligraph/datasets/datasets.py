@@ -329,6 +329,10 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False):
 def load_wn18(check_md5hash=False):
     """Load the WN18 dataset
 
+    .. warning::
+        The dataset includes a large number of inverse relations that spilled to the test set, and its use in
+        experiments has been deprecated. Use WN18RR instead.
+
     WN18 is a subset of Wordnet. It was first presented by :cite:`bordes2013translating`.
 
     The WN18 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
@@ -348,11 +352,6 @@ def load_wn18(check_md5hash=False):
     ========= ========= ======= ======= ============ ===========
     WN18      141,442   5,000   5,000   40,943        18
     ========= ========= ======= ======= ============ ===========
-
-
-    .. warning::
-        The dataset includes a large number of inverse relations, and its use in experiments has been deprecated.
-        Use WN18RR instead.
 
     Parameters
     ----------
@@ -463,6 +462,10 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True):
 def load_fb15k(check_md5hash=False):
     """Load the FB15k dataset
 
+    .. warning::
+        The dataset includes a large number of inverse relations that spilled to the test set, and its use in
+        experiments has been deprecated. Use FB15k-237 instead.
+
     FB15k is a split of Freebase, first proposed by :cite:`bordes2013translating`.
 
     The FB15k dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
@@ -482,11 +485,6 @@ def load_fb15k(check_md5hash=False):
     ========= ========= ======= ======= ============ ===========
     FB15K     483,142   50,000  59,071  14,951        1,345
     ========= ========= ======= ======= ============ ===========
-
-
-    .. warning::
-        The dataset includes a large number of inverse relations, and its use in experiments has been deprecated.
-        Use FB15k-237 instead.
 
     Parameters
     ----------

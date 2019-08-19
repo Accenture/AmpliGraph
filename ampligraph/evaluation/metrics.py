@@ -55,8 +55,8 @@ def hits_at_n_score(ranks, n):
 
     Parameters
     ----------
-    ranks: ndarray, shape [n]
-        Input ranks of n positive statements.
+    ranks: ndarray or list, shape [n] or [n,2]
+        Input ranks of n test statements.
     n: int
         The maximum rank considered to accept a positive.
 
@@ -78,7 +78,7 @@ def hits_at_n_score(ranks, n):
     if isinstance(ranks, list):
         logger.debug('Converting ranks to numpy array.')
         ranks = np.asarray(ranks)
-
+    ranks = ranks.reshape(-1)
     return np.sum(ranks <= n) / len(ranks)
 
 
@@ -125,12 +125,12 @@ def mrr_score(ranks):
 
     Parameters
     ----------
-    ranks: ndarray, shape [n]
-        Input ranks of n positive statements.
+    ranks: ndarray or list, shape [n] or [n,2]
+        Input ranks of n test statements.
 
     Returns
     -------
-    hits_n_score: float
+    mrr_score: float
         The MRR score
 
     Examples
@@ -146,7 +146,7 @@ def mrr_score(ranks):
     if isinstance(ranks, list):
         logger.debug('Converting ranks to numpy array.')
         ranks = np.asarray(ranks)
-
+    ranks = ranks.reshape(-1)
     return np.sum(1 / ranks) / len(ranks)
 
 
@@ -230,6 +230,15 @@ def mr_score(ranks):
 
         MR=1.5
 
+    Parameters
+    ----------
+    ranks: ndarray or list, shape [n] or [n,2]
+        Input ranks of n test statements.
+
+    Returns
+    -------
+    mr_score: float
+        The MR score
 
     Examples
     --------
@@ -244,4 +253,5 @@ def mr_score(ranks):
     if isinstance(ranks, list):
         logger.debug('Converting ranks to numpy array.')
         ranks = np.asarray(ranks)
+    ranks = ranks.reshape(-1)
     return np.sum(ranks) / len(ranks)

@@ -1,13 +1,13 @@
-# AmpliGraph
+# ![AmpliGraph](docs/img/ampligraph_logo_transparent_300.png)
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2595043.svg)](https://doi.org/10.5281/zenodo.2595043)
 
 [![Documentation Status](https://readthedocs.org/projects/ampligraph/badge/?version=latest)](http://ampligraph.readthedocs.io/?badge=latest)
 
 
-**Open source Python library that predicts links between concepts in a knowledge graph.**
+**Open source library based on TensorFlow that predicts links between concepts in a knowledge graph.**
 
-AmpliGraph is a suite of neural machine learning models for relational Learning, a branch of machine learning
+**AmpliGraph** is a suite of neural machine learning models for relational Learning, a branch of machine learning
 that deals with supervised learning on knowledge graphs.
 
 
@@ -40,10 +40,10 @@ It then combines embeddings with model-specific scoring functions to predict uns
 
 AmpliGraph includes the following submodules:
 
-* **KG Loaders**: Helper functions to load datasets (knowledge graphs).
-* **Latent Feature Models**: knowledge graph embedding models. AmpliGraph contains: TransE, DistMult, ComplEx, HolE. (More to come!)
-* **Evaluation**: Metrics and evaluation protocols to assess the predictive power of the models.
-
+* **Datasets**: helper functions to load datasets (knowledge graphs).
+* **Models**: knowledge graph embedding models. AmpliGraph contains TransE, DistMult, ComplEx, HolE. (More to come!)
+* **Evaluation**: metrics and evaluation protocols to assess the predictive power of the models.
+* **Discovery**: High-level convenience APIs for knowledge discovery (discover new facts, cluster entities, predict near duplicates).
 
 
 ## Installation
@@ -70,7 +70,7 @@ Install from pip or conda:
 **CPU-only**
 
 ```
-pip install tensorflow==1.13.1
+pip install "tensorflow>=1.13.1,<2.0"
 
 or
 
@@ -80,7 +80,7 @@ conda install tensorflow=1.13.1
 **GPU support**
 
 ```
-pip install tensorflow-gpu==1.13.1
+pip install "tensorflow-gpu>=1.13.1,<2.0"
 
 or
 
@@ -114,19 +114,32 @@ pip install -e .
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'1.0.3'
+'1.2-dev'
 ```
 
 
 ## Predictive Power Evaluation (MRR Filtered)
 
-|          |FB15k |WN18   |WN18RR |FB15K-237|YAGO3-10 |
-|----------|------|-------|-------|---------|---------|
-| TransE   | 0.55 | 0.50  | 0.23  | 0.31    | 0.24    |
-| DistMult | 0.79 | 0.83  | 0.44  | 0.29    | 0.49    |
-| ComplEx  | 0.79 | 0.94  | 0.44  | 0.30    | 0.50    |
-| HolE     | 0.80 | 0.94  | 0.47  | 0.28    | 0.50    |
+AmpliGraph includes implementations of TransE, DistMult, ComplEx and HolE. 
+Their predictive power is reported below and compared against the state-of-the-art results in literature.
+[More details available here](https://docs.ampligraph.org/en/latest/experiments.html).
 
+|                 |FB15K-237 |WN18RR   |YAGO3-10   | FB15k      |WN18           |
+|-----------------|----------|---------|-----------|------------|---------------|
+| Literature Best | **0.35***| 0.48*   | 0.49*     | **0.84**** | **0.95***     |
+| TransE (AmpliGraph)         |  0.31    | 0.22    | 0.49      | 0.63       | 0.65          |
+| DistMult (AmpliGraph)        |  0.31    | 0.45    | 0.49      | 0.78       | 0.82          |
+| ComplEx  (AmpliGraph)       |  0.32    | **0.50**| **0.50**  | 0.80       | 0.94          |
+| HolE (AmpliGraph)           |  0.31    | 0.47    | **0.50**  | 0.80       | 0.93          |
+
+
+<sub>
+* Timothee Lacroix, Nicolas Usunier, and Guillaume Obozinski. Canonical tensor decomposition for knowledge base 
+completion. In International Conference on Machine Learning, 2869–2878. 2018. <br/>
+**  Kadlec, Rudolf, Ondrej Bajgar, and Jan Kleindienst. "Knowledge base completion: Baselines strike back.
+ " arXiv preprint arXiv:1705.10744 (2017).
+
+</sub>
 
 ## Documentation
 
@@ -159,7 +172,8 @@ If you instead use AmpliGraph in an academic publication, cite as:
           Sumit Pai and
           Chan Le Van and
           Rory McGrath and
-          Nicholas McCarthy},
+          Nicholas McCarthy and
+          Pedro Tabacof},
  title = {{AmpliGraph: a Library for Representation Learning on Knowledge Graphs}},
  month = mar,
  year  = 2019,

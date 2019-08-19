@@ -1,6 +1,8 @@
 #######################################################################################################
 # If not specified, following defaults will be used at respective locations
 
+DEFAULT_INITIALIZER = 'xavier'
+
 # Default learning rate for the optimizers
 DEFAULT_LR = 0.0005
 

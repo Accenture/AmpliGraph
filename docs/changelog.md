@@ -1,12 +1,32 @@
 # Changelog
 
-## 1.0.3
+## 1.1.0 
+**16 Aug 2019**
+
+- Support for large number of entities (#61, #113)
+- Faster evaluation protocol (#74)
+- New Knowledge discovery APIs: discover facts, clustering, near-duplicates detection, topn query (#118)
+- API change: model.predict() does not return ranks anymore
+- API change: friendlier ranking API output (#101)
+- Implemented nuclear-3 norm (#23)
+- Jupyter notebook tutorials: AmpliGraph basics (#67) and Link-based clustering 
+- Random search for hyper-parameter tuning (#106)
+- Additional initializers (#112)
+- Experiment campaign with multiclass-loss
+- System-wide bugfixes and minor improvements
+
+
+## 1.0.3 
+**7 Jun 2019**
+
 - Fixed regression in RandomBaseline (#94)
 - Added TensorBoard Embedding Projector support (#86)
 - Minor bugfixing (#87, #47)
 
 
 ## 1.0.2
+**19 Apr 2019**
+
 - Added multiclass loss (#24 and #22)
 - Updated the negative generation to speed up evaluation for default protocol.(#74)
 - Support for visualization of embeddings using Tensorboard (#16)
@@ -26,7 +46,9 @@
 - Other minor issues (#63, #64, #65, #66)
 
 
-## 1.0.1
+## 1.0.1 
+**22 Mar 2019**
+
 - evaluation protocol now ranks object and subjects corruptions separately
 - Corruption generation can now use entities from current batch only
 - FB15k-237, WN18RR loaders filter out unseen triples by default
@@ -35,6 +57,8 @@
 - Minor bugfixing
 
 ## 1.0.0
+**16 Mar 2019**
+
 - TransE
 - DistMult
 - ComplEx
