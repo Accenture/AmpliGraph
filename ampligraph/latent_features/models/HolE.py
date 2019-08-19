@@ -1,8 +1,9 @@
-from .ComplEx import ComplEx 
+from .ComplEx import ComplEx,register_model
 from ampligraph.latent_features import constants as constants
 from ampligraph.latent_features.initializers import INITIALIZER_REGISTRY, DEFAULT_XAVIER_IS_UNIFORM
 import tensorflow as tf
 
+@register_model("HolE", ["negative_corruption_entities"])
 class HolE(ComplEx):
     r"""Holographic Embeddings
 

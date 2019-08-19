@@ -1,8 +1,10 @@
-from .EmbeddingModel import EmbeddingModel
+from .EmbeddingModel import EmbeddingModel,register_model
 from ampligraph.latent_features import constants as constants
 from ampligraph.latent_features.initializers import INITIALIZER_REGISTRY, DEFAULT_XAVIER_IS_UNIFORM
 import tensorflow as tf
 
+
+@register_model("ComplEx", ["negative_corruption_entities"])
 class ComplEx(EmbeddingModel):
     r"""Complex embeddings (ComplEx)
 

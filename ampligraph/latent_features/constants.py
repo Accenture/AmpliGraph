@@ -69,19 +69,4 @@ DEFAULT_PROTOCOL_EVAL = False
 
 # Specifies how to generate corruptions for training - default does s and o together and applies the loss
 DEFAULT_CORRUPT_SIDE_TRAIN = ['s+o']
-#######################################################################################################
 
-ENTITY_THRESHOLD = 5e5
-
-def set_entity_threshold(threshold):
-    """Sets the entity threshold (threshold after which large graph mode is initiated)
-    """
-    global ENTITY_THRESHOLD
-    ENTITY_THRESHOLD = threshold
-
-
-def reset_entity_threshold():
-    """Resets the entity threshold
-    """
-    global ENTITY_THRESHOLD
-    ENTITY_THRESHOLD = 5e5

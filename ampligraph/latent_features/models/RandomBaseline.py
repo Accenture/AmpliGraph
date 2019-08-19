@@ -1,4 +1,4 @@
-from .EmbeddingModel import EmbeddingModel
+from .EmbeddingModel import EmbeddingModel,register_model
 from ampligraph.latent_features import constants as constants
 import tensorflow as tf
 import numpy as np
@@ -6,6 +6,7 @@ from sklearn.utils import check_random_state
 
 from ampligraph.evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval,hits_at_n_score, mrr_score
 
+@register_model("RandomBaseline")
 class RandomBaseline(EmbeddingModel):
     """Random baseline
 
@@ -153,7 +154,7 @@ class RandomBaseline(EmbeddingModel):
             # to account for the positive that we are testing
             corruption_length -= 1
         ranks = []
-        for i in range(len(X)):
+        for i in range(test_data_size):
             rank = np.sum(self.rnd.uniform(low=0, high=1, size=corruption_length) >= positive_scores[i]) + 1
             ranks.append(rank)
 

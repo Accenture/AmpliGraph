@@ -21,10 +21,40 @@ from ampligraph.datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
 from functools import partial
 from ampligraph.latent_features import constants as constants
 
-MODEL_REGISTRY = {}
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+MODEL_REGISTRY = {}
+
+ENTITY_THRESHOLD = 5e5
+
+def set_entity_threshold(threshold):
+    """Sets the entity threshold (threshold after which large graph mode is initiated)
+    """
+    global ENTITY_THRESHOLD
+    ENTITY_THRESHOLD = threshold
+
+def reset_entity_threshold():
+    """Resets the entity threshold
+    """
+    global ENTITY_THRESHOLD
+    ENTITY_THRESHOLD = 5e5
+
+def register_model(name, external_params=None, class_params=None):
+    if external_params is None:
+        external_params = []
+    if class_params is None:
+        class_params = {}
+
+    def insert_in_registry(class_handle):
+        MODEL_REGISTRY[name] = class_handle
+        class_handle.name = name
+        MODEL_REGISTRY[name].external_params = external_params
+        MODEL_REGISTRY[name].class_params = class_params
+        return class_handle
+
+    return insert_in_registry
+
 
 class EmbeddingModel(abc.ABC):
     """Abstract class for embedding models
@@ -321,7 +351,7 @@ class EmbeddingModel(abc.ABC):
         # Generate the batch size based on entity length and batch_count
         self.batch_size = int(np.ceil(len(self.ent_to_idx) / self.batches_count))
 
-        if len(self.ent_to_idx) > constants.ENTITY_THRESHOLD:
+        if len(self.ent_to_idx) > ENTITY_THRESHOLD:
             self.dealing_with_large_graphs = True
 
             logger.warning('Your graph has a large number of distinct entities. '
@@ -809,7 +839,7 @@ class EmbeddingModel(abc.ABC):
             self.rel_to_idx, self.ent_to_idx = self.train_dataset_handle.generate_mappings()
             prefetch_batches = 1
 
-            if len(self.ent_to_idx) > constants.ENTITY_THRESHOLD:
+            if len(self.ent_to_idx) > ENTITY_THRESHOLD:
                 self.dealing_with_large_graphs = True
                 prefetch_batches = 0
 
@@ -842,7 +872,7 @@ class EmbeddingModel(abc.ABC):
             batch_size = int(np.ceil(self.train_dataset_handle.get_size("train") / self.batches_count))
             # dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(2)
 
-            if len(self.ent_to_idx) > constants.ENTITY_THRESHOLD:
+            if len(self.ent_to_idx) > ENTITY_THRESHOLD:
                 logger.warning('Only {} embeddings would be loaded in memory per batch...'.format(batch_size * 2))
 
             self.batch_size = batch_size

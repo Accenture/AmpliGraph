@@ -1,8 +1,10 @@
-from .EmbeddingModel import EmbeddingModel
+from .EmbeddingModel import EmbeddingModel,register_model
 from ampligraph.latent_features import constants as constants
 from ampligraph.latent_features.initializers import INITIALIZER_REGISTRY, DEFAULT_XAVIER_IS_UNIFORM
 import tensorflow as tf
 
+@register_model("TransE",
+                ["norm", "normalize_ent_emb", "negative_corruption_entities"])
 class TransE(EmbeddingModel):
     r"""Translating Embeddings (TransE)
 
