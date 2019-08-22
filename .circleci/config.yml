@@ -1,0 +1,106 @@
+.common-values:
+
+  docker-image: &docker-image circleci/python:3.6.4
+
+  restore-cache: &restore-cache
+    keys:
+      - v1-dependencies-{{ checksum "setup.py" }}-{{ checksum "requirements.txt" }}
+
+  create-venv: &create-venv
+    name: Create virtualenv
+    command: /usr/local/bin/python3 -m venv venv
+
+  save-cache: &save-cache
+    paths:
+      - ./venv
+    key: v1-dependencies-{{ checksum "setup.py" }}-{{ checksum "requirements.txt" }}
+
+  install-package: &install-package
+    name: Install package
+    command: |
+      . venv/bin/activate
+      venv/bin/python3 -m pip install tensorflow==1.13.1
+      venv/bin/python3 -m pip install .
+
+version: 2
+jobs:
+  build:
+    docker:
+      - image: *docker-image
+    steps:
+    - checkout
+    - restore_cache: *restore-cache
+    - run: *create-venv
+    - save_cache: *save-cache
+    - run: *install-package
+
+  pip-check:
+    docker:
+      - image: *docker-image
+    steps:
+    - checkout
+    - restore_cache: *restore-cache
+    - run: *create-venv
+    - save_cache: *save-cache
+    - run: *install-package
+    - run:
+        name: Pip check
+        command: |
+          . venv/bin/activate
+          venv/bin/python3 -m pip check
+
+  test:
+    docker:
+      - image: *docker-image
+    steps:
+    - checkout
+    - restore_cache: *restore-cache
+    - run: *create-venv
+    - save_cache: *save-cache
+    - run: *install-package
+    - run:
+          name: Unit tests with Pytest
+          command: |
+            . venv/bin/activate
+            venv/bin/python3 -m pytest tests
+  lint:
+    docker:
+      - image: *docker-image
+    steps:
+    - checkout
+    - restore_cache: *restore-cache
+    - run: *create-venv
+    - save_cache: *save-cache
+    - run:
+          name: Linting with flake8
+          command: |
+            . venv/bin/activate
+            venv/bin/python3 -m pip install flake8
+            venv/bin/python3 -m flake8 ampligraph --max-line-length 120 --ignore=W291,W293
+
+  docs:
+    docker:
+      - image: *docker-image
+    steps:
+    - checkout
+    - restore_cache: *restore-cache
+    - run: *create-venv
+    - save_cache: *save-cache
+    - run: *install-package
+    - run:
+          name: Making docs with Sphinx
+          command: |
+            . venv/bin/activate
+            cd docs
+            make clean autogen html
+
+
+workflows:
+  version: 2
+  checks:
+    jobs:
+      - build
+      - pip-check
+      - lint
+      - docs
+      - test
