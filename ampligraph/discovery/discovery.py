@@ -259,9 +259,7 @@ def generate_candidates(X, strategy, target_rel, max_candidates, consolidate_sid
         raise ValueError(msg)
 
     if isinstance(max_candidates, float):
-        _max_candidates = int(max_candidates * len(X))
-    elif isinstance(max_candidates, int):
-        _max_candidates = max_candidates
+        max_candidates = int(max_candidates * len(X))
 
     # Set random seed
     np.random.seed(seed)
@@ -302,7 +300,7 @@ def generate_candidates(X, strategy, target_rel, max_candidates, consolidate_sid
 
         # Take close to sqrt of max_candidates so that:
         #   len(meshgrid result) == max_candidates
-        sample_size = int(np.sqrt(_max_candidates))
+        sample_size = int(np.sqrt(max_candidates))
 
         sample_e_s = np.random.choice(e_s, size=sample_size, replace=False)
         sample_e_o = np.random.choice(e_o, size=sample_size, replace=False)
@@ -319,7 +317,7 @@ def generate_candidates(X, strategy, target_rel, max_candidates, consolidate_sid
         ent_counts = np.array(np.unique(X[:, [0, 2]], return_counts=True)).T
         ent_counts = ent_counts[ent_counts[:, 1].argsort()]
 
-        sample_size = int(np.sqrt(_max_candidates))
+        sample_size = int(np.sqrt(max_candidates))
 
         sample_e_s = np.random.choice(ent_counts[0:max_candidates, 0], size=sample_size, replace=False)
         sample_e_o = np.random.choice(ent_counts[0:max_candidates, 0], size=sample_size, replace=False)
@@ -352,7 +350,7 @@ def generate_candidates(X, strategy, target_rel, max_candidates, consolidate_sid
         C = np.array([[k, v] for k, v in C.items()])
         C = C[C[:, 1].argsort()]
 
-        sample_size = int(np.sqrt(_max_candidates))
+        sample_size = int(np.sqrt(max_candidates))
 
         sample_e_s = np.random.choice(C[0:max_candidates, 0], size=sample_size, replace=False)
         sample_e_o = np.random.choice(C[0:max_candidates, 0], size=sample_size, replace=False)
