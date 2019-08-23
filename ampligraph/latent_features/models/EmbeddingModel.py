@@ -275,6 +275,8 @@ class EmbeddingModel(abc.ABC):
         self.eval_config = {}
         self.eval_dataset_handle = None
         self.train_dataset_handle = None
+        self.is_calibrated = False
+        self.calibration_parameters = []
 
     @abc.abstractmethod
     def _fn(self, e_s, e_p, e_o):
@@ -416,8 +418,8 @@ class EmbeddingModel(abc.ABC):
 
         Parameters
         ----------
-        x : ndarray, shape [n, k]
-            A list of k-dimensional embeddings
+        x : tensor, shape [n, k]
+            A tensor of k-dimensional embeddings
 
         Returns
         -------
@@ -1448,3 +1450,192 @@ class EmbeddingModel(abc.ABC):
             return False
 
         return True
+
+    def _calibrate_with_corruptions(self, X_pos, batch_size, batches_count, pos_base_rate,
+                                    negative_corruption_entities, corruption_sides):
+        entities_size = 0
+        entities_list = None
+
+        if negative_corruption_entities == 'all':
+            '''
+            if number of entities are large then in this case('all'),
+            the corruptions would be generated from batch entities and and additional random entities that
+            are selected from all entities (since a total of batch_size*2 entity embeddings are loaded in memory)
+            '''
+            logger.debug('Using all entities for generation of corruptions during training')
+            if self.dealing_with_large_graphs:
+                entities_list = tf.squeeze(self.unique_entities)
+            else:
+                entities_size = tf.shape(self.ent_emb)[0]
+        elif negative_corruption_entities == 'batch':
+            # default is batch (entities_size=0 and entities_list=None)
+            logger.debug('Using batch entities for generation of corruptions during training')
+        elif isinstance(negative_corruption_entities, list):
+            logger.debug('Using the supplied entities for generation of corruptions during training')
+            entities_list = tf.squeeze(tf.constant(np.asarray([idx for uri, idx in self.ent_to_idx.items()
+                                                               if uri in negative_corruption_entities]),
+                                                   dtype=tf.int32))
+        elif isinstance(negative_corruption_entities, int):
+            logger.debug('Using first {} entities for generation of corruptions during \
+                          training'.format(negative_corruption_entities))
+            entities_size = negative_corruption_entities
+
+        if not isinstance(corruption_sides, list):
+            corruption_sides = [corruption_sides]
+
+        batch_size_neg = int(batch_size * (1.0 / pos_base_rate - 1.0))
+        eta = int(np.ceil(batch_size_neg / batch_size))
+
+        dataset_handle = NumpyDatasetAdapter()
+        dataset_handle.set_data(X_pos, "pos")
+        dataset_handle.generate_mappings(use_all=True)
+
+        pos_gen = iter(dataset_handle.get_next_train_batch(batch_size=batch_size, dataset_type="pos"))
+
+        def pos_generator():
+            for i in range(batches_count):
+                out_pos = next(pos_gen)
+                yield out_pos
+
+        dataset = tf.data.Dataset.from_generator(pos_generator,
+                                                 output_types=tf.int32,
+                                                 output_shapes=(None, 3))
+        dataset = dataset.repeat().prefetch(1)
+        dataset_iter = tf.data.make_one_shot_iterator(dataset)
+
+        x_pos_tf = dataset_iter.get_next()
+
+        scores_neg = []
+        for side in corruption_sides:
+            x_neg_tf = generate_corruptions_for_fit(x_pos_tf,
+                                                    entities_list=entities_list,
+                                                    eta=eta,
+                                                    corrupt_side=side,
+                                                    entities_size=entities_size,
+                                                    rnd=self.seed)
+            e_s_neg, e_p_neg, e_o_neg = self._lookup_embeddings(x_neg_tf)
+            scores_neg.append(self._fn(e_s_neg, e_p_neg, e_o_neg))
+
+        scores_neg = tf.concat(scores_neg, axis=0)[:batch_size_neg]
+
+        e_s, e_p, e_o = self._lookup_embeddings(x_pos_tf)
+        scores_pos = self._fn(e_s, e_p, e_o)
+
+        return scores_pos, scores_neg, dataset_handle
+
+    def _calibrate_with_negatives(self, X_pos, X_neg, batch_size, batches_count, pos_base_rate):
+        if pos_base_rate is None:
+            pos_base_rate = len(X_pos) / (len(X_pos) + len(X_neg))
+
+        batch_size_neg = int(batch_size * (1.0 / pos_base_rate - 1.0))
+
+        dataset_handle = NumpyDatasetAdapter()
+        dataset_handle.set_data(X_pos, "pos")
+        dataset_handle.set_data(X_neg, "neg")
+        dataset_handle.generate_mappings(use_all=True)
+
+        pos_generator = iter(dataset_handle.get_next_train_batch(batch_size=batch_size, dataset_type="pos"))
+        neg_generator = iter(dataset_handle.get_next_train_batch(batch_size=batch_size_neg, dataset_type="neg"))
+
+        def pos_neg_generator():
+            for i in range(batches_count):
+                out_pos = next(pos_generator)
+                out_neg = next(neg_generator)
+                yield out_pos, out_neg
+
+        dataset = tf.data.Dataset.from_generator(pos_neg_generator,
+                                                 output_types=(tf.int32, tf.int32),
+                                                 output_shapes=((None, 3), (None, 3)))
+        dataset = dataset.repeat().prefetch(1)
+        dataset_iter = tf.data.make_one_shot_iterator(dataset)
+
+        x_pos_tf, x_neg_tf = dataset_iter.get_next()
+
+        e_s, e_p, e_o = self._lookup_embeddings(x_pos_tf)
+        scores_pos = self._fn(e_s, e_p, e_o)
+
+        e_s, e_p, e_o = self._lookup_embeddings(x_neg_tf)
+        scores_neg = self._fn(e_s, e_p, e_o)
+
+        return scores_pos, scores_neg, dataset_handle
+
+    def calibrate(self, X_pos, X_neg=None, batch_size=1000, epochs=10, negative_corruption_entities='all',
+                  corrupt_sides='s+o', pos_base_rate=None):
+        tf.reset_default_graph()
+        self.rnd = check_random_state(self.seed)
+        tf.random.set_random_seed(self.seed)
+
+        self._load_model_from_trained_params()
+
+        batches_count = int(np.ceil(len(X_pos) / batch_size))
+
+        if X_neg is not None:
+            scores_pos, scores_neg, dataset_handle = self._calibrate_with_negatives(X_pos, X_neg, batches_count,
+                                                                                    batch_size, pos_base_rate)
+        else:
+            if pos_base_rate is None:
+                raise ValueError("When calibrating with negative corruptions, `pos_base_rate` must be set.")
+            scores_pos, scores_neg, dataset_handle = self._calibrate_with_corruptions(X_pos,
+                                                                                      batch_size,
+                                                                                      batches_count,
+                                                                                      pos_base_rate,
+                                                                                      negative_corruption_entities,
+                                                                                      corrupt_sides)
+
+        scores_tf = tf.concat([scores_pos, scores_neg], axis=0)
+        labels = tf.concat([tf.ones(tf.shape(scores_pos)), tf.zeros(tf.shape(scores_neg))], axis=0)
+
+        w = tf.get_variable('w', initializer=1.0, dtype=tf.float32)
+        b = tf.get_variable('b', initializer=0.0, dtype=tf.float32)
+
+        logits = w * tf.stop_gradient(scores_tf) + b
+        loss = tf.losses.sigmoid_cross_entropy(labels, logits)
+
+        optimizer = tf.train.AdamOptimizer()
+        train = optimizer.minimize(loss)
+
+        epoch_iterator_with_progress = tqdm(range(1, epochs + 1), disable=(not self.verbose), unit='epoch')
+
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+
+            for _ in epoch_iterator_with_progress:
+                losses = []
+                for batch in range(1, batches_count + 1):
+                    loss_batch, _ = sess.run([loss, train])
+                    losses.append(loss_batch)
+
+                if self.verbose:
+                    msg = 'Average Loss: {:10f}'.format(sum(losses) / (batch_size * self.batches_count))
+                    logger.debug(msg)
+                    epoch_iterator_with_progress.set_description(msg)
+
+            self.calibration_parameters = sess.run([w, b])
+
+        self.is_calibrated = True
+        dataset_handle.cleanup()
+
+    def predict_proba(self, X):
+        if not self.is_calibrated:
+            msg = 'Model has not been calibrated.'
+            logger.error(msg)
+            raise RuntimeError(msg)
+
+        tf.reset_default_graph()
+
+        self._load_model_from_trained_params()
+
+        w = tf.Variable(self.calibration_parameters[0], dtype=tf.float32)
+        b = tf.Variable(self.calibration_parameters[1], dtype=tf.float32)
+
+        x_idx = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+        x_tf = tf.Variable(x_idx, dtype=tf.int32)
+
+        e_s, e_p, e_o = self._lookup_embeddings(x_tf)
+        scores = self._fn(e_s, e_p, e_o)
+        logits = w * scores + b
+        probas = tf.sigmoid(logits)
+
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+            return sess.run(probas)
