@@ -1555,6 +1555,9 @@ class EmbeddingModel(abc.ABC):
         For mode (1), that can be inferred automatically by the relative sizes of the positive and negative sets,
         but the user can override that by providing a value to `positive_base_rate`.
 
+        .. Note ::
+            Incompatible with large graph mode of operation (when `model.dealing_with_large_graphs` is True).
+
         Parameters
         ----------
         X_pos : ndarray (shape [n, 3])
@@ -1579,6 +1582,11 @@ class EmbeddingModel(abc.ABC):
             Number of epochs used to train the Platt scaling model.
 
         """
+        if self.dealing_with_large_graphs:
+            msg = "Calibration is incompatible with large graph mode."
+            logger.error(msg)
+            raise ValueError(msg)
+
         if positive_base_rate is not None and (positive_base_rate <= 0 or positive_base_rate >= 1):
             msg = "positive_base_rate must be a value between 0 and 1."
             logger.error(msg)
@@ -1662,7 +1670,7 @@ class EmbeddingModel(abc.ABC):
         """
         Predicts probabilities using the Platt scaling model.
 
-        Model must be calibrated beforehand with `model.predict`.
+        Model must be calibrated beforehand with `model.calibrate`.
 
         Parameters
         ----------
