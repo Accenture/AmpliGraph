@@ -1391,38 +1391,18 @@ class EmbeddingModel(abc.ABC):
             msg = 'Model has not been fitted.'
             logger.error(msg)
             raise RuntimeError(msg)
-        # adapt the data with numpy adapter for internal use
-        dataset_handle = NumpyDatasetAdapter()
-        dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
-        dataset_handle.set_data(X, "test", mapped_status=from_idx)
 
-        self.eval_dataset_handle = dataset_handle
+        self._load_model_from_trained_params()
 
-        # build tf graph for predictions
-        if self.sess_predict is None:
-            tf.reset_default_graph()
-            self.rnd = check_random_state(self.seed)
-            tf.random.set_random_seed(self.seed)
-            # load the parameters
-            self._load_model_from_trained_params()
-            # build the eval graph
-            self._initialize_eval_graph()
+        x_idx = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+        x_tf = tf.Variable(x_idx, dtype=tf.int32)
 
-            sess = tf.Session()
-            sess.run(tf.tables_initializer())
+        e_s, e_p, e_o = self._lookup_embeddings(x_tf)
+        scores = self._fn(e_s, e_p, e_o)
+
+        with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
-            self.sess_predict = sess
-
-        scores = []
-
-        for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
-            score = self.sess_predict.run([self.score_positive])
-            if self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL):
-                scores.extend(list(score))
-            else:
-                scores.append(score)
-
-        return scores
+            return sess.run(scores)
 
     def is_fitted_on(self, X):
         """ Determine heuristically if a model was fitted on the given triples.
