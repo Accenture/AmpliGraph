@@ -68,7 +68,7 @@ class TransE(EmbeddingModel):
                  initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  verbose=constants.DEFAULT_VERBOSE):
         """
-        Initialize an 
+        Initialize an EmbeddingModel.
 
         Also creates a new Tensorflow session for training.
 
