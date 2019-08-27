@@ -12,6 +12,7 @@ from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBa
 from ampligraph.latent_features import set_entity_threshold, reset_entity_threshold
 from ampligraph.datasets import load_wn18
 from ampligraph.evaluation import evaluate_performance, hits_at_n_score
+from ampligraph.evaluation.protocol import to_idx
 
 
 def test_large_graph_mode():
@@ -267,3 +268,86 @@ def test_is_fitted_on():
     assert model.is_fitted_on(X1) is False
     # Doesn't fit the extra relationship triples
     assert model.is_fitted_on(X2) is False
+
+
+def test_predict():
+    model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'z', 'a'],
+                  ['a', 'z', 'd']])
+    model.fit(X)
+
+    preds1 = model.predict(X)
+    preds2 = model.predict(to_idx(X, model.ent_to_idx, model.rel_to_idx), from_idx=True)
+
+    np.testing.assert_array_equal(preds1, preds2)
+
+
+def test_calibrate_with_corruptions():
+    model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'z', 'a'],
+                  ['a', 'z', 'd']])
+    model.fit(X)
+
+    X_pos = np.array([['a', 'y', 'b'],
+                      ['b', 'y', 'a'],
+                      ['a', 'y', 'c'],
+                      ['c', 'z', 'a'],
+                      ['d', 'z', 'd']])
+
+    with pytest.raises(RuntimeError):
+        model.predict_proba(X_pos)
+
+    with pytest.raises(ValueError):
+        model.calibrate(X_pos, batches_count=2, epochs=10)
+
+    model.calibrate(X_pos, positive_base_rate=0.5, batches_count=2, epochs=10)
+
+    probas = model.predict_proba(X_pos)
+
+    assert np.logical_and(probas > 0, probas < 1).all()
+
+
+def test_calibrate_with_negatives():
+    model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
+
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'z', 'a'],
+                  ['a', 'z', 'd']])
+    model.fit(X)
+
+    X_pos = np.array([['a', 'y', 'b'],
+                      ['b', 'y', 'a'],
+                      ['a', 'y', 'c'],
+                      ['c', 'z', 'a'],
+                      ['d', 'z', 'd']])
+
+    X_neg = np.array([['a', 'y', 'd'],
+                      ['d', 'y', 'a'],
+                      ['c', 'y', 'a'],
+                      ['a', 'z', 'd']])
+
+    with pytest.raises(RuntimeError):
+        model.predict_proba(X_pos)
+
+    with pytest.raises(ValueError):
+        model.calibrate(X_pos, X_neg, positive_base_rate=50, batches_count=2, epochs=10)
+
+    model.calibrate(X_pos, X_neg, batches_count=2, epochs=10)
+
+    probas = model.predict_proba(np.concatenate((X_pos, X_neg)))
+
+    assert np.logical_and(probas > 0, probas < 1).all()
