@@ -1575,7 +1575,7 @@ class EmbeddingModel(abc.ABC):
             Numpy array of positive triples.
         X_neg : ndarray (shape [n, 3])
             Numpy array of negative triples.
-            
+
             If `None`, the negative triples are generated via corruptions
             and the user must provide a positive base rate instead.
         positive_base_rate: float

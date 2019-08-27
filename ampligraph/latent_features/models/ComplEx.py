@@ -321,9 +321,9 @@ class ComplEx(EmbeddingModel):
         return super().predict(X, from_idx=from_idx)
 
     def calibrate(self, X_pos, X_neg=None, positive_base_rate=None, batches_count=100, epochs=50):
-        __doc__ = super().calibrate.__doc__
+        __doc__ = super().calibrate.__doc__  # NOQA
         super().calibrate(X_pos, X_neg, positive_base_rate, batches_count, epochs)
 
     def predict_proba(self, X):
-        __doc__ = super().calibrate.__doc__
+        __doc__ = super().calibrate.__doc__ # NOQA
         return super().predict_proba(X)
