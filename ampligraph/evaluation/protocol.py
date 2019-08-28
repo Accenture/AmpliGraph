@@ -538,15 +538,17 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     try:
         logger.debug('Evaluating the performance of the embedding model.')
         if isinstance(X, np.ndarray):
-
             X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
 
             dataset_handle = NumpyDatasetAdapter()
             dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
             dataset_handle.set_data(X_test, "test")
-
         elif isinstance(X, AmpligraphDatasetAdapter):
             dataset_handle = X
+        else:
+            msg = "X must be either a numpy array or an AmpligraphDatasetAdapter."
+            logger.error(msg)
+            raise ValueError(msg)
 
         if filter_triples is not None:
             if isinstance(filter_triples, np.ndarray):

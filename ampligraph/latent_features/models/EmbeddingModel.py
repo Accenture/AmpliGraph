@@ -316,6 +316,7 @@ class EmbeddingModel(abc.ABC):
         """
         output_dict['model_params'] = self.trained_model_params
         output_dict['large_graph'] = self.dealing_with_large_graphs
+        output_dict['calibration_parameters'] = self.calibration_parameters
 
     def restore_model_params(self, in_dict):
         """Load the model parameters from the input dictionary.
@@ -327,6 +328,7 @@ class EmbeddingModel(abc.ABC):
         """
 
         self.trained_model_params = in_dict['model_params']
+        self.calibration_parameters = in_dict['calibration_parameters']
         # Try catch is for backward compatibility
         try:
             self.dealing_with_large_graphs = in_dict['large_graph']
@@ -887,7 +889,7 @@ class EmbeddingModel(abc.ABC):
 
             dataset = dataset.repeat().prefetch(prefetch_batches)
 
-            dataset_iterator = dataset.make_one_shot_iterator()
+            dataset_iterator = tf.data.make_one_shot_iterator(dataset)
             # init tf graph/dataflow for training
             # init variables (model parameters to be learned - i.e. the embeddings)
 
@@ -1073,7 +1075,7 @@ class EmbeddingModel(abc.ABC):
                                                                 (None, self.internal_k), (None, 1)))
         dataset = dataset.repeat()
         dataset = dataset.prefetch(1)
-        dataset_iter = dataset.make_one_shot_iterator()
+        dataset_iter = tf.data.make_one_shot_iterator(dataset)
         self.X_test_tf, indices_obj, indices_sub, entity_embeddings, unique_ent = dataset_iter.get_next()
 
         use_default_protocol = self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL)
@@ -1117,7 +1119,7 @@ class EmbeddingModel(abc.ABC):
                 corruption_generator = corruption_generator.repeat()
                 corruption_generator = corruption_generator.prefetch(0)
 
-                corruption_iter = corruption_generator.make_one_shot_iterator()
+                corruption_iter = tf.data.make_one_shot_iterator(corruption_generator)
 
                 # Create tensor arrays for storing the scores of subject and object evals
                 scores_predict_s_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(self.ent_to_idx)))
@@ -1393,8 +1395,14 @@ class EmbeddingModel(abc.ABC):
         # adapt the data with numpy adapter for internal use
         dataset_handle = NumpyDatasetAdapter()
         dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
-        dataset_handle.set_data(X, "test", mapped_status=from_idx)
-
+        try:
+            dataset_handle.set_data(X, "test", mapped_status=from_idx)
+        except TypeError:
+            msg = "Unseen entities or relations found in X -- you can filter unseen entities with " \
+                  "`evaluation.protocol.filter_unseen_entities`."
+            logger.error(msg)
+            raise ValueError(msg)
+        
         self.eval_dataset_handle = dataset_handle
 
         # build tf graph for predictions
@@ -1707,7 +1715,14 @@ class EmbeddingModel(abc.ABC):
         w = tf.Variable(self.calibration_parameters[0], dtype=tf.float32)
         b = tf.Variable(self.calibration_parameters[1], dtype=tf.float32)
 
-        x_idx = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+        try:
+            x_idx = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+        except TypeError:
+            msg = "Unseen entities or relations found in X -- you can filter unseen entities with " \
+                  "`evaluation.protocol.filter_unseen_entities`."
+            logger.error(msg)
+            raise ValueError(msg)
+
         x_tf = tf.Variable(x_idx, dtype=tf.int32)
 
         e_s, e_p, e_o = self._lookup_embeddings(x_tf)
