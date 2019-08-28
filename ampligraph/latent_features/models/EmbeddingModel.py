@@ -1395,14 +1395,8 @@ class EmbeddingModel(abc.ABC):
         # adapt the data with numpy adapter for internal use
         dataset_handle = NumpyDatasetAdapter()
         dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
-        try:
-            dataset_handle.set_data(X, "test", mapped_status=from_idx)
-        except TypeError:
-            msg = "Unseen entities or relations found in X -- you can filter unseen entities with " \
-                  "`evaluation.protocol.filter_unseen_entities`."
-            logger.error(msg)
-            raise ValueError(msg)
-        
+        dataset_handle.set_data(X, "test", mapped_status=from_idx)
+
         self.eval_dataset_handle = dataset_handle
 
         # build tf graph for predictions
@@ -1602,6 +1596,11 @@ class EmbeddingModel(abc.ABC):
             Number of epochs used to train the Platt scaling model.
 
         """
+        if not self.is_fitted:
+            msg = 'Model has not been fitted.'
+            logger.error(msg)
+            raise RuntimeError(msg)
+
         if self.dealing_with_large_graphs:
             msg = "Calibration is incompatible with large graph mode."
             logger.error(msg)
@@ -1612,79 +1611,82 @@ class EmbeddingModel(abc.ABC):
             logger.error(msg)
             raise ValueError(msg)
 
-        tf.reset_default_graph()
-        self.rnd = check_random_state(self.seed)
-        tf.random.set_random_seed(self.seed)
+        try:
+            tf.reset_default_graph()
+            self.rnd = check_random_state(self.seed)
+            tf.random.set_random_seed(self.seed)
 
-        self._load_model_from_trained_params()
+            self._load_model_from_trained_params()
 
-        dataset_handle = NumpyDatasetAdapter()
-        dataset_handle.set_data(X_pos, "pos")
+            dataset_handle = NumpyDatasetAdapter()
+            dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
 
-        batch_size_pos = int(np.ceil(dataset_handle.get_size("pos") / batches_count))
+            dataset_handle.set_data(X_pos, "pos")
 
-        if X_neg is not None:
-            dataset_handle.set_data(X_neg, "neg")
-            batch_size_neg = int(np.ceil(dataset_handle.get_size("neg") / batches_count))
+            batch_size_pos = int(np.ceil(dataset_handle.get_size("pos") / batches_count))
 
-            if positive_base_rate is None:
-                positive_base_rate = len(X_pos) / (len(X_pos) + len(X_neg))
+            if X_neg is not None:
+                dataset_handle.set_data(X_neg, "neg")
+                batch_size_neg = int(np.ceil(dataset_handle.get_size("neg") / batches_count))
 
-            calibration_fn = self._calibrate_with_negatives
-        else:
-            batch_size_neg = batch_size_pos
-            if positive_base_rate is None:
-                msg = "When calibrating with randomly generated negative corruptions, " \
-                      "`positive_base_rate` must be set to a value between 0 and 1."
-                logger.error(msg)
-                raise ValueError(msg)
+                if positive_base_rate is None:
+                    positive_base_rate = len(X_pos) / (len(X_pos) + len(X_neg))
 
-            calibration_fn = self._calibrate_with_corruptions
+                calibration_fn = self._calibrate_with_negatives
+            else:
+                batch_size_neg = batch_size_pos
+                if positive_base_rate is None:
+                    msg = "When calibrating with randomly generated negative corruptions, " \
+                          "`positive_base_rate` must be set to a value between 0 and 1."
+                    logger.error(msg)
+                    raise ValueError(msg)
 
-        dataset_handle.generate_mappings(use_all=True)
+                calibration_fn = self._calibrate_with_corruptions
 
-        scores_pos, scores_neg = calibration_fn(dataset_handle, batch_size_pos, batch_size_neg)
+            scores_pos, scores_neg = calibration_fn(dataset_handle, batch_size_pos, batch_size_neg)
 
-        scores_tf = tf.concat([scores_pos, scores_neg], axis=0)
-        labels = tf.concat([tf.ones(tf.shape(scores_pos)), tf.zeros(tf.shape(scores_neg))], axis=0)
+            scores_tf = tf.concat([scores_pos, scores_neg], axis=0)
+            labels = tf.concat([tf.ones(tf.shape(scores_pos)), tf.zeros(tf.shape(scores_neg))], axis=0)
 
-        # Platt scaling model
-        w = tf.get_variable('w', initializer=1.0, dtype=tf.float32)
-        b = tf.get_variable('b', initializer=0.0, dtype=tf.float32)
-        logits = w * tf.stop_gradient(scores_tf) + b
+            # Platt scaling model
+            w = tf.get_variable('w', initializer=1.0, dtype=tf.float32)
+            b = tf.get_variable('b', initializer=0.0, dtype=tf.float32)
+            logits = w * tf.stop_gradient(scores_tf) + b
 
-        # Sample weights make sure the given positive_base_rate will be achieved irrespective of batch sizes
-        weigths_pos = tf.size(scores_neg) / tf.size(scores_pos)
-        weights_neg = (1.0 - positive_base_rate) / positive_base_rate
-        weights = tf.concat([tf.cast(tf.fill(tf.shape(scores_pos), weigths_pos), tf.float32),
-                             tf.cast(tf.fill(tf.shape(scores_neg), weights_neg), tf.float32)], axis=0)
+            # Sample weights make sure the given positive_base_rate will be achieved irrespective of batch sizes
+            weigths_pos = tf.size(scores_neg) / tf.size(scores_pos)
+            weights_neg = (1.0 - positive_base_rate) / positive_base_rate
+            weights = tf.concat([tf.cast(tf.fill(tf.shape(scores_pos), weigths_pos), tf.float32),
+                                 tf.cast(tf.fill(tf.shape(scores_neg), weights_neg), tf.float32)], axis=0)
 
-        loss = tf.losses.sigmoid_cross_entropy(labels, logits, weights=weights)
+            loss = tf.losses.sigmoid_cross_entropy(labels, logits, weights=weights)
 
-        optimizer = tf.train.AdamOptimizer()
-        train = optimizer.minimize(loss)
+            optimizer = tf.train.AdamOptimizer()
+            train = optimizer.minimize(loss)
 
-        epoch_iterator_with_progress = tqdm(range(1, epochs + 1), disable=(not self.verbose), unit='epoch')
+            epoch_iterator_with_progress = tqdm(range(1, epochs + 1), disable=(not self.verbose), unit='epoch')
 
-        with tf.Session() as sess:
-            sess.run(tf.global_variables_initializer())
+            with tf.Session(config=self.tf_config) as sess:
+                sess.run(tf.global_variables_initializer())
 
-            for _ in epoch_iterator_with_progress:
-                losses = []
-                for batch in range(batches_count):
-                    loss_batch, _ = sess.run([loss, train])
-                    losses.append(loss_batch)
+                for _ in epoch_iterator_with_progress:
+                    losses = []
+                    for batch in range(batches_count):
+                        loss_batch, _ = sess.run([loss, train])
+                        losses.append(loss_batch)
 
-                if self.verbose:
-                    msg = 'Calibration Loss: {:10f}'.format(
-                        sum(losses) / ((batch_size_pos + batch_size_neg) * batches_count))
-                    logger.debug(msg)
-                    epoch_iterator_with_progress.set_description(msg)
+                    if self.verbose:
+                        msg = 'Calibration Loss: {:10f}'.format(
+                            sum(losses) / ((batch_size_pos + batch_size_neg) * batches_count))
+                        logger.debug(msg)
+                        epoch_iterator_with_progress.set_description(msg)
 
-            self.calibration_parameters = sess.run([w, b])
-
-        self.is_calibrated = True
-        dataset_handle.cleanup()
+                self.calibration_parameters = sess.run([w, b])
+            self.is_calibrated = True
+            dataset_handle.cleanup()
+        except Exception as e:
+            dataset_handle.cleanup()
+            raise e
 
     def predict_proba(self, X):
         """
@@ -1715,14 +1717,7 @@ class EmbeddingModel(abc.ABC):
         w = tf.Variable(self.calibration_parameters[0], dtype=tf.float32)
         b = tf.Variable(self.calibration_parameters[1], dtype=tf.float32)
 
-        try:
-            x_idx = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
-        except TypeError:
-            msg = "Unseen entities or relations found in X -- you can filter unseen entities with " \
-                  "`evaluation.protocol.filter_unseen_entities`."
-            logger.error(msg)
-            raise ValueError(msg)
-
+        x_idx = to_idx(X, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
         x_tf = tf.Variable(x_idx, dtype=tf.int32)
 
         e_s, e_p, e_o = self._lookup_embeddings(x_tf)
@@ -1730,6 +1725,6 @@ class EmbeddingModel(abc.ABC):
         logits = w * scores + b
         probas = tf.sigmoid(logits)
 
-        with tf.Session() as sess:
+        with tf.Session(config=self.tf_config) as sess:
             sess.run(tf.global_variables_initializer())
             return sess.run(probas)

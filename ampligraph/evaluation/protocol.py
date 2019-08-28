@@ -364,16 +364,21 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
 
 
 def _convert_to_idx(X, ent_to_idx, rel_to_idx, obj_to_idx):
-    x_idx_s = np.vectorize(ent_to_idx.get)(X[:, 0])
-    x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
-    x_idx_o = np.vectorize(obj_to_idx.get)(X[:, 2])
+    unseen_msg = 'Input triples include one or more entities not present in the training set. ' \
+                 'Please filter X using evaluation.filter_unseen_entities(), or retrain the model on a training set ' \
+                 'that includes all the desired distinct entities.'
+
+    try:
+        x_idx_s = np.vectorize(ent_to_idx.get)(X[:, 0])
+        x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
+        x_idx_o = np.vectorize(obj_to_idx.get)(X[:, 2])
+    except TypeError:
+        logger.error(unseen_msg)
+        raise ValueError(unseen_msg)
 
     if None in x_idx_s or None in x_idx_o:
-        msg = 'Input triples include one or more entities not present in the training set. ' \
-              'Please filter X using evaluation.filter_unseen_entities(), or retrain the model on a training set ' \
-              'that includes all the desired distinct entities.'
-        logger.error(msg)
-        raise ValueError(msg)
+        logger.error(unseen_msg)
+        raise ValueError(unseen_msg)
 
     if None in x_idx_p:
         msg = 'Input triples include one or more relation type not present in the training set. ' \
