@@ -5,9 +5,25 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-from ampligraph.datasets import load_wn18, load_fb15k, load_fb15k_237, load_yago3_10, load_wn18rr
+from ampligraph.datasets import load_wn18, load_fb15k, load_fb15k_237, load_yago3_10, load_wn18rr, load_wordnet11
+from ampligraph.datasets.datasets import _clean_data
 import numpy as np
-import pytest
+
+
+def test_clean_data():
+    X = {
+        'train': np.array([['a', 'b', 'c'], ['d', 'e', 'f'], ['g', 'h', 'i'], ['j', 'k', 'l']]),
+        'valid': np.array([['a', 'b', 'c'], ['x', 'e', 'f'], ['g', 'a', 'i'], ['j', 'k', 'y']]),
+        'test':  np.array([['a', 'b', 'c'], ['d', 'e', 'x'], ['g', 'b', 'i'], ['y', 'k', 'l']]),
+    }
+
+    clean_X, valid_idx, test_idx = _clean_data(X, return_idx=True)
+
+    np.testing.assert_array_equal(clean_X['train'], X['train'])
+    np.testing.assert_array_equal(clean_X['valid'], np.array([['a', 'b', 'c']]))
+    np.testing.assert_array_equal(clean_X['test'],  np.array([['a', 'b', 'c'], ['g', 'b', 'i']]))
+    np.testing.assert_array_equal(valid_idx,  np.array([True, False, False, False]))
+    np.testing.assert_array_equal(test_idx, np.array([True, False, True, False]))
 
 
 def test_load_wn18():
@@ -93,3 +109,13 @@ def test_wn18rr():
 
     # - 210 because 210 triples containing unseen entities are removed
     assert len(wn18rr['test']) == 3134 - 210
+
+
+def test_wordnet11():
+    wordnet11 = load_wordnet11()
+
+    assert len(wordnet11['train']) == 110361
+    assert len(wordnet11['valid']) == 5215 - 338
+    assert len(wordnet11['test']) == 21035 - 1329
+    assert len(wordnet11['valid_labels']) == 5215 - 338
+    assert len(wordnet11['test_labels']) == 21035 - 1329
