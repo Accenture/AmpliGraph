@@ -643,7 +643,9 @@ def load_yago3_10(check_md5hash=False, clean_unseen=True):
 
 
 def load_wordnet11(check_md5hash=False, clean_unseen=True):
-    """Load the WordNet11 dataset :cite:`miller1995wordnet`.
+    """Load the WordNet11 dataset
+
+    WordNet was originally proposed in `WordNet: a lexical database for English` :cite:`miller1995wordnet`.
 
     WordNet11 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
     If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.

@@ -1600,29 +1600,32 @@ class EmbeddingModel(abc.ABC):
         >>> import numpy as np
         >>> from sklearn.metrics import brier_score_loss, log_loss
         >>> from scipy.special import expit
-
+        >>>
         >>> from ampligraph.datasets import load_wordnet11
         >>> from ampligraph.latent_features.models import TransE
-
+        >>>
         >>> X = load_wordnet11()
-
+        >>>
         >>> model = TransE(batches_count=64, seed=0, epochs=500, k=100, eta=20,
         >>>                optimizer='adam', optimizer_params={'lr':0.0001},
         >>>                loss='pairwise', verbose=True)
-
+        >>>
         >>> model.fit(X['train'])
-
+        >>>
         >>> X_valid_pos = X['valid'][X['valid_labels']]
         >>> X_valid_neg = X['valid'][~X['valid_labels']]
-
+        >>>
         >>> model.calibrate(X_valid_pos, X_valid_neg, positive_base_rate=None)
-
+        >>>
         >>> probas = model.predict_proba(X['test'])
         >>> scores = model.predict(X['test'])
-
-        >>> print(brier_score_loss(X['test_labels'], probas), brier_score_loss(X['test_labels'], expit(scores)))
+        >>>
+        >>> # Calibration evaluation with the Brier score loss and the log loss (the smaller, the better in both cases)
+        >>> print(brier_score_loss(X['test_labels'], probas),
+        >>>       brier_score_loss(X['test_labels'], expit(scores)))
         0.2436820461862895 0.4925058891373944
-        >>> print(log_loss(X['test_labels'], probas), log_loss(X['test_labels'], expit(scores)))
+        >>> print(log_loss(X['test_labels'], probas),
+        >>>       log_loss(X['test_labels'], expit(scores)))
         0.6804891073992927 5.184910176167332
 
         """
