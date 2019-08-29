@@ -558,6 +558,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         if filter_triples is not None:
             if isinstance(filter_triples, np.ndarray):
                 logger.debug('Getting filtered triples.')
+                filter_triples = filter_unseen_entities(filter_triples, model, verbose=verbose, strict=strict)
                 dataset_handle.set_filter(filter_triples)
                 model.set_filter_for_eval()
             elif isinstance(X, AmpligraphDatasetAdapter):
