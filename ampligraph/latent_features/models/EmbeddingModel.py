@@ -1349,7 +1349,7 @@ class EmbeddingModel(abc.ABC):
 
         ranks = []
 
-        for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
+        for i in tqdm(range(self.eval_dataset_handle.get_size('test')), disable=(not self.verbose)):
             rank = self.sess_predict.run(self.rank)
             if self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL):
                 ranks.append(list(rank))
@@ -1415,7 +1415,7 @@ class EmbeddingModel(abc.ABC):
 
         scores = []
 
-        for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
+        for i in tqdm(range(self.eval_dataset_handle.get_size('test')), disable=(not self.verbose)):
             score = self.sess_predict.run([self.score_positive])
             if self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL):
                 scores.extend(list(score))

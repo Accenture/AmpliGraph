@@ -10,6 +10,7 @@ from collections.abc import Iterable
 from itertools import product, islice
 import logging
 
+import pandas as pd
 import numpy as np
 from tqdm import tqdm
 import tensorflow as tf
@@ -624,27 +625,20 @@ def filter_unseen_entities(X, model, verbose=False, strict=True):
 
     logger.debug('Finding entities in test set that are not previously seen by model')
     ent_seen = np.unique(list(model.ent_to_idx.keys()))
-    ent_test = np.unique(X[:, [0, 2]].ravel())
-    ent_unseen = np.setdiff1d(ent_test, ent_seen, assume_unique=True)
+    df = pd.DataFrame(X, columns=['s', 'p', 'o'])
+    filtered_df = df[df.s.isin(ent_seen) & df.o.isin(ent_seen)]
+    n_removed_ents = df.shape[0] - filtered_df.shape[0]
 
-    if ent_unseen.size == 0:
-        logger.debug('No unseen entities found.')
-        return X
+    if strict and n_removed_ents > 0:
+        msg = 'Unseen entities found in test set, please remove or run evaluate_performance() with strict=False.'
+        logger.error(msg)
+        raise RuntimeError(msg)
     else:
-        logger.debug('Unseen entities found.')
-        if strict:
-            msg = 'Unseen entities found in test set, please remove or run evaluate_performance() with strict=False.'
-            logger.error(msg)
-            raise RuntimeError(msg)
-        else:
-            # Get row-wise mask of triples containing unseen entities
-            mask_unseen = np.isin(X, ent_unseen).any(axis=1)
-
-            msg = 'Removing {} triples containing unseen entities. '.format(np.sum(mask_unseen))
-            if verbose:
-                logger.debug(msg)
-            logger.debug(msg)
-            return X[~mask_unseen]
+        msg = 'Removing {} triples containing unseen entities. '.format(n_removed_ents)
+        if verbose:
+            logger.info(msg)
+        logger.debug(msg)
+        return filtered_df.values
 
 
 def _remove_unused_params(params):
