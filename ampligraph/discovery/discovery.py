@@ -352,12 +352,8 @@ def generate_candidates(X, strategy, target_rel, max_candidates, consolidate_sid
         e_s_weights = np.array([C[x] for x in e_s], dtype=np.float64)
         e_o_weights = np.array([C[x] for x in e_o], dtype=np.float64)
 
-    if inverse_weights:
-        e_s_weights = np.max(e_s_weights) - e_s_weights
-        e_o_weights = np.max(e_o_weights) - e_o_weights
-
-    e_s_weights = e_s_weights / np.sum(e_s_weights)
-    e_o_weights = e_o_weights / np.sum(e_o_weights)
+        e_s_weights = e_s_weights / np.sum(e_s_weights)
+        e_o_weights = e_o_weights / np.sum(e_o_weights)
 
     # Take close to sqrt of max_candidates so that: len(meshgrid result) == max_candidates
     sample_size = int(np.sqrt(max_candidates)+10) # +10 to allow for reduction in sampled array due to filtering
