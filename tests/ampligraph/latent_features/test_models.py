@@ -11,7 +11,7 @@ import pytest
 from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline
 from ampligraph.latent_features import set_entity_threshold, reset_entity_threshold
 from ampligraph.datasets import load_wn18
-from ampligraph.evaluation import evaluate_performance, hits_at_n_score
+from ampligraph.evaluation import evaluate_performance, hits_at_n_score, mrr_score
 from ampligraph.evaluation.protocol import to_idx
 
 
@@ -84,7 +84,31 @@ def test_evaluate_RandomBaseline():
                                  verbose=False)
     hits10 = hits_at_n_score(ranks, n=10)
     hits1 = hits_at_n_score(ranks, n=1)
+    assert ranks.shape == (len(X['test']), )
     assert hits10 < 0.01 and hits1 == 0.0
+
+    ranks = evaluate_performance(X["test"],
+                                 model=model,
+                                 use_default_protocol=True,
+                                 corrupt_side='s+o',
+                                 verbose=False)
+    hits10 = hits_at_n_score(ranks, n=10)
+    hits1 = hits_at_n_score(ranks, n=1)
+    assert ranks.shape == (len(X['test']), 2)
+    assert hits10 < 0.01 and hits1 == 0.0
+
+    ranks_filtered = evaluate_performance(X["test"],
+                                          filter_triples=np.concatenate((X['train'], X['valid'], X['test'])),
+                                          model=model,
+                                          use_default_protocol=True,
+                                          corrupt_side='s+o',
+                                          verbose=False)
+    hits10 = hits_at_n_score(ranks_filtered, n=10)
+    hits1 = hits_at_n_score(ranks_filtered, n=1)
+    assert ranks_filtered.shape == (len(X['test']), 2)
+    assert hits10 < 0.01 and hits1 == 0.0
+    assert np.all(ranks_filtered <= ranks)
+    assert np.any(ranks_filtered != ranks)
 
 
 def test_fit_predict_transE():
