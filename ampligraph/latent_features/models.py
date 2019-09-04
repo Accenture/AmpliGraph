@@ -17,7 +17,7 @@ from .optimizers import OPTIMIZER_REGISTRY, SGDOptimizer, DEFAULT_LR
 from .initializers import INITIALIZER_REGISTRY, DEFAULT_XAVIER_IS_UNIFORM
 from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, \
     hits_at_n_score, mrr_score
-from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
+from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter, ConvEDatasetAdapter
 from functools import partial
 
 MODEL_REGISTRY = {}
@@ -284,8 +284,7 @@ class EmbeddingModel(abc.ABC):
                 'When processing large graphs it is recommended to batch the input knowledge graph instead.')
 
         try:
-            self.loss = LOSS_REGISTRY[loss](self.eta, self.loss_params,
-                                            verbose=verbose)
+            self.loss = LOSS_REGISTRY[loss](self.eta, self.loss_params, verbose=verbose)
         except KeyError:
             msg = 'Unsupported loss function: {}'.format(loss)
             logger.error(msg)
@@ -885,6 +884,7 @@ class EmbeddingModel(abc.ABC):
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
         """
+
         self.train_dataset_handle = None
         # try-except block is mainly to handle clean up in case of exception or manual stop in jupyter notebook
         try:
@@ -1411,6 +1411,7 @@ class EmbeddingModel(abc.ABC):
                                                    
         for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
             rank = self.sess_predict.run(self.rank)
+
             if self.eval_config.get('default_protocol', DEFAULT_PROTOCOL_EVAL): 
                 ranks.append(list(rank))
             else:
@@ -3166,7 +3167,8 @@ class ConvE(EmbeddingModel):
             params_dict['dense'] = self.dense.get_weights()
             params_dict['dense_config'] = self.dense.get_config()
             # params_dict['bias'] = self.sess_train.run(self.bias)
-            params_dict['SP_O'] = self.SP_O
+            params_dict['output_mapping'] = self.output_mapping
+            print('----------\nSAVING OUTPUT MAPPING\n-----------')
 
             self.trained_model_params = params_dict
         else:
@@ -3232,16 +3234,16 @@ class ConvE(EmbeddingModel):
 
             # self.bias = tf.constant(self.trained_model_params['bias'])
 
-            self.SP_O = self.trained_model_params['SP_O']
+            self.output_mapping = self.trained_model_params['output_mapping']
+            print('----------\nRESTORING OUTPUT MAPPING\n-----------')
 
         else:
 
             raise NotImplementedError('ConvE not implemented when dealing with large graphs (yet)')
 
-            self.ent_emb_cpu = self.trained_model_params[0]
+            self.ent_emb_cpu = self.trained_model_params['ent_emb']
             self.ent_emb = tf.Variable(np.zeros((self.batch_size, self.internal_k)), dtype=tf.float32)
-
-        self.rel_emb = tf.Variable(self.trained_model_params[1], dtype=tf.float32)
+            self.rel_emb = tf.Variable(self.trained_model_params['rel_emb'], dtype=tf.float32)
 
     def get_embeddings(self, entities, embedding_type='entity'):
         """Get the embeddings of entities or relations.
@@ -3311,9 +3313,7 @@ class ConvE(EmbeddingModel):
             self.dropout_conv = tf.keras.layers.Dropout(rate=self.embedding_model_params['dropout_conv'])
             self.dense = tf.keras.layers.Dense(units=self.k, activation=None, trainable=True)
             # self.batchnorm_dense = tf.keras.layers.BatchNormalization()
-
             self.dropout_dense = tf.keras.layers.Dropout(rate=self.embedding_model_params['dropout_dense'])
-
             # self.bias = tf.get_variable('activation_bias', shape=[1, len(self.ent_to_idx)], initializer=tf.zeros_initializer())
 
         else:
@@ -3355,13 +3355,7 @@ class ConvE(EmbeddingModel):
             # Get positive predictions
             self.y_pred = self._fn(e_s_pos, e_p_pos, e_o_pos)
 
-            #TODO: Move to inside the Loss function class
-            # Apply label smoothing
-            if self.loss_params['label_smoothing'] is not None:
-                self.y_true = self.apply_label_smoothing(self.y_true,
-                                                         smoothing_lambda=self.loss_params['label_smoothing'],
-                                                         num_entities=len(self.ent_to_idx))
-
+            # Label smoothing and/or weighting is applied within Loss class
             loss = self.loss.apply(self.y_true, self.y_pred)
 
             if self.regularizer is not None:
@@ -3387,10 +3381,15 @@ class ConvE(EmbeddingModel):
                 self.eval_dataset_handle = self.train_dataset_handle
 
             elif isinstance(self.x_valid, AmpligraphDatasetAdapter):
-                # this assumes that the validation data has already been set in the adapter
+
+                if not self.eval_dataset_handle.data_exists('valid'):
+                    msg = 'Dataset `valid` has not been set in the DatasetAdapter.'
+                    logger.error(msg)
+                    raise ValueError(msg)
+
                 self.eval_dataset_handle = self.x_valid
             else:
-                msg = 'Invalid type for input X. Expected ndarray/AmpligraphDataset object, \
+                msg = 'Invalid type for input X. Expected np.ndarray or AmpligraphDatasetAdapter object, \
                        got {}'.format(type(self.x_valid))
                 logger.error(msg)
                 raise ValueError(msg)
@@ -3451,51 +3450,19 @@ class ConvE(EmbeddingModel):
            sampled randomly from the rest(not in batch) to load batch_size*2 entities on the GPU) and their embeddings.
         """
 
-        # TODO: Implement ConvEAdapter (?) 
-        
-        # OR: 
-        
-        # Use standard numpyadapter, and implement the onehot lookup using SP_O dict ..
+        # create iterator to iterate over the train batches
+        batch_iterator = iter(self.train_dataset_handle.get_next_train_batch(self.batch_size, 'train'))
 
         for i in range(self.batches_count):
-            x_batch = self.x_train[(i*self.batch_size):((i+1)*self.batch_size), :]
-            x_onehot = self.out_label[(i*self.batch_size):((i+1)*self.batch_size), :]
-            yield x_batch, x_onehot
 
-        # all_ent = np.int32(np.arange(len(self.ent_to_idx)))
-        # unique_entities = all_ent.reshape(-1, 1)
-        # 
-        # # generate empty embeddings for smaller graphs - as all the entity embeddings will be loaded on GPU
-        # entity_embeddings = np.empty(shape=(0, self.internal_k), dtype=np.float32)
-        # 
-        # # create iterator to iterate over the train batches
-        # batch_iterator = iter(self.train_dataset_handle.get_next_train_batch(self.batch_size, "train"))
-        # 
-        # for i in range(self.batches_count):
-        #     out = next(batch_iterator)
-        #     # If large graph, load batch_size*2 entities on GPU memory
-        #     if self.dealing_with_large_graphs:
-        #         raise NotImplementedError('ConvE not implemented when dealing with large graphs (yet)')
-        #         
-        #         # find the unique entities - these HAVE to be loaded
-        #         unique_entities = np.int32(np.unique(np.concatenate([out[:, 0], out[:, 2]], axis=0)))
-        #         # Load the remaining entities by randomly selecting from the rest of the entities
-        #         self.leftover_entities = self.rnd.permutation(np.setdiff1d(all_ent, unique_entities))
-        #         needed = (self.batch_size * 2 - unique_entities.shape[0])
-        #         '''
-        #         #this is for debugging
-        #         large_number = np.zeros((self.batch_size-unique_entities.shape[0], 
-        #                                      self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
-        # 
-        #         entity_embeddings = np.concatenate((self.ent_emb_cpu[unique_entities,:], 
-        #                                             large_number), axis=0)
-        #         '''
-        #         unique_entities = np.int32(np.concatenate([unique_entities, self.leftover_entities[:needed]], axis=0))
-        #         entity_embeddings = self.ent_emb_cpu[unique_entities, :]
-        # 
-        #         unique_entities = unique_entities.reshape(-1, 1)
-        # 
-        #     yield out, unique_entities, entity_embeddings
+            out, out_onehot = next(batch_iterator)
+
+            # If large graph, load batch_size*2 entities on GPU memory
+            if self.dealing_with_large_graphs:
+                raise NotImplementedError('ConvE not implemented when dealing with large graphs (yet)')
+
+            yield out, out_onehot
+
 
     def fit(self, X, early_stopping=False, early_stopping_params={}):
         """Train an EmbeddingModel (with optional early stopping).
@@ -3538,7 +3505,7 @@ class ConvE(EmbeddingModel):
         try:
             if isinstance(X, np.ndarray):
                 # Adapt the numpy data in the internal format - to generalize
-                self.train_dataset_handle = NumpyDatasetAdapter()
+                self.train_dataset_handle = ConvEDatasetAdapter()
                 self.train_dataset_handle.set_data(X, "train")
             elif isinstance(X, AmpligraphDatasetAdapter):
                 self.train_dataset_handle = X
@@ -3572,20 +3539,6 @@ class ConvE(EmbeddingModel):
 
             self.train_dataset_handle.map_data()
 
-
-            # TODO: Must be implemented with AmpliGraphDatasetAdapter class
-            # Create dictionary of (s,p) -> {O}n
-            self.SP_O = dict()
-            for s, p, o in X:
-                key = (s, p)
-                if key in self.SP_O:
-                    self.SP_O[key].append(o)
-                else:
-                    self.SP_O[key] = [o]
-
-            # TODO: Alternative implementation with datasetadapter
-            self.x_train = X
-
             # This is useful when we re-fit the same model (e.g. retraining in model selection)
             if self.is_fitted:
                 tf.reset_default_graph()
@@ -3602,11 +3555,18 @@ class ConvE(EmbeddingModel):
 
             self._initialize_parameters()
 
+            # TODO: Must be implemented with AmpliGraphDatasetAdapter class
+
+            # TODO: Alternative implementation with datasetadapter
+            # Output mapping is dict of (s, p) to list of existing object triple indices
+            self.output_mapping = self.train_dataset_handle.create_output_mapping(dataset_type='train')
+            self.train_dataset_handle.set_output_mapping(self.output_mapping)
+            self.train_dataset_handle.create_onehot_outputs(dataset_type='train')
+
             dataset = tf.data.Dataset.from_generator(self._training_data_generator,
                                                      output_types=(tf.int32, tf.float32),
                                                      output_shapes=((None, 3), (None, len(self.ent_to_idx))))
-
-            prefetch_batches = 1
+            prefetch_batches = 5
             dataset = dataset.repeat().prefetch(prefetch_batches)
 
             dataset_iterator = dataset.make_one_shot_iterator()
@@ -3615,6 +3575,9 @@ class ConvE(EmbeddingModel):
             # init variables (model parameters to be learned - i.e. the embeddings)
             if self.loss.get_state('require_same_size_pos_neg'):
                 batch_size = batch_size * self.eta
+
+            # Required for label smoothing
+            self.loss._set_hyperparams('num_entities', len(self.ent_to_idx))
 
             loss = self._get_model_loss(dataset_iterator)
 
@@ -3693,33 +3656,27 @@ class ConvE(EmbeddingModel):
            If we are dealing with large graphs, then along with the above, this method returns the idx of the
            entities present in the batch and their embeddings.
         """
+
         if self.is_filtered:
-            test_generator = partial(self.eval_dataset_handle.get_next_batch_with_filter,
-                                     batch_size=1, dataset_type=mode)
+            test_generator = partial(self.eval_dataset_handle.get_next_batch_with_filter, batch_size=1,
+                                     dataset_type=mode)
         else:
-            test_generator = partial(self.eval_dataset_handle.get_next_eval_batch, batch_size=1, dataset_type=mode)
+            test_generator = partial(self.eval_dataset_handle.get_next_eval_batch, batch_size=1,
+                                     dataset_type=mode)
 
         batch_iterator = iter(test_generator())
-        indices_obj = np.empty(shape=(0, 1), dtype=np.int32)
-        indices_sub = np.empty(shape=(0, 1), dtype=np.int32)
-        unique_ent = np.empty(shape=(0, 1), dtype=np.int32)
-        entity_embeddings = np.empty(shape=(0, self.internal_k), dtype=np.float32)
+
         for i in range(self.eval_dataset_handle.get_size(mode)):
+
             if self.is_filtered:
-                out, indices_obj, indices_sub = next(batch_iterator)
+                out, out_onehot_filter = next(batch_iterator)
             else:
-                out = next(batch_iterator)
+                out, out_onehot_filter = next(batch_iterator)
 
             if self.dealing_with_large_graphs:
-                # since we are dealing with only one triple (2 entities)
-                unique_ent = np.unique(np.array([out[0, 0], out[0, 2]]))
-                needed = (self.batch_size - unique_ent.shape[0])
-                large_number = np.zeros((needed, self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
-                entity_embeddings = np.concatenate((self.ent_emb_cpu[unique_ent, :], large_number), axis=0)
-                unique_ent = unique_ent.reshape(-1, 1)
+                raise NotImplementedError('ConvE not implemented with large graphs.')
 
-
-            yield out, indices_obj, indices_sub, entity_embeddings, unique_ent
+            yield out, out_onehot_filter
 
 
     def _initialize_eval_graph(self, mode="test"):
@@ -3771,7 +3728,7 @@ class ConvE(EmbeddingModel):
             scores_filter = scores * self.X_test_filter_tf
 
             # Rank of positive sample, with other positives filtered out
-            self.rank = (tf.reduce_sum(tf.cast(self.scores_predict >= self.score_positive, tf.int32)) + 1) - \
+            self.rank = (tf.reduce_sum(tf.cast(scores >= self.score_positive, tf.int32)) + 1) - \
                         (tf.reduce_sum(tf.cast(scores_filter >= self.score_positive, tf.int32)))
 
 
@@ -3809,11 +3766,11 @@ class ConvE(EmbeddingModel):
             msg = 'Model has not been fitted.'
             logger.error(msg)
             raise RuntimeError(msg)
-        # adapt the data with numpy adapter for internal use
-        dataset_handle = NumpyDatasetAdapter()
-        dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
-        dataset_handle.set_data(X, "test", mapped_status=from_idx)
 
+        # adapt the data with numpy adapter for internal use
+        dataset_handle = ConvEDatasetAdapter()
+        dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
+        dataset_handle.set_data(X, 'test', mapped_status=from_idx)
         self.eval_dataset_handle = dataset_handle
 
         # build tf graph for predictions
@@ -3830,6 +3787,9 @@ class ConvE(EmbeddingModel):
             sess.run(tf.tables_initializer())
             sess.run(tf.global_variables_initializer())
             self.sess_predict = sess
+
+        self.eval_dataset_handle.set_output_mapping(self.output_mapping)
+        self.eval_dataset_handle.create_onehot_outputs(dataset_type='test')
 
         scores = []
 

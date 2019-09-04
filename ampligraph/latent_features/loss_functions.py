@@ -23,6 +23,11 @@ DEFAULT_ALPHA_ADVERSARIAL = 0.5
 # Default margin used by margin based adversarial loss
 DEFAULT_MARGIN_ADVERSARIAL = 3
 
+# Default label smoothing for ConvE
+DEFAULT_LABEL_SMOOTHING = None
+
+# Default label weighting for ConvE
+DEFAULT_LABEL_WEIGHTING = False
 
 def register_loss(name, external_params=None, class_params=None):
     if external_params is None:
@@ -535,3 +540,214 @@ class NLLMulticlass(Loss):
 
         loss = -tf.reduce_sum(tf.log(softmax_score))
         return loss
+
+
+class NeuralLoss(Loss): #TODO
+    """Abstract class for neural loss function.
+    """
+
+    name = ""
+    external_params = []
+    class_params = {}
+
+    def __init__(self, eta, hyperparam_dict, verbose=False):
+        """Initialize Loss.
+
+        Parameters
+        ----------
+        hyperparam_dict : dict
+            dictionary of hyperparams.
+            (Keys are described in the hyperparameters section)
+        """
+        self._loss_parameters = {}
+        self._dependencies = []
+
+        # perform check to see if all the required external hyperparams are passed
+        try:
+
+            #TODO: Remove need for eta in parameters (its tied to loss_registry)
+            self._loss_parameters['eta'] = eta
+            self._init_hyperparams(hyperparam_dict)
+            if verbose:
+                logger.info('\n--------- Loss ---------')
+                logger.info('Name : {}'.format(self.name))
+                for key, value in self._loss_parameters.items():
+                    logger.info('{} : {}'.format(key, value))
+        except KeyError as e:
+            msg = 'Some of the hyperparams for loss were not passed to the loss function.\n{}'.format(e)
+            logger.error(msg)
+            raise Exception(msg)
+
+    def _inputs_check(self, y_true, y_pred):
+        """ Creates any dependencies that need to be checked before performing loss computations
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            A tensor of ground truth values.
+        y_true : tf.Tensor
+            A tensor of predicted values.
+        """
+        logger.debug('Creating dependencies before loss computations.')
+        self._dependencies = []
+        logger.debug('Dependencies found: \n\tRequired same size y_true and y_pred. ')
+        self._dependencies.append(tf.Assert(tf.equal(tf.shape(y_pred)[0], tf.shape(y_true)[0]),
+                                            [tf.shape(y_pred)[0], tf.shape(y_true)[0]]))
+
+    def _apply(self, y_true, y_pred):
+        """ Apply the loss function. Every inherited class must implement this function.
+        (All the TF code must go in this function.)
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            A tensor of ground truth values.
+        y_pred : tf.Tensor
+            A tensor of predicted values.
+
+        Returns
+        -------
+        loss : tf.Tensor
+            The loss value that must be minimized.
+        """
+        msg = 'This function is a placeholder in an abstract class.'
+        logger.error(msg)
+        NotImplementedError(msg)
+
+    def apply(self, y_true, y_pred):
+        """ Interface to external world.
+        This function does the input checks, preprocesses input and finally applies loss function.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            A tensor of ground truth values.
+        y_true : tf.Tensor
+            A tensor of predicted values.
+
+        Returns
+        -------
+        loss : tf.Tensor
+            The loss value that must be minimized.
+        """
+        self._inputs_check(y_true, y_pred)
+        with tf.control_dependencies(self._dependencies):
+            loss = self._apply(y_true, y_pred)
+        return loss
+
+
+@register_loss("bce", [], {'label_smoothing': 0, 'require_same_size_pos_neg': False})
+class BCELoss(NeuralLoss):
+    """ Binary Cross Entropy Loss.
+
+        .. math::
+
+            insert-bce-latex-equation-here #TODO
+
+
+        Examples
+        --------
+        >>> from ampligraph.latent_features import ConvE
+        >>> model = ConvE(batches_count=1, seed=555, epochs=20, k=10, loss='bce', loss_params={})
+    """
+
+    def __init__(self, eta, loss_params={}, verbose=False):
+        """Initialize Loss
+
+        Parameters
+        ----------
+        loss_params : dict
+            Dictionary of loss-specific hyperparams:
+
+        """
+        super().__init__(eta, loss_params, verbose)
+
+    def _inputs_check(self, y_true, y_pred):
+        """ Creates any dependencies that need to be checked before performing loss computations
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            A tensor of ground truth values.
+        y_true : tf.Tensor
+            A tensor of predicted values.
+        """
+        logger.debug('Creating dependencies before loss computations.')
+        self._dependencies = []
+        logger.debug('Dependencies found: \n\tRequired same size y_true and y_pred. ')
+        self._dependencies.append(tf.Assert(tf.equal(tf.shape(y_pred)[0], tf.shape(y_true)[0]),
+                                            [tf.shape(y_pred)[0], tf.shape(y_true)[0]]))
+
+        if self._loss_parameters['label_smoothing'] is not None:
+            if 'num_entities' not in self._loss_parameters.keys():
+                msg = "To apply label smoothing the number of entities must be known. " \
+                      "Set using '_set_hyperparams('num_entities', value)'."
+                logger.error(msg)
+                raise Exception(msg)
+
+    def _init_hyperparams(self, hyperparam_dict):
+        """ Verifies and stores the hyperparameters needed by the algorithm.
+
+        Parameters
+        ----------
+        hyperparam_dict : dictionary
+            Consists of key value pairs. The Loss will check the keys to get the corresponding params
+        """
+
+        self._loss_parameters['label_smoothing'] = hyperparam_dict.get('label_smoothing', DEFAULT_LABEL_SMOOTHING)
+        self._loss_parameters['label_weighting'] = hyperparam_dict.get('label_weighting', DEFAULT_LABEL_WEIGHTING)
+
+    def _set_hyperparams(self, key, value):
+        """ Set a hyperparameter needed by the loss function.
+
+        Parameters
+        ----------
+        key : key for hyperparams dictionary
+        value : value for hyperparams dictionary
+
+        Returns
+        -------
+
+        """
+
+        if key in self._loss_parameters.keys():
+            msg = '{} already exists in loss hyperparameters dict with value {} \n' \
+                  'Overriding with value {}.'.format(key, self._loss_parameters[key], value)
+            logger.info(msg)
+
+        self._loss_parameters[key] = value
+
+    def _apply(self, y_true, y_pred):
+        """ Apply the loss function.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            A tensor of true values.
+        y_pred : tf.Tensor
+            A tensor of predicted values.
+
+       Returns
+       -------
+       loss : float
+           The loss value that must be minimized.
+
+       """
+
+        # y_pred = tf.math.sigmoid(y_pred)
+
+        if self._loss_parameters['label_smoothing'] is not None:
+            y_true = tf.add((1 - self._loss_parameters['label_smoothing']) * y_true,
+                            (self._loss_parameters['label_smoothing']) / self._loss_parameters['num_entities'])
+
+        if self._loss_parameters['label_weighting']:
+
+            eps = 1e-6
+            wt = tf.reduce_mean(y_true)
+            loss = -tf.reduce_sum((1-wt)*(y_true)*tf.log_sigmoid(y_pred) + wt*(1-y_true)*tf.log(1-tf.sigmoid(y_pred) + eps))
+
+        else:
+            loss = tf.tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true, logits=y_pred)
+
+        return loss
+

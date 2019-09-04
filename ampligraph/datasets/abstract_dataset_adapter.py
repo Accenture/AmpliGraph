@@ -56,6 +56,21 @@ class AmpligraphDatasetAdapter(abc.ABC):
         """
         
         raise NotImplementedError('Abstract Method not implemented!')
+
+    def data_exists(self, dataset_type="train"):
+        """Checks if a dataset_type exists in the adapter.
+        Parameters
+        ----------
+        dataset_type : string
+            type of the dataset
+
+        Returns
+        -------
+        exists : bool
+            Boolean indicating if dataset_type exists in the adapter.
+        """
+
+        raise NotImplementedError('Abstract Method not implemented!')
         
     def set_data(self, dataset, dataset_type=None, mapped_status=False):
         """set the dataset based on the type
@@ -70,7 +85,7 @@ class AmpligraphDatasetAdapter(abc.ABC):
             
         """
         raise NotImplementedError('Abstract Method not implemented!')
-        
+
     def map_data(self, remap=False):
         """map the data to the mappings of ent_to_idx and rel_to_idx
         Parameters

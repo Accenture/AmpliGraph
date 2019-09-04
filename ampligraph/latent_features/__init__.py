@@ -14,10 +14,10 @@ entity resolution, and link-based clustering, just to cite a few :cite:`nickel20
 
 """
 
-from .models import EmbeddingModel, TransE, DistMult, ComplEx, HolE, RandomBaseline, MODEL_REGISTRY, \
+from .models import EmbeddingModel, TransE, DistMult, ComplEx, HolE, ConvE, RandomBaseline, MODEL_REGISTRY, \
     set_entity_threshold, reset_entity_threshold
 from .loss_functions import Loss, AbsoluteMarginLoss, SelfAdversarialLoss, NLLLoss, PairwiseLoss,\
-    NLLMulticlass, LOSS_REGISTRY
+    NLLMulticlass, BCELoss, NeuralLoss, LOSS_REGISTRY
 from .regularizers import Regularizer, LPRegularizer, REGULARIZER_REGISTRY
 from .optimizers import Optimizer, AdagradOptimizer, AdamOptimizer, MomentumOptimizer, SGDOptimizer, OPTIMIZER_REGISTRY
 from .initializers import Initializer, RandomNormal, RandomUniform, Xavier, INITIALIZER_REGISTRY

@@ -540,7 +540,6 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         if isinstance(X, np.ndarray):
 
             X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
-
             dataset_handle = NumpyDatasetAdapter()
             dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
             dataset_handle.set_data(X_test, "test")
@@ -576,12 +575,12 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
         logger.debug('Configuring evaluation protocol.')
         model.configure_evaluation_protocol(eval_dict)
-        logger.debug('Making predictions.')
 
+        logger.debug('Making predictions.')
         ranks = model.get_ranks(dataset_handle)
 
-        model.end_evaluation()
         logger.debug('Ending Evaluation')
+        model.end_evaluation()
 
         logger.debug('Returning ranks of positive test triples obtained by corrupting {}.'.format(corrupt_side))
         return np.array(ranks)
@@ -591,7 +590,6 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         if dataset_handle is not None:
             dataset_handle.cleanup()
         raise e
-
 
 def filter_unseen_entities(X, model, verbose=False, strict=True):
     """Filter unseen entities in the test set.

@@ -54,7 +54,22 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
             size of the specified dataset
         """
         return self.dataset[dataset_type].shape[0]
-    
+
+    def data_exists(self, dataset_type="train"):
+        """Checks if a dataset_type exists in the adapter.
+        Parameters
+        ----------
+        dataset_type : string
+            type of the dataset
+
+        Returns
+        -------
+        exists : bool
+            Boolean indicating if dataset_type exists in the adapter.
+        """
+
+        return dataset_type in self.dataset.keys()
+
     def get_next_train_batch(self, batch_size=1, dataset_type="train"):
         """Generator that returns the next batch of data.
         
@@ -114,13 +129,13 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
             
         for key in self.dataset.keys():
             if (not self.mapped_status[key]) or (remap is True):
-                self.dataset[key] = to_idx(self.dataset[key], 
+                self.dataset[key] = to_idx(self.dataset[key],
                                            ent_to_idx=self.ent_to_idx, 
                                            rel_to_idx=self.rel_to_idx)
                 self.mapped_status[key] = True
                 
     def _validate_data(self, data):
-        """valiates the data
+        """ Validates the data
         """
         if type(data) != np.ndarray:
             msg = 'Invalid type for input data. Expected ndarray, got {}'.format(type(data))
