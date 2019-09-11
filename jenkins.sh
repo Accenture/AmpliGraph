@@ -15,9 +15,10 @@ if [[ $# -eq 0 ]] ; then
 else 
     if [[ $1 == "gpu" ]] ; then
         echo "install tensorflow GPU mode"
+        export TMPDIR=$HOME/tmp
         conda install cudatoolkit=10.0
         conda install cudnn=7.6
-        pip install tensorflow-gpu==1.13.1 --no-cache-dir
+        pip install tensorflow-gpu==1.13.1
     fi
 fi
 
