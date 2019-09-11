@@ -15,6 +15,8 @@ if [[ $# -eq 0 ]] ; then
 else 
     if [[ $1 == "gpu" ]] ; then
         echo "install tensorflow GPU mode"
+        conda install cudatoolkit=10.0
+        conda install cudnn=7.6
         conda install tensorflow-gpu==1.13.1
     fi
 fi
