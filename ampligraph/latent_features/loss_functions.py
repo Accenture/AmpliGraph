@@ -636,7 +636,7 @@ class NeuralLoss(Loss): #TODO
         return loss
 
 
-@register_loss("bce", [], {'label_smoothing': 0, 'require_same_size_pos_neg': False})
+@register_loss("bce", [], {'label_smoothing': None, 'label_weighting': False, 'require_same_size_pos_neg': False})
 class BCELoss(NeuralLoss):
     """ Binary Cross Entropy Loss.
 
@@ -747,7 +747,7 @@ class BCELoss(NeuralLoss):
             loss = -tf.reduce_sum((1-wt)*(y_true)*tf.log_sigmoid(y_pred) + wt*(1-y_true)*tf.log(1-tf.sigmoid(y_pred) + eps))
 
         else:
-            loss = tf.tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true, logits=y_pred)
+            loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true, logits=y_pred))
 
         return loss
 

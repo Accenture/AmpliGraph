@@ -533,6 +533,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     >>> hits_at_n_score(ranks, n=10)
     0.4
     """
+
     dataset_handle = None
     # try-except block is mainly to handle clean up in case of exception or manual stop in jupyter notebook
     try:
@@ -545,6 +546,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
             dataset_handle.set_data(X_test, "test")
 
         elif isinstance(X, AmpligraphDatasetAdapter):
+            print('Dataset handle is AmpligraphDatasetAdapter')
             dataset_handle = X
 
         if filter_triples is not None:

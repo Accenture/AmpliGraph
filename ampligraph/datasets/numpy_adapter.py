@@ -12,6 +12,7 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
     
     def generate_mappings(self, use_all=False):
         """Generate mappings from either train set or use all dataset to generate mappings
+
         Parameters
         ----------
         use_all : boolean

@@ -16,7 +16,7 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
         self.output_onehot = {}
 
     def set_filter(self, filter_triples, mapped_status=False):
-        """Set the filter to be used while generating an evaluation batch.
+        """ Set the filter to be used while generating an evaluation batch.
 
         Parameters
         ----------
@@ -24,32 +24,34 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
             triples that would be used as filter
         """
 
-        print('Setting ConvE filter.')
         filter_adapter = ConvEDatasetAdapter()
         filter_adapter.use_mappings(self.rel_to_idx, self.ent_to_idx)
         filter_adapter.set_data(filter_triples, 'filter', mapped_status)
-        self.filter_mapping = filter_adapter.create_output_mapping('filter')
+        self.filter_mapping = filter_adapter.generate_output_mapping('filter')
 
-
-    def create_onehot_outputs(self, dataset_type='train', use_filter=False):
+    def generate_onehot_outputs(self, dataset_type='train', use_filter=False):
         """ Create one-hot outputs for a dataset using an output mapping.
 
         Parameters
         ----------
         dataset_type : string indicating which dataset to create onehot outputs for
-        use_filter : bool indicating whether to use a filter to generate onehot outputs
+        use_filter : bool indicating whether to use a filter when generating onehot outputs.
 
         Returns
         -------
 
         """
 
-        print('Creating onehot outputs: {} [Filter: {}]'.format(dataset_type, use_filter))
+        if dataset_type not in self.dataset.keys():
+            msg = 'Dataset `{}` not found: cannot generate one-hot outputs. ' \
+                  'Please use `set_data` to set the dataset first.'.format(dataset_type)
+            raise ValueError(msg)
 
         if use_filter:
             # Generate one-hot outputs using the filter
             if self.filter_mapping is None:
-                msg = 'use_filter=True but filter has not been set.'
+                msg = 'Filter not found: cannot generate one-hot outputs with `use_filter=True` ' \
+                      'if a filter has not been set.'
                 raise ValueError(msg)
             else:
                 output_dict = self.filter_mapping
@@ -74,7 +76,7 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
 
             self.output_onehot[dataset_type][idx, indices] = 1.0
 
-    def create_output_mapping(self, dataset_type='train'):
+    def generate_output_mapping(self, dataset_type='train'):
         """ Creates dictionary of subject, predicate to object(s)
 
         Parameters
@@ -85,8 +87,6 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
         -------
 
         """
-
-        print('Creating output mapping: {}'.format(dataset_type))
 
         # if data is not already mapped, then map before creating output map
         if not self.mapped_status[dataset_type]:
@@ -136,6 +136,10 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
         if not self.mapped_status[dataset_type]:
             self.map_data()
 
+        # If onehot outputs aren't initialized ..
+        if dataset_type not in self.output_onehot.keys():
+            self.generate_onehot_outputs(dataset_type, use_filter=False)
+
         batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
         for i in range(batches_count):
             out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
@@ -160,15 +164,18 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
         if not self.mapped_status[dataset_type]:
             self.map_data()
 
+        # If onehot outputs aren't initialized ..
+        if dataset_type not in self.output_onehot.keys():
+            self.generate_onehot_outputs(dataset_type, use_filter=False)
+
         batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
         for i in range(batches_count):
             out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
-            out_filter = self.output_onehot[dataset_type][(i * batch_size):((i + 1) * batch_size), :]
-            out_filter[:, out[:, 2]] = 0.0 # set positive index to 0 for filtering
-            yield out, out_filter
+            out_onehot = self.output_onehot[dataset_type][(i * batch_size):((i + 1) * batch_size), :]
+            yield out, out_onehot
 
-    def get_next_batch_with_filter(self, batch_size=1, dataset_type="test"):
-        """Generator that returns the next batch of data along with the filter.
+    def get_next_batch_with_filter(self, batch_size=1, dataset_type='test'):
+        """Generator that returns the next batch of filtered data.
 
         Parameters
         ----------
@@ -189,21 +196,20 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
         if not self.mapped_status[dataset_type]:
             self.map_data()
 
+        # If onehot outputs haven't been created for this dataset_type
         if dataset_type not in self.output_onehot.keys():
-            # If onehot outputs haven't been created for this dataset_type
             if self.filter_mapping is None:
-                self.create_onehot_outputs(dataset_type, use_filter=False)
+                msg = 'Cannot use `get_next_batch_with_filter` if a filter has not been set. '
+                raise ValueError(msg)
             else:
-                self.create_onehot_outputs(dataset_type, use_filter=True)
+                self.generate_onehot_outputs(dataset_type, use_filter=True)
 
         batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
         for i in range(batches_count):
             # generate the batch
             out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
-
-            out_filter = self.output_onehot[dataset_type][(i * batch_size):((i + 1) * batch_size), :]
+            out_filter = np.copy(self.output_onehot[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
             out_filter[:, out[:, 2]] = 0.0  # set positive index to 0 for filtering
-
             yield out, out_filter
 
     def _validate_data(self, data):
@@ -216,7 +222,7 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
         if (np.shape(data)[1]) != 3:
             msg = 'Invalid size for input data. Expected number of column 3, got {}'.format(np.shape(data)[1])
             raise ValueError(msg)
-            
+
     def set_data(self, dataset, dataset_type=None, mapped_status=False):
         """set the dataset based on the type.
             Note: If you pass the same dataset type (which exists) it will be overwritten
@@ -245,4 +251,5 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
             
         # If the concept-idx mappings are present, then map the passed dataset    
         if not (len(self.rel_to_idx) == 0 or len(self.ent_to_idx) == 0):
+            print('Mapping set data: {}'.format(dataset_type))
             self.map_data()
