@@ -18,7 +18,7 @@ else
         export TMPDIR=/tmp/
         conda install cudatoolkit=10.0
         conda install cudnn=7.6
-        pip install tensorflow-gpu==1.13.1 --cache-dir=/tmp/ --build-dir=/tmp/
+        pip install --cache-dir=/tmp/ --build /tmp/ tensorflow-gpu==1.13.1
     fi
 fi
 
