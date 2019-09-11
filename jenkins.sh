@@ -17,7 +17,7 @@ else
         echo "install tensorflow GPU mode"
         conda install cudatoolkit=10.0
         conda install cudnn=7.6
-        pip install tensorflow-gpu==1.13.1
+        pip install tensorflow-gpu==1.13.1 --no-cache-dir
     fi
 fi
 
