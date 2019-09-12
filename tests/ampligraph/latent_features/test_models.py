@@ -311,6 +311,29 @@ def test_predict():
     np.testing.assert_array_equal(preds1, preds2)
 
 
+def test_predict_twice():
+    model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'z', 'a'],
+                  ['a', 'z', 'd']])
+    model.fit(X)
+
+    X_test1 = np.array([['a', 'y', 'b'],
+                        ['b', 'y', 'a']])
+
+    X_test2 = np.array([['a', 'y', 'c'],
+                        ['c', 'z', 'a']])
+
+    preds1 = model.predict(X_test1)
+    preds2 = model.predict(X_test2)
+
+    assert not np.array_equal(preds1, preds2)
+
+
 def test_calibrate_with_corruptions():
     model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
                      loss='pairwise', loss_params={'margin': 5},
