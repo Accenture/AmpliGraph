@@ -3533,6 +3533,8 @@ class ConvE(EmbeddingModel):
 
             epoch_iterator_with_progress = tqdm(range(1, self.epochs + 1), disable=(not self.verbose), unit='epoch')
 
+            GRAPH_DEBUG = True
+
             # DEBUG VARS
             print_epochs = [1, 2, 3, 4, 5, 7, 10, 15, 25, 50, 75, 100, 125, 150]
             print_batchs = [2, 8, 16, 32, 64, 128]
@@ -3549,10 +3551,16 @@ class ConvE(EmbeddingModel):
                     else:
 
                         # DEBUG
-                        if epoch in print_epochs and batch in print_batchs:
-                            loss_batch, y_true, y_pred, _ = self.sess_train.run([loss, self.y_true, self.y_pred, train],
-                                                                                feed_dict=feed_dict)
-                            np.savez('conve_output_epoch-{}_batch-{}.npz'.format(epoch, batch), y_true=y_true, y_pred=y_pred)
+                        # if epoch in print_epochs and batch in print_batchs:
+                        #     loss_batch, y_true, y_pred, _ = self.sess_train.run([loss, self.y_true, self.y_pred, train],
+                        #                                                         feed_dict=feed_dict)
+                        #     np.savez('conve_output_epoch-{}_batch-{}.npz'.format(epoch, batch), y_true=y_true, y_pred=y_pred)
+                        # else:
+                        if GRAPH_DEBUG:
+                            writer = tf.summary.FileWriter('fit', self.sess_train.graph)
+                            loss_batch, _ = self.sess_train.run([loss, train], feed_dict=feed_dict)
+                            writer.close()
+                            GRAPH_DEBUG = False
                         else:
                             loss_batch, _ = self.sess_train.run([loss, train], feed_dict=feed_dict)
 
@@ -3626,7 +3634,7 @@ class ConvE(EmbeddingModel):
                                                  output_types=(tf.int32, tf.float32),
                                                  output_shapes=((None, 3), (None, len(self.ent_to_idx))))
 
-        # dataset = dataset.repeat()
+        dataset = dataset.repeat()
         dataset = dataset.prefetch(5)
         dataset_iter = dataset.make_one_shot_iterator()
 
@@ -3643,18 +3651,19 @@ class ConvE(EmbeddingModel):
 
             # Compute scores for positive
             e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
-            self.scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)))
+            self.scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)), name='sigmoid_scores')
 
             # Score of positive triple
-            self.score_positive = tf.gather(self.scores, indices=self.X_test_tf[:, 2])
+            self.score_positive = tf.gather(self.scores, indices=self.X_test_tf[:, 2], name='score_positive')
 
             # Score of every other positive sample for <s, p>, excluding positive sample
             # this is to remove the positives from output
-            self.scores_filter = self.scores * self.X_test_filter_tf
+            self.scores_filter = tf.multiply(self.scores, self.X_test_filter_tf, name='scores_filter')
 
             # Rank of positive sample, with other positives filtered out
-            self.rank = (tf.reduce_sum(tf.cast(self.scores >= self.score_positive, tf.int32)) + 1) - \
-                        (tf.reduce_sum(tf.cast(self.scores_filter >= self.score_positive, tf.int32)))
+            self.rank = tf.subtract(tf.add(tf.reduce_sum(tf.cast(self.scores >= self.score_positive, tf.int32)), 1),
+                                    tf.reduce_sum(tf.cast(self.scores_filter >= self.score_positive, tf.int32)),
+                                    name='rank')
 
 
     def _initialize_early_stopping(self):
@@ -3803,8 +3812,18 @@ class ConvE(EmbeddingModel):
 
         scores = []
 
+        GRAPH_DEBUG = True
+
         for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
-            score = self.sess_predict.run([self.score_positive])
+
+            if GRAPH_DEBUG:
+                writer = tf.summary.FileWriter('predict', self.sess_predict.graph)
+                score = self.sess_predict.run([self.score_positive])
+                writer.close()
+                GRAPH_DEBUG = False
+            else:
+                score = self.sess_predict.run([self.score_positive])
+
             if self.eval_config.get('default_protocol', DEFAULT_PROTOCOL_EVAL):
                 scores.extend(list(score))
             else:
@@ -3849,9 +3868,19 @@ class ConvE(EmbeddingModel):
         results = {'X_tests': [], 'X_filters': [], 'scores': [], 'scores_filter': [], 'scores_pos': [], 'ranks': []}
         ranks = []
 
+        GRAPH_DEBUG = True
+
         for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
 
-            X_test, X_test_filter_tf, scores, scores_filter, score_pos, rank = self.sess_predict.run([self.X_test_tf, self.X_test_filter_tf, self.scores, self.scores_filter, self.score_positive, self.rank])
+            if GRAPH_DEBUG:
+                writer = tf.summary.FileWriter('get_ranks', self.sess_predict.graph)
+                X_test, X_test_filter_tf, scores, scores_filter, score_pos, rank = self.sess_predict.run(
+                    [self.X_test_tf, self.X_test_filter_tf, self.scores, self.scores_filter, self.score_positive,
+                     self.rank])
+                writer.close()
+                GRAPH_DEBUG = False
+            else:
+                X_test, X_test_filter_tf, scores, scores_filter, score_pos, rank = self.sess_predict.run([self.X_test_tf, self.X_test_filter_tf, self.scores, self.scores_filter, self.score_positive, self.rank])
 
             results['X_tests'].append(X_test)
             results['X_filters'].append(X_test_filter_tf)
