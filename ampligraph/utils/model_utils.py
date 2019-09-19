@@ -142,7 +142,12 @@ def restore_model(model_name_path=None):
         model.is_fitted = restored_obj['is_fitted']
         model.ent_to_idx = restored_obj['ent_to_idx']
         model.rel_to_idx = restored_obj['rel_to_idx']
-        model.is_calibrated = restored_obj['is_calibrated']
+        
+        try:
+            model.is_calibrated = restored_obj['is_calibrated']
+        except KeyError:
+            model.is_calibrated = False
+            
         model.restore_model_params(restored_obj)
     except pickle.UnpicklingError as e:
         msg = 'Error unpickling model {} : {}.'.format(model_name_path, e)
