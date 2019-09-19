@@ -327,7 +327,15 @@ class EmbeddingModel(abc.ABC):
         """
 
         self.trained_model_params = in_dict['model_params']
-        self.calibration_parameters = in_dict['calibration_parameters']
+        
+        # Try catch is for backward compatibility
+        try:
+            self.calibration_parameters = in_dict['calibration_parameters']
+        except KeyError:
+            # For backward compatibility
+            self.calibration_parameters = []
+            
+        
         # Try catch is for backward compatibility
         try:
             self.dealing_with_large_graphs = in_dict['large_graph']
