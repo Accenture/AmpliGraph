@@ -364,7 +364,7 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
     return out
 
 
-def e_convert_to_idx(X, ent_to_idx, rel_to_idx, obj_to_idx):
+def _convert_to_idx(X, ent_to_idx, rel_to_idx, obj_to_idx):
     unseen_msg = 'Input triples include one or more entities not present in the training set. ' \
                  'Please filter X using evaluation.filter_unseen_entities(), or retrain the model on a training set ' \
                  'that includes all the desired distinct entities.'
