@@ -2968,7 +2968,8 @@ class ConvE(EmbeddingModel):
                                          'dropout_dense': 0.2,
                                          'use_bias': True,
                                          'use_batchnorm': False,
-                                         'corrupt_sides': 'o'},
+                                         'corrupt_sides': 'o',
+                                         'random_projections': False},
                  optimizer=DEFAULT_OPTIM,
                  optimizer_params={'lr': DEFAULT_LR},
                  loss='bce',
@@ -3118,45 +3119,46 @@ class ConvE(EmbeddingModel):
                 self.set_training_true = tf.assign(self.tf_is_training, True)
                 self.set_training_false = tf.assign(self.tf_is_training, False)
 
+            is_trainable = not self.embedding_model_params['random_projections']
+            nfilters = self.embedding_model_params['conv_filters']
+            ksize = self.embedding_model_params['conv_kernel_size']
+            dense_dim = self.embedding_model_params['dense_dim']
+
             self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
 
-            # self.batchnorm_input = tf.keras.layers.BatchNormalization()
-            if not self.embedding_model_params['dropout_embed'] is None:
-                self.dropout_embed = tf.keras.layers.Dropout(rate=self.embedding_model_params['dropout_embed'], name='dropout_embed')
+            self.conv2d_W = tf.get_variable('conv2d_weights', shape=[ksize, ksize, 1, nfilters], trainable=is_trainable,
+                                            initializer=tf.keras.initializers.he_normal(seed=self.seed),
+                                            dtype=tf.float32)
+            self.conv2d_B = tf.get_variable('conv2d_bias', shape=[nfilters], trainable=is_trainable,
+                                            initializer=tf.zeros_initializer(), dtype=tf.float32)
 
-            self.reshape_to_image = tf.keras.layers.Reshape(target_shape=[self.embedding_model_params['embed_image_height'],
-                                                                          self.embedding_model_params['embed_image_width'], 1], name='reshape_to_image')
-            nfilters = self.embedding_model_params['conv_filters']
-            ksize = self.embedding_model_params['conv_kernel_size']
-            self.conv2d = tf.keras.layers.Conv2D(filters=nfilters, kernel_size=(ksize, ksize), padding='valid',
-                                                 activation=None, trainable=True, dtype=tf.float32,
-                                                 kernel_initializer=tf.keras.initializers.he_normal(seed=self.seed))
-
-            # self.batchnorm_conv = tf.keras.layers.BatchNormalization()
-            if not self.embedding_model_params['dropout_conv'] is None:
-                self.dropout_conv = tf.keras.layers.Dropout(rate=self.embedding_model_params['dropout_conv'], name='dropout_conv')
-
-            self.reshape_to_dense = tf.keras.layers.Reshape(target_shape=[self.embedding_model_params['dense_dim']], name='reshape_to_dense')
-
-            self.dense = tf.keras.layers.Dense(units=self.k, activation=None, trainable=True,  dtype=tf.float32,
-                                               kernel_initializer=tf.keras.initializers.he_normal(seed=self.seed))
-
-            # self.batchnorm_dense = tf.keras.layers.BatchNormalization()
-            if not self.embedding_model_params['dropout_dense'] is None:
-                self.dropout_dense = tf.keras.layers.Dropout(rate=self.embedding_model_params['dropout_dense'], name='dropout_dense')
+            self.dense_W = tf.get_variable('dense_weights', shape=[dense_dim, self.k],
+                                           trainable=is_trainable,
+                                           initializer=tf.keras.initializers.he_normal(seed=self.seed),
+                                           dtype=tf.float32)
+            self.dense_B = tf.get_variable('dense_bias', shape=[self.k], trainable=is_trainable,
+                                           initializer=tf.zeros_initializer(), dtype=tf.float32)
 
             if self.embedding_model_params['use_bias']:
-                self.bias = tf.get_variable('activation_bias', shape=[1, len(self.ent_to_idx)], initializer=tf.zeros_initializer(), dtype=tf.float32)
-
-            # Add ops to save and restore all the variables.
-            self.saver = tf.train.Saver()
+                self.bias = tf.get_variable('activation_bias', shape=[1, len(self.ent_to_idx)],
+                                            initializer=tf.zeros_initializer(), trainable=is_trainable,
+                                            dtype=tf.float32)
 
         else:
-
             raise NotImplementedError('ConvE not implemented when dealing with large graphs (yet)')
+
+    def _create_dense(self, X):
+        out = tf.matmul(X, self.dense_W)
+        out = tf.nn.bias_add(out, self.dense_B)
+        return out
+
+    def _create_conv2d(self, X):
+        out = tf.nn.conv2d(X, self.conv2d_W, [1, 1, 1, 1], padding='VALID')
+        out = tf.nn.bias_add(out, self.conv2d_B)
+        return out
 
     def _get_model_loss(self, dataset_iterator):
         """Get the current loss including loss due to regularization.
@@ -3214,23 +3216,18 @@ class ConvE(EmbeddingModel):
             # params_dict['bn_input'] = self.batchnorm_input.get_weights()
             # params_dict['bn_conv'] = self.batchnorm_conv.get_weights()
             # params_dict['bn_dense'] = self.batchnorm_dense.get_weights()
-            params_dict['conv2d'] = self.conv2d.get_weights()
-            params_dict['conv2d_config'] = self.conv2d.get_config()
-            params_dict['dense'] = self.dense.get_weights()
-            params_dict['dense_config'] = self.dense.get_config()
+            params_dict['conv2d_W'] = self.sess_train.run(self.conv2d_W)
+            params_dict['conv2d_B'] = self.sess_train.run(self.conv2d_B)
+            params_dict['dense_W'] = self.sess_train.run(self.dense_W)
+            params_dict['dense_B'] = self.sess_train.run(self.dense_B)
             if self.embedding_model_params['use_bias']:
                 params_dict['bias'] = self.sess_train.run(self.bias)
             params_dict['output_mapping'] = self.output_mapping
 
             self.trained_model_params = params_dict
 
-            self.saver.save(self.sess_train, 'conve.ckpt')
-            print('Model saved at: {}'.format('conve_ckpt'))
-
         else:
-
             raise NotImplementedError('ConvE not implemented when dealing with large graphs (yet)')
-            # self.trained_model_params = [self.ent_emb_cpu, self.sess_train.run(self.rel_emb)]
 
     def _load_model_from_trained_params(self):
         """Load the model from trained params.
@@ -3263,47 +3260,13 @@ class ConvE(EmbeddingModel):
             self.ent_emb = tf.Variable(self.trained_model_params['ent_emb'], dtype=tf.float32, name='ent_emb')
             self.rel_emb = tf.Variable(self.trained_model_params['rel_emb'], dtype=tf.float32, name='rel_emb')
 
-            # self.batchnorm_input = tf.keras.layers.BatchNormalization()
-
-            self.dropout_embed = tf.keras.layers.Dropout(rate=self.embedding_model_params['dropout_embed'], name='dropout_embed')
-            self.reshape_to_image = tf.keras.layers.Reshape(target_shape=[self.embedding_model_params['embed_image_height'],
-                                                                          self.embedding_model_params['embed_image_width'],
-                                                                          1], name='reshape_to_image_eval')
-
-            ksize = self.embedding_model_params['conv_kernel_size']
-
-            self.conv_weights = tf.Variable(self.trained_model_params['conv2d'][0], trainable=False, dtype=tf.float32)
-            self.conv_biases = tf.Variable(self.trained_model_params['conv2d'][1], trainable=False, dtype=tf.float32)
-
-            self.conv2d = tf.nn.conv2d(self.reshape_to_image, filter=conv_weights, padding='valid')
-
-
-            # kernel_init = tf.keras.initializers.constant(self.trained_model_params['conv2d'][0], dtype=tf.float32)
-            # bias_init = tf.keras.initializers.constant(self.trained_model_params['conv2d'][1], dtype=tf.float32)
-            # self.conv2d = tf.keras.layers.Conv2D(filters=self.embedding_model_params['conv_filters'], trainable=False,
-            #                                      kernel_size=(ksize, ksize), padding='valid', activation=None,
-            #                                      kernel_initializer=kernel_init, bias_initializer=bias_init,
-            #                                      name='conv2d_eval')
-
-            # self.batchnorm_conv = tf.keras.layers.BatchNormalization()
-            self.dropout_conv = tf.keras.layers.Dropout(rate=self.embedding_model_params['dropout_conv'], name='dropout_conv_eval')
-            # self.batchnorm_dense = tf.keras.layers.BatchNormalization()
-
-            self.reshape_to_dense = tf.keras.layers.Reshape(target_shape=[self.embedding_model_params['dense_dim']], name='reshape_to_dense_eval')
-
-            # kernel_init = tf.keras.initializers.constant(self.trained_model_params['dense'][0], dtype=tf.float32)
-            # bias_init = tf.keras.initializers.constant(self.trained_model_params['dense'][1], dtype=tf.float32)
-            self.dense = tf.keras.layers.Dense(units=self.k, activation=None, trainable=False, dtype=tf.float32,
-                                               # kernel_initializer=kernel_init, bias_initializer=bias_init,
-                                               name='dense_eval')
-
-            self.dropout_dense = tf.keras.layers.Dropout(rate=self.embedding_model_params['dropout_dense'], name='dropout_dense_eval')
+            self.conv2d_W = tf.Variable(self.trained_model_params['conv2d_W'], dtype=tf.float32)
+            self.conv2d_B = tf.Variable(self.trained_model_params['conv2d_B'], dtype=tf.float32)
+            self.dense_W = tf.Variable(self.trained_model_params['dense_W'], dtype=tf.float32)
+            self.dense_B = tf.Variable(self.trained_model_params['dense_B'], dtype=tf.float32)
 
             if self.embedding_model_params['use_bias']:
-                self.bias = tf.constant(self.trained_model_params['bias'], name='bias_eval', dtype=tf.float32)
-
-            # Add ops to save and restore all the variables.
-            self.saver = tf.train.Saver()
+                self.bias = tf.Variable(self.trained_model_params['bias'], dtype=tf.float32)
 
             self.output_mapping = self.trained_model_params['output_mapping']
 
@@ -3342,24 +3305,42 @@ class ConvE(EmbeddingModel):
         self.inputs = tf.stack([e_s, e_p], axis=2, name='concat_inputs')
 
         x = self.inputs
-        # x = self.batchnorm_input(x)
-        if not self.embedding_model_params['dropout_embed'] is None:
-            x = self.dropout_embed(x, training=self.tf_is_training)
 
-        x = self.reshape_to_image(x)
-        x = self.conv2d(x)
-        # x = self.batchnorm_conv(x)
-        x = tf.keras.layers.ReLU(name='conv_relu')(x)
+        # self.batchnorm_input = tf.keras.layers.BatchNormalization()
+        # x = self.batchnorm_input(x)
+
+        if not self.embedding_model_params['dropout_embed'] is None:
+            dropout_rate = tf.cond(self.tf_is_training,
+                                   true_fn=lambda: tf.constant(self.embedding_model_params['dropout_embed']),
+                                   false_fn=lambda: tf.constant(0))
+            x = tf.nn.dropout(x, rate=dropout_rate, name='dropout_embed')
+
+        x = tf.reshape(x, shape=[tf.shape(x)[0], self.embedding_model_params['embed_image_height'],
+                                 self.embedding_model_params['embed_image_width'], 1])
+
+        x = self._create_conv2d(x)
+
+        self.print_op = tf.print(tf.reduce_sum(self.conv2d_W))
+
+        with tf.control_dependencies([self.print_op]):
+            x = tf.nn.relu(x, name='conv_relu')
+
         if not self.embedding_model_params['dropout_conv'] is None:
-            x = self.dropout_conv(x, training=self.tf_is_training)
-        x = self.reshape_to_dense(x)
-        x = self.dense(x)
+            dropout_rate = tf.cond(self.tf_is_training,
+                                   true_fn=lambda: tf.constant(self.embedding_model_params['dropout_conv']),
+                                   false_fn=lambda: tf.constant(0))
+            x = tf.nn.dropout(x, rate=dropout_rate, name='dropout_conv')
+
+        x = tf.reshape(x, shape=[tf.shape(x)[0], self.embedding_model_params['dense_dim']])
+        x = self._create_dense(x)
 
         if not self.embedding_model_params['dropout_dense'] is None:
-            x = self.dropout_dense(x, training=self.tf_is_training)
+            dropout_rate = tf.cond(self.tf_is_training,
+                                   true_fn=lambda: tf.constant(self.embedding_model_params['dropout_dense']),
+                                   false_fn=lambda: tf.constant(0))
+            x = tf.nn.dropout(x, rate=dropout_rate, name='dropout_dense')
 
-        # x = self.batchnorm_dense(x)
-        x = tf.keras.layers.ReLU(name='dense_relu')(x)
+        x = tf.nn.relu(x, name='dense_relu')
         x = tf.matmul(x, tf.transpose(self.ent_emb), name='matmul')
 
         if self.embedding_model_params['use_bias']:
@@ -3622,17 +3603,6 @@ class ConvE(EmbeddingModel):
                         self._end_training()
                         return
                     self.sess_train.run(self.set_training_true)
-
-
-            self.sess_train.run(tf.print(tf.constant(u'------------------')))
-            self.sess_train.run(tf.print(tf.constant(u'FIT')))
-            self.sess_train.run(tf.print(tf.constant(u'{}'.format(str(self.dense)))))
-            self.sess_train.run(tf.print(tf.constant(u'{}'.format(str(self.conv2d)))))
-            self.sess_train.run(tf.print(tf.reduce_sum(self.ent_emb)))
-            self.sess_train.run(tf.print(tf.reduce_sum(self.rel_emb)))
-            self.sess_train.run(tf.print(tf.reduce_sum(self.conv2d.get_weights()[0])))
-            self.sess_train.run(tf.print(tf.reduce_sum(self.dense.get_weights()[0])))
-            self.sess_train.run(tf.print(tf.constant(u'------------------')))
 
             self._save_trained_params()
             self._end_training()
@@ -3912,8 +3882,8 @@ class ConvE(EmbeddingModel):
             sess.run(tf.tables_initializer())
             sess.run(tf.global_variables_initializer())
 
-            print('Restoring model ..')
-            self.saver.restore(sess, 'conve.ckpt')
+            # print('Restoring model ..')
+            # self.saver.restore(sess, 'conve.ckpt')
             self.sess_predict = sess
 
         self.sess_predict.run(self.set_training_false)
@@ -3945,25 +3915,5 @@ class ConvE(EmbeddingModel):
                 ranks.append(list(rank))
             else:
                 ranks.append(rank)
-
-
-        test = tf.print(tf.constant(u'THIS IS A TEST'))
-        self.sess_predict.run(test)
-        self.sess_predict.run(tf.print(tf.constant(u'------------------')))
-
-        self.sess_predict.run(tf.print(tf.constant(u'GET_RANKS')))
-        self.sess_predict.run(tf.print(tf.constant(u'{}'.format(str(self.dense)))))
-        self.sess_predict.run(tf.print(tf.constant(u'{}'.format(str(self.conv2d)))))
-        self.sess_predict.run(tf.print(tf.reduce_sum(self.ent_emb)))
-        self.sess_predict.run(tf.print(tf.reduce_sum(self.rel_emb)))
-        # self.sess_predict.run(tf.print(tf.reduce_sum(self.conv2d.get_weights()[0])))
-        # self.sess_predict.run(tf.print(tf.reduce_sum(self.dense.get_weights()[0])))
-
-        self.sess_predict.run(tf.print(tf.constant(u'------------------')))
-
-
-        # import pickle
-        # with open('conve_get_ranks_evaluate.pkl', 'wb') as f:
-        #     pickle.dump(results, f)
 
         return ranks
