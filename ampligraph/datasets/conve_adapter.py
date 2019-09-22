@@ -6,7 +6,7 @@ logger.setLevel(logging.DEBUG)
 
 class ConvEDatasetAdapter(NumpyDatasetAdapter):
 
-    def __init__(self):
+    def __init__(self, low_memory=False):
         """Initialize the class variables
         """
         super(ConvEDatasetAdapter, self).__init__()
@@ -14,6 +14,7 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
         self.filter_mapping = None
         self.output_mapping = None
         self.output_onehot = {}
+        self.low_memory = low_memory
 
     def set_filter(self, filter_triples, mapped_status=False):
         """ Set the filter to be used while generating an evaluation batch.
@@ -64,17 +65,24 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
             else:
                 output_dict = self.output_mapping
 
-        self.output_onehot[dataset_type] = np.zeros((self.dataset[dataset_type].shape[0], len(self.ent_to_idx)),
-                                                    dtype=np.float32)
+        if not self.low_memory:
 
-        for idx, triple in enumerate(self.dataset[dataset_type]):
-            key = (triple[0], triple[1])
-            if key in output_dict.keys():
-                indices = output_dict[key]
-            else:
-                indices = []
+            print('{} and {}'.format(self.dataset[dataset_type].shape[0], len(self.ent_to_idx)))
+            self.output_onehot[dataset_type] = np.zeros((self.dataset[dataset_type].shape[0], len(self.ent_to_idx)),
+                                                        dtype=np.int8)
 
-            self.output_onehot[dataset_type][idx, indices] = 1.0
+            for idx, triple in enumerate(self.dataset[dataset_type]):
+                key = (triple[0], triple[1])
+                if key in output_dict.keys():
+                    indices = output_dict[key]
+                else:
+                    indices = []
+
+                self.output_onehot[dataset_type][idx, indices] = 1.0
+        else:
+            # NB: With low_memory=True the output indices are generated on the fly in the batch generators
+            logger.debug('Low memory=True')
+            pass
 
     def generate_output_mapping(self, dataset_type='train'):
         """ Creates dictionary of subject, predicate to object(s)
@@ -136,16 +144,33 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
         if not self.mapped_status[dataset_type]:
             self.map_data()
 
-        # If onehot outputs aren't initialized ..
-        if dataset_type not in self.output_onehot.keys():
-            self.generate_onehot_outputs(dataset_type, use_filter=False)
+        if not self.low_memory:
+            # If onehot outputs aren't initialized ..
+            if dataset_type not in self.output_onehot.keys():
+                self.generate_onehot_outputs(dataset_type, use_filter=False)
 
-        batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
-        for i in range(batches_count):
-            out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
-            out_onehot = self.output_onehot[dataset_type][(i * batch_size):((i + 1) * batch_size), :]
-            yield out, out_onehot
-            
+            batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
+            for i in range(batches_count):
+                out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
+                out_onehot = self.output_onehot[dataset_type][(i * batch_size):((i + 1) * batch_size), :]
+                yield out, out_onehot
+
+        else:
+
+            batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
+            for i in range(batches_count):
+                out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
+                out_onehot = np.zeros(shape=[out.shape[0], len(self.ent_to_idx)], dtype=np.int32)
+
+                for j, triple in enumerate(out):
+                    key = (triple[0], triple[1])
+                    if key in self.output_mapping.keys():
+                        indices = self.output_mapping[(triple[0], triple[1])]
+                        out_onehot[j, indices] = 1
+
+                print('ada - {} : {}'.format(out.shape, out_onehot.shape))
+                yield out, out_onehot
+
     def get_next_eval_batch(self, batch_size=1, dataset_type='test'):
         """Generator that returns the next batch of data.
         
@@ -164,15 +189,28 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
         if not self.mapped_status[dataset_type]:
             self.map_data()
 
-        # If onehot outputs aren't initialized ..
-        if dataset_type not in self.output_onehot.keys():
-            self.generate_onehot_outputs(dataset_type, use_filter=False)
+        if not self.low_memory:
+            # If onehot outputs aren't initialized ..
+            if dataset_type not in self.output_onehot.keys():
+                self.generate_onehot_outputs(dataset_type, use_filter=False)
 
-        batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
-        for i in range(batches_count):
-            out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
-            out_onehot = self.output_onehot[dataset_type][(i * batch_size):((i + 1) * batch_size), :]
-            yield out, out_onehot
+            batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
+            for i in range(batches_count):
+                out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
+                out_onehot = self.output_onehot[dataset_type][(i * batch_size):((i + 1) * batch_size), :]
+                yield out, out_onehot
+        else:
+
+            batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
+            for i in range(batches_count):
+                out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
+                out_onehot = np.zeros(shape=[out.shape[0], len(self.ent_to_idx)], dtype=np.int8)
+
+                for j, triple in enumerate(out):
+                    indices = self.output_mapping[(triple[0], triple[1])]
+                    out_onehot[j, indices] = 1
+
+                yield out, out_onehot
 
     def get_next_batch_with_filter(self, batch_size=1, dataset_type='test'):
         """Generator that returns the next batch of filtered data.
@@ -196,21 +234,38 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
         if not self.mapped_status[dataset_type]:
             self.map_data()
 
-        # If onehot outputs haven't been created for this dataset_type
-        if dataset_type not in self.output_onehot.keys():
-            if self.filter_mapping is None:
-                msg = 'Cannot use `get_next_batch_with_filter` if a filter has not been set. '
-                raise ValueError(msg)
-            else:
+        if self.filter_mapping is None:
+            msg = 'Cannot use `get_next_batch_with_filter` if a filter has not been set. '
+            raise ValueError(msg)
+
+        if not self.low_memory:
+
+            # If onehot outputs haven't been created for this dataset_type
+            if dataset_type not in self.output_onehot.keys():
+                # TODO: This could lead to situation where reusing dataset handler could lead to nonfiltered data
+                # being returned from generator. The fix is to include a 'filter_mapped_status' class var
                 self.generate_onehot_outputs(dataset_type, use_filter=True)
 
-        batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
-        for i in range(batches_count):
-            # generate the batch
-            out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
-            out_filter = np.copy(self.output_onehot[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
-            out_filter[:, out[:, 2]] = 0.0  # set positive index to 0 for filtering
-            yield out, out_filter
+            batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
+            for i in range(batches_count):
+                # generate the batch
+                out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
+                out_filter = np.copy(self.output_onehot[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
+                out_filter[:, out[:, 2]] = 0.0  # set positive index to 0 for filtering
+                yield out, out_filter
+        else:
+
+            batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
+            for i in range(batches_count):
+                out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
+                out_filter = np.zeros(shape=[out.shape[0], len(self.ent_to_idx)], dtype=np.int8)
+
+                for j, triple in enumerate(out):
+                    indices = self.output_mapping[(triple[0], triple[1])]
+                    out_filter[j, indices] = 1
+
+                out_filter[:, out[:, 2]] = 0.0
+                yield out, out_filter
 
     def _validate_data(self, data):
         """valiates the data
