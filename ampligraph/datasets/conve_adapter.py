@@ -252,7 +252,6 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
                 out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
                 out_filter = np.copy(self.output_onehot[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
                 out_filter[:, out[:, 2]] = 0.0  # set positive index to 0 for filtering
-
                 yield out, out_filter
         else:
 

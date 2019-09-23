@@ -3822,22 +3822,6 @@ class ConvE(EmbeddingModel):
             logger.error(msg)
             raise ValueError(msg)
 
-        # TODO: Remove corruption entities
-        self.eval_config['corruption_entities'] = self.early_stopping_params.get('corruption_entities',
-                                                                                 DEFAULT_CORRUPTION_ENTITIES)
-
-        if isinstance(self.eval_config['corruption_entities'], list):
-            # convert from list of raw triples to entity indices
-            logger.debug('Using the supplied entities for generation of corruptions for early stopping')
-            self.eval_config['corruption_entities'] = np.asarray([idx for uri, idx in self.ent_to_idx.items()
-                                                                  if uri in self.eval_config['corruption_entities']])
-        elif self.eval_config['corruption_entities'] == 'all':
-            logger.debug('Using all entities for generation of corruptions for early stopping')
-        elif self.eval_config['corruption_entities'] == 'batch':
-            logger.debug('Using batch entities for generation of corruptions for early stopping')
-
-        self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
-
         self.early_stopping_best_value = None
         self.early_stopping_stop_counter = 0
         try:
@@ -3889,7 +3873,6 @@ class ConvE(EmbeddingModel):
         scores_predict : ndarray, shape [n]
             The predicted scores for input triples X.
 
-
         """
         if not self.is_fitted:
             msg = 'Model has not been fitted.'
@@ -3907,11 +3890,8 @@ class ConvE(EmbeddingModel):
             tf.reset_default_graph()
             self.rnd = check_random_state(self.seed)
             tf.random.set_random_seed(self.seed)
-            # load the parameters
             self._load_model_from_trained_params()
-            # build the eval graph
             self._initialize_eval_graph()
-
             sess = tf.Session()
             sess.run(tf.tables_initializer())
             sess.run(tf.global_variables_initializer())
@@ -3923,17 +3903,9 @@ class ConvE(EmbeddingModel):
 
         scores = []
 
-        GRAPH_DEBUG = True
-
         for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
 
-            if GRAPH_DEBUG:
-                writer = tf.summary.FileWriter('predict', self.sess_predict.graph)
-                score = self.sess_predict.run([self.score_positive])
-                writer.close()
-                GRAPH_DEBUG = False
-            else:
-                score = self.sess_predict.run([self.score_positive])
+            score = self.sess_predict.run([self.score_positive])
 
             if self.eval_config.get('default_protocol', DEFAULT_PROTOCOL_EVAL):
                 scores.extend(list(score))
@@ -3941,7 +3913,6 @@ class ConvE(EmbeddingModel):
                 scores.append(score)
 
         return scores
-
 
     def get_ranks(self, dataset_handle):
         """ Used by evaluate_predictions to get the ranks for evaluation.
@@ -3974,35 +3945,14 @@ class ConvE(EmbeddingModel):
             sess = tf.Session()
             sess.run(tf.tables_initializer())
             sess.run(tf.global_variables_initializer())
-
-            # print('Restoring model ..')
-            # self.saver.restore(sess, 'conve.ckpt')
             self.sess_predict = sess
 
         self.sess_predict.run(self.set_training_false)
-        results = {'X_tests': [], 'X_filters': [], 'scores': [], 'scores_filter': [], 'scores_pos': [], 'ranks': []}
         ranks = []
-
-        GRAPH_DEBUG = True
 
         for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
 
-            if GRAPH_DEBUG:
-                writer = tf.summary.FileWriter('get_ranks', self.sess_predict.graph)
-                X_test, X_test_filter_tf, scores, scores_filter, score_pos, rank = self.sess_predict.run(
-                    [self.X_test_tf, self.X_test_filter_tf, self.scores, self.scores_filter, self.score_positive,
-                     self.rank])
-                writer.close()
-                GRAPH_DEBUG = False
-            else:
-                X_test, X_test_filter_tf, scores, scores_filter, score_pos, rank = self.sess_predict.run([self.X_test_tf, self.X_test_filter_tf, self.scores, self.scores_filter, self.score_positive, self.rank])
-
-            results['X_tests'].append(X_test)
-            results['X_filters'].append(X_test_filter_tf)
-            results['scores'].append(scores)
-            results['scores_filter'].append(scores_filter)
-            results['scores_pos'].append(score_pos)
-            results['ranks'].append(rank)
+            rank = self.sess_predict.run(self.rank)
 
             if self.eval_config.get('default_protocol', DEFAULT_PROTOCOL_EVAL):
                 ranks.append(list(rank))
