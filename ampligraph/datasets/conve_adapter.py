@@ -168,7 +168,8 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
                         indices = self.output_mapping[(triple[0], triple[1])]
                         out_onehot[j, indices] = 1
 
-                print('ada - {} : {}'.format(out.shape, out_onehot.shape))
+                # logger.info('ada - batch {} out {} onehot {}'.format(i, out.shape, out_onehot.shape))
+
                 yield out, out_onehot
 
     def get_next_eval_batch(self, batch_size=1, dataset_type='test'):

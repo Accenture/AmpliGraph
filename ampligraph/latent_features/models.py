@@ -3147,15 +3147,18 @@ class ConvE(EmbeddingModel):
 
             if self.embedding_model_params['use_batchnorm']:
 
-                # TODO:
-                # self.bn_input_beta = tf.get_variable('bn_input_beta'mean
-                # self.bn_input_gamma = tf.get_variable('bn_')
-                # beta = tf.Variable(tf.constant(0.0, shape=[n_out]),
-                #                    name='beta', trainable=True)
-                # gamma = tf.Variable(tf.constant(1.0, shape=[n_out]),
-                #                     name='gamma', trainable=True)
-                pass
-            
+                self.bn_input_beta = tf.get_variable('bn_input_beta', shape=[2], dtype=tf.float32,
+                                                     trainable=is_trainable, initializer=tf.zeros_initializer())
+                self.bn_input_gamma = tf.get_variable('bn_input_gamma', shape=[2], dtype=tf.float32,
+                                                      trainable=is_trainable, initializer=tf.ones_initializer())
+                self.bn_conv_beta = tf.get_variable('bn_conv_beta', shape=[nfilters], dtype=tf.float32,
+                                                    trainable=is_trainable, initializer=tf.zeros_initializer())
+                self.bn_conv_gamma = tf.get_variable('bn_conv_gamma', shape=[nfilters], dtype=tf.float32,
+                                                     trainable=is_trainable, initializer=tf.ones_initializer())
+                self.bn_dense_beta = tf.get_variable('bn_dense_beta', shape=[1], dtype=tf.float32,
+                                                     trainable=is_trainable, initializer=tf.zeros_initializer())
+                self.bn_dense_gamma = tf.get_variable('bn_dense_gamma', shape=[1], dtype=tf.float32,
+                                                      trainable=is_trainable, initializer=tf.ones_initializer())
 
             if self.embedding_model_params['use_bias']:
                 self.bias = tf.get_variable('activation_bias', shape=[1, len(self.ent_to_idx)],
@@ -3175,9 +3178,9 @@ class ConvE(EmbeddingModel):
         out = tf.nn.bias_add(out, self.conv2d_B)
         return out
 
-    def _batch_norm(self, x, beta, gamma):
+    def _batch_norm(self, x, beta, gamma, axes, name=None):
 
-        batch_mean, batch_var = tf.nn.moments(x, [0, 1, 2], name='moments')
+        batch_mean, batch_var = tf.nn.moments(x, axes, name='moments')
         ema = tf.train.ExponentialMovingAverage(decay=0.5)
 
         def mean_var_with_update():
@@ -3188,7 +3191,9 @@ class ConvE(EmbeddingModel):
         mean, var = tf.cond(self.tf_is_training,
                             mean_var_with_update,
                             lambda: (ema.average(batch_mean), ema.average(batch_var)))
-        normed = tf.nn.batch_normalization(x, mean, var, beta, gamma, 1e-3)
+
+        normed = tf.nn.batch_normalization(x, mean, var, beta, gamma, 1e-3, name=name)
+
         return normed
 
     def _get_model_loss(self, dataset_iterator):
@@ -3243,15 +3248,22 @@ class ConvE(EmbeddingModel):
             params_dict = {}
             params_dict['ent_emb'] = self.sess_train.run(self.ent_emb)
             params_dict['rel_emb'] = self.sess_train.run(self.rel_emb)
-            # params_dict['bn_input'] = self.batchnorm_input.get_weights()
-            # params_dict['bn_conv'] = self.batchnorm_conv.get_weights()
-            # params_dict['bn_dense'] = self.batchnorm_dense.get_weights()
             params_dict['conv2d_W'] = self.sess_train.run(self.conv2d_W)
             params_dict['conv2d_B'] = self.sess_train.run(self.conv2d_B)
             params_dict['dense_W'] = self.sess_train.run(self.dense_W)
             params_dict['dense_B'] = self.sess_train.run(self.dense_B)
+
+            if self.embedding_model_params['use_batchnorm']:
+                params_dict['bn_input_beta'] = self.sess_train.run(self.bn_input_beta)
+                params_dict['bn_input_gamma'] = self.sess_train.run(self.bn_input_gamma)
+                params_dict['bn_conv_beta'] = self.sess_train.run(self.bn_conv_beta)
+                params_dict['bn_conv_gamma'] = self.sess_train.run(self.bn_conv_gamma)
+                params_dict['bn_dense_beta'] = self.sess_train.run(self.bn_dense_beta)
+                params_dict['bn_dense_gamma'] = self.sess_train.run(self.bn_dense_gamma)
+
             if self.embedding_model_params['use_bias']:
                 params_dict['bias'] = self.sess_train.run(self.bias)
+
             params_dict['output_mapping'] = self.output_mapping
 
             self.trained_model_params = params_dict
@@ -3295,6 +3307,17 @@ class ConvE(EmbeddingModel):
             self.dense_W = tf.Variable(self.trained_model_params['dense_W'], dtype=tf.float32)
             self.dense_B = tf.Variable(self.trained_model_params['dense_B'], dtype=tf.float32)
 
+            if self.embedding_model_params['use_batchnorm']:
+                self.bn_input_beta = tf.Variable(self.trained_model_params['bn_input_beta'], dtype=tf.float32)
+                self.bn_input_gamma = tf.Variable(self.trained_model_params['bn_input_gamma'], dtype=tf.float32)
+                self.bn_conv_beta = tf.Variable(self.trained_model_params['bn_conv_beta'], dtype=tf.float32)
+                self.bn_conv_gamma = tf.Variable(self.trained_model_params['bn_conv_gamma'], dtype=tf.float32)
+                self.bn_dense_beta = tf.Variable(self.trained_model_params['bn_dense_beta'], dtype=tf.float32)
+                self.bn_dense_gamma = tf.Variable(self.trained_model_params['bn_dense_gamma'], dtype=tf.float32)
+
+                self.print_op = tf.print(tf.reduce_sum(self.bn_input_beta))
+
+
             if self.embedding_model_params['use_bias']:
                 self.bias = tf.Variable(self.trained_model_params['bias'], dtype=tf.float32)
 
@@ -3337,12 +3360,12 @@ class ConvE(EmbeddingModel):
         x = self.inputs
 
         if self.embedding_model_params['use_batchnorm']:
-            x = self._batch_norm(x, self.bn_input_beta, self.bn_input_gamma)
+
+            # self.print_op = tf.print(self.bn_input_beta, self.bn_input_gamma, 'input')
+            # with tf.control_dependencies([self.print_op]):
+            x = self._batch_norm(x, self.bn_input_beta, self.bn_input_gamma, axes=[0, 1], name='input')
 
         if not self.embedding_model_params['dropout_embed'] is None:
-
-            # x = self._dropout(x, rate=self.embedding_model_params['dropout_embed'])
-
             dropout_rate = tf.cond(self.tf_is_training,
                                    true_fn=lambda: tf.constant(self.embedding_model_params['dropout_embed']),
                                    false_fn=lambda: tf.constant(0, dtype=tf.float32))
@@ -3354,14 +3377,14 @@ class ConvE(EmbeddingModel):
         x = self._cond2d(x)
 
         if self.embedding_model_params['use_batchnorm']:
-            x = self._batch_norm(x, self.bn_conv_beta, self.bn_conv_gamma)
+
+            # self.print_op = tf.print(self.bn_conv_beta, self.bn_conv_gamma, 'conv')
+            # with tf.control_dependencies([self.print_op]):
+            x = self._batch_norm(x, self.bn_conv_beta, self.bn_conv_gamma, axes=[0, 1, 2], name='conv')
 
         x = tf.nn.relu(x, name='conv_relu')
 
         if not self.embedding_model_params['dropout_conv'] is None:
-
-            # x = self._dropout(x, rate=self.embedding_model_params['dropout_conv'])
-
             dropout_rate = tf.cond(self.tf_is_training,
                                    true_fn=lambda: tf.constant(self.embedding_model_params['dropout_conv']),
                                    false_fn=lambda: tf.constant(0, dtype=tf.float32))
@@ -3369,18 +3392,19 @@ class ConvE(EmbeddingModel):
 
         x = tf.reshape(x, shape=[tf.shape(x)[0], self.embedding_model_params['dense_dim']])
         x = self._dense(x)
+        print('Dense: ', x)
 
         if not self.embedding_model_params['dropout_dense'] is None:
-
-            # x = self._dropout(x, rate=self.embedding_model_params['dropout_dense'])
-
             dropout_rate = tf.cond(self.tf_is_training,
                                    true_fn=lambda: tf.constant(self.embedding_model_params['dropout_dense']),
                                    false_fn=lambda: tf.constant(0, dtype=tf.float32))
             x = tf.nn.dropout(x, rate=dropout_rate, name='dropout_dense')
 
         if self.embedding_model_params['use_batchnorm']:
-            x = self._batch_norm(x, self.bn_dense_beta, self.bn_dense_gamma)
+
+            # self.print_op = tf.print(self.bn_dense_beta, self.bn_dense_gamma, 'dense')
+            # with tf.control_dependencies([self.print_op]):
+            x = self._batch_norm(x, self.bn_dense_beta, self.bn_dense_gamma, axes=[0], name='dense')
 
         x = tf.nn.relu(x, name='dense_relu')
         x = tf.matmul(x, tf.transpose(self.ent_emb), name='matmul')
@@ -3444,14 +3468,18 @@ class ConvE(EmbeddingModel):
 
         for i in range(self.batches_count):
 
-            out, out_onehot = next(batch_iterator)
-            print('gen - {} : {}'.format(out.shape, out_onehot.shape))
+            try:
+                out, out_onehot = next(batch_iterator)
+                # logger.info('gen - batch {} out {} onehot {}'.format(i, out.shape, out_onehot.shape))
 
-            # If large graph, load batch_size*2 entities on GPU memory
-            if self.dealing_with_large_graphs:
-                raise NotImplementedError('ConvE not implemented when dealing with large graphs (yet)')
+                # If large graph, load batch_size*2 entities on GPU memory
+                if self.dealing_with_large_graphs:
+                    raise NotImplementedError('ConvE not implemented when dealing with large graphs (yet)')
 
-            yield out, out_onehot
+                yield out, out_onehot
+            except StopIteration:
+                logger.info('Hit stop iteration at batch {}'.format(i))
+                break
 
     def fit(self, X, early_stopping=False, early_stopping_params={}):
         """Train a ConvE (with optional early stopping).
