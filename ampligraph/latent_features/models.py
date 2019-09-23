@@ -3072,7 +3072,11 @@ class ConvE(EmbeddingModel):
         """
 
         # Find factor pairs (i,j) of concatenated embedding dimensions, where min(i,j) >= conv_kernel_size
-        n = k*2
+
+        if embedding_model_params['checkerboard']:
+            n = k*2
+        else:
+            n = k
         ksize = embedding_model_params['conv_kernel_size']
         nfilters = embedding_model_params['conv_filters']
 
@@ -3135,7 +3139,12 @@ class ConvE(EmbeddingModel):
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
 
-            self.conv2d_W = tf.get_variable('conv2d_weights', shape=[ksize, ksize, 1, nfilters], trainable=is_trainable,
+            if self.embedding_model_params['checkerboard']:
+                ninput = 1
+            else:
+                ninput = 2
+
+            self.conv2d_W = tf.get_variable('conv2d_weights', shape=[ksize, ksize, ninput, nfilters], trainable=is_trainable,
                                             initializer=tf.keras.initializers.he_normal(seed=self.seed),
                                             dtype=tf.float32)
             self.conv2d_B = tf.get_variable('conv2d_bias', shape=[nfilters], trainable=is_trainable,
@@ -3150,9 +3159,14 @@ class ConvE(EmbeddingModel):
 
             if self.embedding_model_params['use_batchnorm']:
 
-                self.bn_input_beta = tf.get_variable('bn_input_beta', shape=[2], dtype=tf.float32,
+                if self.embedding_model_params['checkerboard']:
+                    bn_input_shape = [2]
+                else:
+                    bn_input_shape = [1]
+
+                self.bn_input_beta = tf.get_variable('bn_input_beta', shape=bn_input_shape, dtype=tf.float32,
                                                      trainable=is_trainable, initializer=tf.zeros_initializer())
-                self.bn_input_gamma = tf.get_variable('bn_input_gamma', shape=[2], dtype=tf.float32,
+                self.bn_input_gamma = tf.get_variable('bn_input_gamma', shape=bn_input_shape, dtype=tf.float32,
                                                       trainable=is_trainable, initializer=tf.ones_initializer())
                 self.bn_conv_beta = tf.get_variable('bn_conv_beta', shape=[nfilters], dtype=tf.float32,
                                                     trainable=is_trainable, initializer=tf.zeros_initializer())
@@ -3318,9 +3332,6 @@ class ConvE(EmbeddingModel):
                 self.bn_dense_beta = tf.Variable(self.trained_model_params['bn_dense_beta'], dtype=tf.float32)
                 self.bn_dense_gamma = tf.Variable(self.trained_model_params['bn_dense_gamma'], dtype=tf.float32)
 
-                self.print_op = tf.print(tf.reduce_sum(self.bn_input_beta))
-
-
             if self.embedding_model_params['use_bias']:
                 self.bias = tf.Variable(self.trained_model_params['bias'], dtype=tf.float32)
 
@@ -3362,15 +3373,27 @@ class ConvE(EmbeddingModel):
         if self.embedding_model_params['checkerboard']:
             self.inputs = tf.stack([e_s, e_p], axis=2, name='concat_inputs')
             x = self.inputs
+
+            x = tf.reshape(x, shape=[tf.shape(x)[0], self.embedding_model_params['embed_image_height'],
+                                     self.embedding_model_params['embed_image_width'], 1])
+
         else:
-            self.inputs = tf.concat([e_s, e_p], axis=1, name='concat_inputs')
+
+            e_s_img = tf.reshape(e_s, shape=[tf.shape(e_s)[0], self.embedding_model_params['embed_image_height'],
+                                     self.embedding_model_params['embed_image_width']])
+            e_p_img = tf.reshape(e_s, shape=[tf.shape(e_p)[0], self.embedding_model_params['embed_image_height'],
+                                     self.embedding_model_params['embed_image_width']])
+
+            self.inputs = tf.stack([e_s_img, e_p_img], axis=3, name='concat_inputs')
+
             x = self.inputs
 
         if self.embedding_model_params['use_batchnorm']:
-
-            # self.print_op = tf.print(self.bn_input_beta, self.bn_input_gamma, 'input')
-            # with tf.control_dependencies([self.print_op]):
-            x = self._batch_norm(x, self.bn_input_beta, self.bn_input_gamma, axes=[0, 1], name='input')
+            if self.embedding_model_params['checkerboard']:
+                bn_input_axes = [0, 1]
+            else:
+                bn_input_axes = [0]
+            x = self._batch_norm(x, self.bn_input_beta, self.bn_input_gamma, axes=bn_input_axes, name='input')
 
         if not self.embedding_model_params['dropout_embed'] is None:
             dropout_rate = tf.cond(self.tf_is_training,
@@ -3378,15 +3401,11 @@ class ConvE(EmbeddingModel):
                                    false_fn=lambda: tf.constant(0, dtype=tf.float32))
             x = tf.nn.dropout(x, rate=dropout_rate, name='dropout_embed')
 
-        x = tf.reshape(x, shape=[tf.shape(x)[0], self.embedding_model_params['embed_image_height'],
-                                 self.embedding_model_params['embed_image_width'], 1])
 
         x = self._conv2d(x)
 
         if self.embedding_model_params['use_batchnorm']:
 
-            # self.print_op = tf.print(self.bn_conv_beta, self.bn_conv_gamma, 'conv')
-            # with tf.control_dependencies([self.print_op]):
             x = self._batch_norm(x, self.bn_conv_beta, self.bn_conv_gamma, axes=[0, 1, 2], name='conv')
 
         x = tf.nn.relu(x, name='conv_relu')
@@ -3399,7 +3418,6 @@ class ConvE(EmbeddingModel):
 
         x = tf.reshape(x, shape=[tf.shape(x)[0], self.embedding_model_params['dense_dim']])
         x = self._dense(x)
-        print('Dense: ', x)
 
         if not self.embedding_model_params['dropout_dense'] is None:
             dropout_rate = tf.cond(self.tf_is_training,
@@ -3408,9 +3426,6 @@ class ConvE(EmbeddingModel):
             x = tf.nn.dropout(x, rate=dropout_rate, name='dropout_dense')
 
         if self.embedding_model_params['use_batchnorm']:
-
-            # self.print_op = tf.print(self.bn_dense_beta, self.bn_dense_gamma, 'dense')
-            # with tf.control_dependencies([self.print_op]):
             x = self._batch_norm(x, self.bn_dense_beta, self.bn_dense_gamma, axes=[0], name='dense')
 
         x = tf.nn.relu(x, name='dense_relu')
@@ -3753,13 +3768,13 @@ class ConvE(EmbeddingModel):
 
             # Score of every other positive sample for <s, p>, excluding positive sample
             # this is to remove the positives from output
-            self.scores_filter = tf.multiply(scores, self.X_test_filter_tf, name='scores_filter')
+            self.scores_filtered = tf.boolean_mask(scores, tf.cast(self.X_test_filter_tf, tf.bool))
+
+            self.total_rank = tf.reduce_sum(tf.cast(scores >= self.score_positive, tf.int32)) + 1
+            self.filter_rank = tf.reduce_sum(tf.cast(self.scores_filtered >= self.score_positive, tf.int32))
 
             # Rank of positive sample, with other positives filtered out
-            self.rank = tf.subtract(tf.add(tf.reduce_sum(tf.cast(scores >= self.score_positive, tf.int32)), 1),
-                                    tf.reduce_sum(tf.cast(self.scores_filter >= self.score_positive, tf.int32)),
-                                    name='rank')
-
+            self.rank = tf.subtract(self.total_rank, self.filter_rank, name='rank')
 
     def _initialize_early_stopping(self):
         """Initializes and creates evaluation graph for early stopping.
