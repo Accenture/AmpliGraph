@@ -2969,7 +2969,8 @@ class ConvE(EmbeddingModel):
                                          'use_bias': True,
                                          'use_batchnorm': False,
                                          'corrupt_sides': 'o',
-                                         'random_projections': False},
+                                         'random_projections': False,
+                                         'checkerboard': False},
                  optimizer=DEFAULT_OPTIM,
                  optimizer_params={'lr': DEFAULT_LR},
                  loss='bce',
@@ -3095,6 +3096,8 @@ class ConvE(EmbeddingModel):
 
         self.low_memory = low_memory
 
+        self.checkerboard = embedding_model_params['checkerboard']
+
         super().__init__(k=k, eta=eta, epochs=epochs,
                          batches_count=batches_count, seed=seed,
                          embedding_model_params=embedding_model_params,
@@ -3173,7 +3176,7 @@ class ConvE(EmbeddingModel):
         out = tf.nn.bias_add(out, self.dense_B)
         return out
 
-    def _cond2d(self, X):
+    def _conv2d(self, X):
         out = tf.nn.conv2d(X, self.conv2d_W, [1, 1, 1, 1], padding='VALID')
         out = tf.nn.bias_add(out, self.conv2d_B)
         return out
@@ -3355,9 +3358,13 @@ class ConvE(EmbeddingModel):
         """
 
         # Inputs
-        self.inputs = tf.stack([e_s, e_p], axis=2, name='concat_inputs')
 
-        x = self.inputs
+        if self.embedding_model_params['checkerboard']:
+            self.inputs = tf.stack([e_s, e_p], axis=2, name='concat_inputs')
+            x = self.inputs
+        else:
+            self.inputs = tf.concat([e_s, e_p], axis=1, name='concat_inputs')
+            x = self.inputs
 
         if self.embedding_model_params['use_batchnorm']:
 
@@ -3374,7 +3381,7 @@ class ConvE(EmbeddingModel):
         x = tf.reshape(x, shape=[tf.shape(x)[0], self.embedding_model_params['embed_image_height'],
                                  self.embedding_model_params['embed_image_width'], 1])
 
-        x = self._cond2d(x)
+        x = self._conv2d(x)
 
         if self.embedding_model_params['use_batchnorm']:
 
