@@ -647,8 +647,8 @@ class BCELoss(NeuralLoss):
 
         Examples
         --------
-        >>> from ampligraph.latent_features import ConvE
-        >>> model = ConvE(batches_count=1, seed=555, epochs=20, k=10, loss='bce', loss_params={})
+        >>> from ampligraph.latent_features import conve
+        >>> model = conve(batches_count=1, seed=555, epochs=20, k=10, loss='bce', loss_params={})
     """
 
     def __init__(self, eta, loss_params={}, verbose=False):

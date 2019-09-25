@@ -24,7 +24,6 @@ DEFAULT_NORMAL_STD = 0.05
 # Default value indicating whether to use xavier uniform or normal
 DEFAULT_XAVIER_IS_UNIFORM = False
 
-
 def register_initializer(name, external_params=[], class_params={}):
     def insert_in_registry(class_handle):
         INITIALIZER_REGISTRY[name] = class_handle
