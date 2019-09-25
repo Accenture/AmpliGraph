@@ -14,12 +14,15 @@ TransE
       ~TransE.fit
       ~TransE.get_embeddings
       ~TransE.predict
-   
+      ~TransE.calibrate
+      ~TransE.predict_proba
+
    .. automethod:: TransE.__init__
    .. automethod:: TransE.fit
    .. automethod:: TransE.get_embeddings
    .. automethod:: TransE.predict
-   
-   
+   .. automethod:: TransE.calibrate
+   .. automethod:: TransE.predict_proba
+
 
 

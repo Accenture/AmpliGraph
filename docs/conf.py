@@ -119,7 +119,7 @@ html_static_path = ['_static']
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 
-html_logo = 'img/ampligraph_logo_200px.png'
+html_logo = 'img/ampligraph_logo_transparent_white.png'
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
