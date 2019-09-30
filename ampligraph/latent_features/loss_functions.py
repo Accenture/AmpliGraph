@@ -542,7 +542,7 @@ class NLLMulticlass(Loss):
         return loss
 
 
-class NeuralLoss(Loss): #TODO
+class NeuralLoss(Loss):
     """Abstract class for neural loss function.
     """
 
@@ -565,7 +565,6 @@ class NeuralLoss(Loss): #TODO
         # perform check to see if all the required external hyperparams are passed
         try:
 
-            #TODO: Remove need for eta in parameters (its tied to loss_registry)
             self._loss_parameters['eta'] = eta
             self._init_hyperparams(hyperparam_dict)
             if verbose:

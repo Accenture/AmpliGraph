@@ -7,7 +7,7 @@ class ConvKB(EmbeddingModel):
 
     .. math::
 
-        concat(g([e_s, e_p, e_o]) * \omega)) \cdot w
+        concat(g([e_s, e_p, e_o]) * \Omega)) \cdot W
 
 
     Examples
@@ -28,7 +28,7 @@ class ConvKB(EmbeddingModel):
     >>>               ['f', 'y', 'e']])
     >>> model.fit(X)
     >>>
-    >>> TODO: Example
+    >>>                                                                                                                                             TODO: Example
     >>>
     >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
     ([-0.06213863, 0.01563319], [13, 3])
@@ -53,9 +53,7 @@ class ConvKB(EmbeddingModel):
                  seed=DEFAULT_SEED,
                  embedding_model_params={'num_filters': 32,
                                          'filter_sizes': [3],
-                                         'dropout': 0.0,
-                                         'is_trainable': True,
-                                         'corrupt_sides': 'o'},
+                                         'dropout': 0.0},
                  optimizer=DEFAULT_OPTIM,
                  optimizer_params={'lr': DEFAULT_LR},
                  loss=DEFAULT_LOSS,
@@ -64,7 +62,6 @@ class ConvKB(EmbeddingModel):
                  regularizer_params={},
                  initializer=DEFAULT_INITIALIZER,
                  initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
-                 low_memory=False,
                  verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
@@ -89,13 +86,9 @@ class ConvKB(EmbeddingModel):
 
         embedding_model_params : dict
             ConvKB-specific hyperparams:                                                    # TODO
-            - **conv_filters** - Number of convolution feature maps.
-            - **conv_kernel_size** - Convolution kernel size.
-            - **dropout_embed** - Dropout on the embedding layer.
-            - **dropout_conv** -  Dropout on the convolution maps.
-            - **dropout_dense** - Dropout on the dense layer.
-            - **use_bias** - Use bias layer.
-            - **use_batchnorm** - Use batch normalization after input, convolution, and dense layers.
+            - **num_filters** - Number of feature maps per convolution kernel. Default: 32
+            - **filter_sizes** - List of convolution kernel sizes. Default: [1]
+            - **dropout** - Dropout on the embedding layer. Default: 0.0
 
         optimizer : string
             The optimizer used to minimize the loss function. Choose between
@@ -122,8 +115,6 @@ class ConvKB(EmbeddingModel):
 
             - **'lr'** (float): learning rate (used by all the optimizers). Default: 0.1.
             - **'momentum'** (float): learning momentum (only used when ``optimizer=momentum``). Default: 0.9.
-            - **'label_smoothing'** (float): applies label smoothing to onehot outputs. Default: None.
-            - **'label_weighting'** (bool): applies label weighting to onehot outputs. Default: False
 
             Example: ``optimizer_params={'lr': 0.01, 'label_smoothing': 0.1}``
 
@@ -200,7 +191,7 @@ class ConvKB(EmbeddingModel):
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
 
-            self.l2_loss = tf.constant(0.0)
+            # self.l2_loss = tf.constant(0.0)
 
             self.conv_weights = {}
             for i, filter_size in enumerate(filter_sizes):
@@ -221,17 +212,6 @@ class ConvKB(EmbeddingModel):
 
         else:
             raise NotImplementedError('ConvKB not implemented when dealing with large graphs (yet)')
-
-    def _dense(self, X):
-        out = tf.matmul(X, self.dense_W)
-        out = tf.nn.bias_add(out, self.dense_B)
-        return out
-
-    def _conv2d(self, X, name):
-        out = tf.nn.conv2d(X, self.conv_weights[name]['weights'], [1, 1, 1, 1], padding='VALID')
-        out = tf.nn.bias_add(out, self.conv_weights[name]['biases'])
-        out = tf.nn.relu(out)
-        return out
 
     def _save_trained_params(self):
         """After model fitting, save all the trained parameters in trained_model_params in some order.
@@ -286,11 +266,13 @@ class ConvKB(EmbeddingModel):
             self.ent_emb = tf.Variable(self.trained_model_params['ent_emb'], dtype=tf.float32, name='ent_emb')
             self.rel_emb = tf.Variable(self.trained_model_params['rel_emb'], dtype=tf.float32, name='rel_emb')
 
+            self.conv_weights = {}
+
             for name in self.trained_model_params['conv_weights'].keys():
                 W = self.trained_model_params['conv_weights'][name]['weights']
                 B = self.trained_model_params['conv_weights'][name]['biases']
-                self.conv_weights[name]['weights'] = tf.Variable(W, dtype=tf.float32)
-                self.conv_weights[name]['biases'] = tf.Variable(B, dtype=tf.float32)
+                self.conv_weights[name] = {'weights': tf.Variable(W, dtype=tf.float32),
+                                           'biases': tf.Variable(B, dtype=tf.float32)}
 
             self.dense_W = tf.Variable(self.trained_model_params['dense_W'], dtype=tf.float32)
             self.dense_B = tf.Variable(self.trained_model_params['dense_B'], dtype=tf.float32)
@@ -304,9 +286,9 @@ class ConvKB(EmbeddingModel):
             The function implements the scoring function as defined by
             .. math::
 
-                f(vec(f([\overline{e_s};\overline{r_r}] * \omega)) W ) e_o
+                concat(f([e_s;r_r;e_o] * \Omega)) W )
 
-            Additional details for equivalence of the models available in :cite:`Dettmers2016`.
+            Additional details for equivalence of the models available in :cite:`Nguyen2018`.
 
 
         Parameters
@@ -326,7 +308,6 @@ class ConvKB(EmbeddingModel):
         """
 
         # Inputs
-
         e_s = tf.expand_dims(e_s, 1)
         e_p = tf.expand_dims(e_p, 1)
         e_o = tf.expand_dims(e_o, 1)
@@ -335,7 +316,9 @@ class ConvKB(EmbeddingModel):
 
         pooled_outputs = []
         for name in self.conv_weights.keys():
-            x = self._conv2d(self.inputs, name)
+            x = tf.nn.conv2d(self.inputs, self.conv_weights[name]['weights'], [1, 1, 1, 1], padding='VALID')
+            x = tf.nn.bias_add(x, self.conv_weights[name]['biases'])
+            x = tf.nn.relu(x)
             pooled_outputs.append(x)
 
         # Combine all the pooled features
@@ -348,17 +331,13 @@ class ConvKB(EmbeddingModel):
         x = tf.nn.dropout(x, rate=dropout_rate, name='dropout_dense')
 
         self.scores = tf.nn.xw_plus_b(x, self.dense_W, self.dense_B, name="scores")
-        self.l2_loss += tf.nn.l2_loss(self.dense_W)
-        self.l2_loss += tf.nn.l2_loss(self.dense_B)
-        self.scores = tf.nn.xw_plus_b(x, self.dense_W, self.dense_B, name="scores")
 
         return tf.squeeze(self.scores)
 
     def fit(self, X, early_stopping=False, early_stopping_params={}):
-        """Train a ConvKB (with optional early stopping).
+        """Train a ConvKB model (with optional early stopping).
 
-        The model is trained on a training set X using the training protocol
-        described in :cite:`trouillon2016complex`.
+        The model is trained on a training set X using the training protocol described in :cite:`trouillon2016complex`.
 
         Parameters
         ----------
@@ -425,83 +404,3 @@ class ConvKB(EmbeddingModel):
 
         """
         super().fit(X, early_stopping, early_stopping_params)
-
-    def predict(self, X, from_idx=False):
-        """Predict the scores of triples using a trained embedding model.
-
-        The function returns raw scores generated by the model.
-
-        .. note::
-
-            To obtain probability estimates, use a logistic sigmoid: ::
-
-                >>> model.fit(X)
-                >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-                >>> print(y_pred)
-                [-4.6903257, -3.9047198]
-                >>> from scipy.special import expit
-                >>> expit(y_pred)
-                array([0.00910012, 0.01974873], dtype=float32)
-
-        Parameters
-        ----------
-        X : ndarray, shape [n, 3]
-             The triples to score.
-        from_idx : bool
-             If True, will skip conversion to internal IDs. (default: False).
-
-        Returns
-        -------
-        scores_predict : ndarray, shape [n]
-            The predicted scores for input triples X.
-
-
-        """
-        return super().predict(X, from_idx=from_idx)
-
-    def get_ranks(self, dataset_handle):
-        """ Used by evaluate_predictions to get the ranks for evaluation.
-
-        Parameters
-        ----------
-        dataset_handle : Object of AmpligraphDatasetAdapter
-                         This contains handles of the generators used to get test triples and filters.
-
-        Returns
-        -------
-        ranks : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
-                An array of ranks of test triples.
-        """
-
-        if not self.is_fitted:
-            msg = 'Model has not been fitted.'
-            logger.error(msg)
-            raise RuntimeError(msg)
-
-        self.eval_dataset_handle = dataset_handle
-
-        # build tf graph for predictions
-        if self.sess_predict is None:
-            tf.reset_default_graph()
-            self.rnd = check_random_state(self.seed)
-            tf.random.set_random_seed(self.seed)
-            self._load_model_from_trained_params()
-            self._initialize_eval_graph(mode='test')
-            sess = tf.Session()
-            sess.run(tf.tables_initializer())
-            sess.run(tf.global_variables_initializer())
-            self.sess_predict = sess
-
-        self.sess_predict.run(self.set_training_false)
-        ranks = []
-
-        for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
-
-            rank = self.sess_predict.run(self.rank)
-
-            if self.eval_config.get('default_protocol', DEFAULT_PROTOCOL_EVAL):
-                ranks.append(list(rank))
-            else:
-                ranks.append(rank)
-
-        return ranks
