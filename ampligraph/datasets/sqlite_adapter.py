@@ -160,15 +160,15 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         cur1.close()
         return out[0][0]
     
-    def get_next_train_batch(self, batch_size, dataset_type="train"):
+    def get_next_train_batch(self, batches_count, dataset_type="train"):
         """Generator that returns the next batch of data.
         
         Parameters
         ----------
-        batch_size : int
-            data size that needs to be returned
         dataset_type: string
             indicates which dataset to use
+        batches_count: int
+            number of batches per epoch
         Returns
         -------
         batch_output : nd-array
@@ -177,8 +177,8 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         if (not self.using_existing_db) and (not self.mapped_status[dataset_type]):
             self.map_data()
         
-        # create batches directly from database
-        batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
+        batch_size = int(np.ceil(self.get_size(dataset_type) / batches_count))
+
         select_query = "SELECT subject, predicate,object FROM triples_table INDEXED BY \
                             triples_table_type_idx where dataset_type ='{}' LIMIT {}, {}"
         for i in range(batches_count):
