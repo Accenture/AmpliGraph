@@ -12,21 +12,16 @@ class ConvE(EmbeddingModel):
     Examples
     --------
     >>> import numpy as np
-    >>> from ampligraph.latent_features import conve
-    >>> model = conve(batches_count=1, seed=555, epochs=20, k=10,       # TODO
+    >>> from ampligraph.latent_features import ConvE
+    >>> from ampligraph.datasets import load_wn18
+    >>> model = ConvE(batches_count=2000, seed=22, epochs=300, k=_k, eta=1,
     >>>              loss='bce', loss_params={},
-    >>>              regularizer='LP', regularizer_params={'lambda':0.1})
+    >>>              regularizer='LP', regularizer_params={'lambda':0.1},
+    >>>              verbose=True, low_memory=True)
     >>>
-    >>> X = np.array([['a', 'y', 'b'],
-    >>>               ['b', 'y', 'a'],
-    >>>               ['a', 'y', 'c'],
-    >>>               ['c', 'y', 'a'],
-    >>>               ['a', 'y', 'd'],
-    >>>               ['c', 'y', 'd'],
-    >>>               ['b', 'y', 'c'],
-    >>>               ['f', 'y', 'e']])
-    >>> model.fit(X)
-    >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]), get_ranks=True)
+    >>> X = load_wn18()
+    >>> model.fit(X['train'])
+    >>> model.predict(X['test'][:5])
     ([-0.06213863, 0.01563319], [13, 3])
     >>> model.get_embeddings(['f','e'], embedding_type='entity')
         array([[ 0.17335348,  0.15826802,  0.24862595,  0.21404941, -0.00968813,
@@ -53,15 +48,13 @@ class ConvE(EmbeddingModel):
                                          'dropout_conv': 0.3,
                                          'dropout_dense': 0.2,
                                          'use_bias': True,
-                                         'use_batchnorm': True,
-                                         'corrupt_sides': 'o',
-                                         'is_trainable': True,
-                                         'checkerboard': False},
+                                         'use_batchnorm': False,
+                                         'checkerboard': True},
                  optimizer=DEFAULT_OPTIM,
                  optimizer_params={'lr': DEFAULT_LR},
                  loss='bce',
                  loss_params={'scoring_strategy': '1-N',
-                              'label_weighting': False,
+                              'label_weighting': True,
                               'label_smoothing': 0.1},
                  regularizer=DEFAULT_REGULARIZER,
                  regularizer_params={},
@@ -92,17 +85,18 @@ class ConvE(EmbeddingModel):
 
         embedding_model_params : dict
             ConvE-specific hyperparams:
-            - **conv_filters** - Number of convolution feature maps.
-            - **conv_kernel_size** - Convolution kernel size.
-            - **dropout_embed** - Dropout on the embedding layer.
-            - **dropout_conv** -  Dropout on the convolution maps.
-            - **dropout_dense** - Dropout on the dense layer.
-            - **use_bias** - Use bias layer.
-            - **use_batchnorm** - Use batch normalization after input, convolution, and dense layers.
+            - **conv_filters** (int): Number of convolution feature maps. Default: 32
+            - **conv_kernel_size** (int): Convolution kernel size. Default: 3
+            - **dropout_embed** (float|None): Dropout on the embedding layer. Default: 0.2
+            - **dropout_conv** (float|None): Dropout on the convolution maps. Default: 0.3
+            - **dropout_dense** (float|None): Dropout on the dense layer. Default: 0.2
+            - **use_bias** (bool): Use bias layer. Default: True
+            - **use_batchnorm** (bool): Use batch normalization after input, convolution, and dense layers.
+            - **checkerboard** (bool): - Reshape the embedding 'image' so that entity and relation embeddings interact
+                within the convolution kernel. Default: True.
 
         optimizer : string
-            The optimizer used to minimize the loss function. Choose between
-            'sgd', 'adagrad', 'adam', 'momentum'.
+            The optimizer used to minimize the loss function. Choose between 'sgd', 'adagrad', 'adam', 'momentum'.
 
         optimizer_params : dict
             Arguments specific to the optimizer, passed as a dictionary.
@@ -120,15 +114,15 @@ class ConvE(EmbeddingModel):
             - ``bce``  the model will use binary cross entropy loss function.
 
         loss_params : dict
-            Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
-            documentation for additional details.
+            Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>` documentation for
+            additional details.
 
             Supported keys:
 
             - **'lr'** (float): learning rate (used by all the optimizers). Default: 0.1.
             - **'momentum'** (float): learning momentum (only used when ``optimizer=momentum``). Default: 0.9.
-            - **'label_smoothing'** (float): applies label smoothing to onehot outputs. Default: None.
-            - **'label_weighting'** (bool): applies label weighting to onehot outputs. Default: False
+            - **'label_smoothing'** (float): applies label smoothing to one-hot outputs. Default: 0.1.
+            - **'label_weighting'** (bool): applies label weighting to one-hot outputs. Default: True
 
             Example: ``optimizer_params={'lr': 0.01, 'label_smoothing': 0.1}``
 
@@ -161,7 +155,24 @@ class ConvE(EmbeddingModel):
 
         verbose : bool
             Verbose mode.
+
+        low_memory : bool
+            Train ConvE with a (slower) low_memory option. If MemoryError is still encountered, try raising the
+            batches_count value. Default: False.
         """
+
+        # Add default values if not provided in embedding_model_params dict
+        default_embedding_model_params = {'conv_filters': 32, 'conv_kernel_size': 3, 'dropout_embed': 0.2,
+                                          'dropout_conv': 0.3, 'dropout_dense': 0.2, 'use_batchnorm': False,
+                                          'use_bias': True, 'checkerboard': True}
+        for key, val in default_embedding_model_params.items():
+            if key not in embedding_model_params.keys():
+                embedding_model_params[key] = val
+
+        default_loss_params = {'scoring_strategy': '1-1', 'label_smoothing': 0.1, 'label_weighting': True}
+        for key, val in default_loss_params.items():
+            if k not in embedding_model_params.keys():
+                loss_params[key] = val
 
         # Find factor pairs (i,j) of concatenated embedding dimensions, where min(i,j) >= conv_kernel_size
         if embedding_model_params['checkerboard']:
@@ -193,6 +204,8 @@ class ConvE(EmbeddingModel):
         # Calculate dense dimension
         embedding_model_params['dense_dim'] = (emb_img_width - (ksize - 1)) * (emb_img_height - (ksize - 1)) * nfilters
 
+
+
         self.low_memory = low_memory
 
         super().__init__(k=k, eta=eta, epochs=epochs,
@@ -222,7 +235,7 @@ class ConvE(EmbeddingModel):
                 self.set_training_true = tf.assign(self.tf_is_training, True)
                 self.set_training_false = tf.assign(self.tf_is_training, False)
 
-            is_trainable = True # not self.embedding_model_params['is_trainable']
+            is_trainable = True
             nfilters = self.embedding_model_params['conv_filters']
             ninput = self.embedding_model_params['embed_image_depth']
             ksize = self.embedding_model_params['conv_kernel_size']
@@ -821,13 +834,35 @@ class ConvE(EmbeddingModel):
 
         batch_iterator = iter(test_generator())
 
-        while True:
-            try:
-                out, out_onehot_filter = next(batch_iterator)
-            except StopIteration:
-                break
-            else:
-                yield out, out_onehot_filter
+        if self.loss_params['scoring_strategy'] == '1-N':
+            while True:
+                try:
+                    out, out_onehot_filter = next(batch_iterator)
+                except StopIteration:
+                    break
+                else:
+                    yield out, out_onehot_filter
+        else:
+            indices_obj = np.empty(shape=(0, 1), dtype=np.int32)
+            indices_sub = np.empty(shape=(0, 1), dtype=np.int32)
+            unique_ent = np.empty(shape=(0, 1), dtype=np.int32)
+            entity_embeddings = np.empty(shape=(0, self.internal_k), dtype=np.float32)
+            for i in range(self.eval_dataset_handle.get_size(mode)):
+                if self.is_filtered:
+                    out, indices_obj, indices_sub = next(batch_iterator)
+                else:
+                    out = next(batch_iterator)
+
+                if self.dealing_with_large_graphs:
+                    # since we are dealing with only one triple (2 entities)
+                    unique_ent = np.unique(np.array([out[0, 0], out[0, 2]]))
+                    needed = (self.batch_size - unique_ent.shape[0])
+                    large_number = np.zeros((needed, self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
+                    entity_embeddings = np.concatenate((self.ent_emb_cpu[unique_ent, :], large_number), axis=0)
+                    unique_ent = unique_ent.reshape(-1, 1)
+
+                yield out, indices_obj, indices_sub, entity_embeddings, unique_ent
+
 
     def _initialize_eval_graph(self, mode="test", scoring_strategy='1-1'):
         """ Initialize the evaluation graph with the provided scoring strategy.
@@ -852,7 +887,6 @@ class ConvE(EmbeddingModel):
             self._initialize_eval_graph_1_N()
         else:
             raise ValueError('Invalid scoring strategy {}, please use either `1-1` or `1-N`.'.format(scoring_strategy))
-
 
 
     def _initialize_eval_graph_1_1(self, mode="test"):
@@ -1011,17 +1045,17 @@ class ConvE(EmbeddingModel):
                                                           self.corruption_entities_tf,
                                                           corrupt_side)
 
+            # NB: The sigmoid and gather functions are the only difference with the inherited function, but
+
             # Compute scores for negatives
             e_s, e_p, e_o = self._lookup_embeddings(self.out_corr)
-
-            # NB: This is the only difference with the overriden inherited function
-            scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)))
-            # Score of positive triple
-            self.score_positive = tf.gather(scores, indices=self.X_test_tf[:, 2], name='score_positive')
+            scores_predict = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)))
+            self.scores_predict = tf.gather(scores_predict, indices=self.out_corr[:, 2], name='scores_negative')
 
             # Compute scores for positive
             e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
-            self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
+            scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)))
+            self.score_positive = tf.gather(scores, indices=self.X_test_tf[:, 2], name='score_positive')
 
             use_default_protocol = self.eval_config.get('default_protocol', DEFAULT_PROTOCOL_EVAL)
 
@@ -1252,10 +1286,18 @@ class ConvE(EmbeddingModel):
             logger.error(msg)
             raise RuntimeError(msg)
 
-        # adapt the data with conve adapter for internal use
-        dataset_handle = ConvEDatasetAdapter(low_memory=self.low_memory)
-        dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
-        dataset_handle.set_data(X, 'test', mapped_status=from_idx)
+        # adapt the data with ConvE OR Numpy adapter for internal use, depending on the scoring strategy.
+        if self.loss_params['scoring_strategy'] == '1-N':
+            dataset_handle = ConvEDatasetAdapter(low_memory=self.low_memory)
+            dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
+            dataset_handle.set_data(X, "test", mapped_status=from_idx)
+            dataset_handle.set_output_mapping(self.output_mapping)
+            dataset_handle.generate_onehot_outputs(dataset_type='test')
+        else:
+            dataset_handle = NumpyDatasetAdapter()
+            dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
+            dataset_handle.set_data(X, "test", mapped_status=from_idx)
+
         self.eval_dataset_handle = dataset_handle
 
         # build tf graph for predictions
@@ -1271,8 +1313,6 @@ class ConvE(EmbeddingModel):
             self.sess_predict = sess
 
         self.sess_predict.run(self.set_training_false)
-        self.eval_dataset_handle.set_output_mapping(self.output_mapping)
-        self.eval_dataset_handle.generate_onehot_outputs(dataset_type='test')
 
         scores = []
 

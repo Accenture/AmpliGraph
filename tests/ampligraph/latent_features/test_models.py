@@ -267,3 +267,30 @@ def test_is_fitted_on():
     assert model.is_fitted_on(X1) is False
     # Doesn't fit the extra relationship triples
     assert model.is_fitted_on(X2) is False
+
+from ampligraph.latent_features import ConvE
+from ampligraph.datasets import ConvEDatasetAdapter
+from ampligraph.utils import save_model, restore_model
+
+def test_fit_predict_wn18_ConvE():
+
+    X = load_wn18()
+    #
+    # model = ConvE(batches_count=2000, seed=22, epochs=1, k=10, eta=1,
+    #               embedding_model_params={'conv_filters': 16, 'conv_kernel_size': 3},
+    #               optimizer='adam', optimizer_params={'lr': 0.01},
+    #               loss='bce', loss_params={},
+    #               regularizer=None, regularizer_params={'p': 2, 'lambda': 1e-5},
+    #               verbose=True, low_memory=True)
+    #
+    # model.fit(X['train'])
+
+    model = restore_model('conve.tmp')
+
+    y = model.predict(X['test'][:5])
+
+    print(y)
+
+if __name__ == '__main__':
+
+    test_fit_predict_wn18_ConvE()
