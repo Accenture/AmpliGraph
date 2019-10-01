@@ -8,10 +8,11 @@
 import numpy as np
 import pytest
 
-from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline
+from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline, ConvKB
 from ampligraph.latent_features import set_entity_threshold, reset_entity_threshold
 from ampligraph.datasets import load_wn18
 from ampligraph.evaluation import evaluate_performance, hits_at_n_score
+from ampligraph.utils import save_model, restore_model
 
 
 def test_large_graph_mode():
@@ -268,7 +269,6 @@ def test_is_fitted_on():
     # Doesn't fit the extra relationship triples
     assert model.is_fitted_on(X2) is False
 
-from ampligraph.latent_features import ConvKB
 
 def test_convkb_train_predict():
 
@@ -290,26 +290,32 @@ def test_convkb_train_predict():
 
     print(y)
 
-    X1 = np.array([['a', 'y', 'b'],
-                   ['b', 'y', 'a'],
-                   ['a', 'y', 'c'],
-                   ['c', 'z', 'a'],
-                   ['g', 'z', 'd']])
 
-    X2 = np.array([['a', 'y', 'b'],
-                   ['b', 'y', 'a'],
-                   ['a', 'y', 'c'],
-                   ['c', 'z', 'a'],
-                   ['a', 'x', 'd']])
+def test_convkb_save_restore():
 
-    # Fits the train triples
-    assert model.is_fitted_on(X) is True
-    # Doesn't fit the extra entity triples
-    assert model.is_fitted_on(X1) is False
+    model = ConvKB(batches_count=2, seed=22, epochs=1, k=10, eta=1,
+                   embedding_model_params={'num_filters': 16,
+                                           'filter_sizes': [1],
+                                           'dropout': 0.0,
+                                           'is_trainable': True},
+                   optimizer='adam',
+                   optimizer_params={'lr': 0.001},
+                   loss='pairwise',
+                   loss_params={},
+                   verbose=True)
 
+    X = load_wn18()
+    model.fit(X['train'])
+    y1 = model.predict(X['test'][:10])
 
-    print('x')
+    save_model(model, 'convkb.tmp')
+    del model
+    model = restore_model('convkb.tmp')
+
+    y2 = model.predict(X['test'][:10])
+
+    assert np.all(y1==y2)
 
 if __name__ == '__main__':
 
-    test_convkb_train_predict()
+    test_convkb_save_restore()

@@ -173,67 +173,71 @@ class ConvKB(EmbeddingModel):
             Overload this function if the parameters needs to be initialized differently.
         """
 
+        with tf.variable_scope('meta'):
+            self.tf_is_training = tf.Variable(False, trainable=False, name='is_training')
+            self.set_training_true = tf.assign(self.tf_is_training, True)
+            self.set_training_false = tf.assign(self.tf_is_training, False)
+
         if not self.dealing_with_large_graphs:
-
-            with tf.variable_scope('meta'):
-                self.tf_is_training = tf.Variable(False, trainable=False, name='is_training')
-                self.set_training_true = tf.assign(self.tf_is_training, True)
-                self.set_training_false = tf.assign(self.tf_is_training, False)
-
-            num_filters = self.embedding_model_params['num_filters']
-            filter_sizes = self.embedding_model_params['filter_sizes']
-            dense_dim = self.embedding_model_params['dense_dim']
-            num_outputs = 1  # i.e., a single score
 
             self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
 
-            # self.l2_loss = tf.constant(0.0)
-
-            self.conv_weights = {}
-            for i, filter_size in enumerate(filter_sizes):
-                conv_shape = [3, filter_size, 1, num_filters]
-                conv_name = 'conv-maxpool-{}'.format(filter_size)
-                weights_init = tf.initializers.truncated_normal(seed=self.seed)
-                self.conv_weights[conv_name] = {'weights': tf.get_variable('{}_W'.format(conv_name), shape=conv_shape,
-                                                                           trainable=True, dtype=tf.float32,
-                                                                           initializer=weights_init),
-                                                'biases': tf.get_variable('{}_B'.format(conv_name), shape=[num_filters],
-                                                                          trainable=True, dtype=tf.float32,
-                                                                          initializer=tf.zeros_initializer())}
-
-            self.dense_W = tf.get_variable('dense_weights', shape=[dense_dim, num_outputs], trainable=True,
-                                           initializer=tf.keras.initializers.he_normal(seed=self.seed),
-                                           dtype=tf.float32)
-            self.dense_B = tf.get_variable('dense_bias', shape=[num_outputs], trainable=True,
-                                           initializer=tf.zeros_initializer(), dtype=tf.float32)
-
         else:
-            raise NotImplementedError('ConvKB not implemented when dealing with large graphs (yet)')
+
+            self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
+            self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size * 2, self.internal_k],
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
+
+        num_filters = self.embedding_model_params['num_filters']
+        filter_sizes = self.embedding_model_params['filter_sizes']
+        dense_dim = self.embedding_model_params['dense_dim']
+        num_outputs = 1  # i.e. a single score
+
+        self.conv_weights = {}
+        for i, filter_size in enumerate(filter_sizes):
+            conv_shape = [3, filter_size, 1, num_filters]
+            conv_name = 'conv-maxpool-{}'.format(filter_size)
+            weights_init = tf.initializers.truncated_normal(seed=self.seed)
+            self.conv_weights[conv_name] = {'weights': tf.get_variable('{}_W'.format(conv_name), shape=conv_shape,
+                                                                       trainable=True, dtype=tf.float32,
+                                                                       initializer=weights_init),
+                                            'biases': tf.get_variable('{}_B'.format(conv_name), shape=[num_filters],
+                                                                      trainable=True, dtype=tf.float32,
+                                                                      initializer=tf.zeros_initializer())}
+
+        self.dense_W = tf.get_variable('dense_weights', shape=[dense_dim, num_outputs], trainable=True,
+                                       initializer=tf.keras.initializers.he_normal(seed=self.seed),
+                                       dtype=tf.float32)
+        self.dense_B = tf.get_variable('dense_bias', shape=[num_outputs], trainable=True,
+                                       initializer=tf.zeros_initializer(), dtype=tf.float32)
 
     def _save_trained_params(self):
         """After model fitting, save all the trained parameters in trained_model_params in some order.
         The order would be useful for loading the model.
         This method must be overridden if the model has any other parameters (apart from entity-relation embeddings).
         """
+
+        params_dict = {}
+
         if not self.dealing_with_large_graphs:
-
-            params_dict = {}
             params_dict['ent_emb'] = self.sess_train.run(self.ent_emb)
-            params_dict['rel_emb'] = self.sess_train.run(self.rel_emb)
-            params_dict['conv_weights'] = {}
-            for name in self.conv_weights.keys():
-                params_dict['conv_weights'][name] = {'weights': self.sess_train.run(self.conv_weights[name]['weights']),
-                                                     'biases': self.sess_train.run(self.conv_weights[name]['biases'])}
-
-            params_dict['dense_W'] = self.sess_train.run(self.dense_W)
-            params_dict['dense_B'] = self.sess_train.run(self.dense_B)
-            self.trained_model_params = params_dict
-
         else:
-            raise NotImplementedError('ConvKB not implemented when dealing with large graphs (yet)')
+            params_dict['ent_emb'] = self.ent_emb_cpu
+
+        params_dict['rel_emb'] = self.sess_train.run(self.rel_emb)
+
+        params_dict['conv_weights'] = {}
+        for name in self.conv_weights.keys():
+            params_dict['conv_weights'][name] = {'weights': self.sess_train.run(self.conv_weights[name]['weights']),
+                                                 'biases': self.sess_train.run(self.conv_weights[name]['biases'])}
+
+        params_dict['dense_W'] = self.sess_train.run(self.dense_W)
+        params_dict['dense_B'] = self.sess_train.run(self.dense_B)
+        self.trained_model_params = params_dict
 
     def _load_model_from_trained_params(self):
         """Load the model from trained params.
@@ -257,28 +261,26 @@ class ConvKB(EmbeddingModel):
             logger.warning('Evaluation would take longer than usual.')
 
         if not self.dealing_with_large_graphs:
-
-            with tf.variable_scope('meta'):
-                self.tf_is_training = tf.Variable(False, trainable=False, name='is_training')
-                self.set_training_true = tf.assign(self.tf_is_training, True)
-                self.set_training_false = tf.assign(self.tf_is_training, False)
-
-            self.ent_emb = tf.Variable(self.trained_model_params['ent_emb'], dtype=tf.float32, name='ent_emb')
-            self.rel_emb = tf.Variable(self.trained_model_params['rel_emb'], dtype=tf.float32, name='rel_emb')
-
-            self.conv_weights = {}
-
-            for name in self.trained_model_params['conv_weights'].keys():
-                W = self.trained_model_params['conv_weights'][name]['weights']
-                B = self.trained_model_params['conv_weights'][name]['biases']
-                self.conv_weights[name] = {'weights': tf.Variable(W, dtype=tf.float32),
-                                           'biases': tf.Variable(B, dtype=tf.float32)}
-
-            self.dense_W = tf.Variable(self.trained_model_params['dense_W'], dtype=tf.float32)
-            self.dense_B = tf.Variable(self.trained_model_params['dense_B'], dtype=tf.float32)
-
+            self.ent_emb = tf.Variable(self.trained_model_params['ent_emb'], dtype=tf.float32)
         else:
-            raise NotImplementedError('ConvE not implemented when dealing with large graphs (yet)')
+            self.ent_emb_cpu = self.trained_model_params['ent_emb']
+
+        self.rel_emb = tf.Variable(self.trained_model_params['rel_emb'], dtype=tf.float32)
+
+        with tf.variable_scope('meta'):
+            self.tf_is_training = tf.Variable(False, trainable=False, name='is_training')
+            self.set_training_true = tf.assign(self.tf_is_training, True)
+            self.set_training_false = tf.assign(self.tf_is_training, False)
+
+        self.conv_weights = {}
+        for name in self.trained_model_params['conv_weights'].keys():
+            W = self.trained_model_params['conv_weights'][name]['weights']
+            B = self.trained_model_params['conv_weights'][name]['biases']
+            self.conv_weights[name] = {'weights': tf.Variable(W, dtype=tf.float32),
+                                       'biases': tf.Variable(B, dtype=tf.float32)}
+
+        self.dense_W = tf.Variable(self.trained_model_params['dense_W'], dtype=tf.float32)
+        self.dense_B = tf.Variable(self.trained_model_params['dense_B'], dtype=tf.float32)
 
     def _fn(self, e_s, e_p, e_o):
         """The ConvKB scoring function.
@@ -303,7 +305,7 @@ class ConvKB(EmbeddingModel):
         Returns
         -------
         score : TensorFlow operation
-            The operation corresponding to the ConvE scoring function.
+            The operation corresponding to the ConvKB scoring function.
 
         """
 
