@@ -398,3 +398,4 @@ def test_calibrate_with_negatives():
     probas = model.predict_proba(np.concatenate((X_pos, X_neg)))
 
     assert np.logical_and(probas > 0, probas < 1).all()
+

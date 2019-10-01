@@ -771,7 +771,7 @@ class EmbeddingModel(abc.ABC):
         # generate empty embeddings for smaller graphs - as all the entity embeddings will be loaded on GPU
         entity_embeddings = np.empty(shape=(0, self.internal_k), dtype=np.float32)
         # create iterator to iterate over the train batches
-        batch_iterator = iter(self.train_dataset_handle.get_next_train_batch(self.batch_size, "train"))
+        batch_iterator = iter(self.train_dataset_handle.get_next_train_batch(self.batches_count, "train"))
         for i in range(self.batches_count):
             out = next(batch_iterator)
             # If large graph, load batch_size*2 entities on GPU memory
@@ -1495,9 +1495,7 @@ class EmbeddingModel(abc.ABC):
 
         dataset_handle.set_data(X_pos, "pos")
 
-        batch_size_pos = int(np.ceil(dataset_handle.get_size("pos") / batches_count))
-
-        gen_fn = partial(dataset_handle.get_next_train_batch, batch_size=batch_size_pos, dataset_type="pos")
+        gen_fn = partial(dataset_handle.get_next_train_batch, batches_count=batches_count, dataset_type="pos")
         dataset = tf.data.Dataset.from_generator(gen_fn,
                                                  output_types=tf.int32,
                                                  output_shapes=(None, 3))
