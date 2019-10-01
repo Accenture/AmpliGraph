@@ -16,6 +16,7 @@ entity resolution, and link-based clustering, just to cite a few :cite:`nickel20
 
 from .models import EmbeddingModel, TransE, DistMult, ComplEx, HolE, RandomBaseline, MODEL_REGISTRY, \
     set_entity_threshold, reset_entity_threshold
+from .convkb import ConvKB
 from .loss_functions import Loss, AbsoluteMarginLoss, SelfAdversarialLoss, NLLLoss, PairwiseLoss,\
     NLLMulticlass, LOSS_REGISTRY
 from .regularizers import Regularizer, LPRegularizer, REGULARIZER_REGISTRY
@@ -26,7 +27,7 @@ from ..utils import save_model, restore_model
 
 __all__ = ['LOSS_REGISTRY', 'REGULARIZER_REGISTRY', 'MODEL_REGISTRY', 'OPTIMIZER_REGISTRY', 'INITIALIZER_REGISTRY',
            'set_entity_threshold', 'reset_entity_threshold',
-           'EmbeddingModel', 'TransE', 'DistMult', 'ComplEx', 'HolE', 'RandomBaseline',
+           'EmbeddingModel', 'TransE', 'DistMult', 'ComplEx', 'HolE', 'ConvKB', 'RandomBaseline',
            'Loss', 'AbsoluteMarginLoss', 'SelfAdversarialLoss', 'NLLLoss', 'PairwiseLoss', 'NLLMulticlass',
            'Regularizer', 'LPRegularizer', 'Optimizer', 'AdagradOptimizer', 'AdamOptimizer', 'MomentumOptimizer', 
            'SGDOptimizer', 'Initializer', 'RandomNormal', 'RandomUniform', 'Xavier',

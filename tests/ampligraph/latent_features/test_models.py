@@ -267,3 +267,49 @@ def test_is_fitted_on():
     assert model.is_fitted_on(X1) is False
     # Doesn't fit the extra relationship triples
     assert model.is_fitted_on(X2) is False
+
+from ampligraph.latent_features import ConvKB
+
+def test_convkb_train_predict():
+
+    model = ConvKB(batches_count=2, seed=22, epochs=1, k=10, eta=1,
+                   embedding_model_params={'num_filters': 16,
+                                           'filter_sizes': [1],
+                                           'dropout': 0.0,
+                                           'is_trainable': True},
+                   optimizer='adam',
+                   optimizer_params={'lr': 0.001},
+                   loss='pairwise',
+                   loss_params={},
+                   verbose=True)
+
+    X = load_wn18()
+    model.fit(X['train'])
+
+    y = model.predict(X['test'][:10])
+
+    print(y)
+
+    X1 = np.array([['a', 'y', 'b'],
+                   ['b', 'y', 'a'],
+                   ['a', 'y', 'c'],
+                   ['c', 'z', 'a'],
+                   ['g', 'z', 'd']])
+
+    X2 = np.array([['a', 'y', 'b'],
+                   ['b', 'y', 'a'],
+                   ['a', 'y', 'c'],
+                   ['c', 'z', 'a'],
+                   ['a', 'x', 'd']])
+
+    # Fits the train triples
+    assert model.is_fitted_on(X) is True
+    # Doesn't fit the extra entity triples
+    assert model.is_fitted_on(X1) is False
+
+
+    print('x')
+
+if __name__ == '__main__':
+
+    test_convkb_train_predict()
