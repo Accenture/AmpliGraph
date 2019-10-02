@@ -8,10 +8,12 @@
 import numpy as np
 import pytest
 
-from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline
+from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline, ConvE
 from ampligraph.latent_features import set_entity_threshold, reset_entity_threshold
 from ampligraph.datasets import load_wn18
 from ampligraph.evaluation import evaluate_performance, hits_at_n_score
+from ampligraph.datasets import ConvEDatasetAdapter
+from ampligraph.utils import save_model, restore_model
 
 
 def test_large_graph_mode():
@@ -268,29 +270,26 @@ def test_is_fitted_on():
     # Doesn't fit the extra relationship triples
     assert model.is_fitted_on(X2) is False
 
-from ampligraph.latent_features import ConvE
-from ampligraph.datasets import ConvEDatasetAdapter
-from ampligraph.utils import save_model, restore_model
+def test_fit_predict_save_restore_ConvE():
 
-def test_fit_predict_wn18_ConvE():
+    model = ConvE(batches_count=2000, seed=22, epochs=1, k=10, eta=1,
+                  embedding_model_params={'conv_filters': 16, 'conv_kernel_size': 3},
+                  optimizer='adam', optimizer_params={'lr': 0.01},
+                  loss='bce', loss_params={},
+                  regularizer=None, regularizer_params={'p': 2, 'lambda': 1e-5},
+                  verbose=True, low_memory=True)
 
     X = load_wn18()
-    #
-    # model = ConvE(batches_count=2000, seed=22, epochs=1, k=10, eta=1,
-    #               embedding_model_params={'conv_filters': 16, 'conv_kernel_size': 3},
-    #               optimizer='adam', optimizer_params={'lr': 0.01},
-    #               loss='bce', loss_params={},
-    #               regularizer=None, regularizer_params={'p': 2, 'lambda': 1e-5},
-    #               verbose=True, low_memory=True)
-    #
-    # model.fit(X['train'])
+    model.fit(X['train'])
+
+    y1 = model.predict(X['test'][:5])
+
+    save_model(model, 'conve.tmp')
+    del model
 
     model = restore_model('conve.tmp')
 
-    y = model.predict(X['test'][:5])
+    y2 = model.predict(X['test'][:5])
 
-    print(y)
+    assert np.all(y1 == y2)
 
-if __name__ == '__main__':
-
-    test_fit_predict_wn18_ConvE()

@@ -1,5 +1,39 @@
-from .models import *
+import numpy as np
+import tensorflow as tf
+import logging
+from sklearn.utils import check_random_state
+from tqdm import tqdm
+from functools import partial
 
+from .models import EmbeddingModel
+from .models import DEFAULT_EMBEDDING_SIZE,DEFAULT_XAVIER_IS_UNIFORM, DEFAULT_VERBOSE, DEFAULT_ETA, DEFAULT_EPOCH, \
+    DEFAULT_BATCH_COUNT, DEFAULT_SEED, DEFAULT_OPTIM, DEFAULT_LR, DEFAULT_CORRUPTION_ENTITIES, DEFAULT_REGULARIZER, \
+    DEFAULT_INITIALIZER, ENTITY_THRESHOLD, DEFAULT_NORMALIZE_EMBEDDINGS, DEFAULT_PROTOCOL_EVAL, DEFAULT_CORRUPT_SIDE_EVAL, DEFAULT_CRITERIA_EARLY_STOPPING
+from ..datasets import NumpyDatasetAdapter, AmpligraphDatasetAdapter, ConvEDatasetAdapter
+from ..latent_features.optimizers import SGDOptimizer
+from ..evaluation import to_idx, generate_corruptions_for_eval
+
+from .models import MODEL_REGISTRY
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+def register_model(name, external_params=None, class_params=None):
+    if external_params is None:
+        external_params = []
+    if class_params is None:
+        class_params = {}
+
+    def insert_in_registry(class_handle):
+        MODEL_REGISTRY[name] = class_handle
+        class_handle.name = name
+        MODEL_REGISTRY[name].external_params = external_params
+        MODEL_REGISTRY[name].class_params = class_params
+        return class_handle
+
+    return insert_in_registry
+
+@register_model("ConvE")
 class ConvE(EmbeddingModel):
     """ Convolutional 2D Knowledge Graph Embeddings
 
@@ -53,14 +87,14 @@ class ConvE(EmbeddingModel):
                  optimizer=DEFAULT_OPTIM,
                  optimizer_params={'lr': DEFAULT_LR},
                  loss='bce',
-                 loss_params={'scoring_strategy': '1-N',
-                              'label_weighting': True,
+                 loss_params={'label_weighting': True,
                               'label_smoothing': 0.1},
                  regularizer=DEFAULT_REGULARIZER,
                  regularizer_params={},
                  initializer=DEFAULT_INITIALIZER,
                  initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  low_memory=False,
+                 evaluation_protocol='1-1',
                  verbose=DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
@@ -156,9 +190,16 @@ class ConvE(EmbeddingModel):
         verbose : bool
             Verbose mode.
 
+        evaluation_protocol: string
+            The evaluation protcol to use (this is specific to ConvE).
+
+            - ``1-1``: Embeddings are evaluated by the normal protocol. Default
+            - ``1-N``: Embeddings are evaluated by the 1-N scoring proposed in ConvE.
+
         low_memory : bool
             Train ConvE with a (slower) low_memory option. If MemoryError is still encountered, try raising the
             batches_count value. Default: False.
+
         """
 
         # Add default values if not provided in embedding_model_params dict
@@ -169,7 +210,7 @@ class ConvE(EmbeddingModel):
             if key not in embedding_model_params.keys():
                 embedding_model_params[key] = val
 
-        default_loss_params = {'scoring_strategy': '1-1', 'label_smoothing': 0.1, 'label_weighting': True}
+        default_loss_params = {'label_smoothing': 0.1, 'label_weighting': True}
         for key, val in default_loss_params.items():
             if k not in embedding_model_params.keys():
                 loss_params[key] = val
@@ -204,8 +245,7 @@ class ConvE(EmbeddingModel):
         # Calculate dense dimension
         embedding_model_params['dense_dim'] = (emb_img_width - (ksize - 1)) * (emb_img_height - (ksize - 1)) * nfilters
 
-
-
+        self.evaluation_protocol = evaluation_protocol
         self.low_memory = low_memory
 
         super().__init__(k=k, eta=eta, epochs=epochs,
@@ -680,10 +720,10 @@ class ConvE(EmbeddingModel):
                 # Adapt the numpy data in the internal format - to generalize
                 self.train_dataset_handle = ConvEDatasetAdapter(low_memory=self.low_memory)
                 self.train_dataset_handle.set_data(X, "train")
-            elif isinstance(X, AmpligraphDatasetAdapter):
+            elif isinstance(X, ConvEDatasetAdapter):
                 self.train_dataset_handle = X
             else:
-                msg = 'Invalid type for input X. Expected ndarray/AmpligraphDataset object, got {}'.format(type(X))
+                msg = 'Invalid type for input X. Expected ndarray/ConvEDatasetAdapter object, got {}'.format(type(X))
                 logger.error(msg)
                 raise ValueError(msg)
 
@@ -834,7 +874,7 @@ class ConvE(EmbeddingModel):
 
         batch_iterator = iter(test_generator())
 
-        if self.loss_params['scoring_strategy'] == '1-N':
+        if self.evaluation_protocol == '1-N':
             while True:
                 try:
                     out, out_onehot_filter = next(batch_iterator)
@@ -848,6 +888,7 @@ class ConvE(EmbeddingModel):
             unique_ent = np.empty(shape=(0, 1), dtype=np.int32)
             entity_embeddings = np.empty(shape=(0, self.internal_k), dtype=np.float32)
             for i in range(self.eval_dataset_handle.get_size(mode)):
+
                 if self.is_filtered:
                     out, indices_obj, indices_sub = next(batch_iterator)
                 else:
@@ -864,29 +905,27 @@ class ConvE(EmbeddingModel):
                 yield out, indices_obj, indices_sub, entity_embeddings, unique_ent
 
 
-    def _initialize_eval_graph(self, mode="test", scoring_strategy='1-1'):
-        """ Initialize the evaluation graph with the provided scoring strategy.
+    def _initialize_eval_graph(self, mode="test"):
+        """ Initialize the evaluation graph with the set evaluation protocol.
 
         Parameters
         ----------
         mode: string
             Indicates which data generator to use.
-        scoring_strategy: string
-            Valid options are '1-1' (Default) or '1-N'.
 
         Returns
         -------
 
         """
 
-        logger.info('Initializing evaluation graph [{}], scoring strategy {}'.format(mode, scoring_strategy))
+        logger.debug('Initializing evaluation graph [{}], evaluation protocol {}'.format(mode, self.evaluation_protocol))
 
-        if scoring_strategy == '1-1':
+        if self.evaluation_protocol == '1-1':
             self._initialize_eval_graph_1_1()
-        elif scoring_strategy == '1-N':
+        elif self.evaluation_protocol == '1-N':
             self._initialize_eval_graph_1_N()
         else:
-            raise ValueError('Invalid scoring strategy {}, please use either `1-1` or `1-N`.'.format(scoring_strategy))
+            raise ValueError('Invalid evaluation protocol {}, please use either `1-1` or `1-N`.'.format(self.evaluation_protocol))
 
 
     def _initialize_eval_graph_1_1(self, mode="test"):
@@ -911,6 +950,10 @@ class ConvE(EmbeddingModel):
         self.X_test_tf, indices_obj, indices_sub, entity_embeddings, unique_ent = dataset_iter.get_next()
 
         use_default_protocol = self.eval_config.get('default_protocol', DEFAULT_PROTOCOL_EVAL)
+
+        if use_default_protocol:
+            raise ValueError('Cannot use ConvE with default protocol.')
+
         corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
         # Dependencies that need to be run before scoring
         test_dependency = []
@@ -1045,12 +1088,11 @@ class ConvE(EmbeddingModel):
                                                           self.corruption_entities_tf,
                                                           corrupt_side)
 
-            # NB: The sigmoid and gather functions are the only difference with the inherited function, but
-
+            # NB: The sigmoid and gather functions are the only difference with the overridden function
             # Compute scores for negatives
             e_s, e_p, e_o = self._lookup_embeddings(self.out_corr)
             scores_predict = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)))
-            self.scores_predict = tf.gather(scores_predict, indices=self.out_corr[:, 2], name='scores_negative')
+            self.scores_predict = tf.gather(scores_predict, indices=self.out_corr[:, 2], axis=0, name='scores_negative')
 
             # Compute scores for positive
             e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
@@ -1250,7 +1292,7 @@ class ConvE(EmbeddingModel):
             pass
 
         # initialize evaluation graph in validation mode i.e. to use validation set
-        self._initialize_eval_graph("valid", scoring_strategy=self.loss_params['scoring_strategy'])
+        self._initialize_eval_graph("valid")
 
     def predict(self, X, from_idx=False):
         """Predict the scores of triples using a trained embedding model.
@@ -1287,7 +1329,7 @@ class ConvE(EmbeddingModel):
             raise RuntimeError(msg)
 
         # adapt the data with ConvE OR Numpy adapter for internal use, depending on the scoring strategy.
-        if self.loss_params['scoring_strategy'] == '1-N':
+        if self.evaluation_protocol == '1-N':
             dataset_handle = ConvEDatasetAdapter(low_memory=self.low_memory)
             dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
             dataset_handle.set_data(X, "test", mapped_status=from_idx)
@@ -1306,7 +1348,7 @@ class ConvE(EmbeddingModel):
             self.rnd = check_random_state(self.seed)
             tf.random.set_random_seed(self.seed)
             self._load_model_from_trained_params()
-            self._initialize_eval_graph(scoring_strategy=self.loss_params['scoring_strategy'])
+            self._initialize_eval_graph()
             sess = tf.Session()
             sess.run(tf.tables_initializer())
             sess.run(tf.global_variables_initializer())
@@ -1354,7 +1396,7 @@ class ConvE(EmbeddingModel):
             self.rnd = check_random_state(self.seed)
             tf.random.set_random_seed(self.seed)
             self._load_model_from_trained_params()
-            self._initialize_eval_graph(mode='test', scoring_strategy=self.loss_params['scoring_strategy'])
+            self._initialize_eval_graph(mode='test')
             sess = tf.Session()
             sess.run(tf.tables_initializer())
             sess.run(tf.global_variables_initializer())
