@@ -31,14 +31,9 @@ def test_discover_facts():
 
 def test_generate_candidates():
 
-    X = np.array([['a', 'y', 'i'],
-                  ['b', 'y', 'j'],
-                  ['c', 'y', 'k'],
-                  ['d', 'y', 'l'],
-                  ['e', 'y', 'm'],
-                  ['f', 'y', 'n'],
-                  ['g', 'y', 'o'],
-                  ['h', 'y', 'p']])
+    X = np.stack([['entity_{}'.format(np.mod(x, 15)) for x in range(50)],
+                  ['rel_{}'.format(np.mod(x, 5)) for x in range(50)],
+                  ['entity_{}'.format(np.mod(x, 20)) for x in range(50)]], axis=1)
 
     # Not sure this should be an error
     # with pytest.raises(ValueError):
@@ -51,86 +46,56 @@ def test_generate_candidates():
     #  max_candidates=0)
 
     # Test
-    gen = generate_candidates(X, strategy='exhaustive', target_rel='y',
-                              max_candidates=100, consolidate_sides=False,
-                              seed=1916)
-    Xhat = next(gen)
-    assert Xhat.shape == (7, 3)
+    X_candidates = generate_candidates(X, strategy='random_uniform', target_rel='rel_0',
+                                       max_candidates=15, consolidate_sides=False, seed=1916)
+
+    assert X_candidates.shape == (15, 3)
 
     # Test
-    gen = generate_candidates(X, strategy='exhaustive', target_rel='y',
-                              max_candidates=100, consolidate_sides=True,
-                              seed=1916)
-    Xhat = next(gen)
-    assert Xhat.shape == (14, 3)
-    assert Xhat[0, 0] == 'a'
-    Xhat = next(gen)
-    assert Xhat.shape == (14, 3)
-    assert Xhat[0, 0] == 'b'
+    X_candidates = generate_candidates(X, strategy='random_uniform', target_rel='rel_1', max_candidates=20,
+                                       consolidate_sides=True, seed=1916)
 
-    # Test
-    gen = generate_candidates(X, strategy='random_uniform', target_rel='y',
-                              max_candidates=4, consolidate_sides=False,
-                              seed=0)
-    Xhat = next(gen)
-
-    # Max_candidates shape ..
-    assert Xhat.shape == (3, 3)
+    assert X_candidates.shape == (20, 3)
+    assert X_candidates[0, 0] == 'entity_16'
+    assert np.all(X_candidates[:, 1] == 'rel_1')
 
     # Test that consolidate_sides LHS and RHS is respected
-    gen = generate_candidates(X, strategy='random_uniform', target_rel='y',
-                              max_candidates=4, consolidate_sides=False,
-                              seed=0)
-    Xhat = next(gen)
+    X_candidates = generate_candidates(X, strategy='random_uniform', target_rel='rel_0', max_candidates=20,
+                                       consolidate_sides=False, seed=0)
 
-    assert np.all(np.isin(Xhat[:, 0], np.array(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])))
-    assert np.all(np.isin(Xhat[:, 2], np.array(['i', 'j', 'k', 'l', 'm', 'n', 'o', 'p'])))
+    assert np.all(np.isin(X_candidates[:, 0], np.unique(X[:, 0])))
+    assert np.all(np.isin(X_candidates[:, 2], np.unique(X[:, 2])))
 
     # Test that consolidate_sides=True LHS and RHS entities are mixed
-    gen = generate_candidates(X, strategy='random_uniform', target_rel='y',
-                              max_candidates=100, consolidate_sides=True,
-                              seed=1)
-    Xhat = next(gen)
+    X_candidates = generate_candidates(X, strategy='random_uniform', target_rel='rel_0', max_candidates=100,
+                                       consolidate_sides=True, seed=1)
 
     # Check that any of the head or tail entities from X has been found
     # on the OTHER side of the candidates
-    assert np.logical_or(
-        np.any(np.isin(Xhat[:, 2], np.array(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']))),
-        np.all(np.isin(Xhat[:, 0], np.array(['i', 'j', 'k', 'l', 'm', 'n', 'o', 'p']))))
+    assert np.logical_or(np.any(np.isin(X_candidates[:, 2], np.unique(X[:, 0]))),
+                         np.all(np.isin(X_candidates[:, 0], np.unique(X[:, 2]))))
 
 
     # Test entity frequency generation
-    gen = generate_candidates(X, strategy='entity_frequency', target_rel='y',
-                              max_candidates=10, consolidate_sides=False,
-                              seed=1)
-    Xhat = next(gen)
-    assert Xhat.shape == (8, 3)
+    X_candidates = generate_candidates(X, strategy='entity_frequency', target_rel='rel_0', max_candidates=20,
+                                       consolidate_sides=False, seed=1)
+    assert X_candidates.shape == (20, 3)
 
+    X_candidates = generate_candidates(X, strategy='graph_degree', target_rel='rel_0', max_candidates=30,
+                                       consolidate_sides=False, seed=1)
+    assert X_candidates.shape == (30, 3)
 
-    gen = generate_candidates(X, strategy='graph_degree', target_rel='y',
-                              max_candidates=10, consolidate_sides=False,
-                              seed=1)
-    Xhat = next(gen)
-    assert Xhat.shape == (7, 3)
+    X_candidates = generate_candidates(X, strategy='cluster_coefficient', target_rel='rel_0', max_candidates=30,
+                                       consolidate_sides=False, seed=2)
+    assert X_candidates.shape == (30, 3)
 
-    gen = generate_candidates(X, strategy='cluster_coefficient',
-                              target_rel='y',
-                              max_candidates=10, consolidate_sides=False,
-                              seed=1)
-    Xhat = next(gen)
-    assert Xhat.shape == (7, 3)
+    X_candidates = generate_candidates(X, strategy='cluster_triangles', target_rel='rel_0', max_candidates=50,
+                                       consolidate_sides=False, seed=1)
+    assert X_candidates.shape == (50, 3)
 
-    gen = generate_candidates(X, strategy='cluster_triangles', target_rel='y',
-                              max_candidates=10, consolidate_sides=False,
-                              seed=1)
-    Xhat = next(gen)
-    assert Xhat.shape == (7, 3)
-
-    gen = generate_candidates(X, strategy='cluster_squares', target_rel='y',
-                              max_candidates=10, consolidate_sides=False,
-                              seed=1)
-    Xhat = next(gen)
-    assert Xhat.shape == (7, 3)
+    X_candidates = generate_candidates(X, strategy='cluster_squares', target_rel='rel_0', max_candidates=60,
+                                       consolidate_sides=False, seed=1)
+    assert X_candidates.shape == (60, 3)
 
 def test_setdiff2d():
 
@@ -326,3 +291,5 @@ def test_query_topn():
     Y, S = query_topn(model, top_n=10, relation=pred, tail=obj)
     assert all(S[i] >= S[i + 1] for i in range(len(S) - 1))
 
+if __name__ == '__main__':
+    test_generate_candidates()
