@@ -1,5 +1,4 @@
 {
-    "CUDA_VISIBLE_DEVICES": "0",
     "load_function_map": {
         "WN18": "load_wn18",
         "FB15K": "load_fb15k",
