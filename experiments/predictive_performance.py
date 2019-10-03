@@ -14,6 +14,7 @@ import json
 import sys
 import yaml
 import logging
+import time
 
 import numpy as np
 from beautifultable import BeautifulTable
@@ -38,7 +39,7 @@ def display_scores(scores):
         output_rst[obj["dataset"]].set_style(BeautifulTable.STYLE_RST)
         output_rst[obj["dataset"]].column_headers = \
             ["Model", "MR", "MRR", "Hits@1", \
-             "Hits@3", "Hits@10", "Hyperparameters"]
+             "Hits@3", "Hits@10", "Time (s)", "Hyperparameters"]
 
     for obj in scores:
         try:
@@ -49,11 +50,13 @@ def display_scores(scores):
                              "{0:.2f}".format(obj["H@1"]),
                              "{0:.2f}".format(obj["H@3"]),
                              "{0:.2f}".format(obj["H@10"]),
+                             "{0:.2f}".format(obj["time"]),
                              yaml.dump(obj["hyperparams"],
                                        default_flow_style=False)])
         except:
             output_rst[obj["dataset"]] \
                 .append_row([obj["model"],
+                             ".??",
                              ".??",
                              ".??",
                              ".??",
@@ -67,6 +70,8 @@ def display_scores(scores):
 
 
 def run_single_exp(config, dataset, model):
+    start_time = time.time()
+
     hyperparams = config["hyperparams"][dataset][model]
     if hyperparams is None:
         print("dataset {0}...model {1} \
@@ -132,7 +137,8 @@ def run_single_exp(config, dataset, model):
         "H@1": hits_1,
         "H@3": hits_3,
         "H@10": hits_10,
-        "hyperparams": hyperparams
+        "hyperparams": hyperparams,
+        "time": time.time() - start_time
     }
 
 
@@ -180,10 +186,7 @@ def main():
     with open("config.json", "r") as fi:
         config = json.load(fi)
 
-    # set GPU id to run
-    os.environ["CUDA_VISIBLE_DEVICES"] = config["CUDA_VISIBLE_DEVICES"]
-    logging.debug("Will use gpu number...{0}" \
-                  .format(config["CUDA_VISIBLE_DEVICES"]))
+
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset",
@@ -192,8 +195,15 @@ def main():
     parser.add_argument("-m", "--model",
                         type=str.lower,
                         choices=SUPPOORT_MODELS)
+    parser.add_argument("--gpu",  type=int)
 
     args = parser.parse_args()
+
+    if args.gpu is not None:
+        # set GPU id to run
+        os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+        logging.debug("Will use gpu number...{0}".format(config["CUDA_VISIBLE_DEVICES"]))
+
     logging.debug("Input dataset...{0}...input model...{1}..." \
                   .format(args.dataset, args.model))
 

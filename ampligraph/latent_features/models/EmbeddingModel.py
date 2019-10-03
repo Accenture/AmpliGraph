@@ -253,19 +253,6 @@ class EmbeddingModel(abc.ABC):
             logger.error(msg)
             raise ValueError(msg)
 
-        self.verbose = verbose
-
-        self.initializer_params = initializer_params
-
-        try:
-            self.initializer = INITIALIZER_REGISTRY[initializer](self.initializer_params,
-                                                                 verbose,
-                                                                 self.rnd)
-        except KeyError:
-            msg = 'Unsupported initializer: {}'.format(initializer)
-            logger.error(msg)
-            raise ValueError(msg)
-
         self.tf_config = tf.ConfigProto(allow_soft_placement=True)
         self.tf_config.gpu_options.allow_growth = True
         self.sess_train = None
