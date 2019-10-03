@@ -195,14 +195,14 @@ def main():
     parser.add_argument("-m", "--model",
                         type=str.lower,
                         choices=SUPPOORT_MODELS)
-    parser.add_argument("--gpu",  type=int)
+    parser.add_argument("--gpu",  type=str)
 
     args = parser.parse_args()
 
     if args.gpu is not None:
         # set GPU id to run
         os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-        logging.debug("Will use gpu number...{0}".format(config["CUDA_VISIBLE_DEVICES"]))
+        logging.debug("Will use gpu number...{0}".format(args.gpu))
 
     logging.debug("Input dataset...{0}...input model...{1}..." \
                   .format(args.dataset, args.model))
