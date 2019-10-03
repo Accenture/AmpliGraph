@@ -55,16 +55,15 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
         """
         return self.dataset[dataset_type].shape[0]
     
-    def get_next_train_batch(self, batch_size=1, dataset_type="train"):
+    def get_next_train_batch(self, batches_count, dataset_type="train"):
         """Generator that returns the next batch of data.
         
         Parameters
         ----------
-        batch_size : int
-            data size that needs to be returned
         dataset_type: string
             indicates which dataset to use
-        Returns
+        batches_count: int
+            number of batches per epochReturns
         -------
         batch_output : nd-array
             yields a batch of triples from the dataset type specified
@@ -72,8 +71,9 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
         # if data is not already mapped, then map before returning the batch
         if not self.mapped_status[dataset_type]:
             self.map_data()
-            
-        batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
+
+        batch_size = int(np.ceil(self.get_size(dataset_type) / batches_count))
+
         for i in range(batches_count):
             out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
             yield out

@@ -185,6 +185,7 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
 
     return np.hstack(discoveries), np.hstack(discovery_ranks)
 
+
 def generate_candidates(X, strategy, target_rel, max_candidates, consolidate_sides=False, seed=0):
     """ Generate candidate statements from an existing knowledge graph using a defined strategy.
 
@@ -325,8 +326,8 @@ def generate_candidates(X, strategy, target_rel, max_candidates, consolidate_sid
             e_s_counts = np.array(np.unique(X[:, [0, 2]], return_counts=True)).T
             e_o_counts = e_s_counts
         else:
-            e_s_counts = np.array(np.unique(X[:, 0], return_counts = True)).T
-            e_o_counts = np.array(np.unique(X[:, 2], return_counts = True)).T
+            e_s_counts = np.array(np.unique(X[:, 0], return_counts=True)).T
+            e_o_counts = np.array(np.unique(X[:, 2], return_counts=True)).T
 
         e_s_weights = e_s_counts[:, 1].astype(np.float64) / np.sum(e_s_counts[:, 1].astype(np.float64))
         e_o_weights = e_o_counts[:, 1].astype(np.float64) / np.sum(e_o_counts[:, 1].astype(np.float64))
@@ -356,13 +357,13 @@ def generate_candidates(X, strategy, target_rel, max_candidates, consolidate_sid
         e_o_weights = e_o_weights / np.sum(e_o_weights)
 
     # Take close to sqrt of max_candidates so that: len(meshgrid result) == max_candidates
-    sample_size = int(np.sqrt(max_candidates)+10) # +10 to allow for reduction in sampled array due to filtering
+    sample_size = int(np.sqrt(max_candidates) + 10)  # +10 to allow for reduction in sampled array due to filtering
 
-    X_candidates = np.zeros([max_candidates, 3], dtype=object) # Pre-allocate X_candidates array
-    num_retries, max_retries = 0, 5 # Retry up to 5 times to reach max_candidates
-    start_idx, end_idx = 0, 0 #
+    X_candidates = np.zeros([max_candidates, 3], dtype=object)  # Pre-allocate X_candidates array
+    num_retries, max_retries = 0, 5  # Retry up to 5 times to reach max_candidates
+    start_idx, end_idx = 0, 0
 
-    while end_idx <= max_candidates-1:
+    while end_idx <= max_candidates - 1:
 
         sample_e_s = np.random.choice(e_s, size=sample_size, replace=True, p=e_s_weights)
         sample_e_o = np.random.choice(e_o, size=sample_size, replace=True, p=e_o_weights)

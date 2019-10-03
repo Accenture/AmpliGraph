@@ -291,5 +291,3 @@ def test_query_topn():
     Y, S = query_topn(model, top_n=10, relation=pred, tail=obj)
     assert all(S[i] >= S[i + 1] for i in range(len(S) - 1))
 
-if __name__ == '__main__':
-    test_generate_candidates()

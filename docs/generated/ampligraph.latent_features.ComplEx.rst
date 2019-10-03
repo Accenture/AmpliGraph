@@ -15,11 +15,15 @@ ComplEx
       ~ComplEx.fit
       ~ComplEx.get_embeddings
       ~ComplEx.predict
-      
+      ~ComplEx.calibrate
+      ~ComplEx.predict_proba
+
    .. automethod:: ComplEx.__init__
    .. automethod:: ComplEx.fit
    .. automethod:: ComplEx.get_embeddings
    .. automethod:: ComplEx.predict
-   
+   .. automethod:: ComplEx.calibrate
+   .. automethod:: ComplEx.predict_proba
+
 
 

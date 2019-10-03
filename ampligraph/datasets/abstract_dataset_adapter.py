@@ -89,15 +89,15 @@ class AmpligraphDatasetAdapter(abc.ABC):
         """
         raise NotImplementedError('Abstract Method not implemented!')
         
-    def get_next_train_batch(self, batch_size=1, dataset_type="train"):
+    def get_next_train_batch(self, batches_count, dataset_type="train"):
         """Generator that returns the next batch of data.
         
         Parameters
         ----------
-        batch_size : int
-            data size that needs to be returned
         dataset_type: string
             indicates which dataset to use
+        batches_count: int
+            number of batches per epoch
         Returns
         -------
         batch_output : nd-array
