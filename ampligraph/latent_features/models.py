@@ -17,7 +17,7 @@ from .optimizers import OPTIMIZER_REGISTRY, SGDOptimizer, DEFAULT_LR
 from .initializers import INITIALIZER_REGISTRY, DEFAULT_XAVIER_IS_UNIFORM
 from ..evaluation import generate_corruptions_for_fit, to_idx, create_mappings, generate_corruptions_for_eval, \
     hits_at_n_score, mrr_score
-from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter, ConvEDatasetAdapter
+from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
 from functools import partial
 
 MODEL_REGISTRY = {}
@@ -734,7 +734,8 @@ class EmbeddingModel(abc.ABC):
         """
 
         if epoch >= self.early_stopping_params.get('burn_in', DEFAULT_BURN_IN_EARLY_STOPPING) \
-                and epoch % self.early_stopping_params.get('check_interval', DEFAULT_CHECK_INTERVAL_EARLY_STOPPING) == 0:
+                and epoch % self.early_stopping_params.get('check_interval',
+                                                           DEFAULT_CHECK_INTERVAL_EARLY_STOPPING) == 0:
             # compute and store test_loss
             ranks = []
 
@@ -2912,4 +2913,3 @@ class HolE(ComplEx):
 
         """
         return super().predict(X, from_idx=from_idx)
-

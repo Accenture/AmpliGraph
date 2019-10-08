@@ -27,8 +27,8 @@ from ..utils import save_model, restore_model
 
 __all__ = ['LOSS_REGISTRY', 'REGULARIZER_REGISTRY', 'MODEL_REGISTRY', 'OPTIMIZER_REGISTRY', 'INITIALIZER_REGISTRY',
            'set_entity_threshold', 'reset_entity_threshold',
-           'EmbeddingModel', 'TransE', 'DistMult', 'ComplEx', 'HolE', 'RandomBaseline', 'ConvKB', 'ConvE', 'GaborE',
-           'Loss', 'AbsoluteMarginLoss', 'SelfAdversarialLoss', 'NLLLoss', 'PairwiseLoss', 'NLLMulticlass',
-           'Regularizer', 'LPRegularizer', 'Optimizer', 'AdagradOptimizer', 'AdamOptimizer', 'MomentumOptimizer', 
-           'SGDOptimizer', 'Initializer', 'RandomNormal', 'RandomUniform', 'Xavier',
+           'EmbeddingModel', 'TransE', 'DistMult', 'ComplEx', 'HolE', 'RandomBaseline', 'ConvE',
+           'Loss', 'AbsoluteMarginLoss', 'SelfAdversarialLoss', 'NLLLoss', 'PairwiseLoss', 'NLLMulticlass', 'BCELoss',
+           'NeuralLoss', 'Regularizer', 'LPRegularizer', 'Optimizer', 'AdagradOptimizer', 'AdamOptimizer',
+           'MomentumOptimizer', 'SGDOptimizer', 'Initializer', 'RandomNormal', 'RandomUniform', 'Xavier',
            'get_entity_triples', 'save_model', 'restore_model']

@@ -29,6 +29,7 @@ DEFAULT_LABEL_SMOOTHING = None
 # Default label weighting for ConvE
 DEFAULT_LABEL_WEIGHTING = False
 
+
 def register_loss(name, external_params=None, class_params=None):
     if external_params is None:
         external_params = []
@@ -743,10 +744,10 @@ class BCELoss(NeuralLoss):
 
             eps = 1e-6
             wt = tf.reduce_mean(y_true)
-            loss = -tf.reduce_sum((1-wt)*(y_true)*tf.log_sigmoid(y_pred) + wt*(1-y_true)*tf.log(1-tf.sigmoid(y_pred) + eps))
+            loss = -tf.reduce_sum((1 - wt) * y_true * tf.log_sigmoid(y_pred) +
+                                  wt * (1 - y_true) * tf.log(1 - tf.sigmoid(y_pred) + eps))
 
         else:
             loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true, logits=y_pred))
 
         return loss
-
