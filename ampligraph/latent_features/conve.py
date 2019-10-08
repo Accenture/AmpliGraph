@@ -5,35 +5,21 @@ from sklearn.utils import check_random_state
 from tqdm import tqdm
 from functools import partial
 
-from .models import EmbeddingModel
+from .models import EmbeddingModel, register_model
 from .models import DEFAULT_EMBEDDING_SIZE,DEFAULT_XAVIER_IS_UNIFORM, DEFAULT_VERBOSE, DEFAULT_ETA, DEFAULT_EPOCH, \
     DEFAULT_BATCH_COUNT, DEFAULT_SEED, DEFAULT_OPTIM, DEFAULT_LR, DEFAULT_CORRUPTION_ENTITIES, DEFAULT_REGULARIZER, \
-    DEFAULT_INITIALIZER, ENTITY_THRESHOLD, DEFAULT_NORMALIZE_EMBEDDINGS, DEFAULT_PROTOCOL_EVAL, DEFAULT_CORRUPT_SIDE_EVAL, DEFAULT_CRITERIA_EARLY_STOPPING
+    DEFAULT_INITIALIZER, ENTITY_THRESHOLD, DEFAULT_NORMALIZE_EMBEDDINGS, DEFAULT_PROTOCOL_EVAL, \
+    DEFAULT_CORRUPT_SIDE_EVAL, DEFAULT_CRITERIA_EARLY_STOPPING
 from ..datasets import NumpyDatasetAdapter, AmpligraphDatasetAdapter, ConvEDatasetAdapter
 from ..latent_features.optimizers import SGDOptimizer
 from ..evaluation import to_idx, generate_corruptions_for_eval
 
-from .models import MODEL_REGISTRY
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def register_model(name, external_params=None, class_params=None):
-    if external_params is None:
-        external_params = []
-    if class_params is None:
-        class_params = {}
 
-    def insert_in_registry(class_handle):
-        MODEL_REGISTRY[name] = class_handle
-        class_handle.name = name
-        MODEL_REGISTRY[name].external_params = external_params
-        MODEL_REGISTRY[name].class_params = class_params
-        return class_handle
-
-    return insert_in_registry
-
-@register_model("ConvE")
+@register_model('ConvE', {'conv_filters': 32, 'conv_kernel_size': 3, 'dropout_embed': 0.2, 'dropout_conv': 0.3,
+                          'dropout_dense': 0.2, 'use_bias': True, 'use_batchnorm': False, 'checkerboard': True})
 class ConvE(EmbeddingModel):
     """ Convolutional 2D Knowledge Graph Embeddings
 
@@ -41,7 +27,7 @@ class ConvE(EmbeddingModel):
 
     .. math::
 
-        f(vec(f([\overline{e_s};\overline{r_r}] * \omega)) W ) e_o
+        f(vec(f([\overline{e_s};\overline{r_r}] * \Omega)) W ) e_o
 
     Examples
     --------
@@ -217,7 +203,7 @@ class ConvE(EmbeddingModel):
 
         # Find factor pairs (i,j) of concatenated embedding dimensions, where min(i,j) >= conv_kernel_size
         if embedding_model_params['checkerboard']:
-            n = k*2
+            n = k * 2
             emb_img_depth = 1
         else:
             n = k
@@ -286,7 +272,8 @@ class ConvE(EmbeddingModel):
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
 
-            self.conv2d_W = tf.get_variable('conv2d_weights', shape=[ksize, ksize, ninput, nfilters], trainable=is_trainable,
+            self.conv2d_W = tf.get_variable('conv2d_weights', shape=[ksize, ksize, ninput, nfilters],
+                                            trainable=is_trainable,
                                             initializer=tf.initializers.he_normal(seed=self.seed),
                                             dtype=tf.float32)
             self.conv2d_B = tf.get_variable('conv2d_bias', shape=[nfilters], trainable=is_trainable,
@@ -535,14 +522,13 @@ class ConvE(EmbeddingModel):
         else:
             raise NotImplementedError('ConvE not implemented when dealing with large graphs (yet)')
 
-
     def _fn(self, e_s, e_p, e_o):
         """The ConvE scoring function.
 
             The function implements the scoring function as defined by
             .. math::
 
-                f(vec(f([\overline{e_s};\overline{r_r}] * \omega)) W ) e_o
+                f(vec(f([\overline{e_s};\overline{r_r}] * \Omega)) W ) e_o
 
             Additional details for equivalence of the models available in :cite:`Dettmers2016`.
 
@@ -566,13 +552,15 @@ class ConvE(EmbeddingModel):
         # Inputs
         if self.embedding_model_params['checkerboard']:
             stacked_emb = tf.stack([e_s, e_p], axis=2, name='stacked_embeddings')
-            self.inputs = tf.reshape(stacked_emb, shape=[tf.shape(stacked_emb)[0], self.embedding_model_params['embed_image_height'],
-                                     self.embedding_model_params['embed_image_width'], 1], name='embed_image')
+            self.inputs = tf.reshape(stacked_emb, shape=[tf.shape(stacked_emb)[0],
+                                                         self.embedding_model_params['embed_image_height'],
+                                                         self.embedding_model_params['embed_image_width'], 1],
+                                     name='embed_image')
         else:
             e_s_img = tf.reshape(e_s, shape=[tf.shape(e_s)[0], self.embedding_model_params['embed_image_height'],
-                                     self.embedding_model_params['embed_image_width']])
+                                             self.embedding_model_params['embed_image_width']])
             e_p_img = tf.reshape(e_s, shape=[tf.shape(e_p)[0], self.embedding_model_params['embed_image_height'],
-                                     self.embedding_model_params['embed_image_width']])
+                                             self.embedding_model_params['embed_image_width']])
             self.inputs = tf.stack([e_s_img, e_p_img], axis=3, name='embed_image')
 
         x = self.inputs
@@ -904,7 +892,6 @@ class ConvE(EmbeddingModel):
 
                 yield out, indices_obj, indices_sub, entity_embeddings, unique_ent
 
-
     def _initialize_eval_graph(self, mode="test"):
         """ Initialize the evaluation graph with the set evaluation protocol.
 
@@ -918,15 +905,16 @@ class ConvE(EmbeddingModel):
 
         """
 
-        logger.debug('Initializing evaluation graph [{}], evaluation protocol {}'.format(mode, self.evaluation_protocol))
+        logger.debug('Initializing evaluation graph [{}], evaluation protocol {}'
+                     .format(mode, self.evaluation_protocol))
 
         if self.evaluation_protocol == '1-1':
             self._initialize_eval_graph_1_1()
         elif self.evaluation_protocol == '1-N':
             self._initialize_eval_graph_1_N()
         else:
-            raise ValueError('Invalid evaluation protocol {}, please use either `1-1` or `1-N`.'.format(self.evaluation_protocol))
-
+            raise ValueError('Invalid evaluation protocol {}, please use either `1-1` or `1-N`.'
+                             .format(self.evaluation_protocol))
 
     def _initialize_eval_graph_1_1(self, mode="test"):
         """Initialize the evaluation graph for 1-1 scoring (i.e. the standard evaluation protocol).
@@ -1175,7 +1163,6 @@ class ConvE(EmbeddingModel):
                 tf.int32)) + 1 - positives_among_sub_corruptions_ranked_higher - \
                 positives_among_obj_corruptions_ranked_higher
 
-
     def _initialize_eval_graph_1_N(self, mode='test'):
         """Initialize the evaluation graph for 1-N scoring.
 
@@ -1196,9 +1183,6 @@ class ConvE(EmbeddingModel):
         dataset_iter = dataset.make_one_shot_iterator()
 
         self.X_test_tf, self.X_test_filter_tf = dataset_iter.get_next()
-
-        # Dependencies that need to be run before scoring
-        test_dependency = []
 
         # For large graphs
         if self.dealing_with_large_graphs:

@@ -593,6 +593,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
             dataset_handle.cleanup()
         raise e
 
+
 def filter_unseen_entities(X, model, verbose=False, strict=True):
     """Filter unseen entities in the test set.
 

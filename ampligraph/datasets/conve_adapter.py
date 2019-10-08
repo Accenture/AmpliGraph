@@ -4,6 +4,7 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+
 class ConvEDatasetAdapter(NumpyDatasetAdapter):
 
     def __init__(self, low_memory=False):
