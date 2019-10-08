@@ -827,7 +827,12 @@ class EmbeddingModel(abc.ABC):
         # create iterator to iterate over the train batches
         batch_iterator = iter(self.train_dataset_handle.get_next_train_batch(self.batch_size, "train"))
         for i in range(self.batches_count):
-            out = next(batch_iterator)
+
+            try:
+                out = next(batch_iterator)
+            except StopIteration:
+                break
+
             # If large graph, load batch_size*2 entities on GPU memory
             if self.dealing_with_large_graphs:
                 # find the unique entities - these HAVE to be loaded

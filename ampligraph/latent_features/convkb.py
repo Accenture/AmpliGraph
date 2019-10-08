@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow as tf
 import logging
 
-from .models import EmbeddingModel
+from .models import EmbeddingModel, register_model
 from .models import DEFAULT_EMBEDDING_SIZE, DEFAULT_ETA, DEFAULT_BATCH_COUNT, DEFAULT_SEED, DEFAULT_EPOCH, \
     DEFAULT_OPTIM, DEFAULT_LR, DEFAULT_LOSS, DEFAULT_REGULARIZER, DEFAULT_INITIALIZER, DEFAULT_VERBOSE, \
     DEFAULT_XAVIER_IS_UNIFORM, ENTITY_THRESHOLD
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
+@register_model("ConvKB", {'num_filters': 16, 'filter_sizes': [1], 'dropout': 0.1, 'is_trainable': True})
 class ConvKB(EmbeddingModel):
     """ Convolutional 2D Knowledge Graph Embedding model.
 
@@ -150,10 +151,16 @@ class ConvKB(EmbeddingModel):
             Verbose mode.
         """
 
+
         num_filters = embedding_model_params['num_filters']
         filter_sizes = embedding_model_params['filter_sizes']
+
+        if isinstance(filter_sizes, int):
+            filter_sizes = [filter_sizes]
+
         dense_dim = (k * len(filter_sizes) - sum(filter_sizes) + len(filter_sizes)) * num_filters
         embedding_model_params['dense_dim'] = dense_dim
+        embedding_model_params['filter_sizes'] = filter_sizes
 
         super().__init__(k=k, eta=eta, epochs=epochs,
                          batches_count=batches_count, seed=seed,
