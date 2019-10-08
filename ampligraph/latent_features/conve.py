@@ -1206,25 +1206,28 @@ class ConvE(EmbeddingModel):
 
         else:
 
-            # Compute scores for positive
             e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
+
+            # Scores for all triples
             scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)), name='sigmoid_scores')
 
             # Score of positive triple
             self.score_positive = tf.gather(scores, indices=self.X_test_tf[:, 2], name='score_positive')
 
-            # Score of every other positive sample for <s, p>, excluding positive sample
-            # this is to remove the positives from output
+            # Scores for positive triples
             self.scores_filtered = tf.boolean_mask(scores, tf.cast(self.X_test_filter_tf, tf.bool))
 
-            # Total rank over all possible entities
-            self.total_rank = tf.reduce_sum(tf.cast(scores >= self.score_positive, tf.int32)) + 1
+            # Triple rank over all triples
+            self.total_rank = tf.reduce_sum(tf.cast(scores >= self.score_positive, tf.int32))
 
-            # Rank over positive triples
+            # Triple rank over positive triples
             self.filter_rank = tf.reduce_sum(tf.cast(self.scores_filtered >= self.score_positive, tf.int32))
 
-            # Rank of positive sample, with other positives filtered out
-            self.rank = tf.subtract(self.total_rank, self.filter_rank, name='rank')
+            # Rank of triple, with other positives filtered out.
+            self.rank = tf.subtract(self.total_rank, self.filter_rank, name='rank') + 1
+
+            # NOTE: if having trouble with the above rank calculation, consider when test triple
+            # has the highest score (total_rank=1, filter_rank=1)
 
     def _initialize_early_stopping(self):
         """Initializes and creates evaluation graph for early stopping.
