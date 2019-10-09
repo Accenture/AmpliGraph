@@ -89,7 +89,7 @@ class AmpligraphDatasetAdapter(abc.ABC):
         """
         raise NotImplementedError('Abstract Method not implemented!')
         
-    def get_next_train_batch(self, batches_count, dataset_type="train"):
+    def get_next_batch(self, batches_count=-1, dataset_type="train"):
         """Generator that returns the next batch of data.
         
         Parameters
@@ -97,7 +97,7 @@ class AmpligraphDatasetAdapter(abc.ABC):
         dataset_type: string
             indicates which dataset to use
         batches_count: int
-            number of batches per epoch
+            number of batches per epoch (default: -1, i.e. uses batch_size of 1)
         Returns
         -------
         batch_output : nd-array
@@ -105,29 +105,13 @@ class AmpligraphDatasetAdapter(abc.ABC):
         """
         raise NotImplementedError('Abstract Method not implemented!')
         
-    def get_next_eval_batch(self, batch_size=1, dataset_type="test"):
-        """Generator that returns the next batch of data.
-        
-        Parameters
-        ----------
-        batch_size : int
-            data size that needs to be returned
-        dataset_type: string
-            indicates which dataset to use
-        Returns
-        -------
-        batch_output : nd-array
-            yields a batch of triples from the dataset type specified
-        """
-        raise NotImplementedError('Abstract Method not implemented!')
-        
-    def get_next_batch_with_filter(self, batch_size=1, dataset_type="test"):
+    def get_next_batch_with_filter(self, batches_count=-1, dataset_type="test"):
         """Generator that returns the next batch of data along with the filter.
         
         Parameters
         ----------
-        batch_size : int
-            data size that needs to be returned
+        batches_count : int
+            number of batches per epoch. (default: -1, i.e. uses batch_size of 1)
         dataset_type: string
             indicates which dataset to use
         Returns
