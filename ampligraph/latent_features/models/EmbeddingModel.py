@@ -993,10 +993,9 @@ class EmbeddingModel(abc.ABC):
            If we are dealing with large graphs, then along with the above, this method returns the idx of the
            entities present in the batch and their embeddings.
         """
-        if self.is_filtered:
-            test_generator = partial(self.eval_dataset_handle.get_next_batch_with_filter, dataset_type=mode)
-        else:
-            test_generator = partial(self.eval_dataset_handle.get_next_batch, dataset_type=mode)
+        test_generator = partial(self.eval_dataset_handle.get_next_batch,
+                                 dataset_type=mode,
+                                 use_filter=self.is_filtered)
 
         batch_iterator = iter(test_generator())
         indices_obj = np.empty(shape=(0, 1), dtype=np.int32)
