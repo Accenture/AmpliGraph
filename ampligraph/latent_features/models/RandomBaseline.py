@@ -35,16 +35,18 @@ class RandomBaseline(EmbeddingModel):
     [0.5488135039273248, 0.7151893663724195]
     """
 
-    def __init__(self, seed=constants.DEFAULT_SEED):
+    def __init__(self, seed=constants.DEFAULT_SEED, verbose=constants.DEFAULT_VERBOSE):
         """Initialize the model
 
         Parameters
         ----------
         seed : int
             The seed used by the internal random numbers generator.
+        verbose : bool
+            Verbose mode.
 
         """
-        super().__init__(k=1, eta=1, epochs=1, batches_count=1, seed=seed, verbose=False)
+        super().__init__(k=1, eta=1, epochs=1, batches_count=1, seed=seed, verbose=verbose)
 
     def _fn(self, e_s, e_p, e_o):
         """Random baseline scoring function: random number between 0 and 1.
