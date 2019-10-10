@@ -20,6 +20,7 @@ EmbeddingModel
       ~EmbeddingModel.__init__
       ~EmbeddingModel.fit
       ~EmbeddingModel.get_embeddings
+      ~EmbeddingModel.get_hyperparameter_dict
       ~EmbeddingModel.predict
       ~EmbeddingModel.calibrate
       ~EmbeddingModel.predict_proba
@@ -40,6 +41,7 @@ EmbeddingModel
    .. automethod:: EmbeddingModel.__init__
    .. automethod:: EmbeddingModel.fit
    .. automethod:: EmbeddingModel.get_embeddings
+   .. automethod:: EmbeddingModel.get_hyperparameter_dict
    .. automethod:: EmbeddingModel.predict
    .. automethod:: EmbeddingModel.calibrate
    .. automethod:: EmbeddingModel.predict_proba

@@ -20,10 +20,12 @@ RandomBaseline
       ~RandomBaseline.__init__
       ~RandomBaseline.fit
       ~RandomBaseline.predict
+      ~RandomBaseline.get_hyperparameter_dict
    
    .. automethod:: RandomBaseline.__init__
    .. automethod:: RandomBaseline.fit
    .. automethod:: RandomBaseline.predict
+   .. automethod:: RandomBaseline.get_hyperparameter_dict
    
    
 

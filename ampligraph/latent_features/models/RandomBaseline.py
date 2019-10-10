@@ -47,6 +47,11 @@ class RandomBaseline(EmbeddingModel):
 
         """
         super().__init__(k=1, eta=1, epochs=1, batches_count=1, seed=seed, verbose=verbose)
+        self.all_params = \
+            {
+                'seed': seed,
+                'verbose': verbose
+            }
 
     def _fn(self, e_s, e_p, e_o):
         """Random baseline scoring function: random number between 0 and 1.
