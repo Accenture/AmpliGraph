@@ -51,7 +51,6 @@ class RandomBaseline(EmbeddingModel):
             {
                 'seed': seed,
                 'verbose': verbose
-
             }
 
     def _fn(self, e_s, e_p, e_o):

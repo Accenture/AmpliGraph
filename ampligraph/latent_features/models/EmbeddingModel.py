@@ -185,8 +185,9 @@ class EmbeddingModel(abc.ABC):
                 'loss_params': loss_params,
                 'regularizer': regularizer,
                 'regularizer_params': regularizer_params,
+                'initializer': initializer,
+                'initializer_params': initializer_params,
                 'verbose': verbose
-
             }
         tf.reset_default_graph()
         self.seed = seed
