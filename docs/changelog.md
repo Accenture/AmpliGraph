@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.0 
+**16 Oct 2019**
+
+- Probability calibration using Platt scaling, both with provided negatives or synthetic negative statements (#131)
+- Added WordNet11 dataset (dataset with positive and negative triples) (#138)
+- Continuous integration with CircleCI, integrated on GitHub (#127)
+- Refactoring of models into separate files (#104)
+- Fixed bug where the number of epochs did not exactly match the provided number by the user (#135)
+- Fixed some bugs on RandomBaseline model (#133, #134)
+- Fixed some bugs on discover_facts with strategies "exhaustive" and "graph_degree"
+- Fixed bug on subsequent calls of model.predict on the GPU (#137)
+
 ## 1.1.0 
 **16 Aug 2019**
 
