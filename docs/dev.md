@@ -7,7 +7,8 @@ AmpliGraph [repository is available on GitHub](https://github.com/Accenture/Ampl
 
 A list of open issues [is available here](https://github.com/Accenture/AmpliGraph/issues).
 
-The AmpliGraph [Slack channel is available here](https://join.slack.com/t/ampligraph/shared_invite/enQtNTc2NTI0MzUxMTM5LTAxM2ViYTc0ZTI2NzNhOGZiNjkzZjNkN2NkNDc3NWUyZmU2Njg0MDMxYWY5NGUwYWVmOTNkOWI5NmI0NDJjYWI).
+[Join the conversation on Slack](https://join.slack.com/t/ampligraph/shared_invite/enQtNTc2NTI0MzUxMTM5LTAxM2ViYTc0ZTI2NzNhOGZiNjkzZjNkN2NkNDc3NWUyZmU2Njg0MDMxYWY5NGUwYWVmOTNkOWI5NmI0NDJjYWI)
+![](/img/slack_logo.png)
 
 
 ## How to Contribute
