@@ -852,7 +852,8 @@ class ConvE(EmbeddingModel):
            entities present in the batch and their embeddings.
         """
 
-        logger.debug('Initializing test generator [Mode: {}, Filtered: {}]'.format(mode, self.is_filtered))
+        logger.debug('Initializing test generator: Mode: {}, Filtered: {}, Evaluation protocol: {}'
+                     .format(mode, self.is_filtered, self.evaluation_protocol))
 
         if self.is_filtered:
             test_generator = partial(self.eval_dataset_handle.get_next_batch_with_filter, batch_size=1,
@@ -909,9 +910,9 @@ class ConvE(EmbeddingModel):
                      .format(mode, self.evaluation_protocol))
 
         if self.evaluation_protocol == '1-1':
-            self._initialize_eval_graph_1_1()
+            self._initialize_eval_graph_1_1(mode=mode)
         elif self.evaluation_protocol == '1-N':
-            self._initialize_eval_graph_1_N()
+            self._initialize_eval_graph_1_N(mode=mode)
         else:
             raise ValueError('Invalid evaluation protocol {}, please use either `1-1` or `1-N`.'
                              .format(self.evaluation_protocol))
@@ -1226,11 +1227,20 @@ class ConvE(EmbeddingModel):
                     logger.error(msg)
                     raise ValueError(msg)
 
-                # store the validation data in the data handler
-                self.x_valid = to_idx(self.x_valid, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
-                self.train_dataset_handle.set_data(self.x_valid, "valid", mapped_status=True)
-                self.eval_dataset_handle = self.train_dataset_handle
-                logger.debug('Initialized eval_dataset from train_dataset')
+                if self.evaluation_protocol == '1-N':
+                    # store the validation data in the data handler
+                    self.x_valid = to_idx(self.x_valid, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+                    self.train_dataset_handle.set_data(self.x_valid, 'valid', mapped_status=True)
+                    self.eval_dataset_handle = self.train_dataset_handle
+                    logger.debug('Initialized eval_dataset from train_dataset using 1-N evaluation protocol')
+                else:
+                    # If using 1-1 evaluation in early stopping then must use a numpydatasetadapter, not convedatasetadapter
+                    self.x_valid = to_idx(self.x_valid, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
+
+                    dataset_handle = NumpyDatasetAdapter()
+                    dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
+                    dataset_handle.set_data(self.x_valid, 'valid', mapped_status=True)
+                    self.eval_dataset_handle = dataset_handle
 
             elif isinstance(self.x_valid, AmpligraphDatasetAdapter):
 
@@ -1240,7 +1250,7 @@ class ConvE(EmbeddingModel):
                     raise ValueError(msg)
 
                 self.eval_dataset_handle = self.x_valid
-                print('Initialized eval_dataset from AmpligraphDatasetAdapter')
+                logger.debug('Initialized eval_dataset from AmpligraphDatasetAdapter')
 
             else:
                 msg = 'Invalid type for input X. Expected np.ndarray or AmpligraphDatasetAdapter object, \
