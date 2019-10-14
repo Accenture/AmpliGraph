@@ -187,7 +187,7 @@ Note that we treat some literals (year, neutral match, home score, away score) a
 
 Below we can see visualise a subset of the graph related to the infamous [Maracanazo](https://en.wikipedia.org/wiki/Uruguay_v_Brazil_(1950_FIFA_World_Cup)):
 
-![Football graph](img/FootballGraph.png)
+![](img/FootballGraph.png)
 
 The whole graph related to this match can be summarised by the triples below:
 
@@ -548,7 +548,7 @@ plot_clusters("continent")
 ```
 
 
-![png](img/output_53_0.png)
+![](img/output_53_0.png)
 
 
 We can see above that the embeddings learned geographical similarities even though this information was not explicit on the original dataset.
@@ -561,7 +561,7 @@ plot_clusters("cluster")
 ```
 
 
-![png](img/output_55_0.png)
+![](img/output_55_0.png)
 
 
 We can see that K-Means found very similar cluster to the natural geographical clusters by the continents. This shows that on the 200-dimensional embedding space, similar teams appear close together, which can be captured by a clustering algorithm.
