@@ -313,6 +313,7 @@ def write_metadata_tsv(loc, data):
     elif isinstance(data, pd.DataFrame):
         data.to_csv(metadata_path, sep='\t', index=False)
 
+
 def dataframe_to_triples(X, schema):
     """Convert DataFrame into triple format.
 
@@ -343,4 +344,3 @@ def dataframe_to_triples(X, schema):
     for s, p, o in schema:
         triples.extend([[si, p, oi] for si, oi in zip(X[s], X[o])])
     return np.array(triples)
-
