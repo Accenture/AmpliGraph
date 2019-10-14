@@ -9,6 +9,8 @@
 
 """
 
-from .model_utils import save_model, restore_model, create_tensorboard_visualizations, write_metadata_tsv, dataframe_to_triples
+from .model_utils import save_model, restore_model, create_tensorboard_visualizations, \
+                         write_metadata_tsv, dataframe_to_triples
 
-__all__ = ['save_model', 'restore_model', 'create_tensorboard_visualizations', 'write_metadata_tsv', 'dataframe_to_triples'], 
+__all__ = ['save_model', 'restore_model', 'create_tensorboard_visualizations', \
+           'write_metadata_tsv', 'dataframe_to_triples'], 

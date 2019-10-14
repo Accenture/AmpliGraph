@@ -319,7 +319,8 @@ def dataframe_to_triples(X, schema):
     Parameters
     ----------
     X: pandas DataFrame with headers
-    schema: List of (subject, relation_name, object) tuples where subject and object are in the headers of the data frame
+    schema: List of (subject, relation_name, object) tuples 
+            where subject and object are in the headers of the data frame
     
     Examples
     --------
