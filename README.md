@@ -5,7 +5,7 @@
 [![Documentation Status](https://readthedocs.org/projects/ampligraph/badge/?version=latest)](http://ampligraph.readthedocs.io/?badge=latest)
 
 [Join the conversation on Slack](https://join.slack.com/t/ampligraph/shared_invite/enQtNTc2NTI0MzUxMTM5LTAxM2ViYTc0ZTI2NzNhOGZiNjkzZjNkN2NkNDc3NWUyZmU2Njg0MDMxYWY5NGUwYWVmOTNkOWI5NmI0NDJjYWI)
-![](/img/slack_logo.png)
+![](docs/img/slack_logo.png)
 
 **Open source library based on TensorFlow that predicts links between concepts in a knowledge graph.**
 
