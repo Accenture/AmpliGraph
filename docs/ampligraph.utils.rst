@@ -29,3 +29,14 @@ Functions to visualize embeddings.
     :template: function.rst
 
     create_tensorboard_visualizations
+
+Others
+-------------
+
+Function to convert a pandas DataFrame with headers into triples. 
+
+.. autosummary::
+    :toctree: generated
+    :template: function.rst
+
+    dataframe_to_triples
