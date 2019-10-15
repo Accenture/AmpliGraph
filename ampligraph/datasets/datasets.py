@@ -642,12 +642,12 @@ def load_yago3_10(check_md5hash=False, clean_unseen=True):
         return _load_dataset(yago3_10, data_home=None, check_md5hash=check_md5hash)
 
 
-def load_wordnet11(check_md5hash=False, clean_unseen=True):
-    """Load the WordNet11 dataset
+def load_wn11(check_md5hash=False, clean_unseen=True):
+    """Load the WordNet11 (WN11) dataset
 
     WordNet was originally proposed in `WordNet: a lexical database for English` :cite:`miller1995wordnet`.
 
-    WordNet11 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    WN11 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
     If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
 
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
@@ -665,11 +665,11 @@ def load_wordnet11(check_md5hash=False, clean_unseen=True):
     - ``valid_labels``
     - ``test_labels``
 
-    ========= ========= ======= ======= ============ ===========
-     Dataset  Train     Valid   Test    Entities     Relations
-    ========= ========= ======= ======= ============ ===========
-    WordNet11 110361    5215    21035   38194        11
-    ========= ========= ======= ======= ============ ===========
+    ========= ========= ========== ========== ======== ======== ============ ===========
+     Dataset  Train     Valid Pos  Valid Neg  Test Pos Test Neg Entities     Relations
+    ========= ========= ========== ========== ======== ======== ============ ===========
+    WN11      110361    2606       2609       10493    10542    38588        11
+    ========= ========= ========== ========== ======== ======== ============ ===========
 
     Parameters
     ----------
@@ -683,22 +683,23 @@ def load_wordnet11(check_md5hash=False, clean_unseen=True):
     -------
 
     splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'test': test}.
+        The dataset splits: {'train': train, 'valid': valid, 'valid_labels': valid_labels,
+        'test': test, 'test_labels': test_labels}.
         Each split containing a dataset is an ndarray of shape [n, 3].
         The labels are ndarray of shape [n].
 
     Examples
     -------
 
-    >>> from ampligraph.datasets import load_wordnet11
-    >>> X = load_wordnet11()
+    >>> from ampligraph.datasets import load_wn11
+    >>> X = load_wn11()
     >>> X["valid"][0]
     array(['__genus_xylomelum_1', '_type_of', '__dicot_genus_1'], dtype=object)
     >>> X["valid_labels"][0:3]
     array([ True, False,  True])
 
     """
-    wordnet11 = DatasetMetadata(
+    wn11 = DatasetMetadata(
         dataset_name='wordnet11',
         filename='wordnet11.zip',
         url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wordnet11.zip',
@@ -710,7 +711,7 @@ def load_wordnet11(check_md5hash=False, clean_unseen=True):
         test_checksum='24113b464f8042c339e3e6833c1cebdf'
     )
 
-    dataset = _load_dataset(wordnet11, data_home=None, check_md5hash=check_md5hash)
+    dataset = _load_dataset(wn11, data_home=None, check_md5hash=check_md5hash)
     valid_labels = dataset['valid'][:, 3]
     test_labels = dataset['test'][:, 3]
 
@@ -722,8 +723,98 @@ def load_wordnet11(check_md5hash=False, clean_unseen=True):
 
     if clean_unseen:
         clean_dataset, valid_idx, test_idx = _clean_data(dataset, return_idx=True)
-        clean_dataset['valid_labels'] = valid_labels[valid_idx]
-        clean_dataset['test_labels'] = test_labels[test_idx]
+        clean_dataset['valid_labels'] = dataset['valid_labels'][valid_idx]
+        clean_dataset['test_labels'] = dataset['test_labels'][test_idx]
+        return clean_dataset
+    else:
+        return dataset
+
+
+def load_fb13(check_md5hash=False, clean_unseen=True):
+    """Load the Freebase13 (FB13) dataset
+
+    FB13 is a subset of Freebase :cite:`bollacker2008freebase`
+    and was initially presented in
+    `Reasoning With Neural Tensor Networks for Knowledge Base Completion` :cite:`socher2013reasoning`.
+
+    FB13 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+
+    If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    or ``~/ampligraph_datasets``.
+
+    It is divided in three splits:
+
+    - ``train``
+    - ``valid``
+    - ``test``
+
+    Both the validation and test splits are associated with labels (binary ndarrays),
+    with `True` for positive statements and `False` for  negatives:
+
+    - ``valid_labels``
+    - ``test_labels``
+
+    ========= ========= ========== ========== ======== ======== ============ ===========
+     Dataset  Train     Valid Pos  Valid Neg  Test Pos Test Neg Entities     Relations
+    ========= ========= ========== ========== ======== ======== ============ ===========
+    FB13      316232    5908       5908       23733    23731    75043        13
+    ========= ========= ========== ========== ======== ======== ============ ===========
+
+    Parameters
+    ----------
+    check_md5hash : boolean
+        If ``True`` check the md5hash of the files. Defaults to ``False``.
+
+    clean_unseen : bool
+        If ``True``, filters triples in validation and test sets that include entities not present in the training set.
+
+    Returns
+    -------
+
+    splits : dict
+        The dataset splits: {'train': train, 'valid': valid, 'valid_labels': valid_labels,
+        'test': test, 'test_labels': test_labels}.
+        Each split containing a dataset is an ndarray of shape [n, 3].
+        The labels are ndarray of shape [n].
+
+    Examples
+    -------
+
+    >>> from ampligraph.datasets import load_fb13
+    >>> X = load_fb13()
+    >>> X["valid"][0]
+    array(['cornelie_van_zanten', 'gender', 'female'], dtype=object)
+    >>> X["valid_labels"][0:3]
+    array([True, False, True], dtype=object)
+
+    """
+    fb13 = DatasetMetadata(
+        dataset_name='freebase13',
+        filename='freebase13.zip',
+        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/freebase13.zip',
+        train_name='train.txt',
+        valid_name='dev.txt',
+        test_name='test.txt',
+        train_checksum='9099ebcd85ab3ce723cfaaf34f74dceb',
+        valid_checksum='c4ef7b244baa436a97c2a5e57d4ba7ed',
+        test_checksum='f9af2eac7c5a86996c909bdffd295528'
+    )
+
+    dataset = _load_dataset(fb13, data_home=None, check_md5hash=check_md5hash)
+    valid_labels = dataset['valid'][:, 3]
+    test_labels = dataset['test'][:, 3]
+
+    dataset['valid'] = dataset['valid'][:, 0:3]
+    dataset['test'] = dataset['test'][:, 0:3]
+
+    dataset['valid_labels'] = valid_labels == '1'
+    dataset['test_labels'] = test_labels == '1'
+
+    if clean_unseen:
+        clean_dataset, valid_idx, test_idx = _clean_data(dataset, return_idx=True)
+        clean_dataset['valid_labels'] = dataset['valid_labels'][valid_idx]
+        clean_dataset['test_labels'] = dataset['test_labels'][test_idx]
         return clean_dataset
     else:
         return dataset
@@ -735,7 +826,8 @@ def load_all_datasets(check_md5hash=False):
     load_fb15k(check_md5hash)
     load_fb15k_237(check_md5hash)
     load_yago3_10(check_md5hash)
-    load_wordnet11(check_md5hash)
+    load_wn11(check_md5hash)
+    load_fb13(check_md5hash)
 
 
 def load_from_rdf(folder_name, file_name, rdf_format='nt', data_home=None):

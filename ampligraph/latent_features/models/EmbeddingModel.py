@@ -1613,10 +1613,10 @@ class EmbeddingModel(abc.ABC):
         >>> from sklearn.metrics import brier_score_loss, log_loss
         >>> from scipy.special import expit
         >>>
-        >>> from ampligraph.datasets import load_wordnet11
+        >>> from ampligraph.datasets import load_wn11
         >>> from ampligraph.latent_features.models import TransE
         >>>
-        >>> X = load_wordnet11()
+        >>> X = load_wn11()
         >>>
         >>> model = TransE(batches_count=64, seed=0, epochs=500, k=100, eta=20,
         >>>                optimizer='adam', optimizer_params={'lr':0.0001},
