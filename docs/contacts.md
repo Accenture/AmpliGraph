@@ -6,7 +6,7 @@ AmpliGraph is maintained by [Accenture Labs Dublin](https://www.accenture.com/us
 
 You can contact us by email at [about@ampligraph.org](mailto:about@ampligraph.org).
 
-[Join the conversation on Slack](https://join.slack.com/t/ampligraph/shared_invite/enQtNTc2NTI0MzUxMTM5LTAxM2ViYTc0ZTI2NzNhOGZiNjkzZjNkN2NkNDc3NWUyZmU2Njg0MDMxYWY5NGUwYWVmOTNkOWI5NmI0NDJjYWI)
+[Join the conversation on Slack](https://join.slack.com/t/ampligraph/shared_invite/enQtNTc2NTI0MzUxMTM5LTRkODk0MjI2OWRlZjdjYmExY2Q3M2M3NGY0MGYyMmI4NWYyMWVhYTRjZDhkZjA1YTEyMzBkMGE4N2RmNTRiZDg)
 ![](/img/slack_logo.png)
 
 
