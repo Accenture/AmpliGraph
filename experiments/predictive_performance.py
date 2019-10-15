@@ -39,23 +39,25 @@ def display_scores(scores):
         output_rst[obj["dataset"]].set_style(BeautifulTable.STYLE_RST)
         output_rst[obj["dataset"]].column_headers = \
             ["Model", "MR", "MRR", "Hits@1", \
-             "Hits@3", "Hits@10", "Time (s)", "Hyperparameters"]
+             "Hits@3", "Hits@10", "Time (s)", "ES epochs", "Hyperparameters"]
 
     for obj in scores:
         try:
             output_rst[obj["dataset"]] \
                 .append_row([obj["model"],
-                             "{0:.2f}".format(obj["mr"]),
-                             "{0:.2f}".format(obj["mrr"]),
-                             "{0:.2f}".format(obj["H@1"]),
-                             "{0:.2f}".format(obj["H@3"]),
-                             "{0:.2f}".format(obj["H@10"]),
-                             "{0:.2f}".format(obj["time"]),
+                             "{0:.1f}".format(obj["mr"]),
+                             "{0:.4f}".format(obj["mrr"]),
+                             "{0:.3f}".format(obj["H@1"]),
+                             "{0:.3f}".format(obj["H@3"]),
+                             "{0:.3f}".format(obj["H@10"]),
+                             "{0:.1f}".format(obj["time"]),
+                             "{}".format(obj["early_stopping_epoch"]),
                              yaml.dump(obj["hyperparams"],
                                        default_flow_style=False)])
         except:
             output_rst[obj["dataset"]] \
                 .append_row([obj["model"],
+                             ".??",
                              ".??",
                              ".??",
                              ".??",
@@ -109,13 +111,18 @@ def run_single_exp(config, dataset, model):
         logging.debug("Fit with early stopping...")
         model.fit(X["train"], True,
                   {
-                      'x_valid': X['valid'][::10],
+                      'x_valid': X['valid'][::2],
                       'criteria': 'mrr',
                       'x_filter': filter,
-                      'stop_interval': 2,
+                      'stop_interval': 4,
                       'burn_in': 0,
-                      'check_interval': 100
+                      'check_interval': 50
                   })
+
+    if not hasattr(model, 'early_stopping_epoch') or model.early_stopping_epoch is None:
+        early_stopping_epoch = np.nan
+    else:
+        early_stopping_epoch = model.early_stopping_epoch
 
     # Run the evaluation procedure on the test set. Will create filtered rankings.
     # To disable filtering: filter_triples=None
@@ -138,7 +145,8 @@ def run_single_exp(config, dataset, model):
         "H@3": hits_3,
         "H@10": hits_10,
         "hyperparams": hyperparams,
-        "time": time.time() - start_time
+        "time": time.time() - start_time,
+        "early_stopping_epoch": early_stopping_epoch
     }
 
 
@@ -185,8 +193,6 @@ def run_single_model(config, model):
 def main():
     with open("config.json", "r") as fi:
         config = json.load(fi)
-
-
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset",

@@ -646,6 +646,8 @@ class EmbeddingModel(abc.ABC):
 
         self.early_stopping_best_value = None
         self.early_stopping_stop_counter = 0
+        self.early_stopping_epoch = None
+
         try:
             # If the filter has already been set in the dataset adapter then just pass x_filter = True
             x_filter = self.early_stopping_params['x_filter']
@@ -721,6 +723,9 @@ class EmbeddingModel(abc.ABC):
                             self.early_stopping_criteria,
                             self.early_stopping_best_value)
                         logger.info(msg)
+
+                    self.early_stopping_epoch = epoch
+
                     return True
             else:
                 self.early_stopping_best_value = current_test_value
