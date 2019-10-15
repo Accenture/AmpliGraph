@@ -30,16 +30,8 @@ FB15K-237
                                                          normalize_ent_emb: false;
                                                          seed: 0;
                                                          batches_count: 64;
-                                                         early_stopping:{
-                                                         x_valid: validation[::10],
-                                                         criteria: mrr,
-                                                         x_filter: train + validation + test,
-                                                         stop_interval: 2,
-                                                         burn_in: 0,
-                                                         check_interval: 100
-                                                         };
 
- DistMult   201     0.31      0.22     0.34      0.49    k: 300;
+  DistMult  199     0.31      0.22     0.35      0.49    k: 300;
                                                          epochs: 4000;
                                                          eta: 50;
                                                          loss: multiclass_nll;
@@ -53,16 +45,8 @@ FB15K-237
                                                          seed: 0;
                                                          batches_count: 50;
                                                          normalize_ent_emb: false;
-                                                         early_stopping:{
-                                                         x_valid: validation[::10],
-                                                         criteria: mrr,
-                                                         x_filter: train + validation + test,
-                                                         stop_interval: 2,
-                                                         burn_in: 0,
-                                                         check_interval: 100
-                                                         };
 
-   ComplEx  186     0.32      0.22     0.35      0.50    k: 350;
+  ComplEx   184     0.32      0.23     0.35      0.50    k: 350;
                                                          epochs: 4000;
                                                          eta: 30;
                                                          loss: multiclass_nll;
@@ -75,17 +59,8 @@ FB15K-237
                                                          lambda: 0.0001;
                                                          p: 3;
                                                          batches_count: 64;
-                                                         early_stopping:{
-                                                         x_valid: validation[::10],
-                                                         criteria: mrr,
-                                                         x_filter: train + validation + test,
-                                                         stop_interval: 2,
-                                                         burn_in: 0,
-                                                         check_interval: 100
-                                                         };
-                                                         
 
-   HolE     182     0.31       0.21     0.34       0.48  k: 350;
+  HolE      184     0.31       0.22     0.34       0.49  k: 350;
                                                          epochs: 4000;
                                                          eta: 50;
                                                          loss: multiclass_nll;
@@ -98,15 +73,6 @@ FB15K-237
                                                          lr: 0.0001;
                                                          seed: 0;
                                                          batches_count: 64;
-                                                         early_stopping:{
-                                                         x_valid: validation[::10],
-                                                         criteria: mrr,
-                                                         x_filter: train + validation + test,
-                                                         stop_interval: 2,
-                                                         burn_in: 0,
-                                                         check_interval: 100
-                                                         };
-                                                         
 
 ========== ======== ====== ======== ======== ========== ========================
 
@@ -123,7 +89,7 @@ WN18RR
 ========== ========= ====== ======== ======== ========== =======================
   Model       MR      MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
 ========== ========= ====== ======== ======== ========== =======================
-  TransE    2929      0.22    0.03     0.39      0.54     k: 350;
+  TransE    2692      0.22    0.03     0.37      0.54     k: 350;
                                                           epochs: 4000;
                                                           eta: 30;
                                                           loss: multiclass_nll;
@@ -139,16 +105,8 @@ WN18RR
                                                           embedding_model_params:
                                                           norm: 1;
                                                           batches_count: 150;
-                                                          early_stopping:{
-                                                          x_valid: validation[::10],
-                                                          criteria: mrr,
-                                                          x_filter: train + validation + test,
-                                                          stop_interval: 2,
-                                                          burn_in: 0,
-                                                          check_interval: 100
-                                                          };
 
- DistMult   5186      0.45    0.45     0.49      0.54     k: 350;
+ DistMult   5531      0.47    0.43     0.48      0.53     k: 350;
                                                           epochs: 4000;
                                                           eta: 30;
                                                           loss: multiclass_nll;
@@ -162,16 +120,8 @@ WN18RR
                                                           seed: 0;
                                                           normalize_ent_emb: false;
                                                           batches_count: 100;
-                                                          early_stopping:{
-                                                          x_valid: validation[::10],
-                                                          criteria: mrr,
-                                                          x_filter: train + validation + test,
-                                                          stop_interval: 2,
-                                                          burn_in: 0,
-                                                          check_interval: 100
-                                                          };
 
- ComplEx    4550      0.50    0.47     0.52      0.57     k: 200;
+ ComplEx    4177      0.51    0.46     0.53      0.58     k: 200;
                                                           epochs: 4000;
                                                           eta: 20;
                                                           loss: multiclass_nll;
@@ -186,16 +136,8 @@ WN18RR
                                                           lambda: 0.05;
                                                           p: 3;
                                                           batches_count: 10;
-                                                          early_stopping:{
-                                                          x_valid: validation[::10],
-                                                          criteria: mrr,
-                                                          x_filter: train + validation + test,
-                                                          stop_interval: 2,
-                                                          burn_in: 0,
-                                                          check_interval: 100
-                                                          };
                                                           
-   HolE     7236      0.47    0.43     0.48      0.53     k: 200;
+   HolE     7028      0.47    0.44     0.48      0.53     k: 200;
                                                           epochs: 4000;
                                                           eta: 20;
                                                           loss: self_adversarial;
@@ -206,14 +148,6 @@ WN18RR
                                                           lr: 0.0005;
                                                           seed: 0;
                                                           batches_count: 50;
-                                                          early_stopping:{
-                                                          x_valid: validation[::10],
-                                                          criteria: mrr,
-                                                          x_filter: train + validation + test,
-                                                          stop_interval: 2,
-                                                          burn_in: 0,
-                                                          check_interval: 100
-                                                          };
 
 ========== ========= ====== ======== ======== ========== =======================
 
@@ -229,7 +163,7 @@ YAGO3-10
 ======== ======== ====== ======== ======== ========= =========================
  Model      MR     MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
 ======== ======== ====== ======== ======== ========= =========================
-TransE   1124      0.49   0.39     0.56     0.67      k: 350;
+TransE   1264      0.51   0.41     0.57     0.67      k: 350;
                                                       epochs: 4000;
                                                       eta: 30;
                                                       loss: multiclass_nll;
@@ -245,16 +179,8 @@ TransE   1124      0.49   0.39     0.56     0.67      k: 350;
                                                       normalize_ent_emb: false;
                                                       seed: 0;
                                                       batches_count: 100;
-                                                      early_stopping:{
-                                                      x_valid: validation[::10],
-                                                      criteria: mrr,
-                                                      x_filter: train + validation + test,
-                                                      stop_interval: 2,
-                                                      burn_in: 0,
-                                                      check_interval: 100
-                                                      };
                                                       
-DistMult 1063     0.49   0.40     0.55     0.56       k: 350;
+DistMult 1107     0.50   0.41     0.55     0.66       k: 350;
                                                       epochs: 4000;
                                                       eta: 50;
                                                       loss: multiclass_nll;
@@ -268,16 +194,8 @@ DistMult 1063     0.49   0.40     0.55     0.56       k: 350;
                                                       seed: 0;
                                                       normalize_ent_emb: false;
                                                       batches_count: 100;
-                                                      early_stopping:{
-                                                      x_valid: validation[::10],
-                                                      criteria: mrr,
-                                                      x_filter: train + validation + test,
-                                                      stop_interval: 2,
-                                                      burn_in: 0,
-                                                      check_interval: 100
-                                                      };
 
-ComplEx  1508     0.50   0.41     0.55     0.66       k: 350;
+ComplEx  1227     0.49   0.40     0.54     0.66       k: 350;
                                                       epochs: 4000;
                                                       eta: 30;
                                                       loss: multiclass_nll;
@@ -290,16 +208,8 @@ ComplEx  1508     0.50   0.41     0.55     0.66       k: 350;
                                                       p: 3;
                                                       seed: 0;
                                                       batches_count: 100
-                                                      early_stopping:{
-                                                      x_valid: validation[::10],
-                                                      criteria: mrr,
-                                                      x_filter: train + validation + test,
-                                                      stop_interval: 2,
-                                                      burn_in: 0,
-                                                      check_interval: 100
-                                                      };
 
-HolE     6365     0.50   0.42     0.55     0.65       k: 350;
+HolE     6776     0.50   0.42     0.56     0.65       k: 350;
                                                       epochs: 4000;
                                                       eta: 30;
                                                       loss: self_adversarial;
@@ -311,14 +221,6 @@ HolE     6365     0.50   0.42     0.55     0.65       k: 350;
                                                       lr: 0.0001;
                                                       seed: 0;
                                                       batches_count: 100
-                                                      early_stopping:{
-                                                      x_valid: validation[::10],
-                                                      criteria: mrr,
-                                                      x_filter: train + validation + test,
-                                                      stop_interval: 2,
-                                                      burn_in: 0,
-                                                      check_interval: 100
-                                                      };
 ======== ======== ====== ======== ======== ========= =========================                                                        
 
 
@@ -357,14 +259,6 @@ FB15K
                                                         normalize_ent_emb: false;
                                                         seed: 0;
                                                         batches_count: 100;
-                                                        early_stopping:{
-                                                        x_valid: validation[::10],
-                                                        criteria: mrr,
-                                                        x_filter: train + validation + test,
-                                                        stop_interval: 2,
-                                                        burn_in: 0,
-                                                        check_interval: 100
-                                                        };
 
  DistMult   179      0.78    0.74     0.82      0.86     k: 200;
                                                          epochs: 4000;
@@ -378,16 +272,8 @@ FB15K
                                                          seed: 0;
                                                          normalize_ent_emb: false;
                                                          batches_count: 50;
-                                                         early_stopping:{
-                                                         x_valid: validation[::10],
-                                                         criteria: mrr,
-                                                         x_filter: train + validation + test,
-                                                         stop_interval: 2,
-                                                         burn_in: 0,
-                                                         check_interval: 100
-                                                         };
 
- ComplEx    183      0.80    0.75     0.82      0.87     k: 200;
+ ComplEx    184      0.80    0.76     0.82      0.86     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: self_adversarial;
@@ -398,16 +284,8 @@ FB15K
                                                          lr: 0.0005;
                                                          seed: 0;
                                                          batches_count: 100;
-                                                         early_stopping:{
-                                                         x_valid: validation[::10],
-                                                         criteria: mrr,
-                                                         x_filter: train + validation + test,
-                                                         stop_interval: 2,
-                                                         burn_in: 0,
-                                                         check_interval: 100
-                                                         };
 
-   HolE     215      0.80    0.76     0.83      0.87     k: 200;
+   HolE     216      0.80    0.76     0.83      0.87     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: self_adversarial;
@@ -418,14 +296,6 @@ FB15K
                                                          lr: 0.0005;
                                                          seed: 0;
                                                          batches_count: 50;
-                                                         early_stopping:{
-                                                         x_valid: validation[::10],
-                                                         criteria: mrr,
-                                                         x_filter: train + validation + test,
-                                                         stop_interval: 2,
-                                                         burn_in: 0,
-                                                         check_interval: 100
-                                                         };
 
 ========== ======== ====== ======== ======== ========== ========================
 
@@ -440,7 +310,7 @@ WN18
 ========== ======== ====== ======== ======== ========== ========================
   Model       MR     MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
 ========== ======== ====== ======== ======== ========== ========================
-TransE     262      0.65    0.41     0.88      0.95     k: 150;
+TransE     260      0.66    0.44     0.88      0.95     k: 150;
                                                         epochs: 4000;
                                                         eta: 10;
                                                         loss: multiclass_nll;
@@ -456,16 +326,8 @@ TransE     262      0.65    0.41     0.88      0.95     k: 150;
                                                         normalize_ent_emb: false;
                                                         seed: 0;
                                                         batches_count: 100;
-                                                        early_stopping:{
-                                                        x_valid: validation[::10],
-                                                        criteria: mrr,
-                                                        x_filter: train + validation + test,
-                                                        stop_interval: 2,
-                                                        burn_in: 0,
-                                                        check_interval: 100
-                                                        };
                                                         
- DistMult   755      0.82    0.72     0.92      0.94     k: 200;
+ DistMult   675      0.82    0.73     0.92      0.95     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: nll;
@@ -477,16 +339,8 @@ TransE     262      0.65    0.41     0.88      0.95     k: 150;
                                                          seed: 0;
                                                          normalize_ent_emb: false;
                                                          batches_count: 50;
-                                                         early_stopping:{
-                                                         x_valid: validation[::10],
-                                                         criteria: mrr,
-                                                         x_filter: train + validation + test,
-                                                         stop_interval: 2,
-                                                         burn_in: 0,
-                                                         check_interval: 100
-                                                         };
 
- ComplEx    749      0.94    0.94     0.95      0.95     k: 200;
+ ComplEx    726      0.94    0.94     0.95      0.95     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: nll;
@@ -497,16 +351,8 @@ TransE     262      0.65    0.41     0.88      0.95     k: 150;
                                                          lr: 0.0005;
                                                          seed: 0;
                                                          batches_count: 50;
-                                                         early_stopping:{
-                                                         x_valid: validation[::10],
-                                                         criteria: mrr,
-                                                         x_filter: train + validation + test,
-                                                         stop_interval: 2,
-                                                         burn_in: 0,
-                                                         check_interval: 100
-                                                         };
                                                          
-   HolE     641      0.93    0.93     0.94      0.95     k: 200;
+   HolE     665      0.94    0.93     0.94      0.95     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: self_adversarial;
@@ -517,14 +363,6 @@ TransE     262      0.65    0.41     0.88      0.95     k: 150;
                                                          lr: 0.0005;
                                                          seed: 0;
                                                          batches_count: 50;
-                                                         early_stopping:{
-                                                         x_valid: validation[::10],
-                                                         criteria: mrr,
-                                                         x_filter: train + validation + test,
-                                                         stop_interval: 2,
-                                                         burn_in: 0,
-                                                         check_interval: 100
-                                                         };
                                                          
 ========== ======== ====== ======== ======== ========== ========================
 
@@ -534,9 +372,9 @@ To reproduce the above results: ::
     $ python predictive_performance.py
 
 
-.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~53 hours on
+.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~79 hours on
     an Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box equipped with a Tesla V100 16GB.
-
+    The long running time is mostly due to the early stopping configuration (see section below).
 
 
 Experiments can be limited to specific models-dataset combinations as follows: ::
@@ -549,6 +387,25 @@ Experiments can be limited to specific models-dataset combinations as follows: :
       -h, --help            show this help message and exit
       -d {fb15k,fb15k-237,wn18,wn18rr,yago310}, --dataset {fb15k,fb15k-237,wn18,wn18rr,yago310}
       -m {complex,transe,distmult,hole}, --model {complex,transe,distmult,hole}
+
+Early Stopping
+--------------
+All of the experiments above were conducted with early stopping on half the validation set.
+Typically, the validation set can be found in ``X['valid']``.
+We only used half the validation set so the other half is available for hyperparameter tuning.
+
+The exact early stopping configuration is as follows:
+
+  * x_valid: validation[::2]
+  * criteria: mrr
+  * x_filter: train + validation + test
+  * stop_interval: 4
+  * burn_in: 0
+  * check_interval: 50
+
+
+Note that early stopping adds a significant computational burden to the learning procedure.
+To lessen it, you may either decrease the validation set, the stop interval, the check interval, or increase the burn in.
 
 Runtime Performance
 -------------------

@@ -124,14 +124,14 @@ AmpliGraph includes implementations of TransE, DistMult, ComplEx and HolE.
 Their predictive power is reported below and compared against the state-of-the-art results in literature.
 [More details available here](https://docs.ampligraph.org/en/latest/experiments.html).
 
-|                 |FB15K-237 |WN18RR   |YAGO3-10   | FB15k      |WN18           |
-|-----------------|----------|---------|-----------|------------|---------------|
-| Literature Best | **0.35***| 0.48*   | 0.49*     | **0.84**** | **0.95***     |
-| TransE (AmpliGraph)         |  0.31    | 0.22    | 0.49      | 0.63       | 0.65          |
-| DistMult (AmpliGraph)        |  0.31    | 0.45    | 0.49      | 0.78       | 0.82          |
-| ComplEx  (AmpliGraph)       |  0.32    | **0.50**| **0.50**  | 0.80       | 0.94          |
-| HolE (AmpliGraph)           |  0.31    | 0.47    | **0.50**  | 0.80       | 0.93          |
-
+|                              |FB15K-237 |WN18RR   |YAGO3-10   | FB15k      |WN18           |
+|------------------------------|----------|---------|-----------|------------|---------------|
+| Literature Best              | **0.35***| 0.48*   | 0.49*     | **0.84**** | **0.95***     |
+| TransE (AmpliGraph)          |  0.31    | 0.22    | **0.51**  | 0.63       | 0.66          |
+| DistMult (AmpliGraph)        |  0.31    | 0.47    | 0.50      | 0.78       | 0.82          |
+| ComplEx  (AmpliGraph)        |  0.32    | **0.51**| 0.49      | 0.80       | 0.94          |
+| HolE (AmpliGraph)            |  0.31    | 0.47    | 0.50      | 0.80       | 0.94          |
+ 
 
 <sub>
 * Timothee Lacroix, Nicolas Usunier, and Guillaume Obozinski. Canonical tensor decomposition for knowledge base 
