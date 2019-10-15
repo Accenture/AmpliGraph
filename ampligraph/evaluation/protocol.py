@@ -272,7 +272,7 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
         This also brings the benefit of creating more meaningful negatives, as entities used to corrupt are
         sourced locally.
         The function can be configured to generate corruptions *only* using the entities from the current batch.
-        You can enable such behaviour be setting ``entities_size==-1``. In such case, if ``entities_list=None``
+        You can enable such behaviour be setting ``entities_size=0``. In such case, if ``entities_list=None``
         all entities from the *current batch* will be used to generate corruptions.
 
     Parameters
@@ -281,7 +281,11 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
         An array of positive triples that will be used to create corruptions.
     entities_list : list
         List of entities to be used for generating corruptions. (default:None).
-        if ``entities_list=None``, all entities will be used to generate corruptions (default behaviour).
+
+        If ``entities_list=None`` and ``entities_size`` is the number of all entities,
+        all entities will be used to generate corruptions (default behaviour).
+
+        If ``entities_list=None`` and ``entities_size=0``, the batch entities will be used to generate corruptions.
     eta : int
         The number of corruptions per triple that must be generated.
     corrupt_side: string
@@ -298,7 +302,7 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
         This also brings the benefit of creating more meaningful negatives, as entities used to corrupt are
         sourced locally.
         The function can be configured to generate corruptions *only* using the entities from the current batch.
-        You can enable such behaviour be setting ``entities_size==-1``. In such case, if ``entities_list=None``
+        You can enable such behaviour be setting ``entities_size=0``. In such case, if ``entities_list=None``
         all entities from the *current batch* will be used to generate corruptions.
     rnd: numpy.random.RandomState
         A random number generator.
