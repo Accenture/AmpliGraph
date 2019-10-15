@@ -940,8 +940,8 @@ class ConvE(EmbeddingModel):
 
         use_default_protocol = self.eval_config.get('default_protocol', DEFAULT_PROTOCOL_EVAL)
 
-        if use_default_protocol:
-            raise ValueError('Cannot use ConvE with default protocol.')
+        # if use_default_protocol:
+        #     raise ValueError('Cannot use ConvE with default protocol.')
 
         corrupt_side = self.eval_config.get('corrupt_side', DEFAULT_CORRUPT_SIDE_EVAL)
         # Dependencies that need to be run before scoring
@@ -1082,6 +1082,9 @@ class ConvE(EmbeddingModel):
             e_s, e_p, e_o = self._lookup_embeddings(self.out_corr)
             scores_predict = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)))
             self.scores_predict = tf.gather(scores_predict, indices=self.out_corr[:, 2], axis=0, name='scores_negative')
+
+            neg_indices = tf.stack([tf.range(tf.shape(self.out_corr)[0]), self.out_corr[:, 2]], axis=1)
+            self.scores_predict = tf.gather_nd(scores_predict, indices=neg_indices, name='scores_negative')
 
             # Compute scores for positive
             e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
