@@ -1087,6 +1087,21 @@ class EmbeddingModel(abc.ABC):
 
         use_default_protocol = self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL)
         corrupt_side = self.eval_config.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL)
+
+        # Rather than generating corruptions in batches do it at once on the GPU for small or medium sized graphs
+        all_entities_np = np.arange(len(self.ent_to_idx))
+
+        corruption_entities = self.eval_config.get('corruption_entities', constants.DEFAULT_CORRUPTION_ENTITIES)
+
+        if corruption_entities == 'all':
+            corruption_entities = all_entities_np
+        elif isinstance(corruption_entities, np.ndarray):
+            corruption_entities = corruption_entities
+        else:
+            msg = 'Invalid type for corruption entities.'
+            logger.error(msg)
+            raise ValueError(msg)
+
         # Dependencies that need to be run before scoring
         test_dependency = []
         # For large graphs
@@ -1197,19 +1212,6 @@ class EmbeddingModel(abc.ABC):
                     self.scores_predict = subj_corruption_scores
 
         else:
-            # Rather than generating corruptions in batches do it at once on the GPU for small or medium sized graphs
-            all_entities_np = np.arange(len(self.ent_to_idx))
-
-            corruption_entities = self.eval_config.get('corruption_entities', constants.DEFAULT_CORRUPTION_ENTITIES)
-
-            if corruption_entities == 'all':
-                corruption_entities = all_entities_np
-            elif isinstance(corruption_entities, np.ndarray):
-                corruption_entities = corruption_entities
-            else:
-                msg = 'Invalid type for corruption entities.'
-                logger.error(msg)
-                raise ValueError(msg)
 
             # Entities that must be used while generating corruptions
             self.corruption_entities_tf = tf.constant(corruption_entities, dtype=tf.int32)
