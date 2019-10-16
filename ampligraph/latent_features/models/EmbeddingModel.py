@@ -1555,7 +1555,9 @@ class EmbeddingModel(abc.ABC):
 
         The calibrated predictions can be obtained with ``predict_proba`` after the calibration is done.
 
-        There are two modes of operation:
+        Ideally, calibration should be performed on a validation set that was not used to train the embeddings.
+
+        There are two modes of operation, depending on the availability of negative triples:
 
         #. Both positive and negative triples are provided via ``X_pos`` and ``X_neg`` respectively. \
         The optimization is done using a second-order method (limited-memory BFGS), \
@@ -1571,8 +1573,16 @@ class EmbeddingModel(abc.ABC):
         For mode (1), that can be inferred automatically by the relative sizes of the positive and negative sets,
         but the user can override that by providing a value to ``positive_base_rate``.
 
+        Defining the positive base rate is the biggest challenge when calibrating without negatives. That depends on
+        the user choice of which triples will be evaluated during test time.
+        Let's take WN11 as an example: it has around 50% positives triples on both the validation set and test set,
+        so naturally the positive base rate is 50%. However, should the user resample it to have 75% positives
+        and 25% negatives, its previous calibration will be degraded. The user must recalibrate the model now with a
+        75% positive base rate. Therefore, this parameter depends on how the user handles the dataset and
+        cannot be determined automatically or a priori.
+
         .. Note ::
-            Incompatible with large graph mode of operation (when ``self.dealing_with_large_graphs`` is `True`).
+            Incompatible with large graph mode of operation (i.e., ``self.dealing_with_large_graphs`` is `True`).
 
         Parameters
         ----------
