@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow as tf
 import logging
 
-from .EmbeddingModel import EmbeddingModel, register_model
+from .EmbeddingModel import EmbeddingModel, register_model ,ENTITY_THRESHOLD
 from ..initializers import DEFAULT_XAVIER_IS_UNIFORM
 from ampligraph.latent_features import constants as constants
 
@@ -258,7 +258,7 @@ class ConvKB(EmbeddingModel):
         # Generate the batch size based on entity length and batch_count
         self.batch_size = int(np.ceil(len(self.ent_to_idx) / self.batches_count))
 
-        if len(self.ent_to_idx) > constants.ENTITY_THRESHOLD:
+        if len(self.ent_to_idx) > ENTITY_THRESHOLD:
             self.dealing_with_large_graphs = True
 
             logger.warning('Your graph has a large number of distinct entities. '
