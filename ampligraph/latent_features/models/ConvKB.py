@@ -19,7 +19,7 @@ logger.setLevel(logging.DEBUG)
 
 @register_model("ConvKB", {'num_filters': 16, 'filter_sizes': [1], 'dropout': 0.1})
 class ConvKB(EmbeddingModel):
-    """ Convolutional 2D Knowledge Graph Embedding model.
+    r""" Convolutional 2D Knowledge Graph Embedding model.
 
     The ConvKB model :cite:`Nguyen2018`:
 
@@ -194,7 +194,7 @@ class ConvKB(EmbeddingModel):
         else:
 
             self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
-                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)#
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
 
             self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size * 2, self.internal_k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
@@ -290,7 +290,7 @@ class ConvKB(EmbeddingModel):
         self.dense_B = tf.Variable(self.trained_model_params['dense_B'], dtype=tf.float32)
 
     def _fn(self, e_s, e_p, e_o):
-        """The ConvKB scoring function.
+        r"""The ConvKB scoring function.
 
             The function implements the scoring function as defined by:
             .. math::
