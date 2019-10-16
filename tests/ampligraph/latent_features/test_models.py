@@ -7,17 +7,14 @@
 #
 import numpy as np
 import pytest
+import os
 
 from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline, ConvKB
 from ampligraph.latent_features import set_entity_threshold, reset_entity_threshold
 from ampligraph.datasets import load_wn18
-<<<<<<< HEAD
-from ampligraph.evaluation import evaluate_performance, hits_at_n_score
 from ampligraph.utils import save_model, restore_model
-=======
-from ampligraph.evaluation import evaluate_performance, hits_at_n_score, mrr_score
+from ampligraph.evaluation import evaluate_performance, hits_at_n_score
 from ampligraph.evaluation.protocol import to_idx
->>>>>>> ce27b0434c0d235c0bebc76404d78c027420e274
 
 
 def test_large_graph_mode():
@@ -345,6 +342,7 @@ def test_convkb_save_restore():
 
     assert np.all(y1==y2)
 
+    os.remove('convkb.tmp')
 
 def test_predict():
     model = DistMult(batches_count=2, seed=555, epochs=1, k=10,

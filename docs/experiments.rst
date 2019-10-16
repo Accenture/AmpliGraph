@@ -106,7 +106,32 @@ FB15K-237
                                                          burn_in: 0,
                                                          check_interval: 100
                                                          };
-                                                         
+
+   ConvKB     300     0.234       0.15     0.25       0.40  k: 200;
+                                                         epochs: 400;
+                                                         eta: 10;
+                                                         loss: multiclass_nll;
+                                                         regularizer: LP;
+                                                         regularizer_params:
+                                                         lambda: 0.0001;
+                                                         p: 3;
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         seed: 22;
+                                                         batches_count: 300;
+                                                         embedding_model_params:{
+                                                         num_filters: 32,
+                                                         filter_sizes: 1,
+                                                         dropout: 0.1};
+                                                         early_stopping:{
+                                                         x_valid: validation,
+                                                         criteria: mrr,
+                                                         x_filter: train + validation + test,
+                                                         stop_interval: 3,
+                                                         burn_in: 150,
+                                                         check_interval: 10
+                                                         };
 
 ========== ======== ====== ======== ======== ========== ========================
 
@@ -215,6 +240,29 @@ WN18RR
                                                           check_interval: 100
                                                           };
 
+   ConvKB     3708      0.43    0.39     0.44      0.48   k: 200;
+                                                          epochs: 400;
+                                                          eta: 10;
+                                                          loss: self_adversarial;
+                                                          loss_params:
+                                                          margin: 1;
+                                                          optimizer: adam;
+                                                          optimizer_params:
+                                                          lr: 0.001;
+                                                          seed: 0;
+                                                          batches_count: 300;
+                                                          embedding_model_params:{
+                                                          num_filters: 32,
+                                                          filter_sizes: 1,
+                                                          dropout: 0.1};
+                                                          early_stopping:{
+                                                          x_valid: validation,
+                                                          criteria: mrr,
+                                                          x_filter: train + validation + test,
+                                                          stop_interval: 3,
+                                                          burn_in: 150,
+                                                          check_interval: 10
+                                                          };
 ========== ========= ====== ======== ======== ========== =======================
 
 .. note:: WN18RR validation and test sets include triples with entities that do not occur
@@ -319,6 +367,8 @@ HolE     6365     0.50   0.42     0.55     0.65       k: 350;
                                                       burn_in: 0,
                                                       check_interval: 100
                                                       };
+
+ConvKB     -     -   -     -     -       -
 ======== ======== ====== ======== ======== ========= =========================                                                        
 
 
@@ -427,6 +477,24 @@ FB15K
                                                          check_interval: 100
                                                          };
 
+   ConvKB     215      0.65    0.55     0.71      0.82   k: 350;
+                                                         epochs: 4000;
+                                                         eta: 10;
+                                                         loss: multiclass_nll;
+                                                         loss_params: {}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         seed: 0;
+                                                         batches_count: 300;
+                                                         early_stopping:{
+                                                         x_valid: validation[::10],
+                                                         criteria: mrr,
+                                                         x_filter: train + validation + test,
+                                                         stop_interval: 2,
+                                                         burn_in: 0,
+                                                         check_interval: 100
+                                                         };
 ========== ======== ====== ======== ======== ========== ========================
 
 WN18

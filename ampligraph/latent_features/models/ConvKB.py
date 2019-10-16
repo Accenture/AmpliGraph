@@ -10,6 +10,7 @@ import tensorflow as tf
 import logging
 
 from .EmbeddingModel import EmbeddingModel, register_model
+from ..initializers import DEFAULT_XAVIER_IS_UNIFORM
 from ampligraph.latent_features import constants as constants
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ class ConvKB(EmbeddingModel):
 
     .. math::
 
-        concat(g([e_s, e_p, e_o]) * \Omega)) \cdot W
+        \concat(g([\mathbf{e}_s, \mathbf{r}_p, \mathbf{e}_o]) * \Omega)) \cdot W
 
 
     Examples
@@ -50,21 +51,20 @@ class ConvKB(EmbeddingModel):
                  epochs=constants.DEFAULT_EPOCH,
                  batches_count=constants.DEFAULT_BATCH_COUNT,
                  seed=constants.DEFAULT_SEED,
-                 embedding_model_params={'num_filters': 16,
+                 embedding_model_params={'num_filters': 32,
                                          'filter_sizes': [1],
                                          'dropout': 0.1},
-                 optimizer=constants.constants.DEFAULT_OPTIM,
+                 optimizer=constants.DEFAULT_OPTIM,
                  optimizer_params={'lr': constants.DEFAULT_LR},
                  loss=constants.DEFAULT_LOSS,
                  loss_params={},
                  regularizer=constants.DEFAULT_REGULARIZER,
                  regularizer_params={},
                  initializer=constants.DEFAULT_INITIALIZER,
-                 initializer_params={'uniform': constants.DEFAULT_XAVIER_IS_UNIFORM},
+                 initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
+                 large_graphs=False,
                  verbose=constants.DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
-
-        Also creates a new Tensorflow session for training.
 
         Parameters
         ----------
@@ -144,10 +144,12 @@ class ConvKB(EmbeddingModel):
 
             Example: ``initializer_params={'mean': 0, 'std': 0.001}`` if ``initializer='normal'``.
 
+        large_graphs : bool
+            Avoid loading entire dataset onto GPU when dealing with large graphs.
+
         verbose : bool
             Verbose mode.
         """
-
 
         num_filters = embedding_model_params['num_filters']
         filter_sizes = embedding_model_params['filter_sizes']
@@ -166,7 +168,7 @@ class ConvKB(EmbeddingModel):
                          loss=loss, loss_params=loss_params,
                          regularizer=regularizer, regularizer_params=regularizer_params,
                          initializer=initializer, initializer_params=initializer_params,
-                         verbose=verbose)
+                         large_graphs=large_graphs, verbose=verbose)
 
     def _initialize_parameters(self):
         """Initialize parameters of the model.
@@ -192,7 +194,8 @@ class ConvKB(EmbeddingModel):
         else:
 
             self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
-                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
+                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)#
+
             self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size * 2, self.internal_k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
 
@@ -216,7 +219,7 @@ class ConvKB(EmbeddingModel):
         self.dense_W = tf.get_variable('dense_weights', shape=[dense_dim, num_outputs], trainable=True,
                                        initializer=tf.keras.initializers.he_normal(seed=self.seed),
                                        dtype=tf.float32)
-        self.dense_B = tf.get_variable('dense_bias', shape=[num_outputs], trainable=True,
+        self.dense_B = tf.get_variable('dense_bias', shape=[num_outputs], trainable=False,
                                        initializer=tf.zeros_initializer(), dtype=tf.float32)
 
     def _save_trained_params(self):
@@ -255,7 +258,7 @@ class ConvKB(EmbeddingModel):
         # Generate the batch size based on entity length and batch_count
         self.batch_size = int(np.ceil(len(self.ent_to_idx) / self.batches_count))
 
-        if len(self.ent_to_idx) > ENTITY_THRESHOLD:
+        if len(self.ent_to_idx) > constants.ENTITY_THRESHOLD:
             self.dealing_with_large_graphs = True
 
             logger.warning('Your graph has a large number of distinct entities. '
@@ -289,10 +292,10 @@ class ConvKB(EmbeddingModel):
     def _fn(self, e_s, e_p, e_o):
         """The ConvKB scoring function.
 
-            The function implements the scoring function as defined by
+            The function implements the scoring function as defined by:
             .. math::
 
-                concat(f([e_s;r_r;e_o] * \Omega)) W )
+                \concat(g([\mathbf{e}_s, \mathbf{r}_p, \mathbf{e}_o]) * \Omega)) \cdot W
 
             Additional details for equivalence of the models available in :cite:`Nguyen2018`.
 
