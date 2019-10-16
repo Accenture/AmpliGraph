@@ -55,6 +55,7 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
         The cutoff position in ranking to consider a candidate triple as true positive.
     strategy: string
         The candidates generation strategy:
+
         - 'random_uniform' : generates N candidates (N <= max_candidates) based on a uniform sampling of entities.
         - 'entity_frequency' : generates candidates by weighted sampling of entities using entity frequency.
         - 'graph_degree' : generates candidates by weighted sampling of entities with graph degree.
