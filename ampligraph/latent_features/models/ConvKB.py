@@ -9,10 +9,8 @@ import numpy as np
 import tensorflow as tf
 import logging
 
-from .models import EmbeddingModel, register_model
-from .models import DEFAULT_EMBEDDING_SIZE, DEFAULT_ETA, DEFAULT_BATCH_COUNT, DEFAULT_SEED, DEFAULT_EPOCH, \
-    DEFAULT_OPTIM, DEFAULT_LR, DEFAULT_LOSS, DEFAULT_REGULARIZER, DEFAULT_INITIALIZER, DEFAULT_VERBOSE, \
-    DEFAULT_XAVIER_IS_UNIFORM, ENTITY_THRESHOLD
+from .EmbeddingModel import EmbeddingModel, register_model
+from ampligraph.latent_features import constants as constants
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -47,23 +45,23 @@ class ConvKB(EmbeddingModel):
     """
 
     def __init__(self,
-                 k=DEFAULT_EMBEDDING_SIZE,
-                 eta=DEFAULT_ETA,
-                 epochs=DEFAULT_EPOCH,
-                 batches_count=DEFAULT_BATCH_COUNT,
-                 seed=DEFAULT_SEED,
+                 k=constants.DEFAULT_EMBEDDING_SIZE,
+                 eta=constants.DEFAULT_ETA,
+                 epochs=constants.DEFAULT_EPOCH,
+                 batches_count=constants.DEFAULT_BATCH_COUNT,
+                 seed=constants.DEFAULT_SEED,
                  embedding_model_params={'num_filters': 16,
                                          'filter_sizes': [1],
                                          'dropout': 0.1},
-                 optimizer=DEFAULT_OPTIM,
-                 optimizer_params={'lr': DEFAULT_LR},
-                 loss=DEFAULT_LOSS,
+                 optimizer=constants.constants.DEFAULT_OPTIM,
+                 optimizer_params={'lr': constants.DEFAULT_LR},
+                 loss=constants.DEFAULT_LOSS,
                  loss_params={},
-                 regularizer=DEFAULT_REGULARIZER,
+                 regularizer=constants.DEFAULT_REGULARIZER,
                  regularizer_params={},
-                 initializer=DEFAULT_INITIALIZER,
-                 initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
-                 verbose=DEFAULT_VERBOSE):
+                 initializer=constants.DEFAULT_INITIALIZER,
+                 initializer_params={'uniform': constants.DEFAULT_XAVIER_IS_UNIFORM},
+                 verbose=constants.DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
         Also creates a new Tensorflow session for training.

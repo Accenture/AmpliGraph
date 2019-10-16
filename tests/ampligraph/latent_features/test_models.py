@@ -11,8 +11,13 @@ import pytest
 from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline, ConvKB
 from ampligraph.latent_features import set_entity_threshold, reset_entity_threshold
 from ampligraph.datasets import load_wn18
+<<<<<<< HEAD
 from ampligraph.evaluation import evaluate_performance, hits_at_n_score
 from ampligraph.utils import save_model, restore_model
+=======
+from ampligraph.evaluation import evaluate_performance, hits_at_n_score, mrr_score
+from ampligraph.evaluation.protocol import to_idx
+>>>>>>> ce27b0434c0d235c0bebc76404d78c027420e274
 
 
 def test_large_graph_mode():
@@ -84,7 +89,31 @@ def test_evaluate_RandomBaseline():
                                  verbose=False)
     hits10 = hits_at_n_score(ranks, n=10)
     hits1 = hits_at_n_score(ranks, n=1)
+    assert ranks.shape == (len(X['test']), )
     assert hits10 < 0.01 and hits1 == 0.0
+
+    ranks = evaluate_performance(X["test"],
+                                 model=model,
+                                 use_default_protocol=True,
+                                 corrupt_side='s+o',
+                                 verbose=False)
+    hits10 = hits_at_n_score(ranks, n=10)
+    hits1 = hits_at_n_score(ranks, n=1)
+    assert ranks.shape == (len(X['test']), 2)
+    assert hits10 < 0.01 and hits1 == 0.0
+
+    ranks_filtered = evaluate_performance(X["test"],
+                                          filter_triples=np.concatenate((X['train'], X['valid'], X['test'])),
+                                          model=model,
+                                          use_default_protocol=True,
+                                          corrupt_side='s+o',
+                                          verbose=False)
+    hits10 = hits_at_n_score(ranks_filtered, n=10)
+    hits1 = hits_at_n_score(ranks_filtered, n=1)
+    assert ranks_filtered.shape == (len(X['test']), 2)
+    assert hits10 < 0.01 and hits1 == 0.0
+    assert np.all(ranks_filtered <= ranks)
+    assert np.any(ranks_filtered != ranks)
 
 
 def test_fit_predict_transE():
@@ -316,6 +345,109 @@ def test_convkb_save_restore():
 
     assert np.all(y1==y2)
 
-if __name__ == '__main__':
 
-    test_convkb_save_restore()
+def test_predict():
+    model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'z', 'a'],
+                  ['a', 'z', 'd']])
+    model.fit(X)
+
+    preds1 = model.predict(X)
+    preds2 = model.predict(to_idx(X, model.ent_to_idx, model.rel_to_idx), from_idx=True)
+
+    np.testing.assert_array_equal(preds1, preds2)
+
+
+def test_predict_twice():
+    model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'z', 'a'],
+                  ['a', 'z', 'd']])
+    model.fit(X)
+
+    X_test1 = np.array([['a', 'y', 'b'],
+                        ['b', 'y', 'a']])
+
+    X_test2 = np.array([['a', 'y', 'c'],
+                        ['c', 'z', 'a']])
+
+    preds1 = model.predict(X_test1)
+    preds2 = model.predict(X_test2)
+
+    assert not np.array_equal(preds1, preds2)
+
+
+def test_calibrate_with_corruptions():
+    model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'z', 'a'],
+                  ['a', 'z', 'd']])
+    model.fit(X)
+
+    X_pos = np.array([['a', 'y', 'b'],
+                      ['b', 'y', 'a'],
+                      ['a', 'y', 'c'],
+                      ['c', 'z', 'a'],
+                      ['d', 'z', 'd']])
+
+    with pytest.raises(RuntimeError):
+        model.predict_proba(X_pos)
+
+    with pytest.raises(ValueError):
+        model.calibrate(X_pos, batches_count=2, epochs=10)
+
+    model.calibrate(X_pos, positive_base_rate=0.5, batches_count=2, epochs=10)
+
+    probas = model.predict_proba(X_pos)
+
+    assert np.logical_and(probas > 0, probas < 1).all()
+
+
+def test_calibrate_with_negatives():
+    model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
+
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'z', 'a'],
+                  ['a', 'z', 'd']])
+    model.fit(X)
+
+    X_pos = np.array([['a', 'y', 'b'],
+                      ['b', 'y', 'a'],
+                      ['a', 'y', 'c'],
+                      ['c', 'z', 'a'],
+                      ['d', 'z', 'd']])
+
+    X_neg = np.array([['a', 'y', 'd'],
+                      ['d', 'y', 'a'],
+                      ['c', 'y', 'a'],
+                      ['a', 'z', 'd']])
+
+    with pytest.raises(RuntimeError):
+        model.predict_proba(X_pos)
+
+    with pytest.raises(ValueError):
+        model.calibrate(X_pos, X_neg, positive_base_rate=50, batches_count=2, epochs=10)
+
+    model.calibrate(X_pos, X_neg, batches_count=2, epochs=10)
+
+    probas = model.predict_proba(np.concatenate((X_pos, X_neg)))
+
+    assert np.logical_and(probas > 0, probas < 1).all()
+

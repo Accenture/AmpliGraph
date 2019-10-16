@@ -21,6 +21,8 @@ EmbeddingModel
       ~EmbeddingModel.fit
       ~EmbeddingModel.get_embeddings
       ~EmbeddingModel.predict
+      ~EmbeddingModel.calibrate
+      ~EmbeddingModel.predict_proba
       ~EmbeddingModel._fn
       ~EmbeddingModel._initialize_parameters
       ~EmbeddingModel._get_model_loss
@@ -39,6 +41,8 @@ EmbeddingModel
    .. automethod:: EmbeddingModel.fit
    .. automethod:: EmbeddingModel.get_embeddings
    .. automethod:: EmbeddingModel.predict
+   .. automethod:: EmbeddingModel.calibrate
+   .. automethod:: EmbeddingModel.predict_proba
    .. automethod:: EmbeddingModel._fn
    .. automethod:: EmbeddingModel._initialize_parameters
    .. automethod:: EmbeddingModel._get_model_loss
