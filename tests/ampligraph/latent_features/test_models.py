@@ -21,42 +21,42 @@ def test_large_graph_mode():
     set_entity_threshold(10)
     X = load_wn18()
     model = ComplEx(batches_count=100, seed=555, epochs=1, k=50, loss='multiclass_nll', loss_params={'margin': 5},
-                   verbose=True, optimizer='sgd', optimizer_params={'lr': 0.001})
+                    verbose=True, optimizer='sgd', optimizer_params={'lr': 0.001})
     model.fit(X['train'])
     X_filter = np.concatenate((X['train'], X['valid'], X['test']), axis=0)
-    ranks_all = evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s+o',
-                                 use_default_protocol=True)
-    
+    evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s+o',
+                         use_default_protocol=True)
+
     y = model.predict(X['test'][:1])
     print(y)
     reset_entity_threshold()
-    
-    
+
+
 def test_large_graph_mode_adam():
     set_entity_threshold(10)
     X = load_wn18()
     model = ComplEx(batches_count=100, seed=555, epochs=1, k=50, loss='multiclass_nll', loss_params={'margin': 5},
-                   verbose=True, optimizer='adam', optimizer_params={'lr': 0.001})
+                    verbose=True, optimizer='adam', optimizer_params={'lr': 0.001})
     try:
         model.fit(X['train'])
     except Exception as e:
         print(str(e))
-        
+
     reset_entity_threshold()
-    
-    
+
+
 def test_fit_predict_TransE_early_stopping_with_filter():
     X = load_wn18()
     model = TransE(batches_count=1, seed=555, epochs=7, k=50, loss='pairwise', loss_params={'margin': 5},
                    verbose=True, optimizer='adagrad', optimizer_params={'lr': 0.1})
     X_filter = np.concatenate((X['train'], X['valid'], X['test']))
-    model.fit(X['train'], True, {'x_valid': X['valid'][::100], 
+    model.fit(X['train'], True, {'x_valid': X['valid'][::100],
                                  'criteria': 'mrr',
                                  'x_filter': X_filter,
-                                 'stop_interval': 2, 
+                                 'stop_interval': 2,
                                  'burn_in': 1,
                                  'check_interval': 2})
-    
+
     y = model.predict(X['test'][:1])
     print(y)
 
@@ -65,12 +65,12 @@ def test_fit_predict_TransE_early_stopping_without_filter():
     X = load_wn18()
     model = TransE(batches_count=1, seed=555, epochs=7, k=50, loss='pairwise', loss_params={'margin': 5},
                    verbose=True, optimizer='adagrad', optimizer_params={'lr': 0.1})
-    model.fit(X['train'], True, {'x_valid': X['valid'][::100], 
+    model.fit(X['train'], True, {'x_valid': X['valid'][::100],
                                  'criteria': 'mrr',
-                                 'stop_interval': 2, 
+                                 'stop_interval': 2,
                                  'burn_in': 1,
                                  'check_interval': 2})
-    
+
     y = model.predict(X['test'][:1])
     print(y)
 
@@ -79,8 +79,8 @@ def test_evaluate_RandomBaseline():
     model = RandomBaseline(seed=0)
     X = load_wn18()
     model.fit(X["train"])
-    ranks = evaluate_performance(X["test"], 
-                                 model=model, 
+    ranks = evaluate_performance(X["test"],
+                                 model=model,
                                  use_default_protocol=False,
                                  corrupt_side='s+o',
                                  verbose=False)
@@ -114,7 +114,7 @@ def test_evaluate_RandomBaseline():
 
 
 def test_fit_predict_transE():
-    model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5}, 
+    model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5},
                    optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -131,7 +131,7 @@ def test_fit_predict_transE():
 
 
 def test_fit_predict_DistMult():
-    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5}, 
+    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5},
                      optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -150,7 +150,7 @@ def test_fit_predict_DistMult():
 def test_fit_predict_CompleEx():
     model = ComplEx(batches_count=1, seed=555, epochs=20, k=10,
                     loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                    regularizer_params={'lambda': 0.1, 'p': 2}, 
+                    regularizer_params={'lambda': 0.1, 'p': 2},
                     optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -169,7 +169,7 @@ def test_fit_predict_CompleEx():
 def test_fit_predict_HolE():
     model = HolE(batches_count=1, seed=555, epochs=20, k=10,
                  loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                 regularizer_params={'lambda': 0.1, 'p': 2}, 
+                 regularizer_params={'lambda': 0.1, 'p': 2},
                  optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -188,7 +188,7 @@ def test_fit_predict_HolE():
 def test_retrain():
     model = ComplEx(batches_count=1, seed=555, epochs=20, k=10,
                     loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                    regularizer_params={'lambda': 0.1, 'p': 2}, 
+                    regularizer_params={'lambda': 0.1, 'p': 2},
                     optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -241,7 +241,7 @@ def test_fit_predict_wn18_ComplEx():
     X = load_wn18()
     model = ComplEx(batches_count=1, seed=555, epochs=5, k=100,
                     loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                    regularizer_params={'lambda': 0.1, 'p': 2}, 
+                    regularizer_params={'lambda': 0.1, 'p': 2},
                     optimizer='adagrad', optimizer_params={'lr': 0.1})
     model.fit(X['train'])
     y = model.predict(X['test'][:1])
@@ -249,7 +249,7 @@ def test_fit_predict_wn18_ComplEx():
 
 
 def test_lookup_embeddings():
-    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5}, 
+    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5},
                      optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -340,9 +340,10 @@ def test_convkb_save_restore():
 
     y2 = model.predict(X['test'][:10])
 
-    assert np.all(y1==y2)
+    assert np.all(y1 == y2)
 
     os.remove('convkb.tmp')
+
 
 def test_predict():
     model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
@@ -448,4 +449,3 @@ def test_calibrate_with_negatives():
     probas = model.predict_proba(np.concatenate((X_pos, X_neg)))
 
     assert np.logical_and(probas > 0, probas < 1).all()
-
