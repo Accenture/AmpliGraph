@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-@register_model("ConvKB", {'num_filters': 16, 'filter_sizes': [1], 'dropout': 0.1})
+@register_model("ConvKB", {'num_filters': 32, 'filter_sizes': [1], 'dropout': 0.1})
 class ConvKB(EmbeddingModel):
     r""" Convolutional 2D Knowledge Graph Embedding model.
 
@@ -33,7 +33,7 @@ class ConvKB(EmbeddingModel):
     >>> from ampligraph.latent_features import ConvKB
     >>> from ampligraph.datasets import load_wn18
     >>> model = ConvKB(batches_count=2, seed=22, epochs=1, k=10, eta=1,
-    >>>               embedding_model_params={'num_filters': 16, 'filter_sizes': [1], 'dropout': 0.1},
+    >>>               embedding_model_params={'num_filters': 32, 'filter_sizes': [1], 'dropout': 0.1},
     >>>               optimizer='adam', optimizer_params={'lr': 0.001},
     >>>               loss='pairwise', loss_params={}, verbose=True)
     >>>

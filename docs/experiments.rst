@@ -107,31 +107,20 @@ FB15K-237
                                                          check_interval: 100
                                                          };
 
-   ConvKB     300     0.234       0.15     0.25       0.40  k: 200;
-                                                         epochs: 400;
+   ConvKB     327     0.234       0.15     0.25       0.40  k: 200;
+                                                         epochs: 500;
                                                          eta: 10;
                                                          loss: multiclass_nll;
-                                                         regularizer: LP;
-                                                         regularizer_params:
-                                                         lambda: 0.0001;
-                                                         p: 3;
+                                                         loss_params: {}
                                                          optimizer: adam;
                                                          optimizer_params:
                                                          lr: 0.0001;
-                                                         seed: 22;
-                                                         batches_count: 300;
                                                          embedding_model_params:{
                                                          num_filters: 32,
                                                          filter_sizes: 1,
                                                          dropout: 0.1};
-                                                         early_stopping:{
-                                                         x_valid: validation,
-                                                         criteria: mrr,
-                                                         x_filter: train + validation + test,
-                                                         stop_interval: 3,
-                                                         burn_in: 150,
-                                                         check_interval: 10
-                                                         };
+                                                         seed: 0;
+                                                         batches_count: 300;
 
 ========== ======== ====== ======== ======== ========== ========================
 
@@ -240,29 +229,22 @@ WN18RR
                                                           check_interval: 100
                                                           };
 
-   ConvKB     3708      0.43    0.39     0.44      0.48   k: 200;
-                                                          epochs: 400;
-                                                          eta: 10;
-                                                          loss: self_adversarial;
-                                                          loss_params:
-                                                          margin: 1;
-                                                          optimizer: adam;
-                                                          optimizer_params:
-                                                          lr: 0.001;
-                                                          seed: 0;
-                                                          batches_count: 300;
-                                                          embedding_model_params:{
-                                                          num_filters: 32,
-                                                          filter_sizes: 1,
-                                                          dropout: 0.1};
-                                                          early_stopping:{
-                                                          x_valid: validation,
-                                                          criteria: mrr,
-                                                          x_filter: train + validation + test,
-                                                          stop_interval: 3,
-                                                          burn_in: 150,
-                                                          check_interval: 10
-                                                          };
+
+   ConvKB     3652      0.39    0.33     0.42      0.48   k: 200;
+                                                         epochs: 500;
+                                                         eta: 10;
+                                                         loss: multiclass_nll;
+                                                         loss_params: {}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         num_filters: 32,
+                                                         filter_sizes: 1,
+                                                         dropout: 0.1};
+                                                         seed: 0;
+                                                         batches_count: 300;
+
 ========== ========= ====== ======== ======== ========== =======================
 
 .. note:: WN18RR validation and test sets include triples with entities that do not occur
@@ -270,6 +252,8 @@ WN18RR
     In the experiments we excluded the triples where such entities appear (210 triples in from the validation
     set and 210 from the test set).
 
+.. note:: ConvKB with early-stopping evaluation protocol does not fit into GPU memory, so instead is just
+    trained for a set number of epochs.
 
 YAGO3-10
 --------
@@ -368,7 +352,21 @@ HolE     6365     0.50   0.42     0.55     0.65       k: 350;
                                                       check_interval: 100
                                                       };
 
-ConvKB     -     -   -     -     -       -
+
+ConvKB     ?      ?    ?     ?      ?   k: 200;
+                                                     epochs: 500;
+                                                     eta: 10;
+                                                     loss: multiclass_nll;
+                                                     loss_params: {}
+                                                     optimizer: adam;
+                                                     optimizer_params:
+                                                     lr: 0.0001;
+                                                     embedding_model_params:{
+                                                     num_filters: 32,
+                                                     filter_sizes: 1,
+                                                     dropout: 0.1};
+                                                     seed: 0;
+                                                     batches_count: 300;
 ======== ======== ====== ======== ======== ========= =========================                                                        
 
 
@@ -477,25 +475,24 @@ FB15K
                                                          check_interval: 100
                                                          };
 
-   ConvKB     215      0.65    0.55     0.71      0.82   k: 350;
-                                                         epochs: 4000;
+
+
+   ConvKB     331      0.80    0.69     0.90      0.94   k: 200;
+                                                         epochs: 500;
                                                          eta: 10;
                                                          loss: multiclass_nll;
                                                          loss_params: {}
                                                          optimizer: adam;
                                                          optimizer_params:
                                                          lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         num_filters: 32,
+                                                         filter_sizes: 1,
+                                                         dropout: 0.1};
                                                          seed: 0;
                                                          batches_count: 300;
-                                                         early_stopping:{
-                                                         x_valid: validation[::10],
-                                                         criteria: mrr,
-                                                         x_filter: train + validation + test,
-                                                         stop_interval: 2,
-                                                         burn_in: 0,
-                                                         check_interval: 100
-                                                         };
-========== ======== ====== ======== ======== ========== ========================
+
+========== ======== ====== ======== ======== ========== ========================w
 
 WN18
 ----
@@ -593,7 +590,22 @@ TransE     262      0.65    0.41     0.88      0.95     k: 150;
                                                          burn_in: 0,
                                                          check_interval: 100
                                                          };
-                                                         
+
+   ConvKB     331      0.80    0.69     0.90      0.94   k: 200;
+                                                         epochs: 500;
+                                                         eta: 10;
+                                                         loss: multiclass_nll;
+                                                         loss_params: {}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         num_filters: 32,
+                                                         filter_sizes: 1,
+                                                         dropout: 0.1};
+                                                         seed: 0;
+                                                         batches_count: 300;
+
 ========== ======== ====== ======== ======== ========== ========================
 
 To reproduce the above results: ::
@@ -602,7 +614,7 @@ To reproduce the above results: ::
     $ python predictive_performance.py
 
 
-.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~53 hours on
+.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~71 hours on
     an Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box equipped with a Tesla V100 16GB.
 
 
@@ -631,4 +643,8 @@ ComplEx     3.40
 TransE      2.39
 DistMult    2.40
 HolE        3.30
+ConvKB      180.47*
 ======== ==============
+
+.. note:: *ConvKB cannot fit into GPU memory with k=350, so the above figure was obtained with k=200.
+    Also note that with eta=10 this drops to 16.35s/epoch.
