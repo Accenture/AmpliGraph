@@ -625,12 +625,12 @@ Experiments can be limited to specific models-dataset combinations as follows: :
 
     $ python predictive_performance.py -h
     usage: predictive_performance.py [-h] [-d {fb15k,fb15k-237,wn18,wn18rr,yago310}]
-                                     [-m {complex,transe,distmult,hole}]
+                                     [-m {complex,transe,distmult,hole,convkb}]
 
     optional arguments:
       -h, --help            show this help message and exit
       -d {fb15k,fb15k-237,wn18,wn18rr,yago310}, --dataset {fb15k,fb15k-237,wn18,wn18rr,yago310}
-      -m {complex,transe,distmult,hole}, --model {complex,transe,distmult,hole}
+      -m {complex,transe,distmult,hole,convkb}, --model {complex,transe,distmult,hole,convkb}
 
 Runtime Performance
 -------------------
