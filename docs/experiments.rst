@@ -615,6 +615,10 @@ To reproduce the above results: ::
 .. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~71 hours on
     an Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box equipped with a Tesla V100 16GB.
 
+.. note:: Due to a combination of model and dataset size it is not possible to evaluate Yago3-10 with ConvKB on the
+    GPU. The fastest way to replicate the results above is to train ConvKB with Yago3-10 on a GPU using the hyper-
+    parameters described above (~15hrs on GTX 1080Ti), and then evaluate the model in CPU only mode (~15 hours on
+    Intel(R) Xeon(R) CPU E5-2620 v4 @ 2.10GHz).
 
 
 Experiments can be limited to specific models-dataset combinations as follows: ::

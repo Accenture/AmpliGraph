@@ -120,7 +120,7 @@ pip install -e .
 
 ## Predictive Power Evaluation (MRR Filtered)
 
-AmpliGraph includes implementations of TransE, DistMult, ComplEx and HolE. 
+AmpliGraph includes implementations of TransE, DistMult, ComplEx, HolE and ConvKB.
 Their predictive power is reported below and compared against the state-of-the-art results in literature.
 [More details available here](https://docs.ampligraph.org/en/latest/experiments.html).
 
@@ -131,6 +131,7 @@ Their predictive power is reported below and compared against the state-of-the-a
 | DistMult (AmpliGraph)        |  0.31    | 0.45    | 0.49      | 0.78       | 0.82          |
 | ComplEx  (AmpliGraph)       |  0.32    | **0.50**| **0.50**  | 0.80       | 0.94          |
 | HolE (AmpliGraph)           |  0.31    | 0.47    | **0.50**  | 0.80       | 0.93          |
+| ConvKB (AmpliGraph)           |  0.23    | 0.39    | 0.30  | 0.65       | 0.80          |
 
 
 <sub>

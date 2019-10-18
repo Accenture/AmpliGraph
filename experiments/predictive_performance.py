@@ -26,7 +26,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 SUPPORT_DATASETS = ["fb15k", "fb15k-237", "wn18", "wn18rr", "yago310"]
-SUPPOORT_MODELS = ["complex", "transe", "distmult", "hole"]
+SUPPORT_MODELS = ["complex", "transe", "distmult", "hole", "convkb"]
 
 
 def display_scores(scores):
@@ -191,7 +191,7 @@ def main():
                         choices=SUPPORT_DATASETS)
     parser.add_argument("-m", "--model",
                         type=str.lower,
-                        choices=SUPPOORT_MODELS)
+                        choices=SUPPORT_MODELS)
 
     args = parser.parse_args()
     logging.debug("Input dataset...{0}...input model...{1}..." \
