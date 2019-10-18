@@ -107,7 +107,7 @@ FB15K-237
                                                          check_interval: 100
                                                          };
 
-   ConvKB     327     0.234       0.15     0.25       0.40  k: 200;
+   ConvKB     327     0.23       0.15     0.25       0.40  k: 200;
                                                          epochs: 500;
                                                          eta: 10;
                                                          loss: multiclass_nll;
@@ -124,14 +124,14 @@ FB15K-237
 
 ========== ======== ====== ======== ======== ========== ========================
 
-.. note:: FB15K-237 validation and test sets include triples with entities that do not occur 
+.. note:: FB15K-237 validation and test sets include triples with entities that do not occur
     in the training set. We found 8 unseen entities in the validation set and 29 in the test set.
     In the experiments we excluded the triples where such entities appear (9 triples in from the validation
     set and 28 from the test set).
 
 
 
-WN18RR 
+WN18RR
 ------
 
 ========== ========= ====== ======== ======== ========== =======================
@@ -208,7 +208,7 @@ WN18RR
                                                           burn_in: 0,
                                                           check_interval: 100
                                                           };
-                                                          
+
    HolE     7236      0.47    0.43     0.48      0.53     k: 200;
                                                           epochs: 4000;
                                                           eta: 20;
@@ -271,7 +271,7 @@ TransE   1124      0.49   0.39     0.56     0.67      k: 350;
                                                       regularizer: LP;
                                                       regularizer_params:
                                                       lambda: 0.0001;
-                                                      p: 2;                                                      
+                                                      p: 2;
                                                       embedding_model_params:
                                                       norm: 1;
                                                       normalize_ent_emb: false;
@@ -285,7 +285,7 @@ TransE   1124      0.49   0.39     0.56     0.67      k: 350;
                                                       burn_in: 0,
                                                       check_interval: 100
                                                       };
-                                                      
+
 DistMult 1063     0.49   0.40     0.55     0.56       k: 350;
                                                       epochs: 4000;
                                                       eta: 50;
@@ -353,7 +353,7 @@ HolE     6365     0.50   0.42     0.55     0.65       k: 350;
                                                       };
 
 
-ConvKB     ?      ?    ?     ?      ?   k: 200;
+ConvKB     2820      0.30    0.21     0.34      0.50   k: 200;
                                                      epochs: 500;
                                                      eta: 10;
                                                      loss: multiclass_nll;
@@ -366,8 +366,8 @@ ConvKB     ?      ?    ?     ?      ?   k: 200;
                                                      filter_sizes: 1,
                                                      dropout: 0.1};
                                                      seed: 0;
-                                                     batches_count: 300;
-======== ======== ====== ======== ======== ========= =========================                                                        
+                                                     batches_count: 3000;
+======== ======== ====== ======== ======== ========= =========================
 
 
 
@@ -475,9 +475,7 @@ FB15K
                                                          check_interval: 100
                                                          };
 
-
-
-   ConvKB     331      0.80    0.69     0.90      0.94   k: 200;
+   ConvKB     331      0.65    0.55     0.71      0.82   k: 200;
                                                          epochs: 500;
                                                          eta: 10;
                                                          loss: multiclass_nll;
