@@ -82,6 +82,7 @@ class EmbeddingModel(abc.ABC):
                  regularizer_params={},
                  initializer=constants.DEFAULT_INITIALIZER,
                  initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
+                 large_graphs=False,
                  verbose=constants.DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
@@ -167,6 +168,9 @@ class EmbeddingModel(abc.ABC):
 
             Example: ``initializer_params={'mean': 0, 'std': 0.001}`` if ``initializer='normal'``.
 
+        large_graphs : bool
+            Avoid loading entire dataset onto GPU when dealing with large graphs.
+
         verbose : bool
             Verbose mode.
         """
@@ -206,7 +210,7 @@ class EmbeddingModel(abc.ABC):
         self.regularizer_params = regularizer_params
         self.batches_count = batches_count
 
-        self.dealing_with_large_graphs = False
+        self.dealing_with_large_graphs = large_graphs
 
         if batches_count == 1:
             logger.warning(
@@ -855,7 +859,6 @@ class EmbeddingModel(abc.ABC):
 
             if len(self.ent_to_idx) > ENTITY_THRESHOLD:
                 self.dealing_with_large_graphs = True
-                prefetch_batches = 0
 
                 logger.warning('Your graph has a large number of distinct entities. '
                                'Found {} distinct entities'.format(len(self.ent_to_idx)))
@@ -870,6 +873,8 @@ class EmbeddingModel(abc.ABC):
                     raise Exception("This mode works well only with SGD optimizer with decay (read docs for details).\
  Kindly change the optimizer and restart the experiment")
 
+            if self.dealing_with_large_graphs:
+                prefetch_batches = 0
                 # CPU matrix of embeddings
                 self.ent_emb_cpu = self.initializer.get_np_initializer(len(self.ent_to_idx), self.internal_k)
 
@@ -920,6 +925,10 @@ class EmbeddingModel(abc.ABC):
 
             self.sess_train.run(tf.tables_initializer())
             self.sess_train.run(tf.global_variables_initializer())
+            try:
+                self.sess_train.run(self.set_training_true)
+            except AttributeError:
+                pass
 
             normalize_rel_emb_op = self.rel_emb.assign(tf.clip_by_norm(self.rel_emb, clip_norm=1, axes=1))
 
@@ -961,9 +970,20 @@ class EmbeddingModel(abc.ABC):
                     epoch_iterator_with_progress.set_description(msg)
 
                 if early_stopping:
+
+                    try:
+                        self.sess_train.run(self.set_training_false)
+                    except AttributeError:
+                        pass
+
                     if self._perform_early_stopping_test(epoch):
                         self._end_training()
                         return
+
+                    try:
+                        self.sess_train.run(self.set_training_true)
+                    except AttributeError:
+                        pass
 
             self._save_trained_params()
             self._end_training()
@@ -1351,6 +1371,11 @@ class EmbeddingModel(abc.ABC):
             sess.run(tf.tables_initializer())
             sess.run(tf.global_variables_initializer())
 
+            try:
+                sess.run(self.set_training_false)
+            except AttributeError:
+                pass
+
             ranks = []
 
             for _ in tqdm(range(self.eval_dataset_handle.get_size('test')), disable=(not self.verbose)):
@@ -1424,6 +1449,11 @@ class EmbeddingModel(abc.ABC):
             with tf.Session(config=self.tf_config) as sess:
                 sess.run(tf.tables_initializer())
                 sess.run(tf.global_variables_initializer())
+
+                try:
+                    sess.run(self.set_training_false)
+                except AttributeError:
+                    pass
 
                 scores = []
 

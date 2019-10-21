@@ -74,16 +74,31 @@ FB15K-237
                                                          seed: 0;
                                                          batches_count: 64;
 
+  ConvKB     327     0.23       0.15     0.25      0.40  k: 200;
+                                                         epochs: 500;
+                                                         eta: 10;
+                                                         loss: multiclass_nll;
+                                                         loss_params: {}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         num_filters: 32,
+                                                         filter_sizes: 1,
+                                                         dropout: 0.1};
+                                                         seed: 0;
+                                                         batches_count: 300;
+
 ========== ======== ====== ======== ======== ========== ========================
 
-.. note:: FB15K-237 validation and test sets include triples with entities that do not occur 
+.. note:: FB15K-237 validation and test sets include triples with entities that do not occur
     in the training set. We found 8 unseen entities in the validation set and 29 in the test set.
     In the experiments we excluded the triples where such entities appear (9 triples in from the validation
     set and 28 from the test set).
 
 
 
-WN18RR 
+WN18RR
 ------
 
 ========== ========= ====== ======== ======== ========== =======================
@@ -136,8 +151,8 @@ WN18RR
                                                           lambda: 0.05;
                                                           p: 3;
                                                           batches_count: 10;
-                                                          
-   HolE     7028      0.47    0.44     0.48      0.53     k: 200;
+
+  HolE     7028      0.47    0.44     0.48       0.53     k: 200;
                                                           epochs: 4000;
                                                           eta: 20;
                                                           loss: self_adversarial;
@@ -149,13 +164,27 @@ WN18RR
                                                           seed: 0;
                                                           batches_count: 50;
 
+  ConvKB     3652      0.39    0.33     0.42      0.48   k: 200;
+                                                         epochs: 500;
+                                                         eta: 10;
+                                                         loss: multiclass_nll;
+                                                         loss_params: {}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         num_filters: 32,
+                                                         filter_sizes: 1,
+                                                         dropout: 0.1};
+                                                         seed: 0;
+                                                         batches_count: 300;
+
 ========== ========= ====== ======== ======== ========== =======================
 
 .. note:: WN18RR validation and test sets include triples with entities that do not occur
     in the training set. We found 198 unseen entities in the validation set and 209 in the test set.
     In the experiments we excluded the triples where such entities appear (210 triples in from the validation
     set and 210 from the test set).
-
 
 YAGO3-10
 --------
@@ -173,13 +202,13 @@ TransE   1264      0.51   0.41     0.57     0.67      k: 350;
                                                       regularizer: LP;
                                                       regularizer_params:
                                                       lambda: 0.0001;
-                                                      p: 2;                                                      
+                                                      p: 2;
                                                       embedding_model_params:
                                                       norm: 1;
                                                       normalize_ent_emb: false;
                                                       seed: 0;
                                                       batches_count: 100;
-                                                      
+
 DistMult 1107     0.50   0.41     0.55     0.66       k: 350;
                                                       epochs: 4000;
                                                       eta: 50;
@@ -221,7 +250,22 @@ HolE     6776     0.50   0.42     0.56     0.65       k: 350;
                                                       lr: 0.0001;
                                                       seed: 0;
                                                       batches_count: 100
-======== ======== ====== ======== ======== ========= =========================                                                        
+
+ConvKB     2820      0.30    0.21     0.34      0.50 k: 200;
+                                                     epochs: 500;
+                                                     eta: 10;
+                                                     loss: multiclass_nll;
+                                                     loss_params: {}
+                                                     optimizer: adam;
+                                                     optimizer_params:
+                                                     lr: 0.0001;
+                                                     embedding_model_params:{
+                                                     num_filters: 32,
+                                                     filter_sizes: 1,
+                                                     dropout: 0.1};
+                                                     seed: 0;
+                                                     batches_count: 3000;
+======== ======== ====== ======== ======== ========= =========================
 
 
 
@@ -297,7 +341,22 @@ FB15K
                                                          seed: 0;
                                                          batches_count: 50;
 
-========== ======== ====== ======== ======== ========== ========================
+   ConvKB     331      0.65    0.55     0.71      0.82   k: 200;
+                                                         epochs: 500;
+                                                         eta: 10;
+                                                         loss: multiclass_nll;
+                                                         loss_params: {}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         num_filters: 32,
+                                                         filter_sizes: 1,
+                                                         dropout: 0.1};
+                                                         seed: 0;
+                                                         batches_count: 300;
+
+========== ======== ====== ======== ======== ========== ========================w
 
 WN18
 ----
@@ -326,7 +385,7 @@ TransE     260      0.66    0.44     0.88      0.95     k: 150;
                                                         normalize_ent_emb: false;
                                                         seed: 0;
                                                         batches_count: 100;
-                                                        
+
  DistMult   675      0.82    0.73     0.92      0.95     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
@@ -351,8 +410,8 @@ TransE     260      0.66    0.44     0.88      0.95     k: 150;
                                                          lr: 0.0005;
                                                          seed: 0;
                                                          batches_count: 50;
-                                                         
-   HolE     665      0.94    0.93     0.94      0.95     k: 200;
+
+  HolE     665      0.94    0.93     0.94       0.95     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: self_adversarial;
@@ -363,30 +422,50 @@ TransE     260      0.66    0.44     0.88      0.95     k: 150;
                                                          lr: 0.0005;
                                                          seed: 0;
                                                          batches_count: 50;
-                                                         
+
+  ConvKB     331      0.80    0.69     0.90       0.94   k: 200;
+                                                         epochs: 500;
+                                                         eta: 10;
+                                                         loss: multiclass_nll;
+                                                         loss_params: {}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         num_filters: 32,
+                                                         filter_sizes: 1,
+                                                         dropout: 0.1};
+                                                         seed: 0;
+                                                         batches_count: 300;
+
 ========== ======== ====== ======== ======== ========== ========================
 
 To reproduce the above results: ::
-    
+
     $ cd experiments
     $ python predictive_performance.py
 
 
-.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~79 hours on
+.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~97 hours on
     an Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box equipped with a Tesla V100 16GB.
     The long running time is mostly due to the early stopping configuration (see section below).
+
+.. note:: Due to a combination of model and dataset size it is not possible to evaluate Yago3-10 with ConvKB on the
+    GPU. The fastest way to replicate the results above is to train ConvKB with Yago3-10 on a GPU using the hyper-
+    parameters described above (~15hrs on GTX 1080Ti), and then evaluate the model in CPU only mode (~15 hours on
+    Intel(R) Xeon(R) CPU E5-2620 v4 @ 2.10GHz).
 
 
 Experiments can be limited to specific models-dataset combinations as follows: ::
 
     $ python predictive_performance.py -h
     usage: predictive_performance.py [-h] [-d {fb15k,fb15k-237,wn18,wn18rr,yago310}]
-                                     [-m {complex,transe,distmult,hole}]
+                                     [-m {complex,transe,distmult,hole,convkb}]
 
     optional arguments:
       -h, --help            show this help message and exit
       -d {fb15k,fb15k-237,wn18,wn18rr,yago310}, --dataset {fb15k,fb15k-237,wn18,wn18rr,yago310}
-      -m {complex,transe,distmult,hole}, --model {complex,transe,distmult,hole}
+      -m {complex,transe,distmult,hole,convkb}, --model {complex,transe,distmult,hole,convkb}
 
 Early Stopping
 --------------
@@ -407,6 +486,9 @@ The exact early stopping configuration is as follows:
 Note that early stopping adds a significant computational burden to the learning procedure.
 To lessen it, you may either decrease the validation set, the stop interval, the check interval, or increase the burn in.
 
+.. note:: ConvKB with early-stopping evaluation protocol does not fit into GPU memory, so instead is just
+    trained for a set number of epochs.
+
 Runtime Performance
 -------------------
 
@@ -420,4 +502,8 @@ ComplEx     3.40
 TransE      2.39
 DistMult    2.40
 HolE        3.30
+ConvKB      180.47*
 ======== ==============
+
+.. note:: *ConvKB cannot fit into GPU memory with k=350, so the above figure was obtained with k=200.
+    Also note that with eta=10 this drops to 16.35s/epoch.

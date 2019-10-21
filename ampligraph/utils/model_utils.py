@@ -136,7 +136,7 @@ def restore_model(model_name_path=None):
             restored_obj = pickle.load(fr)
 
         logger.debug('Restoring model ...')
-        module = importlib.import_module("ampligraph.latent_features.models")
+        module = importlib.import_module("ampligraph.latent_features")
         class_ = getattr(module, restored_obj['class_name'])
         model = class_(**restored_obj['hyperparams'])
         model.is_fitted = restored_obj['is_fitted']
