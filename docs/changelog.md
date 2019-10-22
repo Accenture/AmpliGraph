@@ -5,7 +5,7 @@
 
 - Probability calibration using Platt scaling, both with provided negatives or synthetic negative statements (#131)
 - Added ConvKB model
-- Added WordNet11 dataset (dataset with positive and negative triples) (#138)
+- Added WN11, FB13 loaders (datasets with ground truth positive and negative triples) (#138)
 - Continuous integration with CircleCI, integrated on GitHub (#127)
 - Refactoring of models into separate files (#104)
 - Fixed bug where the number of epochs did not exactly match the provided number by the user (#135)
