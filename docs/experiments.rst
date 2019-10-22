@@ -635,18 +635,15 @@ Experiments can be limited to specific models-dataset combinations as follows: :
 Runtime Performance
 -------------------
 
-Training the models on FB15K-237 (``k=350, eta=30, batches_count=100, loss=multiclass_nll``), on an Intel Xeon Gold 6142, 64 GB
+Training the models on FB15K-237 (``k=100, eta=10, batches_count=100, loss=multiclass_nll``), on an Intel Xeon Gold 6142, 64 GB
 Ubuntu 16.04 box equipped with a Tesla V100 16GB gives the following runtime report:
 
 ======== ==============
 model     seconds/epoch
 ======== ==============
-ComplEx     3.40
-TransE      2.39
-DistMult    2.40
-HolE        3.30
-ConvKB      180.47*
+ComplEx     1.34
+TransE      1.20
+DistMult    1.19
+HolE        1.30
+ConvKB      3.01
 ======== ==============
-
-.. note:: *ConvKB cannot fit into GPU memory with k=350, so the above figure was obtained with k=200.
-    Also note that with eta=10 this drops to 16.35s/epoch.
