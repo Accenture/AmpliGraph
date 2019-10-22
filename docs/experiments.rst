@@ -452,11 +452,32 @@ To reproduce the above results: ::
     an Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box equipped with a Tesla V100 16GB.
     The long running time is mostly due to the early stopping configuration (see section below).
 
+
+.. note:: All of the experiments above were conducted with early stopping on half the validation set.
+    Typically, the validation set can be found in ``X['valid']``.
+    We only used half the validation set so the other half is available for hyperparameter tuning.
+
+    The exact early stopping configuration is as follows:
+
+      * x_valid: validation[::2]
+      * criteria: mrr
+      * x_filter: train + validation + test
+      * stop_interval: 4
+      * burn_in: 0
+      * check_interval: 50
+
+    Note that early stopping adds a significant computational burden to the learning procedure.
+    To lessen it, you may either decrease the validation set, the stop interval, the check interval,
+    or increase the burn in.
+
+
 .. note:: Due to a combination of model and dataset size it is not possible to evaluate Yago3-10 with ConvKB on the
     GPU. The fastest way to replicate the results above is to train ConvKB with Yago3-10 on a GPU using the hyper-
     parameters described above (~15hrs on GTX 1080Ti), and then evaluate the model in CPU only mode (~15 hours on
     Intel(R) Xeon(R) CPU E5-2620 v4 @ 2.10GHz).
 
+.. note:: ConvKB with early-stopping evaluation protocol does not fit into GPU memory, so instead is just
+    trained for a set number of epochs.
 
 Experiments can be limited to specific models-dataset combinations as follows: ::
 
@@ -469,33 +490,12 @@ Experiments can be limited to specific models-dataset combinations as follows: :
       -d {fb15k,fb15k-237,wn18,wn18rr,yago310}, --dataset {fb15k,fb15k-237,wn18,wn18rr,yago310}
       -m {complex,transe,distmult,hole,convkb}, --model {complex,transe,distmult,hole,convkb}
 
-Early Stopping
---------------
-All of the experiments above were conducted with early stopping on half the validation set.
-Typically, the validation set can be found in ``X['valid']``.
-We only used half the validation set so the other half is available for hyperparameter tuning.
-
-The exact early stopping configuration is as follows:
-
-  * x_valid: validation[::2]
-  * criteria: mrr
-  * x_filter: train + validation + test
-  * stop_interval: 4
-  * burn_in: 0
-  * check_interval: 50
-
-
-Note that early stopping adds a significant computational burden to the learning procedure.
-To lessen it, you may either decrease the validation set, the stop interval, the check interval, or increase the burn in.
-
-.. note:: ConvKB with early-stopping evaluation protocol does not fit into GPU memory, so instead is just
-    trained for a set number of epochs.
 
 Runtime Performance
 -------------------
 
-Training the models on FB15K-237 (``k=350, eta=30, batches_count=100, loss=multiclass_nll``), on an Intel Xeon Gold 6142, 64 GB
-Ubuntu 16.04 box equipped with a Tesla V100 16GB gives the following runtime report:
+Training the models on FB15K-237 (``k=350, eta=30, batches_count=100, loss=multiclass_nll``), on an
+Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box equipped with a Tesla V100 16GB gives the following runtime report:
 
 ======== ==============
 model     seconds/epoch

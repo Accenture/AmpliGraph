@@ -52,7 +52,7 @@ pip install ampligraph
 
 
 If instead you want the most recent development version, you can clone the repository
-and install from source as: See the [How to Contribute guide](dev.md) for details.
+and install from source as below (also see the [How to Contribute guide](dev.md) for details):
 
 ```
 git clone https://github.com/Accenture/AmpliGraph.git
