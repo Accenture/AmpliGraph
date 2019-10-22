@@ -19,8 +19,8 @@ NumpyAdapter and then the data is consumed as described below.
 
 AmpliGraph calls ``generate_mappings()`` of the adapter object to generate the dictionary of entity/relation to
 index mappings. It then calls ``map_data`` to map the data from entity to idx if not already done.
-To get batches of train data, AmpliGraph uses the ``get_next_train_batch`` generator.
-It uses the ``get_size method`` to determine the size of the dataset.
+To get batches of train data, AmpliGraph uses the ``get_next_batch`` generator.
+It uses the ``get_size`` method to determine the size of the dataset.
 
 
 Evaluation Procedure
@@ -28,18 +28,16 @@ Evaluation Procedure
 
 While evaluating the performance of the models, AmpliGraph supports either an object of ``AmpligraphDatasetAdapter``
 class or a numpy array as input. Just like the fit function, we first adapt the data with the ``NumpyAdapter`` before
-consuming. AmpliGraph accepts filter_triples as numpy array for backward compatibility (if the test triples are also
+consuming. AmpliGraph accepts numpy array as ``filter_triples`` for backward compatibility (if the test triples are also
 passed as numpy arrays); if not, it expects the Adapter to know how to filter (this is indicated by passing ``True``
 to ``filter_triples`` instead of a numpy array).
 The evaluate_performance method then passes the handle of this ``data_adapter`` to the ``get_ranks()`` method.
 The evaluation procedure is as described below.
 
 The ``get_ranks()`` method generates ranks for all the test triples. In order to generate the test triples it uses the
-``get_next_batch_with_filter`` or ``get_next_eval_batch`` generator of the data_adapter,
-depending on whether the filters are set or not. With ``get_next_eval_batch method``, AmpliGraph expects a batch of test
-triples; whereas with ``get_next_batch_with_filter`` method, it expects the test triple along with the indices of
-all the subject and object entities that were involved in the ?-p-o and s-p-? relations.
-It uses the get_size method to determine the size of the dataset.
+``get_next_batch()`` generator of the data_adapter with appropriate dataset type and use_filters flag,
+depending on whether the filters are set or not. With ``get_next_batch()`` and ``use_filters=False``, AmpliGraph expects a batch of test triples; whereas with ``get_next_batch`` method and ``use_filters=True``, it expects the test triple along with the indices of all the subject and object entities that were involved in the ?-p-o and s-p-? relations.
+It uses the ``get_size`` method to determine the size of the dataset.
 
 Once the batch of test triples are generated (along with the filter indices - for filtering mode), the test triples
 and the corresponding corruptions are scored and ranked.
@@ -80,8 +78,8 @@ In the large graph mode, the training/evaluation would be slower than usual as t
 from GPU every batch; however, it is still much faster than doing computations on CPU (using tensorflow cpu version and
 normal AmpliGraph mode).
 
-We have tested this approach with the fb15k dataset by explicitly setting large graph mode to just 100 entities and using
- a batch count of 100. With batch count of 100, the batch size is approximately 4500. In other words we would load
+We have tested this approach with the fb15k dataset by explicitly setting large graph mode to just 100 entities and
+using a batch count of 100. With batch count of 100, the batch size is approximately 4500. In other words we would load
 approximately 4500 entity embeddings in GPU memory per batch (out of a total 14951 entities). The training slows down
 by a small margin (it takes 1.5 times more per epoch than the usual mode due to the loading/unloading overhead).
 However the evaluation performance is worse, since for each test triple, we generate all the possible corruptions and

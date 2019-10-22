@@ -10,6 +10,7 @@ from collections.abc import Iterable
 from itertools import product, islice
 import logging
 
+import pandas as pd
 import numpy as np
 from tqdm import tqdm
 import tensorflow as tf
@@ -271,7 +272,7 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
         This also brings the benefit of creating more meaningful negatives, as entities used to corrupt are
         sourced locally.
         The function can be configured to generate corruptions *only* using the entities from the current batch.
-        You can enable such behaviour be setting ``entities_size==-1``. In such case, if ``entities_list=None``
+        You can enable such behaviour be setting ``entities_size=0``. In such case, if ``entities_list=None``
         all entities from the *current batch* will be used to generate corruptions.
 
     Parameters
@@ -280,7 +281,11 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
         An array of positive triples that will be used to create corruptions.
     entities_list : list
         List of entities to be used for generating corruptions. (default:None).
-        if ``entities_list=None``, all entities will be used to generate corruptions (default behaviour).
+
+        If ``entities_list=None`` and ``entities_size`` is the number of all entities,
+        all entities will be used to generate corruptions (default behaviour).
+
+        If ``entities_list=None`` and ``entities_size=0``, the batch entities will be used to generate corruptions.
     eta : int
         The number of corruptions per triple that must be generated.
     corrupt_side: string
@@ -297,7 +302,7 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
         This also brings the benefit of creating more meaningful negatives, as entities used to corrupt are
         sourced locally.
         The function can be configured to generate corruptions *only* using the entities from the current batch.
-        You can enable such behaviour be setting ``entities_size==-1``. In such case, if ``entities_list=None``
+        You can enable such behaviour be setting ``entities_size=0``. In such case, if ``entities_list=None``
         all entities from the *current batch* will be used to generate corruptions.
     rnd: numpy.random.RandomState
         A random number generator.
@@ -364,16 +369,21 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
 
 
 def _convert_to_idx(X, ent_to_idx, rel_to_idx, obj_to_idx):
-    x_idx_s = np.vectorize(ent_to_idx.get)(X[:, 0])
-    x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
-    x_idx_o = np.vectorize(obj_to_idx.get)(X[:, 2])
+    unseen_msg = 'Input triples include one or more entities not present in the training set. ' \
+                 'Please filter X using evaluation.filter_unseen_entities(), or retrain the model on a training set ' \
+                 'that includes all the desired distinct entities.'
+
+    try:
+        x_idx_s = np.vectorize(ent_to_idx.get)(X[:, 0])
+        x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
+        x_idx_o = np.vectorize(obj_to_idx.get)(X[:, 2])
+    except TypeError:
+        logger.error(unseen_msg)
+        raise ValueError(unseen_msg)
 
     if None in x_idx_s or None in x_idx_o:
-        msg = 'Input triples include one or more entities not present in the training set. ' \
-              'Please filter X using evaluation.filter_unseen_entities(), or retrain the model on a training set ' \
-              'that includes all the desired distinct entities.'
-        logger.error(msg)
-        raise ValueError(msg)
+        logger.error(unseen_msg)
+        raise ValueError(unseen_msg)
 
     if None in x_idx_p:
         msg = 'Input triples include one or more relation type not present in the training set. ' \
@@ -431,24 +441,8 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     (i.e. either the subject or the object).
 
     .. note::
-        When *filtered* mode is enabled (i.e. `filtered_triples` is not ``None``),
-        to speed up the procedure, we use a database based filtering. This strategy is as described below:
-
-        * Store the filter_triples in the DB
-
-        * For each test triple, we generate corruptions for evaluation and score them.
-
-        * The corruptions may contain some False Negatives. We find such statements by quering the database.
-
-        * From the computed scores we retrieve the scores of the False Negatives.
-
-        * We compute the rank of the test triple by comparing against ALL the corruptions.
-
-        * We then compute the number of False negatives that are ranked higher than the test triple; and then
-          subtract this value from the above computed rank to yield the final filtered rank.
-
-        **Execution Time:** This method takes ~4 minutes on FB15K using ComplEx
-        (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
+        The evaluation protocol assigns the worst rank
+        to a positive test triple in case of a tie with negatives. This is the agreed upon behaviour in literature.
 
     .. hint::
         When ``entities_subset=None``, the method will use all distinct entities in the knowledge graph ``X``
@@ -472,6 +466,21 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         A knowledge graph embedding model
     filter_triples : ndarray of shape [n, 3] or None
         The triples used to filter negatives.
+
+        .. note::
+            When *filtered* mode is enabled (i.e. `filtered_triples` is not ``None``),
+            to speed up the procedure, we use a database based filtering. This strategy is as described below:
+
+            * Store the filter_triples in the DB
+            * For each test triple, we generate corruptions for evaluation and score them.
+            * The corruptions may contain some False Negatives. We find such statements by quering the database.
+            * From the computed scores we retrieve the scores of the False Negatives.
+            * We compute the rank of the test triple by comparing against ALL the corruptions.
+            * We then compute the number of False negatives that are ranked higher than the test triple; and then
+              subtract this value from the above computed rank to yield the final filtered rank.
+            **Execution Time:** This method takes ~4 minutes on FB15K using ComplEx
+            (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
+
     verbose : bool
         Verbose mode
     strict : bool
@@ -538,19 +547,22 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     try:
         logger.debug('Evaluating the performance of the embedding model.')
         if isinstance(X, np.ndarray):
-
             X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
 
             dataset_handle = NumpyDatasetAdapter()
             dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
             dataset_handle.set_data(X_test, "test")
-
         elif isinstance(X, AmpligraphDatasetAdapter):
             dataset_handle = X
+        else:
+            msg = "X must be either a numpy array or an AmpligraphDatasetAdapter."
+            logger.error(msg)
+            raise ValueError(msg)
 
         if filter_triples is not None:
             if isinstance(filter_triples, np.ndarray):
                 logger.debug('Getting filtered triples.')
+                filter_triples = filter_unseen_entities(filter_triples, model, verbose=verbose, strict=strict)
                 dataset_handle.set_filter(filter_triples)
                 model.set_filter_for_eval()
             elif isinstance(X, AmpligraphDatasetAdapter):
@@ -616,27 +628,20 @@ def filter_unseen_entities(X, model, verbose=False, strict=True):
 
     logger.debug('Finding entities in test set that are not previously seen by model')
     ent_seen = np.unique(list(model.ent_to_idx.keys()))
-    ent_test = np.unique(X[:, [0, 2]].ravel())
-    ent_unseen = np.setdiff1d(ent_test, ent_seen, assume_unique=True)
+    df = pd.DataFrame(X, columns=['s', 'p', 'o'])
+    filtered_df = df[df.s.isin(ent_seen) & df.o.isin(ent_seen)]
+    n_removed_ents = df.shape[0] - filtered_df.shape[0]
 
-    if ent_unseen.size == 0:
-        logger.debug('No unseen entities found.')
-        return X
+    if strict and n_removed_ents > 0:
+        msg = 'Unseen entities found in test set, please remove or run evaluate_performance() with strict=False.'
+        logger.error(msg)
+        raise RuntimeError(msg)
     else:
-        logger.debug('Unseen entities found.')
-        if strict:
-            msg = 'Unseen entities found in test set, please remove or run evaluate_performance() with strict=False.'
-            logger.error(msg)
-            raise RuntimeError(msg)
-        else:
-            # Get row-wise mask of triples containing unseen entities
-            mask_unseen = np.isin(X, ent_unseen).any(axis=1)
-
-            msg = 'Removing {} triples containing unseen entities. '.format(np.sum(mask_unseen))
-            if verbose:
-                logger.debug(msg)
-            logger.debug(msg)
-            return X[~mask_unseen]
+        msg = 'Removing {} triples containing unseen entities. '.format(n_removed_ents)
+        if verbose:
+            logger.info(msg)
+        logger.debug(msg)
+        return filtered_df.values
 
 
 def _remove_unused_params(params):
@@ -1057,7 +1062,8 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     >>>                     "verbose": False
     >>>                 }
     >>> select_best_model_ranking(model_class, X['train'], X['valid'], X['test'], param_grid,
-    >>>                           max_combinations=100, use_filter=True, verbose=True, early_stopping=True)
+    >>>                           max_combinations=100, use_filter=True, verbose=True,
+    >>>                           early_stopping=True)
 
     """
     logger.debug('Starting gridsearch over hyperparameters. {}'.format(param_grid))

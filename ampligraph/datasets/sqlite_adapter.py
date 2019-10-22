@@ -160,98 +160,51 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
         cur1.close()
         return out[0][0]
     
-    def get_next_train_batch(self, batch_size, dataset_type="train"):
+    def get_next_batch(self, batches_count=-1, dataset_type="train", use_filter=False):
         """Generator that returns the next batch of data.
         
         Parameters
         ----------
-        batch_size : int
-            data size that needs to be returned
         dataset_type: string
             indicates which dataset to use
+        batches_count: int
+            number of batches per epoch (default: -1, i.e. uses batch_size of 1)
+        use_filter : bool
+            Flag to indicate whether to return the concepts that need to be filtered
+
         Returns
         -------
         batch_output : nd-array
-            yields a batch of triples from the dataset type specified
-        """
-        if (not self.using_existing_db) and (not self.mapped_status[dataset_type]):
-            self.map_data()
-        
-        # create batches directly from database
-        batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
-        select_query = "SELECT subject, predicate,object FROM triples_table INDEXED BY \
-                            triples_table_type_idx where dataset_type ='{}' LIMIT {}, {}"
-        for i in range(batches_count):
-            conn = sqlite3.connect("{}".format(self.dbname))         
-            cur1 = conn.cursor()
-            cur1.execute(select_query.format(dataset_type, i * batch_size, batch_size))
-            out = np.array(cur1.fetchall(), dtype=np.int32)
-            cur1.close()
-            yield out
-            
-    def get_next_eval_batch(self, batch_size, dataset_type="test"):
-        """Generator that returns the next batch of data.
-        
-        Parameters
-        ----------
-        batch_size : int
-            data size that needs to be returned
-        dataset_type: string
-            indicates which dataset to use
-        Returns
-        -------
-        batch_output : nd-array
-            yields a batch of triples from the dataset type specified
-        """
-        if (not self.using_existing_db) and (not self.mapped_status[dataset_type]):
-            self.map_data()
-        
-        # create batches directly from database
-        batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
-        select_query = "SELECT subject, predicate,object FROM triples_table INDEXED BY \
-                            triples_table_type_idx where dataset_type ='{}' LIMIT {}, {}"
-        for i in range(batches_count):
-            conn = sqlite3.connect("{}".format(self.dbname))         
-            cur1 = conn.cursor()
-            cur1.execute(select_query.format(dataset_type, i * batch_size, batch_size))
-            out = np.array(cur1.fetchall(), dtype=np.int32)
-            cur1.close()
-            yield out
-    
-    def get_next_batch_with_filter(self, batch_size=1, dataset_type="test"):
-        """Generator that returns the next batch of data along with the filter.
-        
-        Parameters
-        ----------
-        batch_size : int
-            data size that needs to be returned
-        dataset_type: string
-            indicates which dataset to use
-        Returns
-        -------
-        batch_output : nd-array [n,3]
             yields a batch of triples from the dataset type specified
         participating_objects : nd-array [n,1]
-            all objects that were involved in the s-p-? relation
+            all objects that were involved in the s-p-? relation. This is returned only if use_filter is set to true.
         participating_subjects : nd-array [n,1]
-            all subjects that were involved in the ?-p-o relation
+            all subjects that were involved in the ?-p-o relation. This is returned only if use_filter is set to true.
         """
         if (not self.using_existing_db) and (not self.mapped_status[dataset_type]):
             self.map_data()
             
-        batches_count = int(np.ceil(self.get_size(dataset_type) / batch_size))
+        if batches_count == -1:
+            batch_size = 1
+            batches_count = self.get_size(dataset_type)
+        else:
+            batch_size = int(np.ceil(self.get_size(dataset_type) / batches_count))
+
         select_query = "SELECT subject, predicate,object FROM triples_table INDEXED BY \
-                            triples_table_type_idx where dataset_type = '{}' LIMIT {}, {}"
+                            triples_table_type_idx where dataset_type ='{}' LIMIT {}, {}"
+        
         for i in range(batches_count):
-            # generate the batch
             conn = sqlite3.connect("{}".format(self.dbname))         
             cur1 = conn.cursor()
             cur1.execute(select_query.format(dataset_type, i * batch_size, batch_size))
             out = np.array(cur1.fetchall(), dtype=np.int32)
             cur1.close()
-            # get the filter values
-            participating_objects, participating_subjects = self.get_participating_entities(out)
-            yield out, participating_objects, participating_subjects
+            if use_filter:
+                # get the filter values
+                participating_objects, participating_subjects = self.get_participating_entities(out)
+                yield out, participating_objects, participating_subjects
+            else:
+                yield out
             
     def _insert_triples(self, triples, key=""):
         """inserts triples in the database for the specified category

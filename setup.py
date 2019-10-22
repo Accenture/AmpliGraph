@@ -26,7 +26,7 @@ setup_params = dict(name='ampligraph',
                         'joblib>=0.11',
                         'tqdm>=4.23.4',
                         'pandas>=0.23.1',
-                        'sphinx>=1.7.4',
+                        'sphinx>=2.2',
                         'recommonmark>=0.4.0',
                         'sphinx_rtd_theme>=0.4.0',
                         'sphinxcontrib-bibtex>=0.4.0',
@@ -35,7 +35,8 @@ setup_params = dict(name='ampligraph',
                         'rdflib>=4.2.2',
                         'scipy>=1.3.0',
                         'networkx>=2.3',
-                        'flake8>=3.7.7'
+                        'flake8>=3.7.7',
+                        'setuptools>=36'
                     ])
 if __name__ == '__main__':
     setup(**setup_params)

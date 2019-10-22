@@ -72,6 +72,7 @@ def save_model(model, model_name_path=None):
         'is_fitted': model.is_fitted,
         'ent_to_idx': model.ent_to_idx,
         'rel_to_idx': model.rel_to_idx,
+        'is_calibrated': model.is_calibrated
     }
 
     model.get_embedding_model_params(obj)
@@ -135,18 +136,24 @@ def restore_model(model_name_path=None):
             restored_obj = pickle.load(fr)
 
         logger.debug('Restoring model ...')
-        module = importlib.import_module("ampligraph.latent_features.models")
+        module = importlib.import_module("ampligraph.latent_features")
         class_ = getattr(module, restored_obj['class_name'])
         model = class_(**restored_obj['hyperparams'])
         model.is_fitted = restored_obj['is_fitted']
         model.ent_to_idx = restored_obj['ent_to_idx']
         model.rel_to_idx = restored_obj['rel_to_idx']
+        
+        try:
+            model.is_calibrated = restored_obj['is_calibrated']
+        except KeyError:
+            model.is_calibrated = False
+            
         model.restore_model_params(restored_obj)
-    except (IOError, pickle.UnpicklingError) as e:
+    except pickle.UnpicklingError as e:
         msg = 'Error unpickling model {} : {}.'.format(model_name_path, e)
         logger.debug(msg)
         raise Exception(msg)
-    except FileNotFoundError:
+    except (IOError, FileNotFoundError):
         msg = 'No model found: {}.'.format(model_name_path)
         logger.debug(msg)
         raise FileNotFoundError(msg)
@@ -305,3 +312,35 @@ def write_metadata_tsv(loc, data):
 
     elif isinstance(data, pd.DataFrame):
         data.to_csv(metadata_path, sep='\t', index=False)
+
+
+def dataframe_to_triples(X, schema):
+    """Convert DataFrame into triple format.
+
+    Parameters
+    ----------
+    X: pandas DataFrame with headers
+    schema: List of (subject, relation_name, object) tuples 
+            where subject and object are in the headers of the data frame
+    
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> from ampligraph.utils.model_utils import dataframe_to_triples
+    >>>
+    >>> X = pd.read_csv('https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv')
+    >>>
+    >>> schema = [['species', 'has_sepal_length', 'sepal_length']]
+    >>>
+    >>> dataframe_to_triples(X, schema)[0]
+    array(['setosa', 'has_sepal_length', '5.1'], dtype='<U16')
+    """
+    triples = []
+    request_headers = set(np.delete(np.array(schema), 1, 1).flatten())
+    diff = request_headers.difference(set(X.columns))
+    if len(diff) > 0:
+        raise Exception("Subject/Object {} are not in data frame headers".format(diff))
+    for s, p, o in schema:
+        triples.extend([[si, p, oi] for si, oi in zip(X[s], X[o])])
+    return np.array(triples)
