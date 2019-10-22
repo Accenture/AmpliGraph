@@ -1,9 +1,10 @@
 # Changelog
 
 ## 1.2.0 
-**16 Oct 2019**
+**22 Oct 2019**
 
 - Probability calibration using Platt scaling, both with provided negatives or synthetic negative statements (#131)
+- Added ConvKB model
 - Added WordNet11 dataset (dataset with positive and negative triples) (#138)
 - Continuous integration with CircleCI, integrated on GitHub (#127)
 - Refactoring of models into separate files (#104)

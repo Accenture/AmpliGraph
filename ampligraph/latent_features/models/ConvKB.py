@@ -19,21 +19,34 @@ logger.setLevel(logging.DEBUG)
 
 @register_model("ConvKB", {'num_filters': 32, 'filter_sizes': [1], 'dropout': 0.1})
 class ConvKB(EmbeddingModel):
-    r""" Convolutional 2D Knowledge Graph Embedding model.
+    r"""Convolution-based model
 
     The ConvKB model :cite:`Nguyen2018`:
 
     .. math::
 
-        \concat(g([\mathbf{e}_s, \mathbf{r}_p, \mathbf{e}_o]) * \Omega)) \cdot W
+        f_{ConvKB}=concat(g([\mathbf{e}_s, \mathbf{r}_p, \mathbf{e}_o]) * \Omega)) \cdot W
 
+    where :math:`g` is a non-linear function,  :math:`*` is the convolution operator,
+    :math:`\cdot` is the dot product, :math:`concat` is the concatenation operator
+    and :math:`\Omega` is a set of filters.
+
+    .. note::
+        The evaluation protocol implemented in :meth:`ampligraph.evaluation.evaluate_performance` assigns the worst rank
+        to a positive test triple in case of a tie with negatives. This is the agreed upon behaviour in literature.
+        The original ConvKB implementation :cite:`Nguyen2018` assigns instead the top rank, hence leading to
+        `results which are not directly comparable with
+        literature <https://github.com/daiquocnguyen/ConvKB/issues/5>`_ .
+        We report results obtained with the agreed-upon protocol (tie=worst rank). Note that under these conditions
+        the model :ref:`does not reach the state-of-the-art results claimed in the original paper<eval_experiments>`.
 
     Examples
     --------
     >>> from ampligraph.latent_features import ConvKB
     >>> from ampligraph.datasets import load_wn18
     >>> model = ConvKB(batches_count=2, seed=22, epochs=1, k=10, eta=1,
-    >>>               embedding_model_params={'num_filters': 32, 'filter_sizes': [1], 'dropout': 0.1},
+    >>>               embedding_model_params={'num_filters': 32, 'filter_sizes': [1],
+    >>>                                       'dropout': 0.1},
     >>>               optimizer='adam', optimizer_params={'lr': 0.001},
     >>>               loss='pairwise', loss_params={}, verbose=True)
     >>>

@@ -43,7 +43,7 @@ It then combines embeddings with model-specific scoring functions to predict uns
 AmpliGraph includes the following submodules:
 
 * **Datasets**: helper functions to load datasets (knowledge graphs).
-* **Models**: knowledge graph embedding models. AmpliGraph contains TransE, DistMult, ComplEx, HolE. (More to come!)
+* **Models**: knowledge graph embedding models. AmpliGraph contains **TransE**, **DistMult**, **ComplEx**, **HolE**, **ConvKB**. (More to come!)
 * **Evaluation**: metrics and evaluation protocols to assess the predictive power of the models.
 * **Discovery**: High-level convenience APIs for knowledge discovery (discover new facts, cluster entities, predict near duplicates).
 
