@@ -60,7 +60,7 @@ FB15K-237
                                                          p: 3;
                                                          batches_count: 64;
 
-  HolE      184     0.31       0.22     0.34       0.49  k: 350;
+  HolE      184     0.31       0.22     0.34     0.49    k: 350;
                                                          epochs: 4000;
                                                          eta: 50;
                                                          loss: multiclass_nll;
@@ -74,7 +74,7 @@ FB15K-237
                                                          seed: 0;
                                                          batches_count: 64;
 
-  ConvKB     327     0.23       0.15     0.25      0.40  k: 200;
+  ConvKB    327     0.23       0.15     0.25     0.40    k: 200;
                                                          epochs: 500;
                                                          eta: 10;
                                                          loss: multiclass_nll;
@@ -164,7 +164,7 @@ WN18RR
                                                           seed: 0;
                                                           batches_count: 50;
 
-  ConvKB     3652      0.39    0.33     0.42      0.48   k: 200;
+  ConvKB   3652      0.39    0.33     0.42       0.48    k: 200;
                                                          epochs: 500;
                                                          eta: 10;
                                                          loss: multiclass_nll;
@@ -251,7 +251,7 @@ HolE     6776     0.50   0.42     0.56     0.65       k: 350;
                                                       seed: 0;
                                                       batches_count: 100
 
-ConvKB     2820      0.30    0.21     0.34      0.50 k: 200;
+ConvKB   2820     0.30    0.21    0.34     0.50      k: 200;
                                                      epochs: 500;
                                                      eta: 10;
                                                      loss: multiclass_nll;
@@ -341,7 +341,7 @@ FB15K
                                                          seed: 0;
                                                          batches_count: 50;
 
-   ConvKB     331      0.65    0.55     0.71      0.82   k: 200;
+  ConvKB    331      0.65    0.55     0.71      0.82     k: 200;
                                                          epochs: 500;
                                                          eta: 10;
                                                          loss: multiclass_nll;
@@ -356,7 +356,7 @@ FB15K
                                                          seed: 0;
                                                          batches_count: 300;
 
-========== ======== ====== ======== ======== ========== ========================w
+========== ======== ====== ======== ======== ========== ========================
 
 WN18
 ----
