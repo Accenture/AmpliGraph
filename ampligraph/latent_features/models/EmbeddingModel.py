@@ -82,6 +82,7 @@ class EmbeddingModel(abc.ABC):
                  regularizer_params={},
                  initializer=constants.DEFAULT_INITIALIZER,
                  initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
+                 large_graphs=False,
                  verbose=constants.DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
@@ -167,6 +168,9 @@ class EmbeddingModel(abc.ABC):
 
             Example: ``initializer_params={'mean': 0, 'std': 0.001}`` if ``initializer='normal'``.
 
+        large_graphs : bool
+            Avoid loading entire dataset onto GPU when dealing with large graphs.
+
         verbose : bool
             Verbose mode.
         """
@@ -185,8 +189,9 @@ class EmbeddingModel(abc.ABC):
                 'loss_params': loss_params,
                 'regularizer': regularizer,
                 'regularizer_params': regularizer_params,
+                'initializer': initializer,
+                'initializer_params': initializer_params,
                 'verbose': verbose
-
             }
         tf.reset_default_graph()
         self.seed = seed
@@ -205,7 +210,7 @@ class EmbeddingModel(abc.ABC):
         self.regularizer_params = regularizer_params
         self.batches_count = batches_count
 
-        self.dealing_with_large_graphs = False
+        self.dealing_with_large_graphs = large_graphs
 
         if batches_count == 1:
             logger.warning(
@@ -237,19 +242,6 @@ class EmbeddingModel(abc.ABC):
                                                            verbose)
         except KeyError:
             msg = 'Unsupported optimizer: {}'.format(optimizer)
-            logger.error(msg)
-            raise ValueError(msg)
-
-        self.verbose = verbose
-
-        self.initializer_params = initializer_params
-
-        try:
-            self.initializer = INITIALIZER_REGISTRY[initializer](self.initializer_params,
-                                                                 verbose,
-                                                                 self.rnd)
-        except KeyError:
-            msg = 'Unsupported initializer: {}'.format(initializer)
             logger.error(msg)
             raise ValueError(msg)
 
@@ -302,6 +294,17 @@ class EmbeddingModel(abc.ABC):
         """
         logger.error('_fn is a placeholder function in an abstract class')
         NotImplementedError("This function is a placeholder in an abstract class")
+
+    def get_hyperparameter_dict(self):
+        """Returns hyperparameters of the model.
+
+        Returns
+        -------
+        hyperparam_dict : dict
+            Dictionary of hyperparameters that were used for training.
+
+        """
+        return self.all_params
 
     def get_embedding_model_params(self, output_dict):
         """Save the model parameters in the dictionary.
@@ -647,6 +650,8 @@ class EmbeddingModel(abc.ABC):
 
         self.early_stopping_best_value = None
         self.early_stopping_stop_counter = 0
+        self.early_stopping_epoch = None
+
         try:
             # If the filter has already been set in the dataset adapter then just pass x_filter = True
             x_filter = self.early_stopping_params['x_filter']
@@ -722,6 +727,9 @@ class EmbeddingModel(abc.ABC):
                             self.early_stopping_criteria,
                             self.early_stopping_best_value)
                         logger.info(msg)
+
+                    self.early_stopping_epoch = epoch
+
                     return True
             else:
                 self.early_stopping_best_value = current_test_value
@@ -771,7 +779,7 @@ class EmbeddingModel(abc.ABC):
         # generate empty embeddings for smaller graphs - as all the entity embeddings will be loaded on GPU
         entity_embeddings = np.empty(shape=(0, self.internal_k), dtype=np.float32)
         # create iterator to iterate over the train batches
-        batch_iterator = iter(self.train_dataset_handle.get_next_train_batch(self.batch_size, "train"))
+        batch_iterator = iter(self.train_dataset_handle.get_next_batch(self.batches_count, "train"))
         for i in range(self.batches_count):
             out = next(batch_iterator)
             # If large graph, load batch_size*2 entities on GPU memory
@@ -851,7 +859,6 @@ class EmbeddingModel(abc.ABC):
 
             if len(self.ent_to_idx) > ENTITY_THRESHOLD:
                 self.dealing_with_large_graphs = True
-                prefetch_batches = 0
 
                 logger.warning('Your graph has a large number of distinct entities. '
                                'Found {} distinct entities'.format(len(self.ent_to_idx)))
@@ -866,6 +873,8 @@ class EmbeddingModel(abc.ABC):
                     raise Exception("This mode works well only with SGD optimizer with decay (read docs for details).\
  Kindly change the optimizer and restart the experiment")
 
+            if self.dealing_with_large_graphs:
+                prefetch_batches = 0
                 # CPU matrix of embeddings
                 self.ent_emb_cpu = self.initializer.get_np_initializer(len(self.ent_to_idx), self.internal_k)
 
@@ -916,6 +925,10 @@ class EmbeddingModel(abc.ABC):
 
             self.sess_train.run(tf.tables_initializer())
             self.sess_train.run(tf.global_variables_initializer())
+            try:
+                self.sess_train.run(self.set_training_true)
+            except AttributeError:
+                pass
 
             normalize_rel_emb_op = self.rel_emb.assign(tf.clip_by_norm(self.rel_emb, clip_norm=1, axes=1))
 
@@ -957,9 +970,20 @@ class EmbeddingModel(abc.ABC):
                     epoch_iterator_with_progress.set_description(msg)
 
                 if early_stopping:
+
+                    try:
+                        self.sess_train.run(self.set_training_false)
+                    except AttributeError:
+                        pass
+
                     if self._perform_early_stopping_test(epoch):
                         self._end_training()
                         return
+
+                    try:
+                        self.sess_train.run(self.set_training_true)
+                    except AttributeError:
+                        pass
 
             self._save_trained_params()
             self._end_training()
@@ -1006,11 +1030,9 @@ class EmbeddingModel(abc.ABC):
            If we are dealing with large graphs, then along with the above, this method returns the idx of the
            entities present in the batch and their embeddings.
         """
-        if self.is_filtered:
-            test_generator = partial(self.eval_dataset_handle.get_next_batch_with_filter,
-                                     batch_size=1, dataset_type=mode)
-        else:
-            test_generator = partial(self.eval_dataset_handle.get_next_eval_batch, batch_size=1, dataset_type=mode)
+        test_generator = partial(self.eval_dataset_handle.get_next_batch,
+                                 dataset_type=mode,
+                                 use_filter=self.is_filtered)
 
         batch_iterator = iter(test_generator())
         indices_obj = np.empty(shape=(0, 1), dtype=np.int32)
@@ -1085,6 +1107,21 @@ class EmbeddingModel(abc.ABC):
 
         use_default_protocol = self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL)
         corrupt_side = self.eval_config.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL)
+
+        # Rather than generating corruptions in batches do it at once on the GPU for small or medium sized graphs
+        all_entities_np = np.arange(len(self.ent_to_idx))
+
+        corruption_entities = self.eval_config.get('corruption_entities', constants.DEFAULT_CORRUPTION_ENTITIES)
+
+        if corruption_entities == 'all':
+            corruption_entities = all_entities_np
+        elif isinstance(corruption_entities, np.ndarray):
+            corruption_entities = corruption_entities
+        else:
+            msg = 'Invalid type for corruption entities.'
+            logger.error(msg)
+            raise ValueError(msg)
+
         # Dependencies that need to be run before scoring
         test_dependency = []
         # For large graphs
@@ -1195,19 +1232,6 @@ class EmbeddingModel(abc.ABC):
                     self.scores_predict = subj_corruption_scores
 
         else:
-            # Rather than generating corruptions in batches do it at once on the GPU for small or medium sized graphs
-            all_entities_np = np.arange(len(self.ent_to_idx))
-
-            corruption_entities = self.eval_config.get('corruption_entities', constants.DEFAULT_CORRUPTION_ENTITIES)
-
-            if corruption_entities == 'all':
-                corruption_entities = all_entities_np
-            elif isinstance(corruption_entities, np.ndarray):
-                corruption_entities = corruption_entities
-            else:
-                msg = 'Invalid type for corruption entities.'
-                logger.error(msg)
-                raise ValueError(msg)
 
             # Entities that must be used while generating corruptions
             self.corruption_entities_tf = tf.constant(corruption_entities, dtype=tf.int32)
@@ -1347,6 +1371,11 @@ class EmbeddingModel(abc.ABC):
             sess.run(tf.tables_initializer())
             sess.run(tf.global_variables_initializer())
 
+            try:
+                sess.run(self.set_training_false)
+            except AttributeError:
+                pass
+
             ranks = []
 
             for _ in tqdm(range(self.eval_dataset_handle.get_size('test')), disable=(not self.verbose)):
@@ -1364,15 +1393,9 @@ class EmbeddingModel(abc.ABC):
         The function returns raw scores generated by the model.
 
         .. note::
-            To obtain probability estimates, use a logistic sigmoid: ::
+            To obtain probability estimates, calibrate the model with :func:`~EmbeddingModel.calibrate`,
+            then call :func:`~EmbeddingModel.predict_proba`.
 
-                >>> model.fit(X)
-                >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-                >>> print(y_pred)
-                [-0.13863425, -0.09917116]
-                >>> from scipy.special import expit
-                >>> expit(y_pred)
-                array([0.4653968 , 0.47522753], dtype=float32)
 
         Parameters
         ----------
@@ -1426,6 +1449,11 @@ class EmbeddingModel(abc.ABC):
             with tf.Session(config=self.tf_config) as sess:
                 sess.run(tf.tables_initializer())
                 sess.run(tf.global_variables_initializer())
+
+                try:
+                    sess.run(self.set_training_false)
+                except AttributeError:
+                    pass
 
                 scores = []
 
@@ -1495,9 +1523,7 @@ class EmbeddingModel(abc.ABC):
 
         dataset_handle.set_data(X_pos, "pos")
 
-        batch_size_pos = int(np.ceil(dataset_handle.get_size("pos") / batches_count))
-
-        gen_fn = partial(dataset_handle.get_next_train_batch, batch_size=batch_size_pos, dataset_type="pos")
+        gen_fn = partial(dataset_handle.get_next_batch, batches_count=batches_count, dataset_type="pos")
         dataset = tf.data.Dataset.from_generator(gen_fn,
                                                  output_types=tf.int32,
                                                  output_shapes=(None, 3))
@@ -1513,7 +1539,7 @@ class EmbeddingModel(abc.ABC):
                                                 entities_list=None,
                                                 eta=1,
                                                 corrupt_side='s+o',
-                                                entities_size=0,
+                                                entities_size=len(self.ent_to_idx),
                                                 rnd=self.seed)
 
         e_s_neg, e_p_neg, e_o_neg = self._lookup_embeddings(x_neg_tf)
@@ -1561,14 +1587,16 @@ class EmbeddingModel(abc.ABC):
 
         The calibrated predictions can be obtained with ``predict_proba`` after the calibration is done.
 
-        There are two modes of operation:
+        Ideally, calibration should be performed on a validation set that was not used to train the embeddings.
 
-        #. Both positive and negative triples are provided via ``X_pos`` and ``X_neg`` respectively.
-        The optimization is done using a second-order method (limited-memory BFGS),
+        There are two modes of operation, depending on the availability of negative triples:
+
+        #. Both positive and negative triples are provided via ``X_pos`` and ``X_neg`` respectively. \
+        The optimization is done using a second-order method (limited-memory BFGS), \
         therefore no hyperparameter needs to be specified.
 
         #. Only positive triples are provided, and the negative triples are generated by corruptions \
-        just like it is done in training or evaluation. The optimization is done using a first-order method (ADAM),
+        just like it is done in training or evaluation. The optimization is done using a first-order method (ADAM), \
         therefore ``batches_count`` and ``epochs`` must be specified.
 
 
@@ -1577,8 +1605,16 @@ class EmbeddingModel(abc.ABC):
         For mode (1), that can be inferred automatically by the relative sizes of the positive and negative sets,
         but the user can override that by providing a value to ``positive_base_rate``.
 
+        Defining the positive base rate is the biggest challenge when calibrating without negatives. That depends on
+        the user choice of which triples will be evaluated during test time.
+        Let's take WN11 as an example: it has around 50% positives triples on both the validation set and test set,
+        so naturally the positive base rate is 50%. However, should the user resample it to have 75% positives
+        and 25% negatives, its previous calibration will be degraded. The user must recalibrate the model now with a
+        75% positive base rate. Therefore, this parameter depends on how the user handles the dataset and
+        cannot be determined automatically or a priori.
+
         .. Note ::
-            Incompatible with large graph mode of operation (when ``self.dealing_with_large_graphs`` is `True`).
+            Incompatible with large graph mode of operation (i.e., ``self.dealing_with_large_graphs`` is `True`).
 
         Parameters
         ----------
@@ -1613,10 +1649,12 @@ class EmbeddingModel(abc.ABC):
         >>> from sklearn.metrics import brier_score_loss, log_loss
         >>> from scipy.special import expit
         >>>
-        >>> from ampligraph.datasets import load_wordnet11
+        >>> from ampligraph.datasets import load_wn11
         >>> from ampligraph.latent_features.models import TransE
         >>>
-        >>> X = load_wordnet11()
+        >>> X = load_wn11()
+        >>> X_valid_pos = X['valid'][X['valid_labels']]
+        >>> X_valid_neg = X['valid'][~X['valid_labels']]
         >>>
         >>> model = TransE(batches_count=64, seed=0, epochs=500, k=100, eta=20,
         >>>                optimizer='adam', optimizer_params={'lr':0.0001},
@@ -1624,21 +1662,26 @@ class EmbeddingModel(abc.ABC):
         >>>
         >>> model.fit(X['train'])
         >>>
-        >>> X_valid_pos = X['valid'][X['valid_labels']]
-        >>> X_valid_neg = X['valid'][~X['valid_labels']]
-        >>>
-        >>> model.calibrate(X_valid_pos, X_valid_neg, positive_base_rate=None)
-        >>>
-        >>> probas = model.predict_proba(X['test'])
+        >>> # Raw scores
         >>> scores = model.predict(X['test'])
         >>>
-        >>> # Calibration evaluation with the Brier score loss and the log loss (the smaller, the better in both cases)
-        >>> print(brier_score_loss(X['test_labels'], probas),
-        >>>       brier_score_loss(X['test_labels'], expit(scores)))
-        0.2436820461862895 0.4925058891373944
-        >>> print(log_loss(X['test_labels'], probas),
-        >>>       log_loss(X['test_labels'], expit(scores)))
-        0.6804891073992927 5.184910176167332
+        >>> # Calibrate with positives and negatives
+        >>> model.calibrate(X_valid_pos, X_valid_neg, positive_base_rate=None)
+        >>> probas_pos_neg = model.predict_proba(X['test'])
+        >>>
+        >>> # Calibrate with just positives and base rate of 50%
+        >>> model.calibrate(X_valid_pos, positive_base_rate=0.5)
+        >>> probas_pos = model.predict_proba(X['test'])
+        >>>
+        >>> # Calibration evaluation with the Brier score loss (the smaller, the better)
+        >>> print("Brier scores")
+        >>> print("Raw scores:", brier_score_loss(X['test_labels'], expit(scores)))
+        >>> print("Positive and negative calibration:", brier_score_loss(X['test_labels'], probas_pos_neg))
+        >>> print("Positive only calibration:", brier_score_loss(X['test_labels'], probas_pos))
+        Brier scores
+        Raw scores: 0.4925058891371126
+        Positive and negative calibration: 0.20434617882733366
+        Positive only calibration: 0.22597599585144656
 
         """
         if not self.is_fitted:

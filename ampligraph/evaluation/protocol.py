@@ -272,7 +272,7 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
         This also brings the benefit of creating more meaningful negatives, as entities used to corrupt are
         sourced locally.
         The function can be configured to generate corruptions *only* using the entities from the current batch.
-        You can enable such behaviour be setting ``entities_size==-1``. In such case, if ``entities_list=None``
+        You can enable such behaviour be setting ``entities_size=0``. In such case, if ``entities_list=None``
         all entities from the *current batch* will be used to generate corruptions.
 
     Parameters
@@ -281,7 +281,11 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
         An array of positive triples that will be used to create corruptions.
     entities_list : list
         List of entities to be used for generating corruptions. (default:None).
-        if ``entities_list=None``, all entities will be used to generate corruptions (default behaviour).
+
+        If ``entities_list=None`` and ``entities_size`` is the number of all entities,
+        all entities will be used to generate corruptions (default behaviour).
+
+        If ``entities_list=None`` and ``entities_size=0``, the batch entities will be used to generate corruptions.
     eta : int
         The number of corruptions per triple that must be generated.
     corrupt_side: string
@@ -298,7 +302,7 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
         This also brings the benefit of creating more meaningful negatives, as entities used to corrupt are
         sourced locally.
         The function can be configured to generate corruptions *only* using the entities from the current batch.
-        You can enable such behaviour be setting ``entities_size==-1``. In such case, if ``entities_list=None``
+        You can enable such behaviour be setting ``entities_size=0``. In such case, if ``entities_list=None``
         all entities from the *current batch* will be used to generate corruptions.
     rnd: numpy.random.RandomState
         A random number generator.
@@ -437,24 +441,8 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     (i.e. either the subject or the object).
 
     .. note::
-        When *filtered* mode is enabled (i.e. `filtered_triples` is not ``None``),
-        to speed up the procedure, we use a database based filtering. This strategy is as described below:
-
-        * Store the filter_triples in the DB
-
-        * For each test triple, we generate corruptions for evaluation and score them.
-
-        * The corruptions may contain some False Negatives. We find such statements by quering the database.
-
-        * From the computed scores we retrieve the scores of the False Negatives.
-
-        * We compute the rank of the test triple by comparing against ALL the corruptions.
-
-        * We then compute the number of False negatives that are ranked higher than the test triple; and then
-          subtract this value from the above computed rank to yield the final filtered rank.
-
-        **Execution Time:** This method takes ~4 minutes on FB15K using ComplEx
-        (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
+        The evaluation protocol assigns the worst rank
+        to a positive test triple in case of a tie with negatives. This is the agreed upon behaviour in literature.
 
     .. hint::
         When ``entities_subset=None``, the method will use all distinct entities in the knowledge graph ``X``
@@ -478,6 +466,21 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         A knowledge graph embedding model
     filter_triples : ndarray of shape [n, 3] or None
         The triples used to filter negatives.
+
+        .. note::
+            When *filtered* mode is enabled (i.e. `filtered_triples` is not ``None``),
+            to speed up the procedure, we use a database based filtering. This strategy is as described below:
+
+            * Store the filter_triples in the DB
+            * For each test triple, we generate corruptions for evaluation and score them.
+            * The corruptions may contain some False Negatives. We find such statements by quering the database.
+            * From the computed scores we retrieve the scores of the False Negatives.
+            * We compute the rank of the test triple by comparing against ALL the corruptions.
+            * We then compute the number of False negatives that are ranked higher than the test triple; and then
+              subtract this value from the above computed rank to yield the final filtered rank.
+            **Execution Time:** This method takes ~4 minutes on FB15K using ComplEx
+            (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
+
     verbose : bool
         Verbose mode
     strict : bool
@@ -1059,7 +1062,8 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     >>>                     "verbose": False
     >>>                 }
     >>> select_best_model_ranking(model_class, X['train'], X['valid'], X['test'], param_grid,
-    >>>                           max_combinations=100, use_filter=True, verbose=True, early_stopping=True)
+    >>>                           max_combinations=100, use_filter=True, verbose=True,
+    >>>                           early_stopping=True)
 
     """
     logger.debug('Starting gridsearch over hyperparameters. {}'.format(param_grid))

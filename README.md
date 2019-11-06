@@ -4,6 +4,8 @@
 
 [![Documentation Status](https://readthedocs.org/projects/ampligraph/badge/?version=latest)](http://ampligraph.readthedocs.io/?badge=latest)
 
+[Join the conversation on Slack](https://join.slack.com/t/ampligraph/shared_invite/enQtNTc2NTI0MzUxMTM5LTRkODk0MjI2OWRlZjdjYmExY2Q3M2M3NGY0MGYyMmI4NWYyMWVhYTRjZDhkZjA1YTEyMzBkMGE4N2RmNTRiZDg)
+![](docs/img/slack_logo.png)
 
 **Open source library based on TensorFlow that predicts links between concepts in a knowledge graph.**
 
@@ -41,7 +43,7 @@ It then combines embeddings with model-specific scoring functions to predict uns
 AmpliGraph includes the following submodules:
 
 * **Datasets**: helper functions to load datasets (knowledge graphs).
-* **Models**: knowledge graph embedding models. AmpliGraph contains TransE, DistMult, ComplEx, HolE. (More to come!)
+* **Models**: knowledge graph embedding models. AmpliGraph contains **TransE**, **DistMult**, **ComplEx**, **HolE**, **ConvKB**. (More to come!)
 * **Evaluation**: metrics and evaluation protocols to assess the predictive power of the models.
 * **Discovery**: High-level convenience APIs for knowledge discovery (discover new facts, cluster entities, predict near duplicates).
 
@@ -114,24 +116,24 @@ pip install -e .
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'1.2-dev'
+'1.3-dev'
 ```
 
 
 ## Predictive Power Evaluation (MRR Filtered)
 
-AmpliGraph includes implementations of TransE, DistMult, ComplEx and HolE. 
+AmpliGraph includes implementations of TransE, DistMult, ComplEx, HolE and ConvKB.
 Their predictive power is reported below and compared against the state-of-the-art results in literature.
 [More details available here](https://docs.ampligraph.org/en/latest/experiments.html).
 
-|                 |FB15K-237 |WN18RR   |YAGO3-10   | FB15k      |WN18           |
-|-----------------|----------|---------|-----------|------------|---------------|
-| Literature Best | **0.35***| 0.48*   | 0.49*     | **0.84**** | **0.95***     |
-| TransE (AmpliGraph)         |  0.31    | 0.22    | 0.49      | 0.63       | 0.65          |
-| DistMult (AmpliGraph)        |  0.31    | 0.45    | 0.49      | 0.78       | 0.82          |
-| ComplEx  (AmpliGraph)       |  0.32    | **0.50**| **0.50**  | 0.80       | 0.94          |
-| HolE (AmpliGraph)           |  0.31    | 0.47    | **0.50**  | 0.80       | 0.93          |
-
+|                              |FB15K-237 |WN18RR   |YAGO3-10   | FB15k      |WN18           |
+|------------------------------|----------|---------|-----------|------------|---------------|
+| Literature Best              | **0.35***| 0.48*   | 0.49*     | **0.84**** | **0.95***     |
+| TransE (AmpliGraph)          |  0.31    | 0.22    | **0.51**  | 0.63       | 0.66          |
+| DistMult (AmpliGraph)        |  0.31    | 0.47    | 0.50      | 0.78       | 0.82          |
+| ComplEx  (AmpliGraph)        |  0.32    | **0.51**| 0.49      | 0.80       | 0.94          |
+| HolE (AmpliGraph)            |  0.31    | 0.47    | 0.50      | 0.80       | 0.94          |
+| ConvKB (AmpliGraph)          |  0.23    | 0.39    | 0.30      | 0.65       | 0.80          |
 
 <sub>
 * Timothee Lacroix, Nicolas Usunier, and Guillaume Obozinski. Canonical tensor decomposition for knowledge base 

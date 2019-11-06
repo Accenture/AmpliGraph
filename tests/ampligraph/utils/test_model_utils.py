@@ -8,8 +8,10 @@
 import os
 import importlib
 import numpy as np
+import pandas as pd
 import numpy.testing as npt
-from ampligraph.utils import save_model, restore_model, create_tensorboard_visualizations, write_metadata_tsv
+from ampligraph.utils import save_model, restore_model, create_tensorboard_visualizations, \
+                             write_metadata_tsv, dataframe_to_triples
 import pytest
 import pickle
 
@@ -78,3 +80,20 @@ def test_write_metadata_tsv():
     # TODO: This
     pass
 
+def test_dataframe_to_triples():
+    X = pd.read_csv('https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv')
+    schema = [('species', 'has_sepal_length', 'sepal_length')]
+    npt.assert_array_equal(dataframe_to_triples(X, schema)[0], 
+                           np.array(['setosa', 'has_sepal_length', '5.1']))
+    
+    schema = [('species', 'has_sepal_length', 'abc')]
+    try:
+        dataframe_to_triples(X, schema)
+    except:
+        assert True
+    
+    schema = [('species', 'has_sepal_length', 'sepal_length')]
+    try:
+        dataframe_to_triples(X, schema)
+    except:
+        assert True
