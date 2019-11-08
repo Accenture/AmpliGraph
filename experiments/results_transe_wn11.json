@@ -1,0 +1,1490 @@
+[
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "50",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "10",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.09011651411060174,
+      "mr": 4453.2,
+      "hits_1": 0.02946058091286307,
+      "hits_3": 0.10912863070539419,
+      "hits_10": 0.2112033195020747
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "5",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "3"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.06652317736024085,
+      "mr": 8087.6759336099585,
+      "hits_1": 0.03941908713692946,
+      "hits_3": 0.06887966804979254,
+      "hits_10": 0.11908713692946057
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "5",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.15048162728963332,
+      "mr": 4112.39336099585,
+      "hits_1": 0.10912863070539419,
+      "hits_3": 0.15684647302904564,
+      "hits_10": 0.23734439834024895
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "5",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.1686154627929582,
+      "mr": 3256.4560165975104,
+      "hits_1": 0.11784232365145228,
+      "hits_3": 0.183402489626556,
+      "hits_10": 0.26390041493775934
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "15",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "0",
+        "alpha": 1.0
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.1437821025738381,
+      "mr": 2382.075518672199,
+      "hits_1": 0.08506224066390042,
+      "hits_3": 0.15892116182572613,
+      "hits_10": 0.26265560165975105
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "25",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "0"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.004011174591379501,
+      "mr": 15544.834854771785,
+      "hits_1": 0.0012448132780082987,
+      "hits_3": 0.002074688796680498,
+      "hits_10": 0.01037344398340249
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "75",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 1e-05,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.14759007363816926,
+      "mr": 2831.171784232365,
+      "hits_1": 0.0991701244813278,
+      "hits_3": 0.15892116182572613,
+      "hits_10": 0.24813278008298756
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "50",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.11078719212221366,
+      "mr": 6835.0742738589215,
+      "hits_1": 0.04232365145228216,
+      "hits_3": 0.14522821576763487,
+      "hits_10": 0.23568464730290456
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "15",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.061933750749198636,
+      "mr": 8575.823651452281,
+      "hits_1": 0.0053941908713692945,
+      "hits_3": 0.08049792531120332,
+      "hits_10": 0.17842323651452283
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "75",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "3"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.014689336602988086,
+      "mr": 15614.588796680498,
+      "hits_1": 0.004149377593360996,
+      "hits_3": 0.011203319502074689,
+      "hits_10": 0.030705394190871368
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "50",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "10"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.0899714457897858,
+      "mr": 4738.431950207469,
+      "hits_1": 0.02863070539419087,
+      "hits_3": 0.11078838174273858,
+      "hits_10": 0.21161825726141079
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "5",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.14739739746594677,
+      "mr": 2676.704979253112,
+      "hits_1": 0.0987551867219917,
+      "hits_3": 0.15850622406639003,
+      "hits_10": 0.23941908713692947
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "25",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "3",
+        "alpha": 1.0
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.14824720418171916,
+      "mr": 2510.396265560166,
+      "hits_1": 0.07302904564315353,
+      "hits_3": 0.16390041493775934,
+      "hits_10": 0.2995850622406639
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "50",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.11292520539855515,
+      "mr": 5240.875518672199,
+      "hits_1": 0.03900414937759336,
+      "hits_3": 0.14398340248962654,
+      "hits_10": 0.25186721991701244
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "75",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.13979070390816317,
+      "mr": 6135.698340248962,
+      "hits_1": 0.08340248962655601,
+      "hits_3": 0.16804979253112035,
+      "hits_10": 0.23983402489626557
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "50",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.07154266911520653,
+      "mr": 10067.671784232365,
+      "hits_1": 0.043568464730290454,
+      "hits_3": 0.07676348547717843,
+      "hits_10": 0.12406639004149378
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "50",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.10559655589551865,
+      "mr": 7430.758921161826,
+      "hits_1": 0.03775933609958506,
+      "hits_3": 0.13734439834024897,
+      "hits_10": 0.23734439834024895
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "25",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "0"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.024416295450970564,
+      "mr": 9565.739419087136,
+      "hits_1": 0.0012448132780082987,
+      "hits_3": 0.031950207468879666,
+      "hits_10": 0.06182572614107884
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "75",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.14211551621637344,
+      "mr": 3673.719917012448,
+      "hits_1": 0.05975103734439834,
+      "hits_3": 0.17759336099585063,
+      "hits_10": 0.2937759336099585
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "5",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "1"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.06357518547662677,
+      "mr": 7593.221576763485,
+      "hits_1": 0.023236514522821577,
+      "hits_3": 0.07800829875518672,
+      "hits_10": 0.13526970954356846
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "75",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "10",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.01945580289760147,
+      "mr": 16054.33153526971,
+      "hits_1": 0.006224066390041493,
+      "hits_3": 0.014107883817427386,
+      "hits_10": 0.044813278008298756
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "25",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "3"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.08289883830798517,
+      "mr": 5876.62489626556,
+      "hits_1": 0.03112033195020747,
+      "hits_3": 0.1037344398340249,
+      "hits_10": 0.17842323651452283
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "5",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.03781958376029663,
+      "mr": 3079.5871369294605,
+      "hits_1": 0.002074688796680498,
+      "hits_3": 0.04937759336099585,
+      "hits_10": 0.104149377593361
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "50",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "10"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.07306492408056324,
+      "mr": 5513.616182572614,
+      "hits_1": 0.015352697095435684,
+      "hits_3": 0.0983402489626556,
+      "hits_10": 0.18630705394190872
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "5",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.05990067287119534,
+      "mr": 6481.148962655601,
+      "hits_1": 0.011203319502074689,
+      "hits_3": 0.07759336099585062,
+      "hits_10": 0.14854771784232365
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "50",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "1",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.17887785653844002,
+      "mr": 2264.548547717842,
+      "hits_1": 0.11742738589211618,
+      "hits_3": 0.195850622406639,
+      "hits_10": 0.3016597510373444
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "50",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "1",
+        "alpha": 1.0
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.18013476339940915,
+      "mr": 2371.3497925311203,
+      "hits_1": 0.11369294605809128,
+      "hits_3": 0.19170124481327802,
+      "hits_10": 0.31701244813278007
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "25",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "1"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.05290798099602484,
+      "mr": 9458.06929460581,
+      "hits_1": 0.01701244813278008,
+      "hits_3": 0.06804979253112033,
+      "hits_10": 0.11244813278008299
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "5",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.12504968532081298,
+      "mr": 2689.0286307053943,
+      "hits_1": 0.07634854771784233,
+      "hits_3": 0.13485477178423236,
+      "hits_10": 0.21867219917012448
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "75",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "1"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.043448865736492814,
+      "mr": 10047.341908713694,
+      "hits_1": 0.006639004149377593,
+      "hits_3": 0.05892116182572614,
+      "hits_10": 0.1087136929460581
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "15",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.053481113153489315,
+      "mr": 2787.680497925311,
+      "hits_1": 0.013692946058091286,
+      "hits_3": 0.06390041493775933,
+      "hits_10": 0.11867219917012448
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "50",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.14681597131118707,
+      "mr": 2677.973858921162,
+      "hits_1": 0.0987551867219917,
+      "hits_3": 0.15933609958506223,
+      "hits_10": 0.23900414937759337
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "50",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.15845073487538805,
+      "mr": 3542.073029045643,
+      "hits_1": 0.11244813278008299,
+      "hits_3": 0.16680497925311202,
+      "hits_10": 0.24688796680497926
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "50",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.12159237005601178,
+      "mr": 6293.320331950207,
+      "hits_1": 0.08713692946058091,
+      "hits_3": 0.12987551867219918,
+      "hits_10": 0.1900414937759336
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "5",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "10"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.08274136079188149,
+      "mr": 5280.997925311203,
+      "hits_1": 0.023651452282157676,
+      "hits_3": 0.1049792531120332,
+      "hits_10": 0.1983402489626556
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "50",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "10"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.0741627666611236,
+      "mr": 4967.889211618257,
+      "hits_1": 0.024481327800829875,
+      "hits_3": 0.08672199170124481,
+      "hits_10": 0.16721991701244812
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "75",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "1"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.029534504619829628,
+      "mr": 8675.582157676348,
+      "hits_1": 0.0024896265560165973,
+      "hits_3": 0.03775933609958506,
+      "hits_10": 0.07759336099585062
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "75",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.1423800596284759,
+      "mr": 5408.100829875519,
+      "hits_1": 0.08257261410788382,
+      "hits_3": 0.16763485477178422,
+      "hits_10": 0.25477178423236513
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "75",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "0",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.17656057255552876,
+      "mr": 2599.1535269709543,
+      "hits_1": 0.12199170124481327,
+      "hits_3": 0.1896265560165975,
+      "hits_10": 0.2821576763485477
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "25",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "3",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.14229591830468866,
+      "mr": 2278.490456431535,
+      "hits_1": 0.07219917012448132,
+      "hits_3": 0.15477178423236515,
+      "hits_10": 0.27427385892116185
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "15",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.11820062931146996,
+      "mr": 7568.014107883818,
+      "hits_1": 0.07427385892116183,
+      "hits_3": 0.13651452282157675,
+      "hits_10": 0.1983402489626556
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "50",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 1e-05,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.10737132535571814,
+      "mr": 8005.61867219917,
+      "hits_1": 0.03734439834024896,
+      "hits_3": 0.14356846473029045,
+      "hits_10": 0.23485477178423236
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "5",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "0",
+        "alpha": 0.0
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.14709949593815955,
+      "mr": 2850.76265560166,
+      "hits_1": 0.0979253112033195,
+      "hits_3": 0.15767634854771784,
+      "hits_10": 0.24647302904564317
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "15",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "0",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.1749946288165859,
+      "mr": 2945.622406639004,
+      "hits_1": 0.12282157676348547,
+      "hits_3": 0.187551867219917,
+      "hits_10": 0.27676348547717844
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "75",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "0"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.004767761370605798,
+      "mr": 12617.755601659752,
+      "hits_1": 0.0008298755186721991,
+      "hits_3": 0.004149377593360996,
+      "hits_10": 0.010788381742738589
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "15",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "10",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.09137790928312174,
+      "mr": 3994.6514522821576,
+      "hits_1": 0.024896265560165973,
+      "hits_3": 0.10912863070539419,
+      "hits_10": 0.22199170124481327
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "15",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 1e-05,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.15162407201658612,
+      "mr": 4192.624481327801,
+      "hits_1": 0.1087136929460581,
+      "hits_3": 0.15892116182572613,
+      "hits_10": 0.24107883817427386
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "5",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.11479318159706815,
+      "mr": 5946.660995850622,
+      "hits_1": 0.04896265560165975,
+      "hits_3": 0.14771784232365145,
+      "hits_10": 0.23858921161825727
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "15",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.1618860535872213,
+      "mr": 2726.335684647303,
+      "hits_1": 0.08838174273858922,
+      "hits_3": 0.1825726141078838,
+      "hits_10": 0.3074688796680498
+    }
+  },
+  {
+    "model_name": "TransE",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "15",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "10"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.08574208322477075,
+      "mr": 4900.530290456431,
+      "hits_1": 0.029045643153526972,
+      "hits_3": 0.1045643153526971,
+      "hits_10": 0.1937759336099585
+    }
+  }
+]
