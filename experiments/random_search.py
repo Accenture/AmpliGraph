@@ -3,7 +3,7 @@ import time
 
 from ampligraph.evaluation.protocol import select_best_model_ranking
 from ampligraph.latent_features import ComplEx, DistMult, TransE
-from ampligraph.datasets import load_wn11, load_fb13
+from ampligraph.datasets import load_wn11, load_fb13, load_yago39k
 
 model_arg = sys.argv[1]
 dataset_arg = sys.argv[2]
@@ -22,7 +22,8 @@ model_map = {
 
 dataset_map = {
     "fb13": load_fb13,
-    "wn11": load_wn11
+    "wn11": load_wn11,
+    "yago39k": load_yago39k
 }
 
 X = dataset_map[dataset_arg]()

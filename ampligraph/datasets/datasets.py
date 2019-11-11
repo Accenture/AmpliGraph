@@ -820,6 +820,53 @@ def load_fb13(check_md5hash=False, clean_unseen=True):
         return dataset
 
 
+def load_yago39k(check_md5hash=False, clean_unseen=True):
+    X_train = (pd.read_csv("~/TransC/data/YAGO39K/Train/triple2id.txt", sep=' ', skiprows=1, names=['s', 'o', 'p'])
+               [['s', 'p', 'o']]
+               .reindex()
+               .values)
+
+    ent = np.unique(np.concatenate((X_train[:, 0], X_train[:, 2])))
+
+    X_valid_pos = (
+        pd.read_csv("~/TransC/data/YAGO39K/Valid/triple2id_positive.txt", sep=' ', skiprows=1, names=['s', 'o', 'p'])
+        [['s', 'p', 'o']]
+        .reindex()
+        .query("s in @ent and o in @ent")
+        .values)
+
+    X_valid_neg = (
+        pd.read_csv("~/TransC/data/YAGO39K/Valid/triple2id_negative.txt", sep=' ', skiprows=1, names=['s', 'o', 'p'])
+        [['s', 'p', 'o']]
+        .reindex()
+        .query("s in @ent and o in @ent")
+        .values)
+
+    X_test_pos = (
+        pd.read_csv("~/TransC/data/YAGO39K/Valid/triple2id_positive.txt", sep=' ', skiprows=1, names=['s', 'o', 'p'])
+        [['s', 'p', 'o']]
+        .reindex()
+        .query("s in @ent and o in @ent")
+        .values)
+
+    X_test_neg = (
+        pd.read_csv("~/TransC/data/YAGO39K/Valid/triple2id_negative.txt", sep=' ', skiprows=1, names=['s', 'o', 'p'])
+        [['s', 'p', 'o']]
+        .query("s in @ent and o in @ent")
+        .reindex()
+        .values)
+
+    X = {
+        'train': X_train,
+        'valid': np.concatenate((X_valid_pos, X_valid_neg)),
+        'test': np.concatenate((X_test_pos, X_test_neg)),
+        'valid_labels': np.concatenate((np.full(len(X_valid_pos), True), np.full(len(X_valid_neg), False))),
+        'test_labels': np.concatenate((np.full(len(X_test_pos), True), np.full(len(X_test_neg), False)))
+    }
+
+    return X
+
+
 def load_all_datasets(check_md5hash=False):
     load_wn18(check_md5hash)
     load_wn18rr(check_md5hash)
