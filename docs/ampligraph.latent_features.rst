@@ -18,6 +18,7 @@ Knowledge Graph Embedding Models
     DistMult
     ComplEx
     HolE
+    ConvKB
 
 Anatomy of a Model
 ^^^^^^^^^^^^^^^^^^
@@ -78,8 +79,11 @@ and object of a triple :math:`t=(s,p,o)` according to different intuitions:
 .. math::
     f_{HolE}=\mathbf{w}_r \cdot (\mathbf{e}_s \star \mathbf{e}_o) = \frac{1}{k}\mathcal{F}(\mathbf{w}_r)\cdot( \overline{\mathcal{F}(\mathbf{e}_s)} \odot \mathcal{F}(\mathbf{e}_o))
 
-Other models such ConvE include convolutional layers :cite:`DettmersMS018`
-(will be available in AmpliGraph future releases).
++ :class:`ConvKB` :cite:`Nguyen2018` uses convolutional layers and a dot product:
+
+.. math::
+
+    f_{ConvKB}= concat(g([\mathbf{e}_s, \mathbf{r}_p, \mathbf{e}_o]) * \Omega)) \cdot W
 
 
 .. _loss:

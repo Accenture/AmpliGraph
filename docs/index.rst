@@ -1,18 +1,21 @@
-.. xai_lp documentation master file, created by
-   sphinx-quickstart on Tue Oct 17 14:10:15 2017.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 AmpliGraph
 ==================
 
 **Open source Python library that predicts links between concepts in a knowledge graph.**
 
 
-`View the GitHub repository <https://github.com/Accenture/AmpliGraph/>`_ |ImageLink|_
+`Go to the GitHub repository <https://github.com/Accenture/AmpliGraph/>`_ |ImageLink|_
 
    .. |ImageLink| image:: /img/GitHub-Mark-32px.png
    .. _ImageLink: https://github.com/Accenture/AmpliGraph/
+
+
+`Join the conversation on Slack <https://join.slack.com/t/ampligraph/shared_invite/enQtNTc2NTI0MzUxMTM5LTRkODk0MjI2OWRlZjdjYmExY2Q3M2M3NGY0MGYyMmI4NWYyMWVhYTRjZDhkZjA1YTEyMzBkMGE4N2RmNTRiZDg>`_ |ImageLink2|_
+
+   .. |ImageLink2| image:: /img/slack_logo.png
+   .. _ImageLink2: https://join.slack.com/t/ampligraph/shared_invite/enQtNTc2NTI0MzUxMTM5LTRkODk0MjI2OWRlZjdjYmExY2Q3M2M3NGY0MGYyMmI4NWYyMWVhYTRjZDhkZjA1YTEyMzBkMGE4N2RmNTRiZDg>
+
+
 
 AmpliGraph is a suite of neural machine learning models for relational Learning, a branch of machine learning
 that deals with supervised learning on knowledge graphs.
@@ -59,7 +62,7 @@ Modules
 AmpliGraph includes the following submodules:
 
 * **Datasets**: helper functions to load datasets (knowledge graphs).
-* **Models**: knowledge graph embedding models. AmpliGraph contains TransE, DistMult, ComplEx, HolE. (More to come!)
+* **Models**: knowledge graph embedding models. AmpliGraph contains **TransE**, **DistMult**, **ComplEx**, **HolE**, **ConvKB** (More to come!)
 * **Evaluation**: metrics and evaluation protocols to assess the predictive power of the models.
 * **Discovery**: High-level convenience APIs for knowledge discovery (discover new facts, cluster entities, predict near duplicates).
 

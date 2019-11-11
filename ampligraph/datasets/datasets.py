@@ -24,75 +24,52 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def _clean_data(X, throw_valid=False):
-    train = X["train"]
-    valid = X["valid"]
-    test = X["test"]
+def _clean_data(X, return_idx=False):
+    """
+    Clean dataset X by removing unseen entities and relations from valid and test sets.
 
-    train_ent = set(train.flatten())
-    valid_ent = set(valid.flatten())
-    test_ent = set(test.flatten())
+    Parameters
+    ----------
+    X: dict
+        Dicionary containing the following keys: train, valid, test.
+        Each key should contain an ndarray of shape [n, 3].
 
-    # not throwing the unseen entities in validation set
-    if not throw_valid:
-        train_valid_ent = set(train.flatten()) | set(valid.flatten())
-        ent_test_diff_train_valid = test_ent - train_valid_ent
-        idxs_test = []
+    return_idx: bool
+        Whether to return the indices of the remaining rows in valid and test respectively.
 
-        if len(ent_test_diff_train_valid) > 0:
-            count_test = 0
-            c_if = 0
-            for row in test:
-                tmp = set(row)
-                if len(tmp & ent_test_diff_train_valid) != 0:
-                    idxs_test.append(count_test)
-                    c_if += 1
-                count_test = count_test + 1
-        filtered_test = np.delete(test, idxs_test, axis=0)
-        logging.debug("fit validation case: shape test: {0} \
-                      -  filtered test: {1}: {2} triples \
-                      with unseen entties removed"
-                      .format(test.shape, filtered_test.shape, c_if))
-        return {'train': train, 'valid': valid, 'test': filtered_test}
+    Returns
+    -------
+    filtered_X: dict
+        Dicionary containing the following keys: train, valid, test.
+        Each key contains an ndarray of shape [n, 3].
+        Valid and test do not contain entities or relations that are not present in train.
 
-    # throwing the unseen entities in validation set
+    valid_idx: ndarray
+        Indices of the remaining rows of the valid dataset (with respect to the original valid ndarray).
+
+    test_idx: ndarray
+        Indices of the remaining rows of the test dataset (with respect to the original test ndarray).
+
+    """
+    train = pd.DataFrame(X["train"], columns=['s', 'p', 'o'])
+    valid = pd.DataFrame(X["valid"], columns=['s', 'p', 'o'])
+    test = pd.DataFrame(X["test"], columns=['s', 'p', 'o'])
+
+    train_ent = np.unique(np.concatenate((train.s, train.o)))
+    train_rel = train.p.unique()
+
+    valid_idx = valid.s.isin(train_ent) & valid.o.isin(train_ent) & valid.p.isin(train_rel)
+    test_idx = test.s.isin(train_ent) & test.o.isin(train_ent) & test.p.isin(train_rel)
+
+    filtered_valid = valid[valid_idx].values
+    filtered_test = test[test_idx].values
+
+    filtered_X = {'train': train.values, 'valid': filtered_valid, 'test': filtered_test}
+
+    if return_idx:
+        return filtered_X, valid_idx, test_idx
     else:
-        # for valid
-        ent_valid_diff_train = valid_ent - train_ent
-        idxs_valid = []
-        if len(ent_valid_diff_train) > 0:
-            count_valid = 0
-            c_if = 0
-            for row in valid:
-                tmp = set(row)
-                if len(tmp & ent_valid_diff_train) != 0:
-                    idxs_valid.append(count_valid)
-                    c_if += 1
-                count_valid = count_valid + 1
-        filtered_valid = np.delete(valid, idxs_valid, axis=0)
-        logging.debug("not fitting validation case: shape valid: {0} \
-                      -  filtered valid: {1}: {2} triples \
-                      with unseen entties removed"
-                      .format(valid.shape, filtered_valid.shape, c_if))
-        # for test
-        ent_test_diff_train = test_ent - train_ent
-        idxs_test = []
-        if len(ent_test_diff_train) > 0:
-            count_test = 0
-            c_if = 0
-            for row in test:
-                tmp = set(row)
-                if len(tmp & ent_test_diff_train) != 0:
-                    idxs_test.append(count_test)
-                    c_if += 1
-                count_test = count_test + 1
-        filtered_test = np.delete(test, idxs_test, axis=0)
-        logging.debug("not fitting validation case: shape test: {0}  \
-                      -  filtered test: {1}: {2} triples \
-                      with unseen entties removed"
-                      .format(test.shape, filtered_test.shape, c_if))
-
-        return {'train': train, 'valid': filtered_valid, 'test': filtered_test}
+        return filtered_X
 
 
 def _get_data_home(data_home=None):
@@ -454,7 +431,7 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True):
     )
 
     if clean_unseen:
-        return _clean_data(_load_dataset(wn18rr, data_home=None, check_md5hash=check_md5hash), throw_valid=True)
+        return _clean_data(_load_dataset(wn18rr, data_home=None, check_md5hash=check_md5hash))
     else:
         return _load_dataset(wn18rr, data_home=None, check_md5hash=check_md5hash)
 
@@ -595,7 +572,7 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True):
     )
 
     if clean_unseen:
-        return _clean_data(_load_dataset(fb15k_237, data_home=None, check_md5hash=check_md5hash), throw_valid=True)
+        return _clean_data(_load_dataset(fb15k_237, data_home=None, check_md5hash=check_md5hash))
     else:
         return _load_dataset(fb15k_237, data_home=None, check_md5hash=check_md5hash)
 
@@ -660,9 +637,187 @@ def load_yago3_10(check_md5hash=False, clean_unseen=True):
     )
 
     if clean_unseen:
-        return _clean_data(_load_dataset(yago3_10, data_home=None, check_md5hash=check_md5hash), throw_valid=True)
+        return _clean_data(_load_dataset(yago3_10, data_home=None, check_md5hash=check_md5hash))
     else:
         return _load_dataset(yago3_10, data_home=None, check_md5hash=check_md5hash)
+
+
+def load_wn11(check_md5hash=False, clean_unseen=True):
+    """Load the WordNet11 (WN11) dataset
+
+    WordNet was originally proposed in `WordNet: a lexical database for English` :cite:`miller1995wordnet`.
+
+    WN11 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+
+    If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    or ``~/ampligraph_datasets``.
+
+    It is divided in three splits:
+
+    - ``train``
+    - ``valid``
+    - ``test``
+
+    Both the validation and test splits are associated with labels (binary ndarrays),
+    with `True` for positive statements and `False` for  negatives:
+
+    - ``valid_labels``
+    - ``test_labels``
+
+    ========= ========= ========== ========== ======== ======== ============ ===========
+     Dataset  Train     Valid Pos  Valid Neg  Test Pos Test Neg Entities     Relations
+    ========= ========= ========== ========== ======== ======== ============ ===========
+    WN11      110361    2606       2609       10493    10542    38588        11
+    ========= ========= ========== ========== ======== ======== ============ ===========
+
+    Parameters
+    ----------
+    check_md5hash : boolean
+        If ``True`` check the md5hash of the files. Defaults to ``False``.
+
+    clean_unseen : bool
+        If ``True``, filters triples in validation and test sets that include entities not present in the training set.
+
+    Returns
+    -------
+
+    splits : dict
+        The dataset splits: {'train': train, 'valid': valid, 'valid_labels': valid_labels,
+        'test': test, 'test_labels': test_labels}.
+        Each split containing a dataset is an ndarray of shape [n, 3].
+        The labels are ndarray of shape [n].
+
+    Examples
+    -------
+
+    >>> from ampligraph.datasets import load_wn11
+    >>> X = load_wn11()
+    >>> X["valid"][0]
+    array(['__genus_xylomelum_1', '_type_of', '__dicot_genus_1'], dtype=object)
+    >>> X["valid_labels"][0:3]
+    array([ True, False,  True])
+
+    """
+    wn11 = DatasetMetadata(
+        dataset_name='wordnet11',
+        filename='wordnet11.zip',
+        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wordnet11.zip',
+        train_name='train.txt',
+        valid_name='dev.txt',
+        test_name='test.txt',
+        train_checksum='2429c672c89e33ad4fa8e1a3ade416e4',
+        valid_checksum='87bf86e225e79294a2524089614b96aa',
+        test_checksum='24113b464f8042c339e3e6833c1cebdf'
+    )
+
+    dataset = _load_dataset(wn11, data_home=None, check_md5hash=check_md5hash)
+    valid_labels = dataset['valid'][:, 3]
+    test_labels = dataset['test'][:, 3]
+
+    dataset['valid'] = dataset['valid'][:, 0:3]
+    dataset['test'] = dataset['test'][:, 0:3]
+
+    dataset['valid_labels'] = valid_labels == '1'
+    dataset['test_labels'] = test_labels == '1'
+
+    if clean_unseen:
+        clean_dataset, valid_idx, test_idx = _clean_data(dataset, return_idx=True)
+        clean_dataset['valid_labels'] = dataset['valid_labels'][valid_idx]
+        clean_dataset['test_labels'] = dataset['test_labels'][test_idx]
+        return clean_dataset
+    else:
+        return dataset
+
+
+def load_fb13(check_md5hash=False, clean_unseen=True):
+    """Load the Freebase13 (FB13) dataset
+
+    FB13 is a subset of Freebase :cite:`bollacker2008freebase`
+    and was initially presented in
+    `Reasoning With Neural Tensor Networks for Knowledge Base Completion` :cite:`socher2013reasoning`.
+
+    FB13 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+
+    If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    or ``~/ampligraph_datasets``.
+
+    It is divided in three splits:
+
+    - ``train``
+    - ``valid``
+    - ``test``
+
+    Both the validation and test splits are associated with labels (binary ndarrays),
+    with `True` for positive statements and `False` for  negatives:
+
+    - ``valid_labels``
+    - ``test_labels``
+
+    ========= ========= ========== ========== ======== ======== ============ ===========
+     Dataset  Train     Valid Pos  Valid Neg  Test Pos Test Neg Entities     Relations
+    ========= ========= ========== ========== ======== ======== ============ ===========
+    FB13      316232    5908       5908       23733    23731    75043        13
+    ========= ========= ========== ========== ======== ======== ============ ===========
+
+    Parameters
+    ----------
+    check_md5hash : boolean
+        If ``True`` check the md5hash of the files. Defaults to ``False``.
+
+    clean_unseen : bool
+        If ``True``, filters triples in validation and test sets that include entities not present in the training set.
+
+    Returns
+    -------
+
+    splits : dict
+        The dataset splits: {'train': train, 'valid': valid, 'valid_labels': valid_labels,
+        'test': test, 'test_labels': test_labels}.
+        Each split containing a dataset is an ndarray of shape [n, 3].
+        The labels are ndarray of shape [n].
+
+    Examples
+    -------
+
+    >>> from ampligraph.datasets import load_fb13
+    >>> X = load_fb13()
+    >>> X["valid"][0]
+    array(['cornelie_van_zanten', 'gender', 'female'], dtype=object)
+    >>> X["valid_labels"][0:3]
+    array([True, False, True], dtype=object)
+
+    """
+    fb13 = DatasetMetadata(
+        dataset_name='freebase13',
+        filename='freebase13.zip',
+        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/freebase13.zip',
+        train_name='train.txt',
+        valid_name='dev.txt',
+        test_name='test.txt',
+        train_checksum='9099ebcd85ab3ce723cfaaf34f74dceb',
+        valid_checksum='c4ef7b244baa436a97c2a5e57d4ba7ed',
+        test_checksum='f9af2eac7c5a86996c909bdffd295528'
+    )
+
+    dataset = _load_dataset(fb13, data_home=None, check_md5hash=check_md5hash)
+    valid_labels = dataset['valid'][:, 3]
+    test_labels = dataset['test'][:, 3]
+
+    dataset['valid'] = dataset['valid'][:, 0:3]
+    dataset['test'] = dataset['test'][:, 0:3]
+
+    dataset['valid_labels'] = valid_labels == '1'
+    dataset['test_labels'] = test_labels == '1'
+
+    if clean_unseen:
+        clean_dataset, valid_idx, test_idx = _clean_data(dataset, return_idx=True)
+        clean_dataset['valid_labels'] = dataset['valid_labels'][valid_idx]
+        clean_dataset['test_labels'] = dataset['test_labels'][test_idx]
+        return clean_dataset
+    else:
+        return dataset
 
 
 def load_all_datasets(check_md5hash=False):
@@ -671,6 +826,8 @@ def load_all_datasets(check_md5hash=False):
     load_fb15k(check_md5hash)
     load_fb15k_237(check_md5hash)
     load_yago3_10(check_md5hash)
+    load_wn11(check_md5hash)
+    load_fb13(check_md5hash)
 
 
 def load_from_rdf(folder_name, file_name, rdf_format='nt', data_home=None):

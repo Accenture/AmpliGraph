@@ -7,55 +7,65 @@
 #
 import numpy as np
 import pytest
+import os
 
+<<<<<<< HEAD
 from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline, ConvE
+=======
+from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline, ConvKB
+>>>>>>> 56bd2c4382be50b6323f492e79d3411f8a572590
 from ampligraph.latent_features import set_entity_threshold, reset_entity_threshold
 from ampligraph.datasets import load_wn18
+from ampligraph.utils import save_model, restore_model
 from ampligraph.evaluation import evaluate_performance, hits_at_n_score
+<<<<<<< HEAD
 from ampligraph.datasets import ConvEDatasetAdapter
 from ampligraph.utils import save_model, restore_model
+=======
+from ampligraph.evaluation.protocol import to_idx
+>>>>>>> 56bd2c4382be50b6323f492e79d3411f8a572590
 
 
 def test_large_graph_mode():
     set_entity_threshold(10)
     X = load_wn18()
     model = ComplEx(batches_count=100, seed=555, epochs=1, k=50, loss='multiclass_nll', loss_params={'margin': 5},
-                   verbose=True, optimizer='sgd', optimizer_params={'lr': 0.001})
+                    verbose=True, optimizer='sgd', optimizer_params={'lr': 0.001})
     model.fit(X['train'])
     X_filter = np.concatenate((X['train'], X['valid'], X['test']), axis=0)
-    ranks_all = evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s+o',
-                                 use_default_protocol=True)
-    
+    evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s+o',
+                         use_default_protocol=True)
+
     y = model.predict(X['test'][:1])
     print(y)
     reset_entity_threshold()
-    
-    
+
+
 def test_large_graph_mode_adam():
     set_entity_threshold(10)
     X = load_wn18()
     model = ComplEx(batches_count=100, seed=555, epochs=1, k=50, loss='multiclass_nll', loss_params={'margin': 5},
-                   verbose=True, optimizer='adam', optimizer_params={'lr': 0.001})
+                    verbose=True, optimizer='adam', optimizer_params={'lr': 0.001})
     try:
         model.fit(X['train'])
     except Exception as e:
         print(str(e))
-        
+
     reset_entity_threshold()
-    
-    
+
+
 def test_fit_predict_TransE_early_stopping_with_filter():
     X = load_wn18()
     model = TransE(batches_count=1, seed=555, epochs=7, k=50, loss='pairwise', loss_params={'margin': 5},
                    verbose=True, optimizer='adagrad', optimizer_params={'lr': 0.1})
     X_filter = np.concatenate((X['train'], X['valid'], X['test']))
-    model.fit(X['train'], True, {'x_valid': X['valid'][::100], 
+    model.fit(X['train'], True, {'x_valid': X['valid'][::100],
                                  'criteria': 'mrr',
                                  'x_filter': X_filter,
-                                 'stop_interval': 2, 
+                                 'stop_interval': 2,
                                  'burn_in': 1,
                                  'check_interval': 2})
-    
+
     y = model.predict(X['test'][:1])
     print(y)
 
@@ -64,12 +74,12 @@ def test_fit_predict_TransE_early_stopping_without_filter():
     X = load_wn18()
     model = TransE(batches_count=1, seed=555, epochs=7, k=50, loss='pairwise', loss_params={'margin': 5},
                    verbose=True, optimizer='adagrad', optimizer_params={'lr': 0.1})
-    model.fit(X['train'], True, {'x_valid': X['valid'][::100], 
+    model.fit(X['train'], True, {'x_valid': X['valid'][::100],
                                  'criteria': 'mrr',
-                                 'stop_interval': 2, 
+                                 'stop_interval': 2,
                                  'burn_in': 1,
                                  'check_interval': 2})
-    
+
     y = model.predict(X['test'][:1])
     print(y)
 
@@ -78,18 +88,42 @@ def test_evaluate_RandomBaseline():
     model = RandomBaseline(seed=0)
     X = load_wn18()
     model.fit(X["train"])
-    ranks = evaluate_performance(X["test"], 
-                                 model=model, 
+    ranks = evaluate_performance(X["test"],
+                                 model=model,
                                  use_default_protocol=False,
                                  corrupt_side='s+o',
                                  verbose=False)
     hits10 = hits_at_n_score(ranks, n=10)
     hits1 = hits_at_n_score(ranks, n=1)
+    assert ranks.shape == (len(X['test']), )
     assert hits10 < 0.01 and hits1 == 0.0
+
+    ranks = evaluate_performance(X["test"],
+                                 model=model,
+                                 use_default_protocol=True,
+                                 corrupt_side='s+o',
+                                 verbose=False)
+    hits10 = hits_at_n_score(ranks, n=10)
+    hits1 = hits_at_n_score(ranks, n=1)
+    assert ranks.shape == (len(X['test']), 2)
+    assert hits10 < 0.01 and hits1 == 0.0
+
+    ranks_filtered = evaluate_performance(X["test"],
+                                          filter_triples=np.concatenate((X['train'], X['valid'], X['test'])),
+                                          model=model,
+                                          use_default_protocol=True,
+                                          corrupt_side='s+o',
+                                          verbose=False)
+    hits10 = hits_at_n_score(ranks_filtered, n=10)
+    hits1 = hits_at_n_score(ranks_filtered, n=1)
+    assert ranks_filtered.shape == (len(X['test']), 2)
+    assert hits10 < 0.01 and hits1 == 0.0
+    assert np.all(ranks_filtered <= ranks)
+    assert np.any(ranks_filtered != ranks)
 
 
 def test_fit_predict_transE():
-    model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5}, 
+    model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5},
                    optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -106,7 +140,7 @@ def test_fit_predict_transE():
 
 
 def test_fit_predict_DistMult():
-    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5}, 
+    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5},
                      optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -125,7 +159,7 @@ def test_fit_predict_DistMult():
 def test_fit_predict_CompleEx():
     model = ComplEx(batches_count=1, seed=555, epochs=20, k=10,
                     loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                    regularizer_params={'lambda': 0.1, 'p': 2}, 
+                    regularizer_params={'lambda': 0.1, 'p': 2},
                     optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -144,7 +178,7 @@ def test_fit_predict_CompleEx():
 def test_fit_predict_HolE():
     model = HolE(batches_count=1, seed=555, epochs=20, k=10,
                  loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                 regularizer_params={'lambda': 0.1, 'p': 2}, 
+                 regularizer_params={'lambda': 0.1, 'p': 2},
                  optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -163,7 +197,7 @@ def test_fit_predict_HolE():
 def test_retrain():
     model = ComplEx(batches_count=1, seed=555, epochs=20, k=10,
                     loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                    regularizer_params={'lambda': 0.1, 'p': 2}, 
+                    regularizer_params={'lambda': 0.1, 'p': 2},
                     optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -216,7 +250,7 @@ def test_fit_predict_wn18_ComplEx():
     X = load_wn18()
     model = ComplEx(batches_count=1, seed=555, epochs=5, k=100,
                     loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
-                    regularizer_params={'lambda': 0.1, 'p': 2}, 
+                    regularizer_params={'lambda': 0.1, 'p': 2},
                     optimizer='adagrad', optimizer_params={'lr': 0.1})
     model.fit(X['train'])
     y = model.predict(X['test'][:1])
@@ -224,7 +258,7 @@ def test_fit_predict_wn18_ComplEx():
 
 
 def test_lookup_embeddings():
-    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5}, 
+    model = DistMult(batches_count=2, seed=555, epochs=20, k=10, loss='pairwise', loss_params={'margin': 5},
                      optimizer='adagrad', optimizer_params={'lr': 0.1})
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -270,6 +304,7 @@ def test_is_fitted_on():
     # Doesn't fit the extra relationship triples
     assert model.is_fitted_on(X2) is False
 
+<<<<<<< HEAD
 def test_fit_predict_save_restore_ConvE():
 
     model = ConvE(batches_count=2000, seed=22, epochs=1, k=10, eta=1,
@@ -278,10 +313,26 @@ def test_fit_predict_save_restore_ConvE():
                   loss='bce', loss_params={},
                   regularizer=None, regularizer_params={'p': 2, 'lambda': 1e-5},
                   verbose=True, low_memory=True)
+=======
+
+def test_convkb_train_predict():
+
+    model = ConvKB(batches_count=2, seed=22, epochs=1, k=10, eta=1,
+                   embedding_model_params={'num_filters': 16,
+                                           'filter_sizes': [1],
+                                           'dropout': 0.0,
+                                           'is_trainable': True},
+                   optimizer='adam',
+                   optimizer_params={'lr': 0.001},
+                   loss='pairwise',
+                   loss_params={},
+                   verbose=True)
+>>>>>>> 56bd2c4382be50b6323f492e79d3411f8a572590
 
     X = load_wn18()
     model.fit(X['train'])
 
+<<<<<<< HEAD
     y1 = model.predict(X['test'][:5])
 
     save_model(model, 'conve.tmp')
@@ -293,3 +344,142 @@ def test_fit_predict_save_restore_ConvE():
 
     assert np.all(y1 == y2)
 
+=======
+    y = model.predict(X['test'][:10])
+
+    print(y)
+
+
+def test_convkb_save_restore():
+
+    model = ConvKB(batches_count=2, seed=22, epochs=1, k=10, eta=1,
+                   embedding_model_params={'num_filters': 16,
+                                           'filter_sizes': [1],
+                                           'dropout': 0.0,
+                                           'is_trainable': True},
+                   optimizer='adam',
+                   optimizer_params={'lr': 0.001},
+                   loss='pairwise',
+                   loss_params={},
+                   verbose=True)
+
+    X = load_wn18()
+    model.fit(X['train'])
+    y1 = model.predict(X['test'][:10])
+
+    save_model(model, 'convkb.tmp')
+    del model
+    model = restore_model('convkb.tmp')
+
+    y2 = model.predict(X['test'][:10])
+
+    assert np.all(y1 == y2)
+
+    os.remove('convkb.tmp')
+
+
+def test_predict():
+    model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'z', 'a'],
+                  ['a', 'z', 'd']])
+    model.fit(X)
+
+    preds1 = model.predict(X)
+    preds2 = model.predict(to_idx(X, model.ent_to_idx, model.rel_to_idx), from_idx=True)
+
+    np.testing.assert_array_equal(preds1, preds2)
+
+
+def test_predict_twice():
+    model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'z', 'a'],
+                  ['a', 'z', 'd']])
+    model.fit(X)
+
+    X_test1 = np.array([['a', 'y', 'b'],
+                        ['b', 'y', 'a']])
+
+    X_test2 = np.array([['a', 'y', 'c'],
+                        ['c', 'z', 'a']])
+
+    preds1 = model.predict(X_test1)
+    preds2 = model.predict(X_test2)
+
+    assert not np.array_equal(preds1, preds2)
+
+
+def test_calibrate_with_corruptions():
+    model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'z', 'a'],
+                  ['a', 'z', 'd']])
+    model.fit(X)
+
+    X_pos = np.array([['a', 'y', 'b'],
+                      ['b', 'y', 'a'],
+                      ['a', 'y', 'c'],
+                      ['c', 'z', 'a'],
+                      ['d', 'z', 'd']])
+
+    with pytest.raises(RuntimeError):
+        model.predict_proba(X_pos)
+
+    with pytest.raises(ValueError):
+        model.calibrate(X_pos, batches_count=2, epochs=10)
+
+    model.calibrate(X_pos, positive_base_rate=0.5, batches_count=2, epochs=10)
+
+    probas = model.predict_proba(X_pos)
+
+    assert np.logical_and(probas > 0, probas < 1).all()
+
+
+def test_calibrate_with_negatives():
+    model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
+
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'z', 'a'],
+                  ['a', 'z', 'd']])
+    model.fit(X)
+
+    X_pos = np.array([['a', 'y', 'b'],
+                      ['b', 'y', 'a'],
+                      ['a', 'y', 'c'],
+                      ['c', 'z', 'a'],
+                      ['d', 'z', 'd']])
+
+    X_neg = np.array([['a', 'y', 'd'],
+                      ['d', 'y', 'a'],
+                      ['c', 'y', 'a'],
+                      ['a', 'z', 'd']])
+
+    with pytest.raises(RuntimeError):
+        model.predict_proba(X_pos)
+
+    with pytest.raises(ValueError):
+        model.calibrate(X_pos, X_neg, positive_base_rate=50, batches_count=2, epochs=10)
+
+    model.calibrate(X_pos, X_neg, batches_count=2, epochs=10)
+
+    probas = model.predict_proba(np.concatenate((X_pos, X_neg)))
+
+    assert np.logical_and(probas > 0, probas < 1).all()
+>>>>>>> 56bd2c4382be50b6323f492e79d3411f8a572590

@@ -14,6 +14,7 @@ import json
 import sys
 import yaml
 import logging
+import time
 
 import numpy as np
 from beautifultable import BeautifulTable
@@ -22,11 +23,11 @@ import warnings
 
 import os
 import tensorflow as tf
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 SUPPORT_DATASETS = ["fb15k", "fb15k-237", "wn18", "wn18rr", "yago310"]
-SUPPOORT_MODELS = ["complex", "transe", "distmult", "hole"]
+SUPPORT_MODELS = ["complex", "transe", "distmult", "hole", "convkb"]
 
 
 def display_scores(scores):
@@ -38,22 +39,26 @@ def display_scores(scores):
         output_rst[obj["dataset"]].set_style(BeautifulTable.STYLE_RST)
         output_rst[obj["dataset"]].column_headers = \
             ["Model", "MR", "MRR", "Hits@1", \
-             "Hits@3", "Hits@10", "Hyperparameters"]
+             "Hits@3", "Hits@10", "Time (s)", "ES epochs", "Hyperparameters"]
 
     for obj in scores:
         try:
             output_rst[obj["dataset"]] \
                 .append_row([obj["model"],
-                             "{0:.2f}".format(obj["mr"]),
-                             "{0:.2f}".format(obj["mrr"]),
-                             "{0:.2f}".format(obj["H@1"]),
-                             "{0:.2f}".format(obj["H@3"]),
-                             "{0:.2f}".format(obj["H@10"]),
+                             "{0:.1f}".format(obj["mr"]),
+                             "{0:.4f}".format(obj["mrr"]),
+                             "{0:.3f}".format(obj["H@1"]),
+                             "{0:.3f}".format(obj["H@3"]),
+                             "{0:.3f}".format(obj["H@10"]),
+                             "{0:.1f}".format(obj["time"]),
+                             "{}".format(obj["early_stopping_epoch"]),
                              yaml.dump(obj["hyperparams"],
                                        default_flow_style=False)])
         except:
             output_rst[obj["dataset"]] \
                 .append_row([obj["model"],
+                             ".??",
+                             ".??",
                              ".??",
                              ".??",
                              ".??",
@@ -67,6 +72,8 @@ def display_scores(scores):
 
 
 def run_single_exp(config, dataset, model):
+    start_time = time.time()
+
     hyperparams = config["hyperparams"][dataset][model]
     if hyperparams is None:
         print("dataset {0}...model {1} \
@@ -104,13 +111,18 @@ def run_single_exp(config, dataset, model):
         logging.debug("Fit with early stopping...")
         model.fit(X["train"], True,
                   {
-                      'x_valid': X['valid'][::10],
+                      'x_valid': X['valid'][::2],
                       'criteria': 'mrr',
                       'x_filter': filter,
-                      'stop_interval': 2,
+                      'stop_interval': 4,
                       'burn_in': 0,
-                      'check_interval': 100
+                      'check_interval': 50
                   })
+
+    if not hasattr(model, 'early_stopping_epoch') or model.early_stopping_epoch is None:
+        early_stopping_epoch = np.nan
+    else:
+        early_stopping_epoch = model.early_stopping_epoch
 
     # Run the evaluation procedure on the test set. Will create filtered rankings.
     # To disable filtering: filter_triples=None
@@ -132,7 +144,9 @@ def run_single_exp(config, dataset, model):
         "H@1": hits_1,
         "H@3": hits_3,
         "H@10": hits_10,
-        "hyperparams": hyperparams
+        "hyperparams": hyperparams,
+        "time": time.time() - start_time,
+        "early_stopping_epoch": early_stopping_epoch
     }
 
 
@@ -180,20 +194,22 @@ def main():
     with open("config.json", "r") as fi:
         config = json.load(fi)
 
-    # set GPU id to run
-    os.environ["CUDA_VISIBLE_DEVICES"] = config["CUDA_VISIBLE_DEVICES"]
-    logging.debug("Will use gpu number...{0}" \
-                  .format(config["CUDA_VISIBLE_DEVICES"]))
-
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset",
                         type=str.lower,
                         choices=SUPPORT_DATASETS)
     parser.add_argument("-m", "--model",
                         type=str.lower,
-                        choices=SUPPOORT_MODELS)
+                        choices=SUPPORT_MODELS)
+    parser.add_argument("--gpu",  type=str)
 
     args = parser.parse_args()
+
+    if args.gpu is not None:
+        # set GPU id to run
+        os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+        logging.debug("Will use gpu number...{0}".format(args.gpu))
+
     logging.debug("Input dataset...{0}...input model...{1}..." \
                   .format(args.dataset, args.model))
 

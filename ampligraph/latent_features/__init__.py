@@ -14,9 +14,15 @@ entity resolution, and link-based clustering, just to cite a few :cite:`nickel20
 
 """
 
-from .models import EmbeddingModel, TransE, DistMult, ComplEx, HolE, RandomBaseline, MODEL_REGISTRY, \
-    set_entity_threshold, reset_entity_threshold
-from .conve import ConvE
+from .models.EmbeddingModel import EmbeddingModel, MODEL_REGISTRY, set_entity_threshold, reset_entity_threshold
+from .models.TransE import TransE
+from .models.DistMult import DistMult
+from .models.ComplEx import ComplEx
+from .models.HolE import HolE
+from .models.RandomBaseline import RandomBaseline
+from .models.ConvKB import ConvKB
+from .models.ConvE import ConvE
+
 from .loss_functions import Loss, AbsoluteMarginLoss, SelfAdversarialLoss, NLLLoss, PairwiseLoss,\
     NLLMulticlass, BCELoss, NeuralLoss, LOSS_REGISTRY
 from .regularizers import Regularizer, LPRegularizer, REGULARIZER_REGISTRY
@@ -27,8 +33,8 @@ from ..utils import save_model, restore_model
 
 __all__ = ['LOSS_REGISTRY', 'REGULARIZER_REGISTRY', 'MODEL_REGISTRY', 'OPTIMIZER_REGISTRY', 'INITIALIZER_REGISTRY',
            'set_entity_threshold', 'reset_entity_threshold',
-           'EmbeddingModel', 'TransE', 'DistMult', 'ComplEx', 'HolE', 'RandomBaseline', 'ConvE',
-           'Loss', 'AbsoluteMarginLoss', 'SelfAdversarialLoss', 'NLLLoss', 'PairwiseLoss', 'NLLMulticlass', 'BCELoss',
-           'NeuralLoss', 'Regularizer', 'LPRegularizer', 'Optimizer', 'AdagradOptimizer', 'AdamOptimizer',
-           'MomentumOptimizer', 'SGDOptimizer', 'Initializer', 'RandomNormal', 'RandomUniform', 'Xavier',
-           'get_entity_triples', 'save_model', 'restore_model']
+           'EmbeddingModel', 'TransE', 'DistMult', 'ComplEx', 'HolE', 'ConvKB', 'RandomBaseline',
+           'Loss', 'AbsoluteMarginLoss', 'SelfAdversarialLoss', 'NLLLoss', 'PairwiseLoss', 'BCELoss', 'NeuralLoss', 'NLLMulticlass',
+           'Regularizer', 'LPRegularizer', 'Optimizer', 'AdagradOptimizer', 'AdamOptimizer', 'MomentumOptimizer', 
+           'SGDOptimizer', 'Initializer', 'RandomNormal', 'RandomUniform', 'Xavier', 'get_entity_triples',
+           'save_model', 'restore_model']

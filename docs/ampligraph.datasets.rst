@@ -36,6 +36,8 @@ at the location set in ``AMPLIGRAPH_DATA_HOME``.
     load_yago3_10
     load_fb15k
     load_wn18
+    load_wn11
+    load_fb13
 
 
 **Datasets Summary**
@@ -48,6 +50,8 @@ WN18RR    86,835    3,034   3,134   40,943        11
 FB15K     483,142   50,000  59,071  14,951        1,345
 WN18      141,442   5,000   5,000   40,943        18
 YAGO3-10  1,079,040 5,000   5,000   123,182       37
+WN11      110,361   5,215   21,035  38,194        11
+FB13      316,232   11,816  47,464  75,043        13
 ========= ========= ======= ======= ============ ===========
 
 
@@ -59,6 +63,11 @@ YAGO3-10  1,079,040 5,000   5,000   123,182       37
 .. warning:: FB15K-237's validation set contains 8 unseen entities over 9 triples. The test set has 29 unseen entities,
         distributed over 28 triples. WN18RR's validation set contains 198 unseen entities over 210 triples. The test set
         has 209 unseen entities, distributed over 210 triples.
+
+.. note::
+    WN11 and FB13 also provide true and negative labels for the triples in the validation and tests sets.
+    In both cases the positive base rate is close to 50%.
+
 
 Loaders for Custom Knowledge Graphs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
