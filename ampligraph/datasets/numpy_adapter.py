@@ -77,10 +77,10 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
         
         Parameters
         ----------
-        dataset_type: string
-            indicates which dataset to use
         batches_count: int
             number of batches per epoch (default: -1, i.e. uses batch_size of 1)
+        dataset_type: string
+            indicates which dataset to use
         use_filter : bool
             Flag to indicate whether to return the concepts that need to be filtered
             
@@ -105,6 +105,7 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
 
         for i in range(batches_count):
             out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
+
             if use_filter:
                 # get the filter values by querying the database
                 participating_objects, participating_subjects = self.filter_adapter.get_participating_entities(out)

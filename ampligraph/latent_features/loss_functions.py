@@ -543,112 +543,18 @@ class NLLMulticlass(Loss):
         return loss
 
 
-class NeuralLoss(Loss):
-    """Abstract class for neural loss function.
-    """
-
-    name = ""
-    external_params = []
-    class_params = {}
-
-    def __init__(self, eta, hyperparam_dict, verbose=False):
-        """Initialize Loss.
-
-        Parameters
-        ----------
-        hyperparam_dict : dict
-            dictionary of hyperparams.
-            (Keys are described in the hyperparameters section)
-        """
-        self._loss_parameters = {}
-        self._dependencies = []
-
-        # perform check to see if all the required external hyperparams are passed
-        try:
-
-            self._loss_parameters['eta'] = eta
-            self._init_hyperparams(hyperparam_dict)
-            if verbose:
-                logger.info('\n--------- Loss ---------')
-                logger.info('Name : {}'.format(self.name))
-                for key, value in self._loss_parameters.items():
-                    logger.info('{} : {}'.format(key, value))
-        except KeyError as e:
-            msg = 'Some of the hyperparams for loss were not passed to the loss function.\n{}'.format(e)
-            logger.error(msg)
-            raise Exception(msg)
-
-    def _inputs_check(self, y_true, y_pred):
-        """ Creates any dependencies that need to be checked before performing loss computations
-
-        Parameters
-        ----------
-        y_true : tf.Tensor
-            A tensor of ground truth values.
-        y_true : tf.Tensor
-            A tensor of predicted values.
-        """
-        logger.debug('Creating dependencies before loss computations.')
-        self._dependencies = []
-        logger.debug('Dependencies found: \n\tRequired same size y_true and y_pred. ')
-        self._dependencies.append(tf.Assert(tf.equal(tf.shape(y_pred)[0], tf.shape(y_true)[0]),
-                                            [tf.shape(y_pred)[0], tf.shape(y_true)[0]]))
-
-    def _apply(self, y_true, y_pred):
-        """ Apply the loss function. Every inherited class must implement this function.
-        (All the TF code must go in this function.)
-
-        Parameters
-        ----------
-        y_true : tf.Tensor
-            A tensor of ground truth values.
-        y_pred : tf.Tensor
-            A tensor of predicted values.
-
-        Returns
-        -------
-        loss : tf.Tensor
-            The loss value that must be minimized.
-        """
-        msg = 'This function is a placeholder in an abstract class.'
-        logger.error(msg)
-        NotImplementedError(msg)
-
-    def apply(self, y_true, y_pred):
-        """ Interface to external world.
-        This function does the input checks, preprocesses input and finally applies loss function.
-
-        Parameters
-        ----------
-        y_true : tf.Tensor
-            A tensor of ground truth values.
-        y_true : tf.Tensor
-            A tensor of predicted values.
-
-        Returns
-        -------
-        loss : tf.Tensor
-            The loss value that must be minimized.
-        """
-        self._inputs_check(y_true, y_pred)
-        with tf.control_dependencies(self._dependencies):
-            loss = self._apply(y_true, y_pred)
-        return loss
-
-
 @register_loss("bce", [], {'label_smoothing': None, 'label_weighting': False, 'require_same_size_pos_neg': False})
-class BCELoss(NeuralLoss):
+class BCELoss(Loss):
     """ Binary Cross Entropy Loss.
 
         .. math::
 
-            insert-bce-latex-equation-here #TODO
-
+            \mathcal{L} = - \frac{1}{N} \sum_{i=1}^{N} y_i \cdot log(p(y_i)) + (1-y_i) \cdot log(1-p(y_i))
 
         Examples
         --------
-        >>> from ampligraph.latent_features import conve
-        >>> model = conve(batches_count=1, seed=555, epochs=20, k=10, loss='bce', loss_params={})
+        >>> from ampligraph.latent_features.models import ConvE
+        >>> model = ConvE(batches_count=1, seed=555, epochs=20, k=10, loss='bce', loss_params={})
     """
 
     def __init__(self, eta, loss_params={}, verbose=False):
@@ -669,10 +575,12 @@ class BCELoss(NeuralLoss):
         ----------
         y_true : tf.Tensor
             A tensor of ground truth values.
-        y_true : tf.Tensor
+        y_pred : tf.Tensor
             A tensor of predicted values.
         """
+
         logger.debug('Creating dependencies before loss computations.')
+
         self._dependencies = []
         logger.debug('Dependencies found: \n\tRequired same size y_true and y_pred. ')
         self._dependencies.append(tf.Assert(tf.equal(tf.shape(y_pred)[0], tf.shape(y_true)[0]),
@@ -716,6 +624,27 @@ class BCELoss(NeuralLoss):
             logger.info(msg)
 
         self._loss_parameters[key] = value
+
+    def apply(self, y_true, y_pred):
+        """ Interface to external world.
+        This function does the input checks, preprocesses input and finally applies loss function.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            A tensor of ground truth values.
+        y_true : tf.Tensor
+            A tensor of predicted values.
+
+        Returns
+        -------
+        loss : tf.Tensor
+            The loss value that must be minimized.
+        """
+        self._inputs_check(y_true, y_pred)
+        with tf.control_dependencies(self._dependencies):
+            loss = self._apply(y_true, y_pred)
+        return loss
 
     def _apply(self, y_true, y_pred):
         """ Apply the loss function.
