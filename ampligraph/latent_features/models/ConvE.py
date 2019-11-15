@@ -290,33 +290,18 @@ class ConvE(EmbeddingModel):
 
                 emb_img_dim = self.embedding_model_params['embed_image_depth']
 
-                self.bn_vars = {'input': {'beta': np.zeros(shape=[emb_img_dim]),
-                                          'gamma': np.ones(shape=[emb_img_dim]),
-                                          'moving_mean': np.zeros(shape=[emb_img_dim]),
-                                          'moving_var': np.ones(shape=[emb_img_dim])},
-                                'conv': {'beta': np.zeros(shape=[nfilters]),
-                                         'gamma': np.ones(shape=[nfilters]),
-                                         'moving_mean': np.zeros(shape=[nfilters]),
-                                         'moving_var': np.ones(shape=[nfilters])},
-                                'dense': {'beta': np.zeros(shape=[self.k]),
-                                          'gamma': np.ones(shape=[self.k]),
-                                          'moving_mean': np.zeros(shape=[self.k]),
-                                          'moving_var': np.ones(shape=[self.k])}}
-
-                # self.bn_input_beta = tf.get_variable('bn_input_beta', shape=bn_input_shape, dtype=tf.float32,
-                #                                      trainable=is_trainable, initializer=tf.zeros_initializer())
-                # self.bn_input_gamma = tf.get_variable('bn_input_gamma', shape=bn_input_shape, dtype=tf.float32,
-                #                                       trainable=is_trainable, initializer=tf.ones_initializer())
-                # 
-                # self.bn_conv_beta = tf.get_variable('bn_conv_beta', shape=[nfilters], dtype=tf.float32,
-                #                                     trainable=is_trainable, initializer=tf.zeros_initializer())
-                # self.bn_conv_gamma = tf.get_variable('bn_conv_gamma', shape=[nfilters], dtype=tf.float32,
-                #                                      trainable=is_trainable, initializer=tf.ones_initializer())
-                # 
-                # self.bn_dense_beta = tf.get_variable('bn_dense_beta', shape=[1], dtype=tf.float32,
-                #                                      trainable=is_trainable, initializer=tf.zeros_initializer())
-                # self.bn_dense_gamma = tf.get_variable('bn_dense_gamma', shape=[1], dtype=tf.float32,
-                #                                       trainable=is_trainable, initializer=tf.ones_initializer())
+                self.bn_vars = {'batchnorm_input': {'beta': np.zeros(shape=[emb_img_dim]),
+                                                    'gamma': np.ones(shape=[emb_img_dim]),
+                                                    'moving_mean': np.zeros(shape=[emb_img_dim]),
+                                                    'moving_variance': np.ones(shape=[emb_img_dim])},
+                                'batchnorm_conv': {'beta': np.zeros(shape=[nfilters]),
+                                                   'gamma': np.ones(shape=[nfilters]),
+                                                   'moving_mean': np.zeros(shape=[nfilters]),
+                                                   'moving_variance': np.ones(shape=[nfilters])},
+                                'batchnorm_dense': {'beta': np.zeros(shape=[1]),       # shape = [1] for batch norm
+                                                    'gamma': np.ones(shape=[1]),
+                                                    'moving_mean': np.zeros(shape=[1]),
+                                                    'moving_variance': np.ones(shape=[1])}}
 
             if self.embedding_model_params['use_bias']:
                 self.bias = tf.get_variable('activation_bias', shape=[1, len(self.ent_to_idx)],
@@ -384,16 +369,21 @@ class ConvE(EmbeddingModel):
             params_dict['dense_B'] = self.sess_train.run(self.dense_B)
 
             if self.embedding_model_params['use_batchnorm']:
-                # Select batchnorm vars
-                variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='batch_normalization')
-                var_dict = {x.name.split('/')[1].split(':')[0]: x for x in variables}
 
-                params_dict['bn_beta'] = self.sess_train.run(var_dict['beta'])
-                params_dict['bn_gamma'] = self.sess_train.run(var_dict['gamma'])
-                params_dict['bn_moving_mean'] = self.sess_train.run(var_dict['moving_mean'])
-                params_dict['bn_moving_var'] = self.sess_train.run(var_dict['moving_variance'])
+                bn_dict = {}
 
-                # TODO: Select by layer
+                for scope in ['batchnorm_input', 'batchnorm_conv', 'batchnorm_dense']:
+
+                    variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope)
+                    variables = [x for x in variables if 'Adam' not in x.name] # Filter any Adam variables
+
+                    var_dict = {x.name.split('/')[-1].split(':')[0]: x for x in variables}
+                    bn_dict[scope] = {'beta': self.sess_train.run(var_dict['beta']),
+                                      'gamma': self.sess_train.run(var_dict['gamma']),
+                                      'moving_mean': self.sess_train.run(var_dict['moving_mean']),
+                                      'moving_variance': self.sess_train.run(var_dict['moving_variance'])}
+
+                params_dict['bn_vars'] = bn_dict
 
             if self.embedding_model_params['use_bias']:
                 params_dict['bias'] = self.sess_train.run(self.bias)
@@ -485,46 +475,42 @@ class ConvE(EmbeddingModel):
             out = tf.nn.dropout(X, rate=dropout_rate)
             return out
 
+        def _batchnorm(X, key, axis):
+
+            with tf.variable_scope(key, reuse=tf.AUTO_REUSE):
+                x = tf.compat.v1.layers.batch_normalization(X, training=self.tf_is_training, axis=axis,
+                                                            beta_initializer=tf.constant_initializer(
+                                                                self.bn_vars[key]['beta']),
+                                                            gamma_initializer=tf.constant_initializer(
+                                                                self.bn_vars[key]['gamma']),
+                                                            moving_mean_initializer=tf.constant_initializer(
+                                                                self.bn_vars[key]['moving_mean']),
+                                                            moving_variance_initializer=tf.constant_initializer(
+                                                                self.bn_vars[key]['moving_variance']))
+            return x
+
         # Inputs
-        if self.embedding_model_params['checkerboard']:
-            stacked_emb = tf.stack([e_s, e_p], axis=2, name='stacked_embeddings')
-            self.inputs = tf.reshape(stacked_emb, shape=[tf.shape(stacked_emb)[0],
-                                                         self.embedding_model_params['embed_image_height'],
-                                                         self.embedding_model_params['embed_image_width'], 1],
-                                     name='embed_image')
-        else:
-            e_s_img = tf.reshape(e_s, shape=[tf.shape(e_s)[0], self.embedding_model_params['embed_image_height'],
-                                             self.embedding_model_params['embed_image_width']])
-            e_p_img = tf.reshape(e_s, shape=[tf.shape(e_p)[0], self.embedding_model_params['embed_image_height'],
-                                             self.embedding_model_params['embed_image_width']])
-            self.inputs = tf.stack([e_s_img, e_p_img], axis=3, name='embed_image')
+        stacked_emb = tf.stack([e_s, e_p], axis=2, name='stacked_embeddings')
+        self.inputs = tf.reshape(stacked_emb, name='embed_image',
+                                 shape=[tf.shape(stacked_emb)[0], self.embedding_model_params['embed_image_height'],
+                                        self.embedding_model_params['embed_image_width'], 1])
 
         x = self.inputs
 
         if self.embedding_model_params['use_batchnorm']:
-            x = tf.compat.v1.layers.batch_normalization(x, training=self.tf_is_training, axis=3,
-                                                        beta_initializer=tf.constant_initializer(self.bn_vars['input']['beta']),
-                                                        gamma_initializer=tf.constant_initializer(self.bn_vars['input']['gamma']),
-                                                        moving_mean_initializer=tf.constant_initializer(self.bn_vars['input']['moving_mean']),
-                                                        moving_variance_initializer=tf.constant_initializer(self.bn_vars['input']['moving_var']))
+            x = _batchnorm(x, key='batchnorm_input', axis=3)
 
         if not self.embedding_model_params['dropout_embed'] is None:
             x = _dropout(x, rate=self.embedding_model_params['dropout_embed'])
 
         # Convolution layer
         x = tf.nn.conv2d(x, self.conv2d_W, [1, 1, 1, 1], padding='VALID')
-        x = tf.nn.bias_add(x, self.conv2d_B)
 
         if self.embedding_model_params['use_batchnorm']:
-                   x = tf.compat.v1.layers.batch_normalization(x, training=self.tf_is_training, axis=3,
-                                                    beta_initializer=tf.constant_initializer(
-                                                        self.bn_vars['conv']['beta']),
-                                                    gamma_initializer=tf.constant_initializer(
-                                                        self.bn_vars['conv']['gamma']),
-                                                    moving_mean_initializer=tf.constant_initializer(
-                                                        self.bn_vars['conv']['moving_mean']),
-                                                    moving_variance_initializer=tf.constant_initializer(
-                                                        self.bn_vars['conv']['moving_var']))
+            x = _batchnorm(x, key='batchnorm_conv', axis=3)
+        else:
+            # Batch normalization will cancel out bias, so only add bias term if not using batchnorm
+            x = tf.nn.bias_add(x, self.conv2d_B)
 
         x = tf.nn.relu(x, name='conv_relu')
 
@@ -535,20 +521,23 @@ class ConvE(EmbeddingModel):
 
         # Dense layer
         x = tf.matmul(x, self.dense_W)
-        x = tf.nn.bias_add(x, self.dense_B)
-
-        if not self.embedding_model_params['dropout_dense'] is None:
-            x = _dropout(x, rate=self.embedding_model_params['dropout_dense'])
 
         if self.embedding_model_params['use_batchnorm']:
-            # Select batchnorm vars
-            # variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='batch_normalization')
+            # Initializing batchnorm vars for dense layer with shape=[1] will still broadcast over the shape of
+            # the specified axis, e.g. dense shape = [?, k], batchnorm on axis 1 will create k batchnorm vars.
+            # This is layer normalization rather than batch normalization, so adding a dimension to keep batchnorm,
+            # thus dense shape = [?, k, 1], batchnorm on axis 2.
+            x = tf.expand_dims(x, -1)
+            x = _batchnorm(x, key='batchnorm_dense', axis=2)
+            x = tf.squeeze(x, -1)
+        else:
+            x = tf.nn.bias_add(x, self.dense_B)
 
-            x = tf.compat.v1.layers.batch_normalization(x, training=self.tf_is_training, axis=1, # [0, 1, 2] ?
-                                                        beta_initializer=tf.constant_initializer(self.bn_vars['dense']['beta']),
-                                                        gamma_initializer=tf.constant_initializer(self.bn_vars['dense']['gamma']),
-                                                        moving_mean_initializer=tf.constant_initializer(self.bn_vars['dense']['moving_mean']),
-                                                        moving_variance_initializer=tf.constant_initializer(self.bn_vars['dense']['moving_var']))
+        # Note: Original ConvE implementation layer had dropout on dense layer before applying batch normalization.
+        # This can cause variance shift and reduce model performance, so have moved it after as recommended alternative
+        # see: https://arxiv.org/abs/1801.05134
+        if not self.embedding_model_params['dropout_dense'] is None:
+            x = _dropout(x, rate=self.embedding_model_params['dropout_dense'])
 
         x = tf.nn.relu(x, name='dense_relu')
         x = tf.matmul(x, tf.transpose(self.ent_emb), name='matmul')
@@ -814,10 +803,10 @@ class ConvE(EmbeddingModel):
                      .format(mode, self.is_filtered, self.evaluation_protocol))
 
         if self.is_filtered:
-            test_generator = partial(self.eval_dataset_handle.get_next_batch, batch_size=1, dataset_type=mode,
+            test_generator = partial(self.eval_dataset_handle.get_next_batch, batches_count=-1, dataset_type=mode,
                                      use_filter=True)
         else:
-            test_generator = partial(self.eval_dataset_handle.get_next_batch, batch_size=1, dataset_type=mode)
+            test_generator = partial(self.eval_dataset_handle.get_next_batch, batches_count=-1, dataset_type=mode)
 
         batch_iterator = iter(test_generator())
 
@@ -1301,32 +1290,31 @@ class ConvE(EmbeddingModel):
 
         self.eval_dataset_handle = dataset_handle
 
-        # build tf graph for predictions
-        if self.sess_predict is None:
-            tf.reset_default_graph()
-            self.rnd = check_random_state(self.seed)
-            tf.random.set_random_seed(self.seed)
-            self._load_model_from_trained_params()
-            self._initialize_eval_graph()
-            sess = tf.Session()
+        tf.reset_default_graph()
+        self._load_model_from_trained_params()
+
+        self.rnd = check_random_state(self.seed)
+        tf.random.set_random_seed(self.seed)
+        self._initialize_eval_graph()
+
+        with tf.Session(config=self.tf_config) as sess:
             sess.run(tf.tables_initializer())
             sess.run(tf.global_variables_initializer())
-            self.sess_predict = sess
+            sess.run(self.set_training_false)
 
-        self.sess_predict.run(self.set_training_false)
+            scores = []
 
-        scores = []
+            for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
 
-        for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
+                score = self.sess_predict.run([self.score_positive])
 
-            score = self.sess_predict.run([self.score_positive])
+                if self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL):
+                    scores.extend(list(score))
+                else:
+                    scores.append(score)
 
-            if self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL):
-                scores.extend(list(score))
-            else:
-                scores.append(score)
+            return scores
 
-        return scores
 
     def get_ranks(self, dataset_handle):
         """ Used by evaluate_predictions to get the ranks for evaluation.
@@ -1334,14 +1322,13 @@ class ConvE(EmbeddingModel):
         Parameters
         ----------
         dataset_handle : Object of AmpligraphDatasetAdapter
-                         This contains handles of the generators used to get test triples and filters.
+                         This contains handles of the generators that would be used to get test triples and filters
 
         Returns
         -------
         ranks : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
                 An array of ranks of test triples.
         """
-
         if not self.is_fitted:
             msg = 'Model has not been fitted.'
             logger.error(msg)
@@ -1350,27 +1337,31 @@ class ConvE(EmbeddingModel):
         self.eval_dataset_handle = dataset_handle
 
         # build tf graph for predictions
-        if self.sess_predict is None:
-            tf.reset_default_graph()
-            self.rnd = check_random_state(self.seed)
-            tf.random.set_random_seed(self.seed)
-            self._load_model_from_trained_params()
-            self._initialize_eval_graph(mode='test')
-            sess = tf.Session()
+        tf.reset_default_graph()
+        self.rnd = check_random_state(self.seed)
+        tf.random.set_random_seed(self.seed)
+        # load the parameters
+        self._load_model_from_trained_params()
+        # build the eval graph
+        self._initialize_eval_graph()
+
+        with tf.Session(config=self.tf_config) as sess:
             sess.run(tf.tables_initializer())
             sess.run(tf.global_variables_initializer())
-            self.sess_predict = sess
 
-        self.sess_predict.run(self.set_training_false)
-        ranks = []
+            try:
+                sess.run(self.set_training_false)
+            except AttributeError:
+                pass
 
-        for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
+            ranks = []
 
-            rank = self.sess_predict.run(self.rank)
+            for _ in tqdm(range(self.eval_dataset_handle.get_size('test')), disable=(not self.verbose)):
+                rank = sess.run(self.rank)
+                if self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL):
+                    ranks.append(list(rank))
+                else:
+                    ranks.append(rank)
 
-            if self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL):
-                ranks.append(list(rank))
-            else:
-                ranks.append(rank)
+            return ranks
 
-        return ranks

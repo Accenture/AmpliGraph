@@ -13,7 +13,7 @@ class ConvEDatasetAdapter(NumpyDatasetAdapter):
         super(ConvEDatasetAdapter, self).__init__()
 
         self.filter_mapping = None
-        self.filtered_status = None
+        self.filtered_status = {}
         self.output_mapping = None
         self.output_onehot = {}
         self.low_memory = low_memory
