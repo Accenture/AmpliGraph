@@ -826,8 +826,6 @@ def load_yago39k(check_md5hash=False, clean_unseen=True):
                .reindex()
                .values)
 
-    ent = np.unique(np.concatenate((X_train[:, 0], X_train[:, 2])))
-
     X_valid_pos = (
         pd.read_csv("~/TransC/data/YAGO39K/Valid/triple2id_positive.txt", sep=' ', skiprows=1, names=['s', 'o', 'p'])
         [['s', 'p', 'o']]
