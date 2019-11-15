@@ -1,0 +1,1490 @@
+[
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "50",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "10",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.028403949229170465,
+      "mr": 10853.345643153527,
+      "hits_1": 0.014107883817427386,
+      "hits_3": 0.02946058091286307,
+      "hits_10": 0.053112033195020746
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "5",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "3"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.0543913195807903,
+      "mr": 11609.46307053942,
+      "hits_1": 0.03734439834024896,
+      "hits_3": 0.056431535269709544,
+      "hits_10": 0.08464730290456432
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "5",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.07022628309333072,
+      "mr": 12300.496265560167,
+      "hits_1": 0.05186721991701245,
+      "hits_3": 0.07551867219917012,
+      "hits_10": 0.10580912863070539
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "5",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.10228134106993336,
+      "mr": 7792.116182572614,
+      "hits_1": 0.07842323651452282,
+      "hits_3": 0.10705394190871369,
+      "hits_10": 0.14481327800829877
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "15",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "0",
+        "alpha": 1.0
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.04893813216942432,
+      "mr": 12681.165145228215,
+      "hits_1": 0.027385892116182572,
+      "hits_3": 0.05269709543568465,
+      "hits_10": 0.09045643153526971
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "25",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "0"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.012205885868128177,
+      "mr": 16943.172199170123,
+      "hits_1": 0.004979253112033195,
+      "hits_3": 0.013278008298755186,
+      "hits_10": 0.023651452282157676
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "75",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 1e-05,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.06944868144860714,
+      "mr": 12158.970124481328,
+      "hits_1": 0.04854771784232365,
+      "hits_3": 0.07468879668049792,
+      "hits_10": 0.108298755186722
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "50",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.04855460412809016,
+      "mr": 12509.753112033195,
+      "hits_1": 0.029045643153526972,
+      "hits_3": 0.056016597510373446,
+      "hits_10": 0.08298755186721991
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "15",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.06088729879596436,
+      "mr": 11724.738174273858,
+      "hits_1": 0.03734439834024896,
+      "hits_3": 0.06473029045643154,
+      "hits_10": 0.10663900414937759
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "75",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "3"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.07611226920743551,
+      "mr": 12443.366390041494,
+      "hits_1": 0.053526970954356844,
+      "hits_3": 0.08215767634854772,
+      "hits_10": 0.11950207468879669
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "50",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "10"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.07310107373599621,
+      "mr": 12121.492946058092,
+      "hits_1": 0.05228215767634855,
+      "hits_3": 0.07800829875518672,
+      "hits_10": 0.11203319502074689
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "5",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.08438647015986608,
+      "mr": 10691.101244813279,
+      "hits_1": 0.057676348547717846,
+      "hits_3": 0.09045643153526971,
+      "hits_10": 0.13153526970954357
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "25",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "3",
+        "alpha": 1.0
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.02656648635022104,
+      "mr": 16122.368879668049,
+      "hits_1": 0.014522821576763486,
+      "hits_3": 0.027385892116182572,
+      "hits_10": 0.05020746887966805
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "50",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.08718615900512891,
+      "mr": 10545.958091286308,
+      "hits_1": 0.05850622406639004,
+      "hits_3": 0.0950207468879668,
+      "hits_10": 0.14564315352697096
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "75",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.0646425727754753,
+      "mr": 12791.589626556017,
+      "hits_1": 0.04730290456431535,
+      "hits_3": 0.06970954356846473,
+      "hits_10": 0.0983402489626556
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "50",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.04646402903627336,
+      "mr": 12425.78049792531,
+      "hits_1": 0.03319502074688797,
+      "hits_3": 0.04688796680497925,
+      "hits_10": 0.07344398340248963
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "50",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.05917299346485295,
+      "mr": 10816.061410788381,
+      "hits_1": 0.033609958506224065,
+      "hits_3": 0.06680497925311203,
+      "hits_10": 0.1078838174273859
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "25",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "0"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.006811461953282297,
+      "mr": 18364.802904564316,
+      "hits_1": 0.004149377593360996,
+      "hits_3": 0.007883817427385892,
+      "hits_10": 0.01037344398340249
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "75",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.01840813981672244,
+      "mr": 17457.114937759336,
+      "hits_1": 0.01037344398340249,
+      "hits_3": 0.01950207468879668,
+      "hits_10": 0.03734439834024896
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "5",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "1"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.06984057007851152,
+      "mr": 12023.504564315353,
+      "hits_1": 0.04771784232365145,
+      "hits_3": 0.07510373443983402,
+      "hits_10": 0.11535269709543569
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "75",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "10",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.0005484825345061207,
+      "mr": 20093.728215767635,
+      "hits_1": 0.0,
+      "hits_3": 0.0,
+      "hits_10": 0.0008298755186721991
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "25",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "3"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.07031515474070923,
+      "mr": 12219.782987551867,
+      "hits_1": 0.04937759336099585,
+      "hits_3": 0.07676348547717843,
+      "hits_10": 0.1078838174273859
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "5",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.00024435902891620627,
+      "mr": 18912.636514522823,
+      "hits_1": 0.0,
+      "hits_3": 0.0,
+      "hits_10": 0.0
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "50",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "10"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.05354782951554542,
+      "mr": 11310.877178423236,
+      "hits_1": 0.03278008298755187,
+      "hits_3": 0.05518672199170124,
+      "hits_10": 0.09585062240663901
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "5",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.09935866791620204,
+      "mr": 8518.448547717842,
+      "hits_1": 0.061410788381742736,
+      "hits_3": 0.11203319502074689,
+      "hits_10": 0.17219917012448133
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "50",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "1",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.09735067197131342,
+      "mr": 8749.608713692945,
+      "hits_1": 0.05684647302904564,
+      "hits_3": 0.0995850622406639,
+      "hits_10": 0.18381742738589213
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "50",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "1",
+        "alpha": 1.0
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.08707094426711416,
+      "mr": 10734.319917012448,
+      "hits_1": 0.05394190871369295,
+      "hits_3": 0.09626556016597511,
+      "hits_10": 0.15228215767634853
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "25",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "1"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.06846492706286915,
+      "mr": 11593.061825726141,
+      "hits_1": 0.04605809128630706,
+      "hits_3": 0.07427385892116183,
+      "hits_10": 0.11120331950207468
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "5",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.043541615203525987,
+      "mr": 11756.428630705394,
+      "hits_1": 0.025311203319502075,
+      "hits_3": 0.046473029045643155,
+      "hits_10": 0.07717842323651453
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "75",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "1"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.08170294308500671,
+      "mr": 11882.592116182572,
+      "hits_1": 0.054771784232365145,
+      "hits_3": 0.091701244813278,
+      "hits_10": 0.13236514522821577
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "15",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.059546624643905186,
+      "mr": 11364.869294605809,
+      "hits_1": 0.036514522821576766,
+      "hits_3": 0.06639004149377593,
+      "hits_10": 0.104149377593361
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "50",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.07706029803054473,
+      "mr": 11015.73734439834,
+      "hits_1": 0.053112033195020746,
+      "hits_3": 0.08257261410788382,
+      "hits_10": 0.12282157676348547
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "50",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.08101220916603948,
+      "mr": 10930.734854771785,
+      "hits_1": 0.05435684647302905,
+      "hits_3": 0.08713692946058091,
+      "hits_10": 0.13402489626556016
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "50",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.047725894347571844,
+      "mr": 12255.909128630705,
+      "hits_1": 0.03278008298755187,
+      "hits_3": 0.05062240663900415,
+      "hits_10": 0.07551867219917012
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "5",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "10"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.08266969578023967,
+      "mr": 10867.96182572614,
+      "hits_1": 0.054771784232365145,
+      "hits_3": 0.08796680497925312,
+      "hits_10": 0.14190871369294605
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "50",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "10"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.030204881951574225,
+      "mr": 11423.939834024895,
+      "hits_1": 0.014107883817427386,
+      "hits_3": 0.03153526970954357,
+      "hits_10": 0.057676348547717846
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "75",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "1"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.03738153119880424,
+      "mr": 12859.166390041493,
+      "hits_1": 0.021576763485477178,
+      "hits_3": 0.04066390041493776,
+      "hits_10": 0.06721991701244813
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "75",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.10976183649230832,
+      "mr": 7245.178838174274,
+      "hits_1": 0.08257261410788382,
+      "hits_3": 0.11535269709543569,
+      "hits_10": 0.15684647302904564
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "75",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "0",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.0715459157776561,
+      "mr": 11663.275933609959,
+      "hits_1": 0.046473029045643155,
+      "hits_3": 0.07800829875518672,
+      "hits_10": 0.11991701244813278
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "25",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "3",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.05075908285422179,
+      "mr": 10128.386307053943,
+      "hits_1": 0.02863070539419087,
+      "hits_3": 0.053112033195020746,
+      "hits_10": 0.09626556016597511
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "15",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.07292442339993122,
+      "mr": 11299.852282157677,
+      "hits_1": 0.04979253112033195,
+      "hits_3": 0.07842323651452282,
+      "hits_10": 0.11701244813278008
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "50",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 1e-05,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.08708383015753875,
+      "mr": 11391.740248962655,
+      "hits_1": 0.057676348547717846,
+      "hits_3": 0.0979253112033195,
+      "hits_10": 0.14688796680497926
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "5",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "0",
+        "alpha": 0.0
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.05162091571185791,
+      "mr": 11698.327800829875,
+      "hits_1": 0.03319502074688797,
+      "hits_3": 0.05518672199170124,
+      "hits_10": 0.08423236514522822
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "15",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "0",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.07623304791915445,
+      "mr": 11368.12531120332,
+      "hits_1": 0.053526970954356844,
+      "hits_3": 0.08381742738589211,
+      "hits_10": 0.11867219917012448
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "75",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "0"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 2.619955737260169e-05,
+      "mr": 38168.71991701245,
+      "hits_1": 0.0,
+      "hits_3": 0.0,
+      "hits_10": 0.0
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "15",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "10",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.051878531016357934,
+      "mr": 13277.191286307054,
+      "hits_1": 0.024481327800829875,
+      "hits_3": 0.056431535269709544,
+      "hits_10": 0.10995850622406639
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "15",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 1e-05,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.07284233400132312,
+      "mr": 12012.114107883817,
+      "hits_1": 0.05020746887966805,
+      "hits_3": 0.08132780082987552,
+      "hits_10": 0.11618257261410789
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "5",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.07296879006981787,
+      "mr": 10579.958091286308,
+      "hits_1": 0.04564315352697095,
+      "hits_3": 0.07800829875518672,
+      "hits_10": 0.13029045643153528
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "15",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.10663796587070254,
+      "mr": 6886.982987551867,
+      "hits_1": 0.07012448132780083,
+      "hits_3": 0.1087136929460581,
+      "hits_10": 0.18008298755186722
+    }
+  },
+  {
+    "model_name": "DistMult",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "15",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "10"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.05967022516604729,
+      "mr": 12021.985062240665,
+      "hits_1": 0.036929460580912864,
+      "hits_3": 0.06597510373443984,
+      "hits_10": 0.0991701244813278
+    }
+  }
+]

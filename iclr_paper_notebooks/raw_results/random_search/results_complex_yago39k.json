@@ -1,0 +1,1482 @@
+[
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "50",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "10",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.5054533493073964,
+      "mr": 1106.4693304535638,
+      "hits_1": 0.3782937365010799,
+      "hits_3": 0.593952483801296,
+      "hits_10": 0.7367170626349892
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "5",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "3"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.07439713115201159,
+      "mr": 1526.0438444924407,
+      "hits_1": 0.04244060475161987,
+      "hits_3": 0.07289416846652268,
+      "hits_10": 0.12937365010799137
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "5",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.0807899618665306,
+      "mr": 1367.212958963283,
+      "hits_1": 0.04514038876889849,
+      "hits_3": 0.07969762419006479,
+      "hits_10": 0.1456803455723542
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "5",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.10826334459628723,
+      "mr": 1155.5711663066954,
+      "hits_1": 0.0439524838012959,
+      "hits_3": 0.10377969762419006,
+      "hits_10": 0.23952483801295896
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "15",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "0",
+        "alpha": 1.0
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.5255850747341511,
+      "mr": 1024.3173866090713,
+      "hits_1": 0.40280777537796975,
+      "hits_3": 0.6079913606911447,
+      "hits_10": 0.7563714902807775
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "25",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "0"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.14982697985893886,
+      "mr": 1374.0951403887689,
+      "hits_1": 0.0857451403887689,
+      "hits_3": 0.15464362850971922,
+      "hits_10": 0.2815334773218143
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "75",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 1e-05,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.37596423968554604,
+      "mr": 775.9086393088553,
+      "hits_1": 0.23390928725701943,
+      "hits_3": 0.44622030237580995,
+      "hits_10": 0.6777537796976242
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "50",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.5004037197544491,
+      "mr": 343.48822894168467,
+      "hits_1": 0.3672786177105832,
+      "hits_3": 0.5873650107991361,
+      "hits_10": 0.7524838012958963
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "15",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.46614347579379556,
+      "mr": 575.4509719222463,
+      "hits_1": 0.3333693304535637,
+      "hits_3": 0.5464362850971922,
+      "hits_10": 0.7233261339092872
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "75",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "3"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "exception": "OOM when allocating tensor with shape[1116812,500] and type float on /job:localhost/replica:0/task:0/device:GPU:0 by allocator GPU_0_bfc\n\t [[node gradients/concat_2 (defined at /home/ptabacof/AmpliGraph-Lab/ampligraph/latent_features/optimizers.py:213) ]]\nHint: If you want to see a list of allocated tensors when OOM happens, add report_tensor_allocations_upon_oom to RunOptions for current allocation info.\n\n\nCaused by op 'gradients/concat_2', defined at:\n  File \"random_search.py\", line 71, in <module>\n    'check_interval': 25\n  File \"/home/ptabacof/AmpliGraph-Lab/ampligraph/evaluation/protocol.py\", line 1128, in select_best_model_ranking\n    model.fit(X_train, early_stopping, early_stopping_params)\n  File \"/home/ptabacof/AmpliGraph-Lab/ampligraph/latent_features/models/ComplEx.py\", line 296, in fit\n    super().fit(X, early_stopping, early_stopping_params)\n  File \"/home/ptabacof/AmpliGraph-Lab/ampligraph/latent_features/models/EmbeddingModel.py\", line 915, in fit\n    train = self.optimizer.minimize(loss)\n  File \"/home/ptabacof/AmpliGraph-Lab/ampligraph/latent_features/optimizers.py\", line 213, in minimize\n    train = self.optimizer.minimize(loss)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/training/optimizer.py\", line 403, in minimize\n    grad_loss=grad_loss)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/training/optimizer.py\", line 512, in compute_gradients\n    colocate_gradients_with_ops=colocate_gradients_with_ops)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/ops/gradients_impl.py\", line 664, in gradients\n    unconnected_gradients)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/ops/gradients_impl.py\", line 893, in _GradientsHelper\n    aggregation_method)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/ops/gradients_impl.py\", line 1284, in _AggregatedGrads\n    out_grads[i] = _AggregateIndexedSlicesGradients(out_grad)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/ops/gradients_impl.py\", line 1303, in _AggregateIndexedSlicesGradients\n    array_ops.concat([x.values for x in grads], axis=0),\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/util/dispatch.py\", line 180, in wrapper\n    return target(*args, **kwargs)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/ops/array_ops.py\", line 1256, in concat\n    return gen_array_ops.concat_v2(values=values, axis=axis, name=name)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/ops/gen_array_ops.py\", line 1149, in concat_v2\n    \"ConcatV2\", values=values, axis=axis, name=name)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/framework/op_def_library.py\", line 788, in _apply_op_helper\n    op_def=op_def)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/util/deprecation.py\", line 507, in new_func\n    return func(*args, **kwargs)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/framework/ops.py\", line 3300, in create_op\n    op_def=op_def)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/framework/ops.py\", line 1801, in __init__\n    self._traceback = tf_stack.extract_stack()\n\nResourceExhaustedError (see above for traceback): OOM when allocating tensor with shape[1116812,500] and type float on /job:localhost/replica:0/task:0/device:GPU:0 by allocator GPU_0_bfc\n\t [[node gradients/concat_2 (defined at /home/ptabacof/AmpliGraph-Lab/ampligraph/latent_features/optimizers.py:213) ]]\nHint: If you want to see a list of allocated tensors when OOM happens, add report_tensor_allocations_upon_oom to RunOptions for current allocation info.\n\n"
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "50",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "10"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.4036275780584086,
+      "mr": 513.0017278617711,
+      "hits_1": 0.25950323974082073,
+      "hits_3": 0.48023758099352054,
+      "hits_10": 0.7047516198704104
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "5",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.3342774070545446,
+      "mr": 842.5317494600432,
+      "hits_1": 0.1958963282937365,
+      "hits_3": 0.39708423326133907,
+      "hits_10": 0.6264578833693305
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "25",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "3",
+        "alpha": 1.0
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.5439989897395241,
+      "mr": 1350.6296976241902,
+      "hits_1": 0.42624190064794815,
+      "hits_3": 0.6266738660907127,
+      "hits_10": 0.755183585313175
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "50",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.5273282540062649,
+      "mr": 241.69816414686824,
+      "hits_1": 0.3927645788336933,
+      "hits_3": 0.6197624190064794,
+      "hits_10": 0.7752699784017278
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "75",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.3548324232646955,
+      "mr": 259.86274298056156,
+      "hits_1": 0.2287257019438445,
+      "hits_3": 0.40496760259179265,
+      "hits_10": 0.6254859611231102
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "50",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.07852371663282613,
+      "mr": 1615.6257019438444,
+      "hits_1": 0.04362850971922246,
+      "hits_3": 0.07645788336933046,
+      "hits_10": 0.1429805615550756
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "50",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.514298404436555,
+      "mr": 331.55809935205184,
+      "hits_1": 0.38131749460043196,
+      "hits_3": 0.6031317494600432,
+      "hits_10": 0.7598272138228942
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "25",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "0"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.001199758711971893,
+      "mr": 17626.89848812095,
+      "hits_1": 0.00032397408207343413,
+      "hits_3": 0.00043196544276457883,
+      "hits_10": 0.0014038876889848812
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "75",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.05263559149992388,
+      "mr": 1953.0921166306696,
+      "hits_1": 0.030453563714902807,
+      "hits_3": 0.04989200863930886,
+      "hits_10": 0.08844492440604751
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "5",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "1"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.30632650577809284,
+      "mr": 380.25647948164146,
+      "hits_1": 0.1808855291576674,
+      "hits_3": 0.35032397408207344,
+      "hits_10": 0.5775377969762419
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "75",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "10",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.0005819628755962081,
+      "mr": 21165.193088552915,
+      "hits_1": 0.0,
+      "hits_3": 0.00010799136069114471,
+      "hits_10": 0.0008639308855291577
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "25",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "3"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.3549339697808966,
+      "mr": 398.2812095032397,
+      "hits_1": 0.21490280777537796,
+      "hits_3": 0.41825053995680345,
+      "hits_10": 0.6521598272138229
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "5",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.3861131934089179,
+      "mr": 734.6533477321814,
+      "hits_1": 0.23056155507559395,
+      "hits_3": 0.47721382289416847,
+      "hits_10": 0.6982721382289416
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "50",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "10"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.4832832612809167,
+      "mr": 1010.3262419006479,
+      "hits_1": 0.3485961123110151,
+      "hits_3": 0.5712742980561555,
+      "hits_10": 0.7380129589632829
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "5",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.43547040606712606,
+      "mr": 614.2953563714902,
+      "hits_1": 0.30367170626349893,
+      "hits_3": 0.5098272138228942,
+      "hits_10": 0.699244060475162
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "50",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "1",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.4650964972468479,
+      "mr": 487.54697624190067,
+      "hits_1": 0.3249460043196544,
+      "hits_3": 0.5498920086393089,
+      "hits_10": 0.7427645788336933
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "50",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "1",
+        "alpha": 1.0
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.0001,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.5650405873352474,
+      "mr": 1052.3759179265658,
+      "hits_1": 0.4454643628509719,
+      "hits_3": 0.6523758099352052,
+      "hits_10": 0.7752699784017278
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "25",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "1"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.1017849634617216,
+      "mr": 1369.70313174946,
+      "hits_1": 0.05928725701943845,
+      "hits_3": 0.10496760259179265,
+      "hits_10": 0.183585313174946
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "5",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.4720441521831249,
+      "mr": 1167.6441684665226,
+      "hits_1": 0.34190064794816416,
+      "hits_3": 0.5618790496760259,
+      "hits_10": 0.717170626349892
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "75",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "1"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "exception": "OOM when allocating tensor with shape[1116812,500] and type float on /job:localhost/replica:0/task:0/device:GPU:0 by allocator GPU_0_bfc\n\t [[node gradients/concat_2 (defined at /home/ptabacof/AmpliGraph-Lab/ampligraph/latent_features/optimizers.py:213) ]]\nHint: If you want to see a list of allocated tensors when OOM happens, add report_tensor_allocations_upon_oom to RunOptions for current allocation info.\n\n\nCaused by op 'gradients/concat_2', defined at:\n  File \"random_search.py\", line 71, in <module>\n    'check_interval': 25\n  File \"/home/ptabacof/AmpliGraph-Lab/ampligraph/evaluation/protocol.py\", line 1128, in select_best_model_ranking\n    model.fit(X_train, early_stopping, early_stopping_params)\n  File \"/home/ptabacof/AmpliGraph-Lab/ampligraph/latent_features/models/ComplEx.py\", line 296, in fit\n    super().fit(X, early_stopping, early_stopping_params)\n  File \"/home/ptabacof/AmpliGraph-Lab/ampligraph/latent_features/models/EmbeddingModel.py\", line 915, in fit\n    train = self.optimizer.minimize(loss)\n  File \"/home/ptabacof/AmpliGraph-Lab/ampligraph/latent_features/optimizers.py\", line 213, in minimize\n    train = self.optimizer.minimize(loss)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/training/optimizer.py\", line 403, in minimize\n    grad_loss=grad_loss)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/training/optimizer.py\", line 512, in compute_gradients\n    colocate_gradients_with_ops=colocate_gradients_with_ops)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/ops/gradients_impl.py\", line 664, in gradients\n    unconnected_gradients)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/ops/gradients_impl.py\", line 893, in _GradientsHelper\n    aggregation_method)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/ops/gradients_impl.py\", line 1284, in _AggregatedGrads\n    out_grads[i] = _AggregateIndexedSlicesGradients(out_grad)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/ops/gradients_impl.py\", line 1303, in _AggregateIndexedSlicesGradients\n    array_ops.concat([x.values for x in grads], axis=0),\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/util/dispatch.py\", line 180, in wrapper\n    return target(*args, **kwargs)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/ops/array_ops.py\", line 1256, in concat\n    return gen_array_ops.concat_v2(values=values, axis=axis, name=name)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/ops/gen_array_ops.py\", line 1149, in concat_v2\n    \"ConcatV2\", values=values, axis=axis, name=name)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/framework/op_def_library.py\", line 788, in _apply_op_helper\n    op_def=op_def)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/util/deprecation.py\", line 507, in new_func\n    return func(*args, **kwargs)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/framework/ops.py\", line 3300, in create_op\n    op_def=op_def)\n  File \"/home/ptabacof/.conda/envs/tf_gpu/lib/python3.7/site-packages/tensorflow/python/framework/ops.py\", line 1801, in __init__\n    self._traceback = tf_stack.extract_stack()\n\nResourceExhaustedError (see above for traceback): OOM when allocating tensor with shape[1116812,500] and type float on /job:localhost/replica:0/task:0/device:GPU:0 by allocator GPU_0_bfc\n\t [[node gradients/concat_2 (defined at /home/ptabacof/AmpliGraph-Lab/ampligraph/latent_features/optimizers.py:213) ]]\nHint: If you want to see a list of allocated tensors when OOM happens, add report_tensor_allocations_upon_oom to RunOptions for current allocation info.\n\n"
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "15",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.5090926323020067,
+      "mr": 657.6411447084233,
+      "hits_1": 0.3779697624190065,
+      "hits_3": 0.5973002159827214,
+      "hits_10": 0.7532397408207343
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "50",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.40176588690500303,
+      "mr": 782.4989200863931,
+      "hits_1": 0.2579913606911447,
+      "hits_3": 0.4811015118790497,
+      "hits_10": 0.6967602591792657
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "50",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.3688276489370345,
+      "mr": 791.4306695464363,
+      "hits_1": 0.22732181425485962,
+      "hits_3": 0.4400647948164147,
+      "hits_10": 0.6620950323974082
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "50",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.12417641908161507,
+      "mr": 959.9484881209503,
+      "hits_1": 0.042332613390928725,
+      "hits_3": 0.1273218142548596,
+      "hits_10": 0.29330453563714903
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "5",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "10"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.4180828806690269,
+      "mr": 957.2491360691145,
+      "hits_1": 0.28228941684665226,
+      "hits_3": 0.49114470842332614,
+      "hits_10": 0.6914686825053996
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "50",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "10"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.46002180626029027,
+      "mr": 1089.6795896328294,
+      "hits_1": 0.32397408207343414,
+      "hits_3": 0.5481641468682505,
+      "hits_10": 0.7200863930885529
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "75",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "1"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.4943110641849135,
+      "mr": 970.9126349892009,
+      "hits_1": 0.36652267818574513,
+      "hits_3": 0.5773218142548596,
+      "hits_10": 0.7339092872570194
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "75",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.07268995123505517,
+      "mr": 1552.821274298056,
+      "hits_1": 0.041792656587473005,
+      "hits_3": 0.07159827213822895,
+      "hits_10": 0.1263498920086393
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "75",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "0",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.5214752863996338,
+      "mr": 649.6920086393088,
+      "hits_1": 0.3886609071274298,
+      "hits_3": 0.6133909287257019,
+      "hits_10": 0.7625269978401727
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "100",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "25",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "3",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.5456098128529983,
+      "mr": 1031.1043196544276,
+      "hits_1": 0.4247300215982721,
+      "hits_3": 0.6315334773218143,
+      "hits_10": 0.7627429805615551
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "15",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.10317178918634844,
+      "mr": 1328.608423326134,
+      "hits_1": 0.05982721382289417,
+      "hits_3": 0.10539956803455723,
+      "hits_10": 0.18606911447084235
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "250",
+      "eta": "50",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 1e-05,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.4865578702470734,
+      "mr": 276.9328293736501,
+      "hits_1": 0.3487041036717063,
+      "hits_3": 0.5739740820734341,
+      "hits_10": 0.7564794816414687
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "5",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "0",
+        "alpha": 0.0
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.2712860929047313,
+      "mr": 1002.1019438444924,
+      "hits_1": 0.12904967602591794,
+      "hits_3": 0.32408207343412526,
+      "hits_10": 0.5897408207343412
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "200",
+      "eta": "15",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "0",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 1e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.09893192174294849,
+      "mr": 1219.4631749460043,
+      "hits_1": 0.05593952483801296,
+      "hits_3": 0.10107991360691145,
+      "hits_10": 0.1794816414686825
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "50",
+      "eta": "75",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "0"
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.001,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 2.696569760032922e-05,
+      "mr": 37284.13574514039,
+      "hits_1": 0.0,
+      "hits_3": 0.0,
+      "hits_10": 0.0
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "15",
+      "loss": "self_adversarial",
+      "loss_params": {
+        "margin": "10",
+        "alpha": 0.5
+      },
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "3"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.43336818860828286,
+      "mr": 1143.4518358531318,
+      "hits_1": 0.2927645788336933,
+      "hits_3": 0.5174946004319655,
+      "hits_10": 0.715658747300216
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "15",
+      "loss": "nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 1e-05,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 5e-05
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.30764153253747517,
+      "mr": 747.9338012958963,
+      "hits_1": 0.17105831533477323,
+      "hits_3": 0.359719222462203,
+      "hits_10": 0.6058315334773218
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "5",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.42614835374213783,
+      "mr": 632.1371490280777,
+      "hits_1": 0.28995680345572356,
+      "hits_3": 0.5048596112311015,
+      "hits_10": 0.6956803455723543
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "50",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "150",
+      "eta": "15",
+      "loss": "multiclass_nll",
+      "loss_params": {},
+      "embedding_model_params": {},
+      "regularizer": "LP",
+      "regularizer_params": {
+        "lambda": 0.01,
+        "p": "2"
+      },
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.001
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.4047811945578626,
+      "mr": 478.09200863930886,
+      "hits_1": 0.26976241900647946,
+      "hits_3": 0.4717062634989201,
+      "hits_10": 0.6867170626349892
+    }
+  },
+  {
+    "model_name": "ComplEx",
+    "model_params": {
+      "batches_count": "150",
+      "seed": "0",
+      "epochs": "2000",
+      "k": "100",
+      "eta": "15",
+      "loss": "pairwise",
+      "loss_params": {
+        "margin": "10"
+      },
+      "embedding_model_params": {},
+      "regularizer": null,
+      "regularizer_params": {},
+      "optimizer": "adam",
+      "optimizer_params": {
+        "lr": 0.0005
+      },
+      "verbose": "False"
+    },
+    "results": {
+      "mrr": 0.44301108737767636,
+      "mr": 995.5823974082074,
+      "hits_1": 0.30691144708423324,
+      "hits_3": 0.5217062634989201,
+      "hits_10": 0.7105831533477321
+    }
+  }
+]
