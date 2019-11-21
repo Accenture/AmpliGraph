@@ -99,8 +99,33 @@ workflows:
   version: 2
   checks:
     jobs:
-      - build
-      - pip-check
-      - lint
-      - docs
-      - test
+      - build:
+          filters:
+            branches:
+              only:  
+                - master
+                - develop
+      - pip-check:
+          filters:
+            branches:
+              only:  
+                - master
+                - develop      
+      - lint:
+          filters:
+            branches:
+              only:  
+                - master
+                - develop      
+      - docs:
+          filters:
+            branches:
+              only:  
+                - master
+                - develop      
+      - test:
+          filters:
+            branches:
+              only:  
+                - master
+                - develop       
