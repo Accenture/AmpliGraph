@@ -113,7 +113,7 @@ class Loss(abc.ABC):
 
     def _init_hyperparams(self, hyperparam_dict):
         """Initializes the hyperparameters needed by the algorithm.
-        
+
         Parameters
         ----------
         hyperparam_dict : dictionary
@@ -125,7 +125,7 @@ class Loss(abc.ABC):
 
     def _inputs_check(self, scores_pos, scores_neg):
         """Creates any dependencies that need to be checked before performing loss computations
-        
+
         Parameters
         ----------
         scores_pos : tf.Tensor
@@ -143,14 +143,14 @@ class Loss(abc.ABC):
     def _apply(self, scores_pos, scores_neg):
         """Apply the loss function. Every inherited class must implement this function.
         (All the TF code must go in this function.)
-        
+
         Parameters
         ----------
         scores_pos : tf.Tensor
             A tensor of scores assigned to positive statements.
         scores_neg : tf.Tensor
             A tensor of scores assigned to negative statements.
-        
+
         Returns
         -------
         loss : tf.Tensor
@@ -161,16 +161,16 @@ class Loss(abc.ABC):
         NotImplementedError(msg)
 
     def apply(self, scores_pos, scores_neg):
-        """Interface to external world. 
+        """Interface to external world.
         This function does the input checks, preprocesses input and finally applies loss function.
-        
+
         Parameters
         ----------
         scores_pos : tf.Tensor
             A tensor of scores assigned to positive statements.
         scores_neg : tf.Tensor
             A tensor of scores assigned to negative statements.
-        
+
         Returns
         -------
         loss : tf.Tensor
@@ -218,12 +218,12 @@ class PairwiseLoss(Loss):
 
     def _init_hyperparams(self, hyperparam_dict):
         """Verifies and stores the hyperparameters needed by the algorithm.
-        
+
         Parameters
         ----------
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
-            
+
             - **margin** - Margin to be used in pairwise loss computation(default:1)
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
@@ -280,7 +280,7 @@ class NLLLoss(Loss):
 
     def _init_hyperparams(self, hyperparam_dict):
         """Initializes the hyperparameters needed by the algorithm.
-        
+
         Parameters
         ----------
         hyperparam_dict : dictionary
@@ -344,16 +344,16 @@ class AbsoluteMarginLoss(Loss):
 
     def _init_hyperparams(self, hyperparam_dict):
         """Initializes the hyperparameters needed by the algorithm.
-        
+
         Parameters
         ----------
         hyperparam_dict : dict
            Consists of key value pairs. The Loss will check the keys to get the corresponding params.
-            
+
            **margin** - Margin to be used in loss computation(default:1)
-           
+
         Returns
-        -------    
+        -------
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
 
@@ -427,14 +427,14 @@ class SelfAdversarialLoss(Loss):
 
     def _init_hyperparams(self, hyperparam_dict):
         """Initializes the hyperparameters needed by the algorithm.
-        
+
         Parameters
         ----------
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
-            
+
             - **margin** - Margin to be used in adversarial loss computation (default:3)
-            
+
             - **alpha** - Temperature of sampling (default:0.5)
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN_ADVERSARIAL)
@@ -473,7 +473,7 @@ class SelfAdversarialLoss(Loss):
 @register_loss("multiclass_nll", [], {'require_same_size_pos_neg': False})
 class NLLMulticlass(Loss):
     r"""Multiclass NLL Loss.
-    
+
     Introduced in :cite:`chen2015` where both the subject and objects are corrupted (to use it in this way pass
     corrupt_sides = ['s', 'o'] to embedding_model_params) .
 
@@ -510,7 +510,7 @@ class NLLMulticlass(Loss):
 
     def _init_hyperparams(self, hyperparam_dict):
         """Verifies and stores the hyperparameters needed by the algorithm.
-        
+
         Parameters
         ----------
         hyperparam_dict : dictionary

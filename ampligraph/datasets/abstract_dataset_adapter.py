@@ -9,14 +9,14 @@ class AmpligraphDatasetAdapter(abc.ABC):
         """Initialize the class variables
         """
         self.dataset = {}
-        
+
         # relation to idx mappings
         self.rel_to_idx = {}
         # entities to idx mappings
         self.ent_to_idx = {}
         # Mapped status of each dataset
         self.mapped_status = {}
-        
+
     def use_mappings(self, rel_to_idx, ent_to_idx):
         """Use an existing mapping with the datasource.
         """
@@ -25,14 +25,14 @@ class AmpligraphDatasetAdapter(abc.ABC):
         # set the mapped status to false, since we are changing the dictionary
         for key in self.dataset.keys():
             self.mapped_status[key] = False
-    
+
     def generate_mappings(self, use_all=False):
         """Generate mappings from either train set or use all dataset to generate mappings
         Parameters
         ----------
         use_all : boolean
             If True, it generates mapping from all the data. If False, it only uses training set to generate mappings
-            
+
         Returns
         -------
         rel_to_idx : dictionary
@@ -41,20 +41,20 @@ class AmpligraphDatasetAdapter(abc.ABC):
             entity to idx mapping dictionary
         """
         raise NotImplementedError('Abstract Method not implemented!')
-        
+
     def get_size(self, dataset_type="train"):
         """Returns the size of the specified dataset
         Parameters
         ----------
         dataset_type : string
             type of the dataset
-            
+
         Returns
         -------
         size : int
             size of the specified dataset
         """
-        
+
         raise NotImplementedError('Abstract Method not implemented!')
 
     def data_exists(self, dataset_type="train"):
@@ -71,18 +71,18 @@ class AmpligraphDatasetAdapter(abc.ABC):
         """
 
         raise NotImplementedError('Abstract Method not implemented!')
-        
+
     def set_data(self, dataset, dataset_type=None, mapped_status=False):
         """set the dataset based on the type
         Parameters
         ----------
         dataset : nd-array or dictionary
-            dataset of triples 
+            dataset of triples
         dataset_type : string
             if the dataset parameter is an nd- array then this indicates the type of the data being based
         mapped_status : bool
             indicates whether the data has already been mapped to the indices
-            
+
         """
         raise NotImplementedError('Abstract Method not implemented!')
 
@@ -94,7 +94,7 @@ class AmpligraphDatasetAdapter(abc.ABC):
             remap the data, if already mapped. One would do this if the dictionary is updated.
         """
         raise NotImplementedError('Abstract Method not implemented!')
-    
+
     def set_filter(self, filter_triples):
         """set's the filter that need to be used while generating evaluation batch
         Parameters
@@ -103,10 +103,10 @@ class AmpligraphDatasetAdapter(abc.ABC):
             triples that would be used as filter
         """
         raise NotImplementedError('Abstract Method not implemented!')
-        
+
     def get_next_batch(self, batches_count=-1, dataset_type="train", use_filter=False):
         """Generator that returns the next batch of data.
-        
+
         Parameters
         ----------
         dataset_type: string
@@ -126,7 +126,7 @@ class AmpligraphDatasetAdapter(abc.ABC):
             all subjects that were involved in the ?-p-o relation. This is returned only if use_filter is set to true.
         """
         raise NotImplementedError('Abstract Method not implemented!')
-            
+
     def cleanup(self):
         """Cleans up the internal state
         """

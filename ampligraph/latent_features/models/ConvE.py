@@ -9,7 +9,7 @@ from .EmbeddingModel import EmbeddingModel, register_model, ENTITY_THRESHOLD
 from ..initializers import DEFAULT_XAVIER_IS_UNIFORM
 from ampligraph.latent_features import constants as constants
 
-from ...datasets import NumpyDatasetAdapter, AmpligraphDatasetAdapter, ConvEDatasetAdapter
+from ...datasets import NumpyDatasetAdapter, AmpligraphDatasetAdapter, OneToNDatasetAdapter
 from ..optimizers import SGDOptimizer
 from ...evaluation import to_idx, generate_corruptions_for_eval
 
@@ -18,7 +18,7 @@ logger.setLevel(logging.DEBUG)
 
 
 @register_model('ConvE', {'conv_filters': 32, 'conv_kernel_size': 3, 'dropout_embed': 0.2, 'dropout_conv': 0.3,
-                          'dropout_dense': 0.2, 'use_bias': True, 'use_batchnorm': False, 'checkerboard': True})
+                          'dropout_dense': 0.2, 'use_bias': True, 'use_batchnorm': True})
 class ConvE(EmbeddingModel):
     """ Convolutional 2D Knowledge Graph Embeddings
 
@@ -67,12 +67,11 @@ class ConvE(EmbeddingModel):
                                          'dropout_conv': 0.3,
                                          'dropout_dense': 0.2,
                                          'use_bias': True,
-                                         'use_batchnorm': False,
-                                         'checkerboard': True},
+                                         'use_batchnorm': True},
                  optimizer=constants.DEFAULT_OPTIM,
                  optimizer_params={'lr': constants.DEFAULT_LR},
                  loss='bce',
-                 loss_params={'label_weighting': True,
+                 loss_params={'label_weighting': False,
                               'label_smoothing': 0.1},
                  regularizer=constants.DEFAULT_REGULARIZER,
                  regularizer_params={},
@@ -110,9 +109,7 @@ class ConvE(EmbeddingModel):
             - **dropout_conv** (float|None): Dropout on the convolution maps. Default: 0.3
             - **dropout_dense** (float|None): Dropout on the dense layer. Default: 0.2
             - **use_bias** (bool): Use bias layer. Default: True
-            - **use_batchnorm** (bool): Use batch normalization after input, convolution, and dense layers.
-            - **checkerboard** (bool): - Reshape the embedding 'image' so that entity and relation embeddings interact
-                within the convolution kernel. Default: True.
+            - **use_batchnorm** (bool): Use batch normalization after input, convolution, dense layers. Default: True
 
         optimizer : string
             The optimizer used to minimize the loss function. Choose between 'sgd', 'adagrad', 'adam', 'momentum'.
@@ -189,25 +186,21 @@ class ConvE(EmbeddingModel):
 
         # Add default values if not provided in embedding_model_params dict
         default_embedding_model_params = {'conv_filters': 32, 'conv_kernel_size': 3, 'dropout_embed': 0.2,
-                                          'dropout_conv': 0.3, 'dropout_dense': 0.2, 'use_batchnorm': False,
-                                          'use_bias': True, 'checkerboard': True}
+                                          'dropout_conv': 0.3, 'dropout_dense': 0.2, 'use_batchnorm': True,
+                                          'use_bias': True}
 
         for key, val in default_embedding_model_params.items():
             if key not in embedding_model_params.keys():
                 embedding_model_params[key] = val
 
-        default_loss_params = {'label_smoothing': 0.1, 'label_weighting': True}
+        default_loss_params = {'label_smoothing': 0.1, 'label_weighting': False}
         for key, val in default_loss_params.items():
             if k not in embedding_model_params.keys():
                 loss_params[key] = val
 
         # Find factor pairs (i,j) of concatenated embedding dimensions, where min(i,j) >= conv_kernel_size
-        if embedding_model_params['checkerboard']:
-            n = k * 2
-            emb_img_depth = 1
-        else:
-            n = k
-            emb_img_depth = 2
+        n = k * 2
+        emb_img_depth = 1
 
         ksize = embedding_model_params['conv_kernel_size']
         nfilters = embedding_model_params['conv_filters']
@@ -252,8 +245,6 @@ class ConvE(EmbeddingModel):
             Overload this function if the parameters needs to be initialized differently.
         """
 
-        # self.saver = tf.train.Saver()
-
         if not self.dealing_with_large_graphs:
 
             with tf.variable_scope('meta'):
@@ -261,7 +252,6 @@ class ConvE(EmbeddingModel):
                 self.set_training_true = tf.assign(self.tf_is_training, True)
                 self.set_training_false = tf.assign(self.tf_is_training, False)
 
-            is_trainable = True
             nfilters = self.embedding_model_params['conv_filters']
             ninput = self.embedding_model_params['embed_image_depth']
             ksize = self.embedding_model_params['conv_kernel_size']
@@ -273,17 +263,15 @@ class ConvE(EmbeddingModel):
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
 
             self.conv2d_W = tf.get_variable('conv2d_weights', shape=[ksize, ksize, ninput, nfilters],
-                                            trainable=is_trainable,
                                             initializer=tf.initializers.he_normal(seed=self.seed),
                                             dtype=tf.float32)
-            self.conv2d_B = tf.get_variable('conv2d_bias', shape=[nfilters], trainable=is_trainable,
+            self.conv2d_B = tf.get_variable('conv2d_bias', shape=[nfilters],
                                             initializer=tf.zeros_initializer(), dtype=tf.float32)
 
             self.dense_W = tf.get_variable('dense_weights', shape=[dense_dim, self.k],
-                                           trainable=is_trainable,
                                            initializer=tf.initializers.he_normal(seed=self.seed),
                                            dtype=tf.float32)
-            self.dense_B = tf.get_variable('dense_bias', shape=[self.k], trainable=is_trainable,
+            self.dense_B = tf.get_variable('dense_bias', shape=[self.k],
                                            initializer=tf.zeros_initializer(), dtype=tf.float32)
 
             if self.embedding_model_params['use_batchnorm']:
@@ -305,11 +293,10 @@ class ConvE(EmbeddingModel):
 
             if self.embedding_model_params['use_bias']:
                 self.bias = tf.get_variable('activation_bias', shape=[1, len(self.ent_to_idx)],
-                                            initializer=tf.zeros_initializer(), trainable=is_trainable,
-                                            dtype=tf.float32)
+                                            initializer=tf.zeros_initializer(), dtype=tf.float32)
 
         else:
-            raise NotImplementedError('ConvE not implemented when dealing with large graphs (yet)')
+            raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
 
     def _get_model_loss(self, dataset_iterator):
         """Get the current loss including loss due to regularization.
@@ -334,7 +321,7 @@ class ConvE(EmbeddingModel):
 
         # if the graph is large
         if self.dealing_with_large_graphs:
-            raise NotImplementedError('ConvE not implemented when dealing with large graphs (yet)')
+            raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
 
         # run the dependencies
         with tf.control_dependencies(dependencies):
@@ -375,7 +362,7 @@ class ConvE(EmbeddingModel):
                 for scope in ['batchnorm_input', 'batchnorm_conv', 'batchnorm_dense']:
 
                     variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope)
-                    variables = [x for x in variables if 'Adam' not in x.name] # Filter any Adam variables
+                    variables = [x for x in variables if 'Adam' not in x.name]  # Filter out any Adam variables
 
                     var_dict = {x.name.split('/')[-1].split(':')[0]: x for x in variables}
                     bn_dict[scope] = {'beta': self.sess_train.run(var_dict['beta']),
@@ -393,7 +380,7 @@ class ConvE(EmbeddingModel):
             self.trained_model_params = params_dict
 
         else:
-            raise NotImplementedError('ConvE not implemented when dealing with large graphs (yet)')
+            raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
 
     def _load_model_from_trained_params(self):
         """Load the model from trained params.
@@ -440,7 +427,7 @@ class ConvE(EmbeddingModel):
             self.output_mapping = self.trained_model_params['output_mapping']
 
         else:
-            raise NotImplementedError('ConvE not implemented when dealing with large graphs (yet)')
+            raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
 
     def _fn(self, e_s, e_p, e_o):
         """The ConvE scoring function.
@@ -517,9 +504,8 @@ class ConvE(EmbeddingModel):
         if not self.embedding_model_params['dropout_conv'] is None:
             x = _dropout(x, rate=self.embedding_model_params['dropout_conv'])
 
-        x = tf.reshape(x, shape=[tf.shape(x)[0], self.embedding_model_params['dense_dim']])
-
         # Dense layer
+        x = tf.reshape(x, shape=[tf.shape(x)[0], self.embedding_model_params['dense_dim']])
         x = tf.matmul(x, self.dense_W)
 
         if self.embedding_model_params['use_batchnorm']:
@@ -533,9 +519,9 @@ class ConvE(EmbeddingModel):
         else:
             x = tf.nn.bias_add(x, self.dense_B)
 
-        # Note: Original ConvE implementation layer had dropout on dense layer before applying batch normalization.
-        # This can cause variance shift and reduce model performance, so have moved it after as recommended alternative
-        # see: https://arxiv.org/abs/1801.05134
+        # Note: Reference ConvE implementation had dropout on dense layer before applying batch normalization.
+        # This can cause variance shift and reduce model performance, so have moved it after as recommended in:
+        # https://arxiv.org/abs/1801.05134
         if not self.embedding_model_params['dropout_dense'] is None:
             x = _dropout(x, rate=self.embedding_model_params['dropout_dense'])
 
@@ -593,8 +579,8 @@ class ConvE(EmbeddingModel):
         """Generates the training data for ConvE model.
         """
 
-        logger.info('Initializing training data generator.')
-        logger.info('Size of training data: {}'.format(self.train_dataset_handle.get_size('train')))
+        logger.debug('Initializing training data generator.')
+        logger.debug('Size of training data: {}'.format(self.train_dataset_handle.get_size('train')))
 
         # create iterator to iterate over the train batches
         batch_iterator = iter(self.train_dataset_handle.get_next_batch(self.batch_size, 'train'))
@@ -606,7 +592,7 @@ class ConvE(EmbeddingModel):
 
                 # If large graph, load batch_size*2 entities on GPU memory
                 if self.dealing_with_large_graphs:
-                    raise NotImplementedError('ConvE not implemented when dealing with large graphs (yet)')
+                    raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
 
                 yield out, out_onehot
             except StopIteration:
@@ -653,9 +639,9 @@ class ConvE(EmbeddingModel):
         try:
             if isinstance(X, np.ndarray):
                 # Adapt the numpy data in the internal format - to generalize
-                self.train_dataset_handle = ConvEDatasetAdapter(low_memory=self.low_memory)
+                self.train_dataset_handle = OneToNDatasetAdapter(low_memory=self.low_memory)
                 self.train_dataset_handle.set_data(X, 'train')
-            elif isinstance(X, ConvEDatasetAdapter):
+            elif isinstance(X, OneToNDatasetAdapter):
                 self.train_dataset_handle = X
             else:
                 msg = 'Invalid type for input X. Expected ndarray/ConvEDatasetAdapter object, got {}'.format(type(X))
@@ -681,6 +667,8 @@ class ConvE(EmbeddingModel):
                 if not isinstance(self.optimizer, SGDOptimizer):
                     raise Exception("This mode works well only with SGD optimizer with decay (read docs for details). "
                                     "Kindly change the optimizer and restart the experiment")
+
+                raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
 
                 # CPU matrix of embeddings
                 self.ent_emb_cpu = self.initializer.get_np_initializer(len(self.ent_to_idx), self.internal_k)
@@ -726,7 +714,10 @@ class ConvE(EmbeddingModel):
 
             loss = self._get_model_loss(dataset_iterator)
 
-            train = self.optimizer.minimize(loss)
+            # Add update_ops for batch normalization
+            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            with tf.control_dependencies(update_ops):
+                train = self.optimizer.minimize(loss)
 
             self.early_stopping_params = early_stopping_params
 
@@ -755,7 +746,7 @@ class ConvE(EmbeddingModel):
                     self.optimizer.update_feed_dict(feed_dict, batch, epoch)
 
                     if self.dealing_with_large_graphs:
-                        raise NotImplementedError('ConvE not implemented when dealing with large graphs (yet)')
+                        raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
                     else:
                         loss_batch, _ = self.sess_train.run([loss, train], feed_dict=feed_dict)
 
@@ -887,12 +878,10 @@ class ConvE(EmbeddingModel):
 
         use_default_protocol = self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL)
 
-        # if use_default_protocol:
-        #     raise ValueError('Cannot use ConvE with default protocol.')
-
         corrupt_side = self.eval_config.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL)
         # Dependencies that need to be run before scoring
         test_dependency = []
+
         # For large graphs
         if self.dealing_with_large_graphs:
             # Add a dependency to load the embeddings on the GPU
@@ -1184,7 +1173,7 @@ class ConvE(EmbeddingModel):
                     self.eval_dataset_handle = self.train_dataset_handle
                     logger.debug('Initialized eval_dataset from train_dataset using 1-N evaluation protocol')
                 else:
-                    # If using 1-1 evaluation in early stopping then must use a numpydatasetadapter, not convedatasetadapter
+                    # If using 1-1 evaluation in early stopping then must use a numpydatasetadapter
                     self.x_valid = to_idx(self.x_valid, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
 
                     dataset_handle = NumpyDatasetAdapter()
@@ -1278,7 +1267,7 @@ class ConvE(EmbeddingModel):
 
         # Adapt the data with ConvE OR Numpy adapter for internal use, depending on the scoring strategy.
         if self.evaluation_protocol == '1-N':
-            dataset_handle = ConvEDatasetAdapter(low_memory=self.low_memory)
+            dataset_handle = OneToNDatasetAdapter(low_memory=self.low_memory)
             dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
             dataset_handle.set_data(X, "test", mapped_status=from_idx)
             dataset_handle.set_output_mapping(self.output_mapping)
@@ -1314,7 +1303,6 @@ class ConvE(EmbeddingModel):
                     scores.append(score)
 
             return scores
-
 
     def get_ranks(self, dataset_handle):
         """ Used by evaluate_predictions to get the ranks for evaluation.
@@ -1364,4 +1352,3 @@ class ConvE(EmbeddingModel):
                     ranks.append(rank)
 
             return ranks
-

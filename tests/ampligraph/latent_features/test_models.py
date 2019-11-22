@@ -9,21 +9,14 @@ import numpy as np
 import pytest
 import os
 
-<<<<<<< HEAD
-from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline, ConvE
-=======
-from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline, ConvKB
->>>>>>> 56bd2c4382be50b6323f492e79d3411f8a572590
+from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline, ConvKB, ConvE
 from ampligraph.latent_features import set_entity_threshold, reset_entity_threshold
 from ampligraph.datasets import load_wn18
 from ampligraph.utils import save_model, restore_model
 from ampligraph.evaluation import evaluate_performance, hits_at_n_score
-<<<<<<< HEAD
-from ampligraph.datasets import ConvEDatasetAdapter
+from ampligraph.datasets import OneToNDatasetAdapter
 from ampligraph.utils import save_model, restore_model
-=======
 from ampligraph.evaluation.protocol import to_idx
->>>>>>> 56bd2c4382be50b6323f492e79d3411f8a572590
 
 
 def test_large_graph_mode():
@@ -304,16 +297,52 @@ def test_is_fitted_on():
     # Doesn't fit the extra relationship triples
     assert model.is_fitted_on(X2) is False
 
-<<<<<<< HEAD
-def test_fit_predict_save_restore_ConvE():
 
-    model = ConvE(batches_count=2000, seed=22, epochs=1, k=10, eta=1,
+def test_conve_fit_predict_save_restore():
+
+    X = load_wn18()
+    model = ConvE(batches_count=2000, seed=22, epochs=1, k=10,
                   embedding_model_params={'conv_filters': 16, 'conv_kernel_size': 3},
                   optimizer='adam', optimizer_params={'lr': 0.01},
                   loss='bce', loss_params={},
                   regularizer=None, regularizer_params={'p': 2, 'lambda': 1e-5},
                   verbose=True, low_memory=True)
-=======
+
+    model.fit(X['train'])
+
+    y1 = model.predict(X['test'][:5])
+
+    save_model(model, 'model.tmp')
+    del model
+    model = restore_model('model.tmp')
+
+    y2 = model.predict(X['test'][:5])
+
+    assert np.all(y1 == y2)
+
+
+def test_conve_evaluation_protocol():
+
+    X = load_wn18()
+    model = ConvE(batches_count=2000, seed=22, epochs=1, k=10,
+                  embedding_model_params={'conv_filters': 16, 'conv_kernel_size': 3},
+                  optimizer='adam', optimizer_params={'lr': 0.01},
+                  loss='bce', loss_params={},
+                  regularizer=None, regularizer_params={'p': 2, 'lambda': 1e-5},
+                  verbose=True, low_memory=True)
+
+    model.fit(X['train'])
+
+    y1 = model.predict(X['test'][:5])
+
+    save_model(model, 'model.tmp')
+    del model
+    model = restore_model('model.tmp')
+
+    y2 = model.predict(X['test'][:5])
+
+    assert np.all(y1 == y2)
+
 
 def test_convkb_train_predict():
 
@@ -327,27 +356,20 @@ def test_convkb_train_predict():
                    loss='pairwise',
                    loss_params={},
                    verbose=True)
->>>>>>> 56bd2c4382be50b6323f492e79d3411f8a572590
 
     X = load_wn18()
     model.fit(X['train'])
 
-<<<<<<< HEAD
     y1 = model.predict(X['test'][:5])
 
-    save_model(model, 'conve.tmp')
+    save_model(model, 'convkb.tmp')
     del model
 
-    model = restore_model('conve.tmp')
+    model = restore_model('convkb.tmp')
 
     y2 = model.predict(X['test'][:5])
 
     assert np.all(y1 == y2)
-
-=======
-    y = model.predict(X['test'][:10])
-
-    print(y)
 
 
 def test_convkb_save_restore():
@@ -482,4 +504,3 @@ def test_calibrate_with_negatives():
     probas = model.predict_proba(np.concatenate((X_pos, X_neg)))
 
     assert np.logical_and(probas > 0, probas < 1).all()
->>>>>>> 56bd2c4382be50b6323f492e79d3411f8a572590

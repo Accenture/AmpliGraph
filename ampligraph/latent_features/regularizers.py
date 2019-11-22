@@ -94,7 +94,7 @@ class Regularizer(abc.ABC):
 
     def _init_hyperparams(self, hyperparam_dict):
         """Initializes the hyperparameters needed by the algorithm.
-        
+
         Parameters
         ----------
         hyperparam_dict : dictionary
@@ -105,9 +105,9 @@ class Regularizer(abc.ABC):
 
     def _apply(self, trainable_params):
         """Apply the regularization function. Every inherited class must implement this function.
-        
+
         (All the TF code must go in this function.)
-        
+
         Parameters
         ----------
         trainable_params : list, shape [n]
@@ -129,7 +129,7 @@ class Regularizer(abc.ABC):
         ----------
         trainable_params : list, shape [n]
             List of trainable params that should be reqularized
-        
+
         Returns
         -------
         loss : tf.Tensor
@@ -142,7 +142,7 @@ class Regularizer(abc.ABC):
 @register_regularizer("LP", ['p', 'lambda'])
 class LPRegularizer(Regularizer):
     r"""Performs LP regularization
-    
+
     .. math::
 
            \mathcal{L}(Reg) =  \sum_{i=1}^{n}  \lambda_i * \mid w_i \mid_p
@@ -156,7 +156,7 @@ class LPRegularizer(Regularizer):
     The nuclear 3-norm proposed in the ComplEx-N3 paper :cite:`lacroix2018canonical` can be obtained with
     ``regularizer_params={'p': 3}``.
 
-          
+
     """
 
     def __init__(self, regularizer_params=None, verbose=False):
@@ -171,7 +171,7 @@ class LPRegularizer(Regularizer):
             - **'p'**: (int): norm (default: 2)
 
             Example: ``regularizer_params={'lambda': 1e-5, 'p': 1}``
-            
+
         """
         if regularizer_params is None:
             regularizer_params = {'lambda': DEFAULT_LAMBDA, 'p': DEFAULT_NORM}
@@ -179,19 +179,19 @@ class LPRegularizer(Regularizer):
 
     def _init_hyperparams(self, hyperparam_dict):
         """Initializes the hyperparameters needed by the algorithm.
-        
+
         Parameters
         ----------
         hyperparam_dict : dictionary
             Consists of key value pairs. The regularizer will check the keys to get the corresponding params:
-            
+
             'lambda': list or float
                 weight for regularizer loss for each parameter(default: 1e-5).
                 If list, size must be equal to no. of parameters.
-                
+
             'p': int
                 Norm of the regularizer (``1`` for L1 regularizer, ``2`` for L2 and so on.) (default:2)
-                
+
         """
         self._regularizer_parameters['lambda'] = hyperparam_dict.get('lambda', DEFAULT_LAMBDA)
         self._regularizer_parameters['p'] = hyperparam_dict.get('p', DEFAULT_NORM)
@@ -208,7 +208,7 @@ class LPRegularizer(Regularizer):
         ----------
         trainable_params : list, shape [n]
             List of trainable params that should be reqularized.
-        
+
         Returns
         -------
         loss : tf.Tensor

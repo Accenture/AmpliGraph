@@ -5,7 +5,8 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-from ampligraph.datasets import load_wn18, load_fb15k, load_fb15k_237, load_yago3_10, load_wn18rr, load_wn11, load_fb13
+from ampligraph.datasets import load_wn18, load_fb15k, load_fb15k_237, load_yago3_10, load_wn18rr, load_wn11, \
+    load_fb13, OneToNDatasetAdapter
 from ampligraph.datasets.datasets import _clean_data
 import numpy as np
 
@@ -149,3 +150,13 @@ def test_fb13():
     assert len(fb13['test_labels']) == 23733 + 23731
     assert sum(fb13['valid_labels']) == 5908
     assert sum(fb13['test_labels']) == 23733
+
+def test_oneton_adapter():
+
+    wn18 = load_wn18()
+
+    adapter = OneToNDatasetAdapter()
+
+def main():
+
+    test_oneton_adapter()

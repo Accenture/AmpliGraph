@@ -1,4 +1,4 @@
-from .EmbeddingModel import EmbeddingModel 
+from .EmbeddingModel import EmbeddingModel
 from .TransE import TransE
 from .DistMult import DistMult
 from .ComplEx import ComplEx

@@ -142,12 +142,12 @@ def restore_model(model_name_path=None):
         model.is_fitted = restored_obj['is_fitted']
         model.ent_to_idx = restored_obj['ent_to_idx']
         model.rel_to_idx = restored_obj['rel_to_idx']
-        
+
         try:
             model.is_calibrated = restored_obj['is_calibrated']
         except KeyError:
             model.is_calibrated = False
-            
+
         model.restore_model_params(restored_obj)
     except pickle.UnpicklingError as e:
         msg = 'Error unpickling model {} : {}.'.format(model_name_path, e)
@@ -320,9 +320,9 @@ def dataframe_to_triples(X, schema):
     Parameters
     ----------
     X: pandas DataFrame with headers
-    schema: List of (subject, relation_name, object) tuples 
+    schema: List of (subject, relation_name, object) tuples
             where subject and object are in the headers of the data frame
-    
+
     Examples
     --------
     >>> import pandas as pd
