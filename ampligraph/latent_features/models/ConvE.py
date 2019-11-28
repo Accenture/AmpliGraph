@@ -193,11 +193,6 @@ class ConvE(EmbeddingModel):
             if key not in embedding_model_params.keys():
                 embedding_model_params[key] = val
 
-        default_loss_params = {'label_smoothing': 0.1, 'label_weighting': False}
-        for key, val in default_loss_params.items():
-            if k not in embedding_model_params.keys():
-                loss_params[key] = val
-
         # Find factor pairs (i,j) of concatenated embedding dimensions, where min(i,j) >= conv_kernel_size
         n = k * 2
         emb_img_depth = 1
