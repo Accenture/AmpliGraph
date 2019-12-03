@@ -9,9 +9,9 @@ from .EmbeddingModel import EmbeddingModel, register_model, ENTITY_THRESHOLD
 from ..initializers import DEFAULT_XAVIER_IS_UNIFORM
 from ampligraph.latent_features import constants as constants
 
-from ...datasets import NumpyDatasetAdapter, AmpligraphDatasetAdapter, OneToNDatasetAdapter
+from ...datasets import OneToNDatasetAdapter
 from ..optimizers import SGDOptimizer
-from ...evaluation import to_idx, generate_corruptions_for_eval
+from ...evaluation import to_idx
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -33,7 +33,7 @@ class ConvE(EmbeddingModel):
     >>> import numpy as np
     >>> from ampligraph.latent_features import ConvE
     >>> from ampligraph.datasets import load_wn18
-    >>> model = ConvE(batches_count=2000, seed=22, epochs=300, k=_k, eta=1,
+    >>> model = ConvE(batches_count=2000, seed=22, epochs=300, k=100,
     >>>              loss='bce', loss_params={},
     >>>              regularizer='LP', regularizer_params={'lambda':0.1},
     >>>              verbose=True, low_memory=True)
@@ -90,6 +90,7 @@ class ConvE(EmbeddingModel):
 
         eta : int
             The number of negatives that must be generated at runtime during training for each positive.
+            Note: This parameter is not used in ConvE.
 
         epochs : int
             The iterations of the training loop.
@@ -625,13 +626,13 @@ class ConvE(EmbeddingModel):
         # try-except block is mainly to handle clean up in case of exception or manual stop in jupyter notebook
         try:
             if isinstance(X, np.ndarray):
-                # Adapt the numpy data in the internal format - to generalize
                 self.train_dataset_handle = OneToNDatasetAdapter(low_memory=self.low_memory)
                 self.train_dataset_handle.set_data(X, 'train')
             elif isinstance(X, OneToNDatasetAdapter):
                 self.train_dataset_handle = X
             else:
-                msg = 'Invalid type for input X. Expected ndarray/ConvEDatasetAdapter object, got {}'.format(type(X))
+                msg = 'Invalid type for input X. Expected numpy.array or OneToNDatasetAdapter object, got {}'\
+                    .format(type(X))
                 logger.error(msg)
                 raise ValueError(msg)
 
@@ -859,7 +860,6 @@ class ConvE(EmbeddingModel):
     def _initialize_early_stopping(self):
         """Initializes and creates evaluation graph for early stopping.
         """
-
 
         try:
             self.x_valid = self.early_stopping_params['x_valid']

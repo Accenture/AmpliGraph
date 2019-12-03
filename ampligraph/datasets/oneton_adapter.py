@@ -30,7 +30,6 @@ class OneToNDatasetAdapter(NumpyDatasetAdapter):
         self.set_data(filter_triples, 'filter', mapped_status)
         self.filter_mapping = self.generate_output_mapping('filter')
 
-
     def generate_onehot_outputs(self, dataset_type='train', use_filter=False):
         """ Create one-hot outputs for a dataset using an output mapping.
 

@@ -17,6 +17,7 @@ import tensorflow as tf
 
 from ..evaluation import mrr_score, hits_at_n_score, mr_score
 from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter, OneToNDatasetAdapter
+# from ampligraph.latent_features.models import ConvE
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -544,6 +545,8 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     0.4
     """
 
+    from ampligraph.latent_features import ConvE  # avoids circular import hell
+
     dataset_handle = None
     # try-except block is mainly to handle clean up in case of exception or manual stop in jupyter notebook
     try:
@@ -552,7 +555,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
             X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
 
-            if str(model.__class__) == "<class 'ampligraph.latent_features.models.ConvE.ConvE'>":
+            if isinstance(model, ConvE):
                 dataset_handle = OneToNDatasetAdapter()
             else:
                 dataset_handle = NumpyDatasetAdapter()
