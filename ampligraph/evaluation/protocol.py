@@ -494,6 +494,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
         - 's': corrupt only subject.
         - 'o': corrupt only object.
+        - '1-N': object only corruption using the fast strategy given in `cite`Dettmers2016. Only valid for ConvE model.
         - 's+o': corrupt both subject and object.
           With ``use_default_protocol`` set to `True`, this mode is forced irrespective of the user choice.
 
@@ -551,18 +552,15 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
             X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
 
-            dataset_handle = NumpyDatasetAdapter()
-
-            try:
-                if model.evaluation_protocol == '1-N':
-                    dataset_handle = OneToNDatasetAdapter()
-            except AttributeError:
-                pass
+            if str(model.__class__) == "<class 'ampligraph.latent_features.models.ConvE.ConvE'>":
+                dataset_handle = OneToNDatasetAdapter()
+            else:
+                dataset_handle = NumpyDatasetAdapter()
 
             dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
             dataset_handle.set_data(X_test, "test")
+
         elif isinstance(X, AmpligraphDatasetAdapter):
-            print('Dataset handle is AmpligraphDatasetAdapter')
             dataset_handle = X
         else:
             msg = "X must be either a numpy array or an AmpligraphDatasetAdapter."

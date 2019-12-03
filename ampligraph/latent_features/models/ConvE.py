@@ -78,7 +78,6 @@ class ConvE(EmbeddingModel):
                  initializer=constants.DEFAULT_INITIALIZER,
                  initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  low_memory=False,
-                 evaluation_protocol='1-1',
                  verbose=constants.DEFAULT_VERBOSE):
         """Initialize an EmbeddingModel
 
@@ -172,12 +171,6 @@ class ConvE(EmbeddingModel):
         verbose : bool
             Verbose mode.
 
-        evaluation_protocol: string
-            The evaluation protocol to use (this is specific to ConvE).
-
-            - ``1-1``: Embeddings are evaluated by the normal protocol (Default)
-            - ``1-N``: Embeddings are evaluated by the 1-N scoring :cite:`Dettmers2016`.
-
         low_memory : bool
             Train ConvE with a (slower) low_memory option. If MemoryError is still encountered, try raising the
             batches_count value. Default: False.
@@ -219,7 +212,6 @@ class ConvE(EmbeddingModel):
         # Calculate dense dimension
         embedding_model_params['dense_dim'] = (emb_img_width - (ksize - 1)) * (emb_img_height - (ksize - 1)) * nfilters
 
-        self.evaluation_protocol = evaluation_protocol
         self.low_memory = low_memory
 
         super().__init__(k=k, eta=eta, epochs=epochs,
@@ -778,15 +770,22 @@ class ConvE(EmbeddingModel):
             raise e
 
     def _test_generator(self, mode):
-        """Generates the test/validation data. If filter_triples are passed, then it returns the False Negatives
-           that could be present in the generated corruptions.
+        """Generates the test/validation data.
 
-           If we are dealing with large graphs, then along with the above, this method returns the idx of the
-           entities present in the batch and their embeddings.
+        Yield a batch of triples (np.array shape=[n, 3]) and associated one-hot outputs (np.array shape=[n, e]), where
+        e is the number of unique entities.
+
+        If filter_triples are passed, then the one-hot outputs will be generated over all the filter_triples instead
+        of just the dataset itself.
+
         """
 
-        logger.debug('Initializing test generator: Mode: {}, Filtered: {}, Evaluation protocol: {}'
-                     .format(mode, self.is_filtered, self.evaluation_protocol))
+        logger.debug('Initializing test generator: Mode: {}, Filtered: {}'
+                     .format(mode, self.is_filtered))
+
+        if not isinstance(self.eval_dataset_handle, OneToNDatasetAdapter):
+            raise RuntimeError('Incorrect dataset handler: expected OneToNDatasetAdapter, got {}'
+                               .format(type(self.eval_dataset_handle)))
 
         if self.is_filtered:
             test_generator = partial(self.eval_dataset_handle.get_next_batch, batches_count=-1, dataset_type=mode,
@@ -796,38 +795,16 @@ class ConvE(EmbeddingModel):
 
         batch_iterator = iter(test_generator())
 
-        if self.evaluation_protocol == '1-N':
-            while True:
-                try:
-                    out, out_onehot_filter = next(batch_iterator)
-                except StopIteration:
-                    break
-                else:
-                    yield out, out_onehot_filter
-        else:
-            indices_obj = np.empty(shape=(0, 1), dtype=np.int32)
-            indices_sub = np.empty(shape=(0, 1), dtype=np.int32)
-            unique_ent = np.empty(shape=(0, 1), dtype=np.int32)
-            entity_embeddings = np.empty(shape=(0, self.internal_k), dtype=np.float32)
-            for i in range(self.eval_dataset_handle.get_size(mode)):
+        while True:
+            try:
+                out, out_onehot_filter = next(batch_iterator)
+            except StopIteration:
+                break
+            else:
+                yield out, out_onehot_filter
 
-                if self.is_filtered:
-                    out, indices_obj, indices_sub = next(batch_iterator)
-                else:
-                    out = next(batch_iterator)
-
-                if self.dealing_with_large_graphs:
-                    # since we are dealing with only one triple (2 entities)
-                    unique_ent = np.unique(np.array([out[0, 0], out[0, 2]]))
-                    needed = (self.batch_size - unique_ent.shape[0])
-                    large_number = np.zeros((needed, self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
-                    entity_embeddings = np.concatenate((self.ent_emb_cpu[unique_ent, :], large_number), axis=0)
-                    unique_ent = unique_ent.reshape(-1, 1)
-
-                yield out, indices_obj, indices_sub, entity_embeddings, unique_ent
-
-    def _initialize_eval_graph(self, mode="test"):
-        """ Initialize the evaluation graph with the set evaluation protocol.
+    def _initialize_eval_graph(self, mode='test'):
+        """ Initialize the 1-N evaluation graph with the set protocol.
 
         Parameters
         ----------
@@ -837,274 +814,6 @@ class ConvE(EmbeddingModel):
         Returns
         -------
 
-        """
-
-        logger.debug('Initializing evaluation graph [{}], evaluation protocol {}'
-                     .format(mode, self.evaluation_protocol))
-
-        if self.evaluation_protocol == '1-1':
-            self._initialize_eval_graph_1_1(mode=mode)
-        elif self.evaluation_protocol == '1-N':
-            self._initialize_eval_graph_1_N(mode=mode)
-        else:
-            raise ValueError('Invalid evaluation protocol {}, please use either `1-1` or `1-N`.'
-                             .format(self.evaluation_protocol))
-
-    def _initialize_eval_graph_1_1(self, mode="test"):
-        """Initialize the evaluation graph for 1-1 scoring (i.e. the standard evaluation protocol).
-
-        Parameters
-        ----------
-        mode: string
-            Indicates which data generator to use.
-        """
-
-        # Use a data generator which returns a test triple along with the subjects and objects indices for filtering
-        # The last two data are used if the graph is large. They are the embeddings of the entities that must be
-        # loaded on the GPU before scoring and the indices of those embeddings.
-        dataset = tf.data.Dataset.from_generator(partial(self._test_generator, mode=mode),
-                                                 output_types=(tf.int32, tf.int32, tf.int32, tf.float32, tf.int32),
-                                                 output_shapes=((1, 3), (None, 1), (None, 1),
-                                                                (None, self.internal_k), (None, 1)))
-        dataset = dataset.repeat()
-        dataset = dataset.prefetch(1)
-        dataset_iter = dataset.make_one_shot_iterator()
-        self.X_test_tf, indices_obj, indices_sub, entity_embeddings, unique_ent = dataset_iter.get_next()
-
-        use_default_protocol = self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL)
-
-        corrupt_side = self.eval_config.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL)
-        # Dependencies that need to be run before scoring
-        test_dependency = []
-
-        # For large graphs
-        if self.dealing_with_large_graphs:
-            # Add a dependency to load the embeddings on the GPU
-            init_ent_emb_batch = self.ent_emb.assign(entity_embeddings, use_locking=True)
-            test_dependency.append(init_ent_emb_batch)
-
-            # Add a dependency to create lookup tables(for remapping the entity indices to the order of variables on GPU
-            self.sparse_mappings = tf.contrib.lookup.MutableDenseHashTable(key_dtype=tf.int32,
-                                                                           value_dtype=tf.int32,
-                                                                           default_value=-1,
-                                                                           empty_key=-2,
-                                                                           deleted_key=-1)
-
-            insert_lookup_op = self.sparse_mappings.insert(unique_ent,
-                                                           tf.reshape(tf.range(tf.shape(unique_ent)[0],
-                                                                      dtype=tf.int32), (-1, 1)))
-            test_dependency.append(insert_lookup_op)
-
-            # Execute the dependency
-            with tf.control_dependencies(test_dependency):
-                # Compute scores for positive - single triple
-                e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
-                self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
-
-                # Generate corruptions in batches
-                self.corr_batches_count = int(np.ceil(len(self.ent_to_idx) / self.batch_size))
-
-                # Corruption generator -
-                # returns corruptions and their corresponding embeddings that need to be loaded on the GPU
-                corruption_generator = tf.data.Dataset.from_generator(self._generate_corruptions_for_large_graphs,
-                                                                      output_types=(tf.int32, tf.float32),
-                                                                      output_shapes=((None, 1),
-                                                                                     (None, self.internal_k)))
-
-                corruption_generator = corruption_generator.repeat()
-                corruption_generator = corruption_generator.prefetch(0)
-
-                corruption_iter = corruption_generator.make_one_shot_iterator()
-
-                # Create tensor arrays for storing the scores of subject and object evals
-                scores_predict_s_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(self.ent_to_idx)))
-                scores_predict_o_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(self.ent_to_idx)))
-
-                def loop_cond(i,
-                              scores_predict_s_corruptions_in,
-                              scores_predict_o_corruptions_in):
-                    return i < self.corr_batches_count
-
-                def compute_score_corruptions(i,
-                                              scores_predict_s_corruptions_in,
-                                              scores_predict_o_corruptions_in):
-                    corr_dependency = []
-                    corr_batch, entity_embeddings_corrpt = corruption_iter.get_next()
-                    # if self.dealing_with_large_graphs: #for debugging
-                    # Add dependency to load the embeddings
-                    init_ent_emb_corrpt = self.ent_emb.assign(entity_embeddings_corrpt, use_locking=True)
-                    corr_dependency.append(init_ent_emb_corrpt)
-
-                    # Add dependency to remap the indices to the corresponding indices on the GPU
-                    insert_lookup_op2 = self.sparse_mappings.insert(corr_batch,
-                                                                    tf.reshape(tf.range(tf.shape(corr_batch)[0],
-                                                                                        dtype=tf.int32),
-                                                                               (-1, 1)))
-                    corr_dependency.append(insert_lookup_op2)
-                    # end if
-
-                    # Execute the dependency
-                    with tf.control_dependencies(corr_dependency):
-                        emb_corr = tf.squeeze(self._entity_lookup(corr_batch))
-                        if corrupt_side == 's+o' or corrupt_side == 's':
-                            # compute and store the scores batch wise
-                            scores_predict_s_c = self._fn(emb_corr, e_p, e_o)
-                            scores_predict_s_corruptions_in = \
-                                scores_predict_s_corruptions_in.scatter(tf.squeeze(corr_batch),
-                                                                        tf.squeeze(scores_predict_s_c))
-
-                        if corrupt_side == 's+o' or corrupt_side == 'o':
-                            scores_predict_o_c = self._fn(e_s, e_p, emb_corr)
-                            scores_predict_o_corruptions_in = \
-                                scores_predict_o_corruptions_in.scatter(tf.squeeze(corr_batch),
-                                                                        tf.squeeze(scores_predict_o_c))
-
-                    return i + 1, scores_predict_s_corruptions_in, scores_predict_o_corruptions_in
-
-                # compute the scores for all the corruptions
-                counter, scores_predict_s_corr_out, scores_predict_o_corr_out = \
-                    tf.while_loop(loop_cond,
-                                  compute_score_corruptions,
-                                  (0,
-                                   scores_predict_s_corruptions,
-                                   scores_predict_o_corruptions),
-                                  back_prop=False,
-                                  parallel_iterations=1)
-
-                if corrupt_side == 's+o' or corrupt_side == 's':
-                    subj_corruption_scores = scores_predict_s_corr_out.stack()
-
-                if corrupt_side == 's+o' or corrupt_side == 'o':
-                    obj_corruption_scores = scores_predict_o_corr_out.stack()
-
-                if corrupt_side == 's+o':
-                    self.scores_predict = tf.concat([obj_corruption_scores, subj_corruption_scores], axis=0)
-                elif corrupt_side == 'o':
-                    self.scores_predict = obj_corruption_scores
-                else:
-                    self.scores_predict = subj_corruption_scores
-
-        else:
-            # Rather than generating corruptions in batches do it at once on the GPU for small or medium sized graphs
-            all_entities_np = np.arange(len(self.ent_to_idx))
-
-            corruption_entities = self.eval_config.get('corruption_entities', constants.DEFAULT_CORRUPTION_ENTITIES)
-
-            if corruption_entities == 'all':
-                corruption_entities = all_entities_np
-            elif isinstance(corruption_entities, np.ndarray):
-                corruption_entities = corruption_entities
-            else:
-                msg = 'Invalid type for corruption entities.'
-                logger.error(msg)
-                raise ValueError(msg)
-
-            # Entities that must be used while generating corruptions
-            self.corruption_entities_tf = tf.constant(corruption_entities, dtype=tf.int32)
-
-            corrupt_side = self.eval_config.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL)
-            # Generate corruptions
-            self.out_corr = generate_corruptions_for_eval(self.X_test_tf,
-                                                          self.corruption_entities_tf,
-                                                          corrupt_side)
-
-            # NB: The sigmoid and gather functions are the only difference with the overridden function
-            # Compute scores for negatives
-            e_s, e_p, e_o = self._lookup_embeddings(self.out_corr)
-            scores_predict = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)))
-            self.scores_predict = tf.gather(scores_predict, indices=self.out_corr[:, 2], axis=0, name='scores_negative')
-
-            neg_indices = tf.stack([tf.range(tf.shape(self.out_corr)[0]), self.out_corr[:, 2]], axis=1)
-            self.scores_predict = tf.gather_nd(scores_predict, indices=neg_indices, name='scores_negative')
-
-            # Compute scores for positive
-            e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
-            scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)))
-            self.score_positive = tf.gather(scores, indices=self.X_test_tf[:, 2], name='score_positive')
-
-            use_default_protocol = self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL)
-
-            if use_default_protocol:
-                obj_corruption_scores = tf.slice(self.scores_predict,
-                                                 [0],
-                                                 [tf.shape(self.scores_predict)[0] // 2])
-
-                subj_corruption_scores = tf.slice(self.scores_predict,
-                                                  [tf.shape(self.scores_predict)[0] // 2],
-                                                  [tf.shape(self.scores_predict)[0] // 2])
-
-        # this is to remove the positives from corruptions - while ranking with filter
-        positives_among_obj_corruptions_ranked_higher = tf.constant(0, dtype=tf.int32)
-        positives_among_sub_corruptions_ranked_higher = tf.constant(0, dtype=tf.int32)
-
-        if self.is_filtered:
-            # If a list of specified entities were used for corruption generation
-            if isinstance(self.eval_config.get('corruption_entities',
-                                               constants.DEFAULT_CORRUPTION_ENTITIES), np.ndarray):
-                corruption_entities = self.eval_config.get('corruption_entities',
-                                                           constants.DEFAULT_CORRUPTION_ENTITIES).astype(np.int32)
-                if corruption_entities.ndim == 1:
-                    corruption_entities = np.expand_dims(corruption_entities, 1)
-                # If the specified key is not present then it would return the length of corruption_entities
-                corruption_mapping = tf.contrib.lookup.MutableDenseHashTable(key_dtype=tf.int32,
-                                                                             value_dtype=tf.int32,
-                                                                             default_value=len(corruption_entities),
-                                                                             empty_key=-2,
-                                                                             deleted_key=-1)
-
-                insert_lookup_op = corruption_mapping.insert(corruption_entities,
-                                                             tf.reshape(tf.range(tf.shape(corruption_entities)[0],
-                                                                                 dtype=tf.int32), (-1, 1)))
-
-                with tf.control_dependencies([insert_lookup_op]):
-                    # remap the indices of objects to the smaller set of corruptions
-                    indices_obj = corruption_mapping.lookup(indices_obj)
-                    # mask out the invalid indices (i.e. the entities that were not in corruption list
-                    indices_obj = tf.boolean_mask(indices_obj, indices_obj < len(corruption_entities))
-                    # remap the indices of subject to the smaller set of corruptions
-                    indices_sub = corruption_mapping.lookup(indices_sub)
-                    # mask out the invalid indices (i.e. the entities that were not in corruption list
-                    indices_sub = tf.boolean_mask(indices_sub, indices_sub < len(corruption_entities))
-
-            # get the scores of positives present in corruptions
-            if use_default_protocol:
-                scores_pos_obj = tf.gather(obj_corruption_scores, indices_obj)
-                scores_pos_sub = tf.gather(subj_corruption_scores, indices_sub)
-            else:
-                scores_pos_obj = tf.gather(self.scores_predict, indices_obj)
-                if corrupt_side == 's+o':
-                    scores_pos_sub = tf.gather(self.scores_predict, indices_sub + len(corruption_entities))
-                else:
-                    scores_pos_sub = tf.gather(self.scores_predict, indices_sub)
-            # compute the ranks of the positives present in the corruptions and
-            # see how many are ranked higher than the test triple
-            if corrupt_side == 's+o' or corrupt_side == 'o':
-                positives_among_obj_corruptions_ranked_higher = tf.reduce_sum(
-                    tf.cast(scores_pos_obj >= self.score_positive, tf.int32))
-            if corrupt_side == 's+o' or corrupt_side == 's':
-                positives_among_sub_corruptions_ranked_higher = tf.reduce_sum(
-                    tf.cast(scores_pos_sub >= self.score_positive, tf.int32))
-
-        # compute the rank of the test triple and subtract the positives(from corruptions) that are ranked higher
-        if use_default_protocol:
-            self.rank = tf.stack([tf.reduce_sum(tf.cast(
-                subj_corruption_scores >= self.score_positive,
-                tf.int32)) + 1 - positives_among_sub_corruptions_ranked_higher,
-                tf.reduce_sum(tf.cast(obj_corruption_scores >= self.score_positive,
-                                      tf.int32)) + 1 - positives_among_obj_corruptions_ranked_higher], 0)
-        else:
-            self.rank = tf.reduce_sum(tf.cast(
-                self.scores_predict >= self.score_positive,
-                tf.int32)) + 1 - positives_among_sub_corruptions_ranked_higher - \
-                positives_among_obj_corruptions_ranked_higher
-
-    def _initialize_eval_graph_1_N(self, mode='test'):
-        """Initialize the evaluation graph for 1-N scoring.
-
-        Parameters
-        ----------
-        mode: string
-            Indicates which data generator to use.
         """
 
         logger.debug('Initializing eval graph [mode: {}]'.format(mode))
@@ -1119,7 +828,6 @@ class ConvE(EmbeddingModel):
 
         self.X_test_tf, self.X_test_filter_tf = dataset_iter.get_next()
 
-        # For large graphs
         if self.dealing_with_large_graphs:
             raise NotImplementedError('ConvE not implemented with large graphs (yet)')
 
@@ -1152,49 +860,46 @@ class ConvE(EmbeddingModel):
         """Initializes and creates evaluation graph for early stopping.
         """
 
+
         try:
             self.x_valid = self.early_stopping_params['x_valid']
-
-            if isinstance(self.x_valid, np.ndarray):
-                if self.x_valid.ndim <= 1 or (np.shape(self.x_valid)[1]) != 3:
-                    msg = 'Invalid size for input x_valid. Expected (n,3):  got {}'.format(np.shape(self.x_valid))
-                    logger.error(msg)
-                    raise ValueError(msg)
-
-                if self.evaluation_protocol == '1-N':
-                    # store the validation data in the data handler
-                    self.x_valid = to_idx(self.x_valid, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
-                    self.train_dataset_handle.set_data(self.x_valid, 'valid', mapped_status=True)
-                    self.eval_dataset_handle = self.train_dataset_handle
-                    logger.debug('Initialized eval_dataset from train_dataset using 1-N evaluation protocol')
-                else:
-                    # If using 1-1 evaluation in early stopping then must use a numpydatasetadapter
-                    self.x_valid = to_idx(self.x_valid, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
-
-                    dataset_handle = NumpyDatasetAdapter()
-                    dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
-                    dataset_handle.set_data(self.x_valid, 'valid', mapped_status=True)
-                    self.eval_dataset_handle = dataset_handle
-
-            elif isinstance(self.x_valid, AmpligraphDatasetAdapter):
-
-                if not self.eval_dataset_handle.data_exists('valid'):
-                    msg = 'Dataset `valid` has not been set in the DatasetAdapter.'
-                    logger.error(msg)
-                    raise ValueError(msg)
-
-                self.eval_dataset_handle = self.x_valid
-                logger.debug('Initialized eval_dataset from AmpligraphDatasetAdapter')
-
-            else:
-                msg = 'Invalid type for input X. Expected np.ndarray or AmpligraphDatasetAdapter object, \
-                       got {}'.format(type(self.x_valid))
-                logger.error(msg)
-                raise ValueError(msg)
         except KeyError:
             msg = 'x_valid must be passed for early fitting.'
             logger.error(msg)
             raise KeyError(msg)
+
+        # Set eval_dataset handler
+        if isinstance(self.x_valid, np.ndarray):
+
+            if self.x_valid.ndim <= 1 or (np.shape(self.x_valid)[1]) != 3:
+                msg = 'Invalid size for input x_valid. Expected (n,3):  got {}'.format(np.shape(self.x_valid))
+                logger.error(msg)
+                raise ValueError(msg)
+
+            if self.early_stopping_params['corrupt_side'] in ['s+o', 's']:
+                logger.info('ConvE early stopping only implemented with object corruptions.')
+                self.early_stopping_params['corrupt_side'] = 'o'
+
+                # store the validation data in the data handler
+            self.train_dataset_handle.set_data(self.x_valid, 'valid')
+            self.eval_dataset_handle = self.train_dataset_handle
+            logger.debug('Initialized eval_dataset from train_dataset using.')
+
+        elif isinstance(self.x_valid, OneToNDatasetAdapter):
+
+            if not self.eval_dataset_handle.data_exists('valid'):
+                msg = 'Dataset `valid` has not been set in the DatasetAdapter.'
+                logger.error(msg)
+                raise ValueError(msg)
+
+            self.eval_dataset_handle = self.x_valid
+            logger.debug('Initialized eval_dataset from AmpligraphDatasetAdapter')
+
+        else:
+            msg = 'Invalid type for input X. Expected np.ndarray or OneToNDatasetAdapter object, \
+                   got {}'.format(type(self.x_valid))
+            logger.error(msg)
+            raise ValueError(msg)
 
         self.early_stopping_criteria = self.early_stopping_params.get('criteria',
                                                                       constants.DEFAULT_CRITERIA_EARLY_STOPPING)
@@ -1206,25 +911,30 @@ class ConvE(EmbeddingModel):
 
         self.early_stopping_best_value = None
         self.early_stopping_stop_counter = 0
-        try:
+
+        # Set filter
+        if 'x_filter' in self.early_stopping_params.keys():
+
             # If the filter has already been set in the dataset adapter then just pass x_filter = True
             x_filter = self.early_stopping_params['x_filter']
             if isinstance(x_filter, np.ndarray):
+
                 if x_filter.ndim <= 1 or (np.shape(x_filter)[1]) != 3:
                     msg = 'Invalid size for input x_valid. Expected (n,3):  got {}'.format(np.shape(x_filter))
                     logger.error(msg)
                     raise ValueError(msg)
+
                 # set the filter triples in the data handler
                 x_filter = to_idx(x_filter, ent_to_idx=self.ent_to_idx, rel_to_idx=self.rel_to_idx)
                 self.eval_dataset_handle.set_filter(x_filter, mapped_status=True)
+
             # set the flag to perform filtering
             self.set_filter_for_eval()
-        except KeyError:
+        else:
             logger.debug('x_filter not found in early_stopping_params.')
-            pass
 
         # initialize evaluation graph in validation mode i.e. to use validation set
-        self._initialize_eval_graph("valid")
+        self._initialize_eval_graph('valid')
 
     def predict(self, X, from_idx=False):
         """Predict the scores of triples using a trained embedding model.
@@ -1260,17 +970,13 @@ class ConvE(EmbeddingModel):
             logger.error(msg)
             raise RuntimeError(msg)
 
-        # Adapt the data with ConvE OR Numpy adapter for internal use, depending on the scoring strategy.
-        if self.evaluation_protocol == '1-N':
-            dataset_handle = OneToNDatasetAdapter(low_memory=self.low_memory)
-            dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
-            dataset_handle.set_data(X, "test", mapped_status=from_idx)
-            dataset_handle.set_output_mapping(self.output_mapping)
-            dataset_handle.generate_onehot_outputs(dataset_type='test')
-        else:
-            dataset_handle = NumpyDatasetAdapter()
-            dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
-            dataset_handle.set_data(X, "test", mapped_status=from_idx)
+        dataset_handle = OneToNDatasetAdapter(low_memory=self.low_memory)
+        dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
+        dataset_handle.set_data(X, "test", mapped_status=from_idx)
+
+        # Note: onehot outputs not required for prediction, but are part of the batch function
+        dataset_handle.set_output_mapping(self.output_mapping)
+        dataset_handle.generate_onehot_outputs(dataset_type='test')
 
         self.eval_dataset_handle = dataset_handle
 
@@ -1282,6 +988,7 @@ class ConvE(EmbeddingModel):
         self._initialize_eval_graph()
 
         with tf.Session(config=self.tf_config) as sess:
+
             sess.run(tf.tables_initializer())
             sess.run(tf.global_variables_initializer())
             sess.run(self.set_training_false)
@@ -1291,11 +998,7 @@ class ConvE(EmbeddingModel):
             for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
 
                 score = self.sess_predict.run([self.score_positive])
-
-                if self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL):
-                    scores.extend(list(score))
-                else:
-                    scores.append(score)
+                scores.append(score)
 
             return scores
 
@@ -1312,38 +1015,64 @@ class ConvE(EmbeddingModel):
         ranks : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
                 An array of ranks of test triples.
         """
+
         if not self.is_fitted:
             msg = 'Model has not been fitted.'
             logger.error(msg)
             raise RuntimeError(msg)
 
+        eval_protocol = self.eval_config.get('corrupt_side', constants.DEFAULT_PROTOCOL_EVAL)
+
+        if 'o' in eval_protocol:
+            object_ranks = self._get_ranks(dataset_handle)
+
+        if 's' in eval_protocol:
+            # Assume dataset comes in 'forward' mapping (s, p) -> {O}, so evaluate subject corruptions reverse the
+            # test set and re-generate one-hot outputs (with reversed filter).
+            dataset_handle._reverse_data('test')
+            subject_ranks = self._get_ranks(dataset_handle)
+
+        if eval_protocol == 's+o':
+            ranks = [[s, o] for s, o in zip(subject_ranks, object_ranks)]
+        elif eval_protocol == 's':
+            ranks = subject_ranks
+        elif eval_protocol == 'o':
+            ranks = object_ranks
+
+        return ranks
+
+    def _get_ranks(self, dataset_handle):
+        """ Internal function for ConvE to use 1-N scoring for getting ranks.
+
+        Parameters
+        ----------
+        dataset_handle : Object of AmpligraphDatasetAdapter
+                         This contains handles of the generators that would be used to get test triples and filters
+
+        Returns
+        -------
+        ranks : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
+                An array of ranks of test triples.
+        """
+
         self.eval_dataset_handle = dataset_handle
 
-        # build tf graph for predictions
+        # Load model parameters, build tf evaluation graph for predictions
         tf.reset_default_graph()
         self.rnd = check_random_state(self.seed)
         tf.random.set_random_seed(self.seed)
-        # load the parameters
         self._load_model_from_trained_params()
-        # build the eval graph
         self._initialize_eval_graph()
 
         with tf.Session(config=self.tf_config) as sess:
+
             sess.run(tf.tables_initializer())
             sess.run(tf.global_variables_initializer())
-
-            try:
-                sess.run(self.set_training_false)
-            except AttributeError:
-                pass
+            sess.run(self.set_training_false)
 
             ranks = []
-
             for _ in tqdm(range(self.eval_dataset_handle.get_size('test')), disable=(not self.verbose)):
                 rank = sess.run(self.rank)
-                if self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL):
-                    ranks.append(list(rank))
-                else:
-                    ranks.append(rank)
+                ranks.append(rank)
 
             return ranks

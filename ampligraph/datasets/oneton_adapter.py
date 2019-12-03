@@ -30,6 +30,7 @@ class OneToNDatasetAdapter(NumpyDatasetAdapter):
         self.set_data(filter_triples, 'filter', mapped_status)
         self.filter_mapping = self.generate_output_mapping('filter')
 
+
     def generate_onehot_outputs(self, dataset_type='train', use_filter=False):
         """ Create one-hot outputs for a dataset using an output mapping.
 
@@ -226,3 +227,41 @@ class OneToNDatasetAdapter(NumpyDatasetAdapter):
         if not (len(self.rel_to_idx) == 0 or len(self.ent_to_idx) == 0):
             print('Mapping set data: {}'.format(dataset_type))
             self.map_data()
+
+    def _reverse_data(self, dataset_type, use_filter=True):
+        """Reverses subject and object entities, and generate one-hot outputs for a given dataset_type.
+
+        Note: This *replaces* the dataset that is currently set as `dataset_type`.
+
+        This is used almost exclusively for the get_ranks evaluation protocol in ConvE model.
+
+        Parameters
+        ----------
+        dataset_type : string
+            Indicates the type of data being reversed.
+
+        use_filter : bool
+            Indicates whether to also reverse the set filter for generating new one-hot outputs. Default: True
+        """
+
+        if dataset_type not in self.dataset.keys():
+            msg = 'Dataset {} not found in handler'.format(dataset_type)
+            logger.error(msg)
+            raise KeyError(msg)
+
+        if use_filter:
+            try:
+                self.set_filter(self.dataset['filter'][:, [2, 1, 0]], self.mapped_status['filter'])
+            except KeyError:
+                msg = 'Filter not found in handler, but `use_filter`=True'.format(dataset_type)
+                logger.error(msg)
+                raise KeyError(msg)
+
+        # Set dataset_type with subject-object columns reversed
+        self.set_data(self.dataset[dataset_type][:, [2, 1, 0]], dataset_type=dataset_type,
+                      mapped_status=self.mapped_status[dataset_type])
+
+        # Generate output mapping of reversed dataset type
+        output_mapping = self.generate_output_mapping(dataset_type=dataset_type)
+        self.set_output_mapping(output_mapping)
+        self.generate_onehot_outputs(dataset_type=dataset_type, use_filter=use_filter)
