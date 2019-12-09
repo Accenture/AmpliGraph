@@ -15,7 +15,7 @@ from ...evaluation import to_idx
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-
+from datetime import datetime
 
 @register_model('ConvE', {'conv_filters': 32, 'conv_kernel_size': 3, 'dropout_embed': 0.2, 'dropout_conv': 0.3,
                           'dropout_dense': 0.2, 'use_bias': True, 'use_batchnorm': True})
@@ -573,15 +573,9 @@ class ConvE(EmbeddingModel):
         # create iterator to iterate over the train batches
         batch_iterator = iter(self.train_dataset_handle.get_next_batch(self.batch_size, 'train'))
 
-        for i in range(self.batches_count):
-
+        while True:
             try:
                 out, out_onehot = next(batch_iterator)
-
-                # If large graph, load batch_size*2 entities on GPU memory
-                if self.dealing_with_large_graphs:
-                    raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
-
                 yield out, out_onehot
             except StopIteration:
                 break
@@ -689,7 +683,6 @@ class ConvE(EmbeddingModel):
                                                      output_shapes=((None, 3), (None, len(self.ent_to_idx))))
             prefetch_batches = 5
             dataset = dataset.repeat().prefetch(prefetch_batches)
-
             dataset_iterator = dataset.make_one_shot_iterator()
 
             # init tf graph/dataflow for training
@@ -701,6 +694,11 @@ class ConvE(EmbeddingModel):
             self.loss._set_hyperparams('num_entities', len(self.ent_to_idx))
 
             loss = self._get_model_loss(dataset_iterator)
+
+            loss_summary = tf.summary.scalar('loss', loss)
+            merged_summaries = tf.summary.merge_all()
+            tensorboard_dir = 'conve.graph.{}'.format(datetime.now().strftime('%d-%b_%H-%M-%S'))
+            writer = tf.summary.FileWriter('./{}'.format(tensorboard_dir), self.sess_train.graph)
 
             # Add update_ops for batch normalization
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -736,7 +734,10 @@ class ConvE(EmbeddingModel):
                     if self.dealing_with_large_graphs:
                         raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
                     else:
-                        loss_batch, _ = self.sess_train.run([loss, train], feed_dict=feed_dict)
+                        loss_batch, _, summaries = self.sess_train.run([loss, train, merged_summaries], feed_dict=feed_dict)
+
+                    # Add summaries to writer
+                    writer.add_summary(summaries, epoch)
 
                     if np.isnan(loss_batch) or np.isinf(loss_batch):
                         msg = 'Loss is {}. Please change the hyperparameters.'.format(loss_batch)
@@ -797,6 +798,7 @@ class ConvE(EmbeddingModel):
         batch_iterator = iter(test_generator())
 
         while True:
+
             try:
                 out, out_onehot_filter = next(batch_iterator)
             except StopIteration:
@@ -856,6 +858,41 @@ class ConvE(EmbeddingModel):
 
             # NOTE: if having trouble with the above rank calculation, consider when test triple
             # has the highest score (total_rank=1, filter_rank=1)
+
+    def _initialize_eval_graph_subject(self, mode='test'):
+        """ Initialize the 1-N evaluation graph for evaluating subject corruptions.
+
+        Parameters
+        ----------
+        mode: string
+            Indicates which data generator to use.
+
+        Returns
+        -------
+
+        """
+
+        logger.debug('Initializing eval graph for subject corruptions [mode: {}]'.format(mode))
+
+        test_generator = partial(self.eval_dataset_handle.get_next_batch_subject_corruptions, dataset_type=mode)
+
+        dataset = tf.data.Dataset.from_generator(test_generator,
+                                                 output_types=(tf.int32, tf.int32, tf.float32),
+                                                 output_shapes=((None, 3), (None, 3), (None, len(self.ent_to_idx))))
+
+        dataset = dataset.repeat()
+        dataset = dataset.prefetch(1)
+        dataset_iter = dataset.make_one_shot_iterator()
+
+        self.X_test_tf, self.subject_corr, self.X_filter_tf = dataset_iter.get_next()
+
+        if self.dealing_with_large_graphs:
+            raise NotImplementedError('ConvE not implemented with large graphs (yet)')
+
+        else:
+            e_s, e_p, e_o = self._lookup_embeddings(self.subject_corr)
+            # Scores for all triples
+            self.sigmoid_scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)), name='sigmoid_scores')
 
     def _initialize_early_stopping(self):
         """Initializes and creates evaluation graph for early stopping.
@@ -1024,13 +1061,10 @@ class ConvE(EmbeddingModel):
         eval_protocol = self.eval_config.get('corrupt_side', constants.DEFAULT_PROTOCOL_EVAL)
 
         if 'o' in eval_protocol:
-            object_ranks = self._get_ranks(dataset_handle)
+            object_ranks = self._get_object_ranks(dataset_handle)
 
         if 's' in eval_protocol:
-            # Assume dataset comes in 'forward' mapping (s, p) -> {O}, so evaluate subject corruptions reverse the
-            # test set and re-generate one-hot outputs (with reversed filter).
-            dataset_handle._reverse_data('test')
-            subject_ranks = self._get_ranks(dataset_handle)
+            subject_ranks = self._get_subject_ranks(dataset_handle)
 
         if eval_protocol == 's+o':
             ranks = [[s, o] for s, o in zip(subject_ranks, object_ranks)]
@@ -1041,8 +1075,8 @@ class ConvE(EmbeddingModel):
 
         return ranks
 
-    def _get_ranks(self, dataset_handle):
-        """ Internal function for ConvE to use 1-N scoring for getting ranks.
+    def _get_object_ranks(self, dataset_handle):
+        """ Internal function for ConvE to use 1-N scoring for getting object ranks.
 
         Parameters
         ----------
@@ -1051,7 +1085,7 @@ class ConvE(EmbeddingModel):
 
         Returns
         -------
-        ranks : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
+        ranks : ndarray, shape [n]
                 An array of ranks of test triples.
         """
 
@@ -1076,3 +1110,84 @@ class ConvE(EmbeddingModel):
                 ranks.append(rank)
 
             return ranks
+
+    def _get_subject_ranks(self, dataset_handle):
+        """ Internal function for ConvE to use 1-N scoring for getting subject ranks.
+
+        Parameters
+        ----------
+        dataset_handle : Object of AmpligraphDatasetAdapter
+                         This contains handles of the generators that would be used to get test triples and filters
+
+        Returns
+        -------
+        ranks : ndarray, shape [n]
+                An array of ranks of test triples.
+        """
+
+        self.eval_dataset_handle = dataset_handle
+
+        # Load model parameters, build tf evaluation graph for predictions
+        tf.reset_default_graph()
+        self.rnd = check_random_state(self.seed)
+        tf.random.set_random_seed(self.seed)
+        self._load_model_from_trained_params()
+        self._initialize_eval_graph_subject()
+
+        with tf.Session(config=self.tf_config) as sess:
+
+            sess.run(tf.tables_initializer())
+            sess.run(tf.global_variables_initializer())
+            sess.run(self.set_training_false)
+
+            ranks = []
+            for _ in tqdm(range(len(self.eval_dataset_handle.rel_to_idx)), disable=(not self.verbose)):
+
+                X_test, scores_matrix, scores_filter = sess.run([self.X_test_tf, self.sigmoid_scores, self.X_filter_tf])
+
+                for x in X_test:
+
+                    score_positive = scores_matrix[x[0], x[2]]
+                    idx_negatives = np.where(scores_filter[:, x[2]] !=1)
+                    score_negatives = scores_matrix[idx_negatives, x[2]]
+                    rank = np.sum(score_negatives >= score_positive) + 1
+                    ranks.append(rank)
+
+            return ranks
+
+
+    def _test_generator(self, mode):
+        """Generates the test/validation data.
+
+        Yield a batch of triples (np.array shape=[n, 3]) and associated one-hot outputs (np.array shape=[n, e]), where
+        e is the number of unique entities.
+
+        If filter_triples are passed, then the one-hot outputs will be generated over all the filter_triples instead
+        of just the dataset itself.
+
+        """
+
+        logger.debug('Initializing test generator: Mode: {}, Filtered: {}'
+                     .format(mode, self.is_filtered))
+
+        if not isinstance(self.eval_dataset_handle, OneToNDatasetAdapter):
+            raise RuntimeError('Incorrect dataset handler: expected OneToNDatasetAdapter, got {}'
+                               .format(type(self.eval_dataset_handle)))
+
+        if self.is_filtered:
+            test_generator = partial(self.eval_dataset_handle.get_next_batch, batches_count=-1, dataset_type=mode,
+                                     use_filter=True)
+        else:
+            test_generator = partial(self.eval_dataset_handle.get_next_batch, batches_count=-1, dataset_type=mode)
+
+        batch_iterator = iter(test_generator())
+
+        while True:
+
+            try:
+                out, out_onehot_filter = next(batch_iterator)
+            except StopIteration:
+                break
+            else:
+                yield out, out_onehot_filter
+

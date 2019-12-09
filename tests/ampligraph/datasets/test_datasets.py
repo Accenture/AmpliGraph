@@ -9,6 +9,7 @@ from ampligraph.datasets import load_wn18, load_fb15k, load_fb15k_237, load_yago
     load_fb13, OneToNDatasetAdapter
 from ampligraph.datasets.datasets import _clean_data
 import numpy as np
+import pytest
 
 
 def test_clean_data():
@@ -153,10 +154,124 @@ def test_fb13():
 
 def test_oneton_adapter():
 
-    wn18 = load_wn18()
+    from ampligraph.evaluation.protocol import create_mappings, to_idx
+
+    # Train set
+    X = np.array([['a', 'p', 'b'],
+                  ['a', 'p', 'd'],
+                  ['c', 'p', 'd'],
+                  ['c', 'p', 'e'],
+                  ['c', 'p', 'f']])
+
+    #              a, b, c, d, e, f
+    O = np.array([[0, 1, 0, 1, 0, 0],       # (a, p)
+                  [0, 1, 0, 1, 0, 0],       # (a, p)
+                  [0, 0, 0, 1, 1, 1],       # (c, p)
+                  [0, 0, 0, 1, 1, 1],       # (c, p)
+                  [0, 0, 0, 1, 1, 1]])      # (c, p)
+
+    # Test
+    T = np.array([['a', 'p', 'c'],
+                  ['c', 'p', 'b']])
+
+    #               a, b, c, d, e, f
+    OT1 = np.array([[0, 1, 0, 1, 0, 0],    # (a, p)     # test set onehots when output mapping is from train set
+                    [0, 0, 0, 1, 1, 1]]),  # (c, p)
+    OT2 = np.array([[0, 0, 1, 0, 0, 0],    # (a, p)     # test set onehots when output mapping is from test set
+                    [0, 1, 0, 0, 0, 0]]),  # (c, p)
+
+
+    # Filter
+    filter = np.concatenate((X, T))
+    #               a, b, c, d, e, f
+    OF = np.array([[0, 1, 1, 1, 0, 0],       # (a, p)   # train set onehots when output mapping is from filter
+                   [0, 1, 1, 1, 0, 0],       # (a, p)
+                   [0, 1, 0, 1, 1, 1],       # (c, p)
+                   [0, 1, 0, 1, 1, 1],       # (c, p)
+                   [0, 1, 0, 1, 1, 1]])      # (c, p)
+
+    # Expected input tuple to filtered outputs
+    OF_map = {(0, 0): [0, 1, 1, 1, 0, 0],
+              (2, 0): [0, 1, 0, 1, 1, 1]}
+
+    rel_to_idx, ent_to_idx = create_mappings(X)
+    X = to_idx(X, ent_to_idx, rel_to_idx)
 
     adapter = OneToNDatasetAdapter()
+    adapter.use_mappings(rel_to_idx, ent_to_idx)
+    adapter.set_data(X, 'train', mapped_status=True)
 
-def main():
+    adapter.set_data(T, 'test', mapped_status=False)
 
-    test_oneton_adapter()
+    # Adapter internally maps test set
+    assert (adapter.mapped_status['test']==True)
+
+    # Re-assign test set from adapter internally mapped
+    T = adapter.dataset['test']
+
+    # Generate output map
+    train_output_map = adapter.generate_output_mapping('train')
+
+    # Assert all unique sp pairs are in the output_map keys
+    unique_sp = set([(s, p) for s, p in X[:, [0, 1]]])
+    for sp in train_output_map.keys():
+        assert(sp in unique_sp)
+
+    # ValueError if generating onehot outputs before output_mapping is set
+    with pytest.raises(ValueError):
+        adapter.generate_onehot_outputs('train')
+
+    adapter.set_output_mapping(train_output_map)
+    adapter.generate_onehot_outputs('train')
+    train_iter = adapter.get_next_batch(batches_count=1, dataset_type='train', use_filter=False)
+    triples, onehot = next(train_iter)
+    assert np.all(X == triples)
+    assert np.all(O == onehot)
+
+    test_iter = adapter.get_next_batch(batches_count=1, dataset_type='test', use_filter=False)
+
+    triples, onehot = next(test_iter)
+    assert np.all(T == triples)
+    assert np.all(OT1 == onehot)
+
+    # Generate test output map
+    test_output_map = adapter.generate_output_mapping('test')
+    adapter.set_output_mapping(test_output_map)
+
+    test_iter = adapter.get_next_batch(batches_count=1, dataset_type='test', use_filter=False)
+
+    triples, onehot = next(test_iter)
+    assert np.all(T == triples)
+    assert np.all(OT2 == onehot)
+
+    # Train onehot outputs with filter=True
+    adapter.set_filter(filter_triples=filter)
+    train_iter = adapter.get_next_batch(batches_count=1, dataset_type='train', use_filter=True)
+    triples, onehot = next(train_iter)
+    assert np.all(X == triples)
+    assert np.all(OF == onehot)
+
+    # Test subject corruption mode
+
+    batch_iter = adapter.get_next_batch_subject_corruptions('train', use_filter=True)
+
+    triples, out, out_onehot = next(batch_iter)
+    # Only one relationship, so triples should be all the train triples
+    assert np.all(triples==X)
+
+    # All possible subject corruptions, so length of out should correspond to number unique entities
+    assert len(out) == len(adapter.ent_to_idx)
+    assert len(out) == len(np.unique(X[:, [0, 2]]))
+
+    # Onehot should be a square matrix
+    assert out_onehot.shape[0] == out_onehot.shape[1]
+    # .. and should be same size as number of unique entities
+    assert out_onehot.shape[0] == len(out)
+
+    # If (s, p) is in OF_map, then check that onehot outputs are as expected, otherwise assert they're all zeros
+    for idx, (s, p, o) in enumerate(out):
+        if (s, p) in OF_map.keys():
+            onehot = OF_map[(s, p)]
+            assert np.all(onehot == out_onehot[idx])
+        else:
+            assert np.all(out_onehot[idx] == 0)

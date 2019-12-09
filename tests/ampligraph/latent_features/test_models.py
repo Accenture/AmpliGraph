@@ -319,6 +319,7 @@ def test_conve_fit_predict_save_restore():
     y2 = model.predict(X['test'][:5])
 
     assert np.all(y1 == y2)
+    os.remove('model.tmp')
 
 
 def test_conve_evaluation_protocol():
@@ -342,6 +343,8 @@ def test_conve_evaluation_protocol():
     y2 = model.predict(X['test'][:5])
 
     assert np.all(y1 == y2)
+
+    os.remove('model.tmp')
 
 
 def test_convkb_train_predict():

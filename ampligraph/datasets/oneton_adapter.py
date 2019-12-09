@@ -1,6 +1,7 @@
 import numpy as np
 from ..datasets import NumpyDatasetAdapter
 import logging
+import copy
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -17,6 +18,7 @@ class OneToNDatasetAdapter(NumpyDatasetAdapter):
         self.output_mapping = None
         self.output_onehot = {}
         self.low_memory = low_memory
+        self._subject_corruption_mode = False
 
     def set_filter(self, filter_triples, mapped_status=False):
         """ Set the filter to be used while generating an evaluation batch.
@@ -105,7 +107,10 @@ class OneToNDatasetAdapter(NumpyDatasetAdapter):
         return output_mapping
 
     def set_output_mapping(self, output_dict):
-        """ Set the output mapping used to generate onehot vectors. Required for loading saved model parameters.
+        """ Set the output mapping used to generate onehot vectors.
+
+        Note: Setting a new output mapping will clear any previously generated onehot outputs, as otherwise can lead
+        to a situation where old outputs are returned from batching function.
 
         Parameters
         ----------
@@ -117,6 +122,9 @@ class OneToNDatasetAdapter(NumpyDatasetAdapter):
         """
 
         self.output_mapping = output_dict
+
+        # Clear any onehot outputs previously generated
+        self.output_onehot = {}
 
     def get_next_batch(self, batches_count=-1, dataset_type='train', use_filter=False):
         """Generator that returns the next batch of data.
@@ -185,6 +193,75 @@ class OneToNDatasetAdapter(NumpyDatasetAdapter):
 
                 yield out, out_onehot
 
+    def get_next_batch_subject_corruptions(self, dataset_type='train', use_filter=True):
+        """Batch generator for subject corruptions.
+
+        To avoid multiple redundant forward-passes through the network, subject corruptions are performed
+        by each relation.
+        Function required as subject corruption requires an NxN matrix (where N is number of unique entities).
+
+        Parameters
+        ----------
+        dataset_type: string
+            indicates which dataset to use
+        use_filter : bool
+            Flag to indicate whether to return the one-hot outputs are generated from filtered or unfiltered datasets
+
+        Returns
+        -------
+
+        test_triples : nd-array
+            A set of triples from the dataset type specified, that include the predicate currently returned in batch.
+        batch_triples : nd-array of shape (N, 3), where N is number of unique entities.
+            Batch of triples corresponding to one relationship, with all possible subject corruptions.
+        batch_onehot : nd-array of shape (N, N), where N is number of unique entities.
+            A batch of onehot arrays corresponding to the batch_triples output.
+
+        """
+
+        if use_filter:
+            output_dict = self.filter_mapping
+        else:
+            output_dict = self.output_mapping
+
+        ent_list = np.array(list(self.ent_to_idx.values()))
+
+        for rel in self.rel_to_idx.values():
+
+            idx_rel = self.dataset[dataset_type][:, 1] == rel
+            test_triples = self.dataset[dataset_type][idx_rel]
+
+            # Note: the object column are dummy values here, so just set to 0
+            out = np.stack([ent_list, np.repeat(rel, len(ent_list)), np.repeat(0, len(ent_list))], axis=1)
+
+            # Set one-hot filter
+            out_filter = np.zeros([len(ent_list), len(ent_list)], dtype=np.int8)
+            for j, x in enumerate(out):
+                indices = output_dict.get((x[0], x[1]), [])
+                out_filter[j, indices] = 1
+
+            yield test_triples, out, out_filter
+
+
+    def generate_negative_output_mappings(self):
+        """Generates a list of negatives (s, p) and (o, p) that are not found in the dataset.
+
+        Returns
+        -------
+
+        """
+
+        A_mapping = self.A_adapter.output_mapping
+        A_negatives = []
+
+        for e in self.ent_to_idx.values():
+            for r in self.rel_to_idx.values():
+                x = (e, r)
+                if not x in A_mapping.keys():
+                    A_negatives.append(x)
+
+        self.A_negatives = A_negatives
+
     def _validate_data(self, data):
         """Validates the data
         """
@@ -226,41 +303,3 @@ class OneToNDatasetAdapter(NumpyDatasetAdapter):
         if not (len(self.rel_to_idx) == 0 or len(self.ent_to_idx) == 0):
             print('Mapping set data: {}'.format(dataset_type))
             self.map_data()
-
-    def _reverse_data(self, dataset_type, use_filter=True):
-        """Reverses subject and object entities, and generate one-hot outputs for a given dataset_type.
-
-        Note: This *replaces* the dataset that is currently set as `dataset_type`.
-
-        This is used almost exclusively for the get_ranks evaluation protocol in ConvE model.
-
-        Parameters
-        ----------
-        dataset_type : string
-            Indicates the type of data being reversed.
-
-        use_filter : bool
-            Indicates whether to also reverse the set filter for generating new one-hot outputs. Default: True
-        """
-
-        if dataset_type not in self.dataset.keys():
-            msg = 'Dataset {} not found in handler'.format(dataset_type)
-            logger.error(msg)
-            raise KeyError(msg)
-
-        if use_filter:
-            try:
-                self.set_filter(self.dataset['filter'][:, [2, 1, 0]], self.mapped_status['filter'])
-            except KeyError:
-                msg = 'Filter not found in handler, but `use_filter`=True'.format(dataset_type)
-                logger.error(msg)
-                raise KeyError(msg)
-
-        # Set dataset_type with subject-object columns reversed
-        self.set_data(self.dataset[dataset_type][:, [2, 1, 0]], dataset_type=dataset_type,
-                      mapped_status=self.mapped_status[dataset_type])
-
-        # Generate output mapping of reversed dataset type
-        output_mapping = self.generate_output_mapping(dataset_type=dataset_type)
-        self.set_output_mapping(output_mapping)
-        self.generate_onehot_outputs(dataset_type=dataset_type, use_filter=use_filter)
