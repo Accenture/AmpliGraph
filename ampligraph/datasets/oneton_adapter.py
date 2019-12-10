@@ -193,15 +193,22 @@ class OneToNDatasetAdapter(NumpyDatasetAdapter):
 
                 yield out, out_onehot
 
-    def get_next_batch_subject_corruptions(self, dataset_type='train', use_filter=True):
+    def get_next_batch_subject_corruptions(self, batch_size=-1, dataset_type='train', use_filter=True):
         """Batch generator for subject corruptions.
 
-        To avoid multiple redundant forward-passes through the network, subject corruptions are performed
-        by each relation.
-        Function required as subject corruption requires an NxN matrix (where N is number of unique entities).
+        To avoid multiple redundant forward-passes through the network, subject corruptions are performed once for
+        each relation, and results accumulated for valid test triples.
+
+        If there are no test triples for a relation, then that relation is ignored.
+
+        Use batch_size to control memory usage (as a batch_size*N tensor will be allocated, where N is number
+        of unique entities.)
+
 
         Parameters
         ----------
+        batches_count: int
+            Number of batches to return p
         dataset_type: string
             indicates which dataset to use
         use_filter : bool
@@ -224,23 +231,37 @@ class OneToNDatasetAdapter(NumpyDatasetAdapter):
         else:
             output_dict = self.output_mapping
 
+        if batch_size == -1:
+            batch_size = self.get_size(dataset_type)
+
         ent_list = np.array(list(self.ent_to_idx.values()))
+        rel_list = np.array(list(self.rel_to_idx.values()))
 
-        for rel in self.rel_to_idx.values():
+        for rel in rel_list:
 
-            idx_rel = self.dataset[dataset_type][:, 1] == rel
-            test_triples = self.dataset[dataset_type][idx_rel]
+            # Select test triples that have this relation
+            rel_idx = self.dataset[dataset_type][:, 1] == rel
+            test_triples = self.dataset[dataset_type][rel_idx]
 
-            # Note: the object column are dummy values here, so just set to 0
-            out = np.stack([ent_list, np.repeat(rel, len(ent_list)), np.repeat(0, len(ent_list))], axis=1)
+            ent_idx = 0
+            # If there are no test triples with this relation, ignore it   # NOTE: To have a tqdm progress bar, removing this requirement
+            # if test_triples.shape[0] > 0:
 
-            # Set one-hot filter
-            out_filter = np.zeros([len(ent_list), len(ent_list)], dtype=np.int8)
-            for j, x in enumerate(out):
-                indices = output_dict.get((x[0], x[1]), [])
-                out_filter[j, indices] = 1
+            while ent_idx < len(ent_list):
 
-            yield test_triples, out, out_filter
+                ents = ent_list[ent_idx:ent_idx+batch_size]
+                ent_idx += batch_size
+
+                # Note: the object column is just a dummy value so set to 0
+                out = np.stack([ents, np.repeat(rel, len(ents)), np.repeat(0, len(ents))], axis=1)
+
+                # Set one-hot filter
+                out_filter = np.zeros((out.shape[0], len(ent_list)), dtype=np.int8)
+                for j, x in enumerate(out):
+                    indices = output_dict.get((x[0], x[1]), [])
+                    out_filter[j, indices] = 1
+
+                yield test_triples, out, out_filter
 
 
     def generate_negative_output_mappings(self):

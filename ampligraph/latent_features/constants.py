@@ -69,3 +69,7 @@ DEFAULT_PROTOCOL_EVAL = False
 
 # Specifies how to generate corruptions for training - default does s and o together and applies the loss
 DEFAULT_CORRUPT_SIDE_TRAIN = ['s+o']
+
+# Subject corruption with a OneToNDatasetAdapter requires an N*N matrix (where N is number of unique entities).
+# Specify a batch size to reduce memory overhead.
+DEFAULT_SUBJECT_CORRUPTION_BATCH_SIZE = 10000

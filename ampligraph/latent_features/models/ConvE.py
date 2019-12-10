@@ -859,41 +859,6 @@ class ConvE(EmbeddingModel):
             # NOTE: if having trouble with the above rank calculation, consider when test triple
             # has the highest score (total_rank=1, filter_rank=1)
 
-    def _initialize_eval_graph_subject(self, mode='test'):
-        """ Initialize the 1-N evaluation graph for evaluating subject corruptions.
-
-        Parameters
-        ----------
-        mode: string
-            Indicates which data generator to use.
-
-        Returns
-        -------
-
-        """
-
-        logger.debug('Initializing eval graph for subject corruptions [mode: {}]'.format(mode))
-
-        test_generator = partial(self.eval_dataset_handle.get_next_batch_subject_corruptions, dataset_type=mode)
-
-        dataset = tf.data.Dataset.from_generator(test_generator,
-                                                 output_types=(tf.int32, tf.int32, tf.float32),
-                                                 output_shapes=((None, 3), (None, 3), (None, len(self.ent_to_idx))))
-
-        dataset = dataset.repeat()
-        dataset = dataset.prefetch(1)
-        dataset_iter = dataset.make_one_shot_iterator()
-
-        self.X_test_tf, self.subject_corr, self.X_filter_tf = dataset_iter.get_next()
-
-        if self.dealing_with_large_graphs:
-            raise NotImplementedError('ConvE not implemented with large graphs (yet)')
-
-        else:
-            e_s, e_p, e_o = self._lookup_embeddings(self.subject_corr)
-            # Scores for all triples
-            self.sigmoid_scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)), name='sigmoid_scores')
-
     def _initialize_early_stopping(self):
         """Initializes and creates evaluation graph for early stopping.
         """
@@ -1109,7 +1074,44 @@ class ConvE(EmbeddingModel):
                 rank = sess.run(self.rank)
                 ranks.append(rank)
 
-            return ranks
+            return np.array(ranks)
+
+    def _initialize_eval_graph_subject(self, mode='test'):
+        """ Initialize the 1-N evaluation graph for evaluating subject corruptions.
+
+        Parameters
+        ----------
+        mode: string
+            Indicates which data generator to use.
+
+        Returns
+        -------
+
+        """
+
+        logger.debug('Initializing eval graph for subject corruptions [mode: {}]'.format(mode))
+
+        test_generator = partial(self.eval_dataset_handle.get_next_batch_subject_corruptions,
+                                 batch_size=5000,
+                                 dataset_type=mode)
+
+        dataset = tf.data.Dataset.from_generator(test_generator,
+                                                 output_types=(tf.int32, tf.int32, tf.float32),
+                                                 output_shapes=((None, 3), (None, 3), (None, len(self.ent_to_idx))))
+
+        dataset = dataset.repeat()
+        dataset = dataset.prefetch(1)
+        dataset_iter = dataset.make_one_shot_iterator()
+
+        self.X_test_tf, self.subject_corr, self.X_filter_tf = dataset_iter.get_next()
+
+        if self.dealing_with_large_graphs:
+            raise NotImplementedError('ConvE not implemented with large graphs (yet)')
+
+        else:
+            e_s, e_p, e_o = self._lookup_embeddings(self.subject_corr)
+            # Scores for all triples
+            self.sigmoid_scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)), name='sigmoid_scores')
 
     def _get_subject_ranks(self, dataset_handle):
         """ Internal function for ConvE to use 1-N scoring for getting subject ranks.
@@ -1134,6 +1136,11 @@ class ConvE(EmbeddingModel):
         self._load_model_from_trained_params()
         self._initialize_eval_graph_subject()
 
+        corruption_batch_size = constants.DEFAULT_SUBJECT_CORRUPTION_BATCH_SIZE
+        num_entities = len(self.ent_to_idx)
+        num_batch_per_relation = np.ceil(len(self.eval_dataset_handle.ent_to_idx) / corruption_batch_size)
+        num_batches = int(num_batch_per_relation * len(self.eval_dataset_handle.rel_to_idx))
+
         with tf.Session(config=self.tf_config) as sess:
 
             sess.run(tf.tables_initializer())
@@ -1141,20 +1148,46 @@ class ConvE(EmbeddingModel):
             sess.run(self.set_training_false)
 
             ranks = []
-            for _ in tqdm(range(len(self.eval_dataset_handle.rel_to_idx)), disable=(not self.verbose)):
+            scores_matrix_accum, scores_filter_accum = [], []
 
-                X_test, scores_matrix, scores_filter = sess.run([self.X_test_tf, self.sigmoid_scores, self.X_filter_tf])
+            for _ in tqdm(range(num_batches), disable=(not self.verbose), unit='batch'):
 
-                for x in X_test:
+                try:
 
-                    score_positive = scores_matrix[x[0], x[2]]
-                    idx_negatives = np.where(scores_filter[:, x[2]] !=1)
-                    score_negatives = scores_matrix[idx_negatives, x[2]]
-                    rank = np.sum(score_negatives >= score_positive) + 1
-                    ranks.append(rank)
+                    X_test, scores_matrix, scores_filter = sess.run([self.X_test_tf, self.sigmoid_scores,
+                                                                     self.X_filter_tf])
 
-            return ranks
+                    # Accumulate scores from X_test columns
+                    scores_matrix_accum.append(scores_matrix[:, X_test[:, 2]])
+                    scores_filter_accum.append(scores_filter[:, X_test[:, 2]])
 
+                    num_rows_accum = np.sum([x.shape[0] for x in scores_matrix_accum])
+
+                    if num_rows_accum == num_entities:
+                        # When num rows accumulated equals num_entities, batch has finished a single subject corruption
+                        # loop on a single relation
+
+                        if len(X_test) == 0:
+                            # If X_test is empty, ignore accumulated scores and continue
+                            continue
+
+                        scores_matrix = np.concatenate(scores_matrix_accum)
+                        scores_filter = np.concatenate(scores_filter_accum)
+
+                        for i, x in enumerate(X_test):
+                            score_positive = scores_matrix[x[0], i]
+                            idx_negatives = np.where(scores_filter[:, i] != 1)
+                            score_negatives = scores_matrix[idx_negatives, i]
+                            rank = np.sum(score_negatives >= score_positive) + 1
+                            ranks.append(rank)
+
+                        # Reset accumulators
+                        scores_matrix_accum, scores_filter_accum = [], []
+
+                except StopIteration:
+                    break
+
+            return np.array(ranks)
 
     def _test_generator(self, mode):
         """Generates the test/validation data.
