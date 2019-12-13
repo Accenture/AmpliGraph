@@ -15,7 +15,7 @@ from ...evaluation import to_idx
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-from datetime import datetime
+
 
 @register_model('ConvE', {'conv_filters': 32, 'conv_kernel_size': 3, 'dropout_embed': 0.2, 'dropout_conv': 0.3,
                           'dropout_dense': 0.2, 'use_bias': True, 'use_batchnorm': True})
@@ -289,6 +289,7 @@ class ConvE(EmbeddingModel):
     def _get_model_loss(self, dataset_iterator):
         """Get the current loss including loss due to regularization.
         This function must be overridden if the model uses combination of different losses(eg: VAE).
+        This function must be overridden if the model uses combination of different losses(eg: VAE).
 
         Parameters
         ----------
@@ -302,7 +303,7 @@ class ConvE(EmbeddingModel):
         """
 
         # training input placeholder
-        x_pos_tf, self.y_true = dataset_iterator.get_next()
+        self.x_pos_tf, self.y_true = dataset_iterator.get_next()
 
         # list of dependent ops that need to be evaluated before computing the loss
         dependencies = []
@@ -315,7 +316,7 @@ class ConvE(EmbeddingModel):
         with tf.control_dependencies(dependencies):
 
             # look up embeddings from input training triples
-            e_s_pos, e_p_pos, e_o_pos = self._lookup_embeddings(x_pos_tf)
+            e_s_pos, e_p_pos, e_o_pos = self._lookup_embeddings(self.x_pos_tf)
 
             # Get positive predictions
             self.y_pred = self._fn(e_s_pos, e_p_pos, e_o_pos)
@@ -563,23 +564,6 @@ class ConvE(EmbeddingModel):
         idxs = np.vectorize(lookup_dict.get)(entities)
         return emb_list[idxs]
 
-    def _training_data_generator(self):
-        """Generates the training data for ConvE model.
-        """
-
-        logger.debug('Initializing training data generator.')
-        logger.debug('Size of training data: {}'.format(self.train_dataset_handle.get_size('train')))
-
-        # create iterator to iterate over the train batches
-        batch_iterator = iter(self.train_dataset_handle.get_next_batch(self.batch_size, 'train'))
-
-        while True:
-            try:
-                out, out_onehot = next(batch_iterator)
-                yield out, out_onehot
-            except StopIteration:
-                break
-
     def fit(self, X, early_stopping=False, early_stopping_params={}):
         """Train a ConvE (with optional early stopping).
 
@@ -676,9 +660,14 @@ class ConvE(EmbeddingModel):
             # Output mapping is dict of (s, p) to list of existing object triple indices
             self.output_mapping = self.train_dataset_handle.generate_output_mapping(dataset_type='train')
             self.train_dataset_handle.set_output_mapping(self.output_mapping)
-            self.train_dataset_handle.generate_onehot_outputs(dataset_type='train')
+            self.train_dataset_handle.generate_outputs(dataset_type='train', unique_pairs=True)
+            train_iter = partial(self.train_dataset_handle.get_next_batch,
+                                 batches_count=self.batches_count,
+                                 dataset_type='train',
+                                 use_filter=False,
+                                 unique_pairs=True)
 
-            dataset = tf.data.Dataset.from_generator(self._training_data_generator,
+            dataset = tf.data.Dataset.from_generator(train_iter,
                                                      output_types=(tf.int32, tf.float32),
                                                      output_shapes=((None, 3), (None, len(self.ent_to_idx))))
             prefetch_batches = 5
@@ -694,11 +683,6 @@ class ConvE(EmbeddingModel):
             self.loss._set_hyperparams('num_entities', len(self.ent_to_idx))
 
             loss = self._get_model_loss(dataset_iterator)
-
-            loss_summary = tf.summary.scalar('loss', loss)
-            merged_summaries = tf.summary.merge_all()
-            tensorboard_dir = 'conve.graph.{}'.format(datetime.now().strftime('%d-%b_%H-%M-%S'))
-            writer = tf.summary.FileWriter('./{}'.format(tensorboard_dir), self.sess_train.graph)
 
             # Add update_ops for batch normalization
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -731,13 +715,7 @@ class ConvE(EmbeddingModel):
                     feed_dict = {}
                     self.optimizer.update_feed_dict(feed_dict, batch, epoch)
 
-                    if self.dealing_with_large_graphs:
-                        raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
-                    else:
-                        loss_batch, _, summaries = self.sess_train.run([loss, train, merged_summaries], feed_dict=feed_dict)
-
-                    # Add summaries to writer
-                    writer.add_summary(summaries, epoch)
+                    loss_batch, _ = self.sess_train.run([loss, train], feed_dict=feed_dict)
 
                     if np.isnan(loss_batch) or np.isinf(loss_batch):
                         msg = 'Loss is {}. Please change the hyperparameters.'.format(loss_batch)
@@ -771,41 +749,6 @@ class ConvE(EmbeddingModel):
             self._end_training()
             raise e
 
-    def _test_generator(self, mode):
-        """Generates the test/validation data.
-
-        Yield a batch of triples (np.array shape=[n, 3]) and associated one-hot outputs (np.array shape=[n, e]), where
-        e is the number of unique entities.
-
-        If filter_triples are passed, then the one-hot outputs will be generated over all the filter_triples instead
-        of just the dataset itself.
-
-        """
-
-        logger.debug('Initializing test generator: Mode: {}, Filtered: {}'
-                     .format(mode, self.is_filtered))
-
-        if not isinstance(self.eval_dataset_handle, OneToNDatasetAdapter):
-            raise RuntimeError('Incorrect dataset handler: expected OneToNDatasetAdapter, got {}'
-                               .format(type(self.eval_dataset_handle)))
-
-        if self.is_filtered:
-            test_generator = partial(self.eval_dataset_handle.get_next_batch, batches_count=-1, dataset_type=mode,
-                                     use_filter=True)
-        else:
-            test_generator = partial(self.eval_dataset_handle.get_next_batch, batches_count=-1, dataset_type=mode)
-
-        batch_iterator = iter(test_generator())
-
-        while True:
-
-            try:
-                out, out_onehot_filter = next(batch_iterator)
-            except StopIteration:
-                break
-            else:
-                yield out, out_onehot_filter
-
     def _initialize_eval_graph(self, mode='test'):
         """ Initialize the 1-N evaluation graph with the set protocol.
 
@@ -821,7 +764,13 @@ class ConvE(EmbeddingModel):
 
         logger.debug('Initializing eval graph [mode: {}]'.format(mode))
 
-        dataset = tf.data.Dataset.from_generator(partial(self._test_generator, mode=mode),
+        test_generator = partial(self.eval_dataset_handle.get_next_batch,
+                                 batches_count=-1,
+                                 dataset_type=mode,
+                                 use_filter=self.is_filtered,
+                                 unique_pairs=False)
+
+        dataset = tf.data.Dataset.from_generator(test_generator,
                                                  output_types=(tf.int32, tf.float32),
                                                  output_shapes=((None, 3), (None, len(self.ent_to_idx))))
 
@@ -978,7 +927,7 @@ class ConvE(EmbeddingModel):
 
         # Note: onehot outputs not required for prediction, but are part of the batch function
         dataset_handle.set_output_mapping(self.output_mapping)
-        dataset_handle.generate_onehot_outputs(dataset_type='test')
+        dataset_handle.generate_outputs(dataset_type='test')
 
         self.eval_dataset_handle = dataset_handle
 
@@ -1168,7 +1117,8 @@ class ConvE(EmbeddingModel):
                         # loop on a single relation
 
                         if len(X_test) == 0:
-                            # If X_test is empty, ignore accumulated scores and continue
+                            # If X_test is empty, reset accumulated scores and continue
+                            scores_matrix_accum, scores_filter_accum = [], []
                             continue
 
                         scores_matrix = np.concatenate(scores_matrix_accum)
@@ -1177,7 +1127,7 @@ class ConvE(EmbeddingModel):
                         for i, x in enumerate(X_test):
                             score_positive = scores_matrix[x[0], i]
                             idx_negatives = np.where(scores_filter[:, i] != 1)
-                            score_negatives = scores_matrix[idx_negatives, i]
+                            score_negatives = scores_matrix[idx_negatives[0], i]
                             rank = np.sum(score_negatives >= score_positive) + 1
                             ranks.append(rank)
 
@@ -1188,39 +1138,3 @@ class ConvE(EmbeddingModel):
                     break
 
             return np.array(ranks)
-
-    def _test_generator(self, mode):
-        """Generates the test/validation data.
-
-        Yield a batch of triples (np.array shape=[n, 3]) and associated one-hot outputs (np.array shape=[n, e]), where
-        e is the number of unique entities.
-
-        If filter_triples are passed, then the one-hot outputs will be generated over all the filter_triples instead
-        of just the dataset itself.
-
-        """
-
-        logger.debug('Initializing test generator: Mode: {}, Filtered: {}'
-                     .format(mode, self.is_filtered))
-
-        if not isinstance(self.eval_dataset_handle, OneToNDatasetAdapter):
-            raise RuntimeError('Incorrect dataset handler: expected OneToNDatasetAdapter, got {}'
-                               .format(type(self.eval_dataset_handle)))
-
-        if self.is_filtered:
-            test_generator = partial(self.eval_dataset_handle.get_next_batch, batches_count=-1, dataset_type=mode,
-                                     use_filter=True)
-        else:
-            test_generator = partial(self.eval_dataset_handle.get_next_batch, batches_count=-1, dataset_type=mode)
-
-        batch_iterator = iter(test_generator())
-
-        while True:
-
-            try:
-                out, out_onehot_filter = next(batch_iterator)
-            except StopIteration:
-                break
-            else:
-                yield out, out_onehot_filter
-
