@@ -948,7 +948,7 @@ class ConvE(EmbeddingModel):
 
             for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
 
-                score = self.sess_predict.run([self.score_positive])
+                score = sess.run([self.score_positive])
                 scores.append(score)
 
             return scores
@@ -990,7 +990,7 @@ class ConvE(EmbeddingModel):
         return ranks
 
     def _get_object_ranks(self, dataset_handle):
-        """ Internal function for ConvE to use 1-N scoring for getting object ranks.
+        """ Internal function for obtaining object ranks.
 
         Parameters
         ----------
@@ -1026,7 +1026,7 @@ class ConvE(EmbeddingModel):
             return np.array(ranks)
 
     def _initialize_eval_graph_subject(self, mode='test'):
-        """ Initialize the 1-N evaluation graph for evaluating subject corruptions.
+        """ Initialize the graph for evaluating subject corruptions.
 
         Parameters
         ----------
@@ -1049,26 +1049,31 @@ class ConvE(EmbeddingModel):
                                                  output_shapes=((None, 3), (None, 3), (None, len(self.ent_to_idx))))
 
         dataset = dataset.repeat()
-        dataset = dataset.prefetch(1)
+        dataset = dataset.prefetch(5)
         dataset_iter = dataset.make_one_shot_iterator()
 
         self.X_test_tf, self.subject_corr, self.X_filter_tf = dataset_iter.get_next()
 
-        if self.dealing_with_large_graphs:
-            raise NotImplementedError('ConvE not implemented with large graphs (yet)')
+        e_s, e_p, e_o = self._lookup_embeddings(self.subject_corr)
 
-        else:
-            e_s, e_p, e_o = self._lookup_embeddings(self.subject_corr)
-            # Scores for all triples
-            self.sigmoid_scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)), name='sigmoid_scores')
+        # Scores for all triples
+        self.sigmoid_scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)), name='sigmoid_scores')
 
-    def _get_subject_ranks(self, dataset_handle):
-        """ Internal function for ConvE to use 1-N scoring for getting subject ranks.
+    def _get_subject_ranks(self, dataset_handle, corruption_batch_size=None):
+        """ Internal function for obtaining subject ranks.
+
+        This function performs subject corruptions. Output layer scores are accumulated in order to rank
+        subject corruptions. This can cause high memory consumption, so a default subject corruption batch size
+        is set in constants.py.
 
         Parameters
         ----------
         dataset_handle : Object of AmpligraphDatasetAdapter
                          This contains handles of the generators that would be used to get test triples and filters
+        corruption_batch_size : int / None
+                         Batch size for accumulating output layer scores for each input. The accumulated batch size
+                         will be np.array shape=(corruption_batch_size, num_entities), and dtype=np.float32).
+                         Default: 10000 has been set in constants.DEFAULT_SUBJECT_CORRUPTION_BATCH_SIZE.
 
         Returns
         -------
@@ -1085,7 +1090,9 @@ class ConvE(EmbeddingModel):
         self._load_model_from_trained_params()
         self._initialize_eval_graph_subject()
 
-        corruption_batch_size = constants.DEFAULT_SUBJECT_CORRUPTION_BATCH_SIZE
+        if not corruption_batch_size:
+            corruption_batch_size = constants.DEFAULT_SUBJECT_CORRUPTION_BATCH_SIZE
+
         num_entities = len(self.ent_to_idx)
         num_batch_per_relation = np.ceil(len(self.eval_dataset_handle.ent_to_idx) / corruption_batch_size)
         num_batches = int(num_batch_per_relation * len(self.eval_dataset_handle.rel_to_idx))
