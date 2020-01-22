@@ -379,7 +379,7 @@ class OneToNDatasetAdapter(NumpyDatasetAdapter):
 
             while ent_idx < len(ent_list):
 
-                ents = ent_list[ent_idx:ent_idx+batch_size]
+                ents = ent_list[ent_idx:ent_idx + batch_size]
                 ent_idx += batch_size
 
                 # Note: the object column is just a dummy value so set to 0

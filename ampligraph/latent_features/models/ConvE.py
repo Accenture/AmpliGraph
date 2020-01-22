@@ -20,7 +20,7 @@ logger.setLevel(logging.DEBUG)
 @register_model('ConvE', {'conv_filters': 32, 'conv_kernel_size': 3, 'dropout_embed': 0.2, 'dropout_conv': 0.3,
                           'dropout_dense': 0.2, 'use_bias': True, 'use_batchnorm': True})
 class ConvE(EmbeddingModel):
-    """ Convolutional 2D Knowledge Graph Embeddings
+    r""" Convolutional 2D Knowledge Graph Embeddings
 
     The ConvE model :cite:`Dettmers2016`:
 
@@ -419,7 +419,7 @@ class ConvE(EmbeddingModel):
             raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
 
     def _fn(self, e_s, e_p, e_o):
-        """The ConvE scoring function.
+        r"""The ConvE scoring function.
 
             The function implements the scoring function as defined by
             .. math::
@@ -921,6 +921,9 @@ class ConvE(EmbeddingModel):
             logger.error(msg)
             raise RuntimeError(msg)
 
+        tf.reset_default_graph()
+        self._load_model_from_trained_params()
+
         dataset_handle = OneToNDatasetAdapter(low_memory=self.low_memory)
         dataset_handle.use_mappings(self.rel_to_idx, self.ent_to_idx)
         dataset_handle.set_data(X, "test", mapped_status=from_idx)
@@ -928,11 +931,7 @@ class ConvE(EmbeddingModel):
         # Note: onehot outputs not required for prediction, but are part of the batch function
         dataset_handle.set_output_mapping(self.output_mapping)
         dataset_handle.generate_outputs(dataset_type='test')
-
         self.eval_dataset_handle = dataset_handle
-
-        tf.reset_default_graph()
-        self._load_model_from_trained_params()
 
         self.rnd = check_random_state(self.seed)
         tf.random.set_random_seed(self.seed)
