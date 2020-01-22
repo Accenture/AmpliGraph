@@ -545,7 +545,7 @@ class NLLMulticlass(Loss):
 
 @register_loss("bce", [], {'label_smoothing': None, 'label_weighting': False, 'require_same_size_pos_neg': False})
 class BCELoss(Loss):
-    """ Binary Cross Entropy Loss.
+    r""" Binary Cross Entropy Loss.
 
         .. math::
 
@@ -673,8 +673,8 @@ class BCELoss(Loss):
 
             eps = 1e-6
             wt = tf.reduce_mean(y_true)
-            loss = -tf.reduce_sum((1 - wt) * y_true * tf.log_sigmoid(y_pred) +
-                                  wt * (1 - y_true) * tf.log(1 - tf.sigmoid(y_pred) + eps))
+            loss = -tf.reduce_sum((1 - wt) * y_true * tf.log_sigmoid(y_pred)
+                                  + wt * (1 - y_true) * tf.log(1 - tf.sigmoid(y_pred) + eps))
 
         else:
             loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true, logits=y_pred))
