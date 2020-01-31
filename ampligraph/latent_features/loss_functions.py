@@ -543,7 +543,7 @@ class NLLMulticlass(Loss):
         return loss
 
 
-@register_loss("bce", [], {'label_smoothing': None, 'label_weighting': False, 'require_same_size_pos_neg': False})
+@register_loss('bce', ['label_smoothing', 'label_weighting'], {'require_same_size_pos_neg': False})
 class BCELoss(Loss):
     r""" Binary Cross Entropy Loss.
 
@@ -600,6 +600,12 @@ class BCELoss(Loss):
         ----------
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
+            - **label_smoothing** (float): Apply label smoothing to vector of true labels. Can improve multi-class
+            classification training by using soft targets that are a weighted average of hard targets and the
+            uniform distribution over labels. Default: None
+            - **label_weighting** (bool): Apply label weighting to vector of true labels. Gives lower weight to
+            outputs with more positives in one-hot vector. Default: False
+
         """
 
         self._loss_parameters['label_smoothing'] = hyperparam_dict.get('label_smoothing', DEFAULT_LABEL_SMOOTHING)
@@ -662,8 +668,6 @@ class BCELoss(Loss):
            The loss value that must be minimized.
 
        """
-
-        # y_pred = tf.math.sigmoid(y_pred)
 
         if self._loss_parameters['label_smoothing'] is not None:
             y_true = tf.add((1 - self._loss_parameters['label_smoothing']) * y_true,

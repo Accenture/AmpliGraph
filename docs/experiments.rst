@@ -91,7 +91,7 @@ FB15K-237
                                                          seed: 0;
                                                          batches_count: 300;
 
-  ConvE    x     x       x     x     x                   k: 300;
+  ConvE    1060     0.26       0.19     0.28     0.38    k: 200;
                                                          epochs: 4000;
                                                          loss: bce;
                                                          loss_params: {label_smoothing=0.1}
@@ -107,7 +107,25 @@ FB15K-237
                                                          use_batchnorm: True,
                                                          use_bias: True};
                                                          seed: 0;
-                                                         batches_count: 300;
+                                                         batches_count: 100;
+
+  ConvE* 234     0.32       0.23     0.35     0.50       k: 200;
+                                                         epochs: 4000;
+                                                         loss: bce;
+                                                         loss_params: {label_smoothing=0.1}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         conv_filters: 32,
+                                                         conv_kernel_size: 3,
+                                                         dropout_embed: 0.2,
+                                                         dropout_conv: 0.1,
+                                                         dropout_dense: 0.3,
+                                                         use_batchnorm: True,
+                                                         use_bias: True};
+                                                         seed: 0;
+                                                         batches_count: 100;
 
 ========== ======== ====== ======== ======== ========== ========================
 
@@ -116,7 +134,14 @@ FB15K-237
     In the experiments we excluded the triples where such entities appear (9 triples in from the validation
     set and 28 from the test set).
 
-
+.. note: Results reported in the literature for ConvE are based on an evaluation framework that requires
+    reciprocal relations to be added to the dataset, and which a subject corruption evaluation is interpreted
+    as object corruption of the reciprocal relation triple. The row marked ConvE* indicates the results obtained using
+    this evaluation procedure, and can be reproduced by adding reciprocal relations and running 'object' corruption.
+    The row marked ConvE indicates results obtained using no reciprocal relations, and without any reinterpreation of
+    the standard subject+object corruption strategy. It's worth noting that results obtained *without* reciprocals
+    perform better than those with reciprocals added, and that only in the altered interpretation is ConvE
+    competitive with the other models.
 
 WN18RR
 ------
@@ -199,7 +224,7 @@ WN18RR
                                                          seed: 0;
                                                          batches_count: 300;
 
-  ConvE    x     x       x     x     x                   k: 300;
+  ConvE    5346     0.45      0.42     0.47     0.52     k: 200;
                                                          epochs: 4000;
                                                          loss: bce;
                                                          loss_params: {label_smoothing=0.1}
@@ -215,7 +240,26 @@ WN18RR
                                                          use_batchnorm: True,
                                                          use_bias: True};
                                                          seed: 0;
-                                                         batches_count: 300;
+                                                         batches_count: 100;
+
+
+  ConvE*    4842     0.48       0.45     0.49     0.54   k: 200;
+                                                         epochs: 4000;
+                                                         loss: bce;
+                                                         loss_params: {label_smoothing=0.1}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         conv_filters: 32,
+                                                         conv_kernel_size: 3,
+                                                         dropout_embed: 0.2,
+                                                         dropout_conv: 0.1,
+                                                         dropout_dense: 0.3,
+                                                         use_batchnorm: True,
+                                                         use_bias: True};
+                                                         seed: 0;
+                                                         batches_count: 100;
 
 ========== ========= ====== ======== ======== ========== =======================
 
@@ -223,6 +267,12 @@ WN18RR
     in the training set. We found 198 unseen entities in the validation set and 209 in the test set.
     In the experiments we excluded the triples where such entities appear (210 triples in from the validation
     set and 210 from the test set).
+
+.. note:: As per the note about ConvE beneath the table of FB15k-237 results, the ConvE* row indicates results using
+    the same evaluation procedure (subject corruption interpreted as object corruption of reciprocal relation) as
+    reported in the literature. The ConvE row indicates results obtained from the standard evaluation procedure,
+    however with reciprocal relations added, as in contrast to FB15k-237 in this case adding reciprocal relations
+    improves all metrics.
 
 YAGO3-10
 --------
@@ -413,7 +463,7 @@ FB15K
                                                          seed: 0;
                                                          batches_count: 300;
 
-  ConvE    x     x       x     x     x                   k: 300;
+  ConvE    385     0.50       0.42     0.52     0.66     k: 300;
                                                          epochs: 4000;
                                                          loss: bce;
                                                          loss_params: {label_smoothing=0.1}
@@ -429,7 +479,25 @@ FB15K
                                                          use_batchnorm: True,
                                                          use_bias: True};
                                                          seed: 0;
-                                                         batches_count: 300;
+                                                         batches_count: 100;
+
+  ConvE*    55     0.80       0.74     0.84     0.89     k: 300;
+                                                         epochs: 4000;
+                                                         loss: bce;
+                                                         loss_params: {label_smoothing=0.1}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         conv_filters: 32,
+                                                         conv_kernel_size: 3,
+                                                         dropout_embed: 0.2,
+                                                         dropout_conv: 0.1,
+                                                         dropout_dense: 0.3,
+                                                         use_batchnorm: True,
+                                                         use_bias: True};
+                                                         seed: 0;
+                                                         batches_count: 100;
 
 ========== ======== ====== ======== ======== ========== ========================
 
@@ -513,7 +581,7 @@ TransE     260      0.66    0.44     0.88      0.95     k: 150;
                                                          seed: 0;
                                                          batches_count: 300;
 
-  ConvE    x     x       x     x     x                   k: 300;
+  ConvE    492     0.93       0.91     0.94     0.95     k: 300;
                                                          epochs: 4000;
                                                          loss: bce;
                                                          loss_params: {label_smoothing=0.1}
@@ -529,7 +597,25 @@ TransE     260      0.66    0.44     0.88      0.95     k: 150;
                                                          use_batchnorm: True,
                                                          use_bias: True};
                                                          seed: 0;
-                                                         batches_count: 300;
+                                                         batches_count: 100;
+
+  ConvE*    436    0.95       0.93     0.95     0.95     k: 300;
+                                                         epochs: 4000;
+                                                         loss: bce;
+                                                         loss_params: {label_smoothing=0.1}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         conv_filters: 32,
+                                                         conv_kernel_size: 3,
+                                                         dropout_embed: 0.2,
+                                                         dropout_conv: 0.1,
+                                                         dropout_dense: 0.3,
+                                                         use_batchnorm: True,
+                                                         use_bias: True};
+                                                         seed: 0;
+                                                         batches_count: 100;
 
 ========== ======== ====== ======== ======== ========== ========================
 
@@ -539,7 +625,7 @@ To reproduce the above results: ::
     $ python predictive_performance.py
 
 
-.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~97 hours on
+.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~115 hours on
     an Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box equipped with a Tesla V100 16GB.
     The long running time is mostly due to the early stopping configuration (see section below).
 
@@ -573,7 +659,7 @@ Experiments can be limited to specific models-dataset combinations as follows: :
 
     $ python predictive_performance.py -h
     usage: predictive_performance.py [-h] [-d {fb15k,fb15k-237,wn18,wn18rr,yago310}]
-                                     [-m {complex,transe,distmult,hole,convkb}]
+                                     [-m {complex,transe,distmult,hole,convkb,conve}]
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -598,4 +684,4 @@ ConvKB      2.83
 ConvE       1.13
 ======== ==============
 
-.. note:: ConvE is trained with binary cross-entropy and does not generate negatives when training.
+.. note:: ConvE is trained with binary cross-entropy loss and does not generate negatives when training.

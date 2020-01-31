@@ -1039,8 +1039,10 @@ class ConvE(EmbeddingModel):
 
         logger.debug('Initializing eval graph for subject corruptions [mode: {}]'.format(mode))
 
+        corruption_batch_size = constants.DEFAULT_SUBJECT_CORRUPTION_BATCH_SIZE
+
         test_generator = partial(self.eval_dataset_handle.get_next_batch_subject_corruptions,
-                                 batch_size=5000,
+                                 batch_size=corruption_batch_size,
                                  dataset_type=mode)
 
         dataset = tf.data.Dataset.from_generator(test_generator,
@@ -1103,7 +1105,10 @@ class ConvE(EmbeddingModel):
             sess.run(self.set_training_false)
 
             ranks = []
-            scores_matrix_accum, scores_filter_accum = [], []
+            # Accumulate scores from each index of the object in the output scores while corrupting subject
+            scores_matrix_accum = []
+            # Accumulate true/false statements from one-hot outputs while corrupting subject
+            scores_filter_accum = []
 
             for _ in tqdm(range(num_batches), disable=(not self.verbose), unit='batch'):
 

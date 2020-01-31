@@ -49,6 +49,13 @@ class OneToNDatasetAdapter(NumpyDatasetAdapter):
 
     def __init__(self, low_memory=False):
         """Initialize the class variables
+
+        Parameters
+        ----------
+        low_memory : bool
+            If low_memory flag set to True the output vectors indices are generated on-the-fly in the batch yield
+            function, which lowers memory usage but increases training time.
+
         """
         super(OneToNDatasetAdapter, self).__init__()
 
