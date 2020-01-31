@@ -284,6 +284,7 @@ class ConvKB(EmbeddingModel):
             self.ent_emb = tf.Variable(self.trained_model_params['ent_emb'], dtype=tf.float32)
         else:
             self.ent_emb_cpu = self.trained_model_params['ent_emb']
+            self.ent_emb = tf.Variable(np.zeros((self.batch_size, self.internal_k)), dtype=tf.float32)
 
         self.rel_emb = tf.Variable(self.trained_model_params['rel_emb'], dtype=tf.float32)
 
