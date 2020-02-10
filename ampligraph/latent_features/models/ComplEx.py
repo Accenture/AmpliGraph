@@ -193,7 +193,7 @@ class ComplEx(EmbeddingModel):
         else:
             self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
-            self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size * 2, self.internal_k],
+            self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
 
     def _fn(self, e_s, e_p, e_o):
