@@ -55,7 +55,7 @@ def register_loss(name, external_params=None, class_params=None):
     return insert_in_registry
 
 
-def clip_for_exp_stability(value):
+def clip_before_exp(value):
     """Clip the value for stability of exponential
     """
     return tf.clip_by_value(value,
@@ -312,6 +312,8 @@ class NLLLoss(Loss):
             The loss value that must be minimized.
 
         """
+        scores_neg = clip_before_exp(scores_neg)
+        scores_pos = clip_before_exp(scores_pos)
         scores = tf.concat([-scores_pos, scores_neg], 0)
         return tf.reduce_sum(tf.log(1 + tf.exp(scores)))
 
@@ -542,9 +544,9 @@ class NLLMulticlass(Loss):
            The loss value that must be minimized.
 
        """
-        # Temp fix for numerical instability of multiclass loss
-        scores_pos = clip_for_exp_stability(scores_pos)
-        scores_neg = clip_for_exp_stability(scores_neg)
+        # Fix for numerical instability of multiclass loss
+        scores_pos = clip_before_exp(scores_pos)
+        scores_neg = clip_before_exp(scores_neg)
 
         scores_neg_reshaped = tf.reshape(scores_neg, [self._loss_parameters['eta'], tf.shape(scores_pos)[0]])
         neg_exp = tf.exp(scores_neg_reshaped)
