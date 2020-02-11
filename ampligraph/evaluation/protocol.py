@@ -635,7 +635,7 @@ def filter_unseen_entities(X, model, verbose=False, strict=1):
         filtered_df = df[df.s.isin(ent_seen) & df.o.isin(ent_seen)]
         n_removed_ents = df.shape[0] - filtered_df.shape[0]
 
-        if strict==1 and n_removed_ents > 0:
+        if strict == 1 and n_removed_ents > 0:
             msg = 'Unseen entities found in test set, please remove or run evaluate_performance() with strict=False.'
             logger.error(msg)
             raise RuntimeError(msg)
