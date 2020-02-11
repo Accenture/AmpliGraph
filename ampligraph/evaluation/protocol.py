@@ -416,7 +416,7 @@ def to_idx(X, ent_to_idx, rel_to_idx):
     return _convert_to_idx(X, ent_to_idx, rel_to_idx, ent_to_idx)
 
 
-def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=True, entities_subset=None,
+def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=1, entities_subset=None,
                          corrupt_side='s+o', use_default_protocol=True):
     """Evaluate the performance of an embedding model.
 
@@ -482,9 +482,11 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
     verbose : bool
         Verbose mode
-    strict : bool
-        Strict mode. If True then any unseen entity will cause a RuntimeError.
-        If False then triples containing unseen entities will be filtered out.
+    strict : int
+        Strict mode. If 1 then any unseen entity will cause a RuntimeError.
+        If 0 then triples containing unseen entities will be filtered out.
+        If -1 then no filtering is done. One can use this mode, to skip filtering of unseen entities, if
+        train_test_split_unseen was used to create the splits.
     entities_subset: array-like
         List of entities to use for corruptions. If None, will generate corruptions
         using all distinct entities. Default is None.
@@ -604,7 +606,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         raise e
 
 
-def filter_unseen_entities(X, model, verbose=False, strict=True):
+def filter_unseen_entities(X, model, verbose=False, strict=1):
     """Filter unseen entities in the test set.
 
     Parameters
@@ -615,32 +617,35 @@ def filter_unseen_entities(X, model, verbose=False, strict=True):
         A knowledge graph embedding model.
     verbose : bool
         Verbose mode.
-    strict : bool
-        Strict mode. If True then any unseen entity will cause a RuntimeError.
-        If False then triples containing unseen entities will be filtered out.
+    strict : int
+        Strict mode. If 1 then any unseen entity will cause a RuntimeError.
+        If 0 then triples containing unseen entities will be filtered out.
+        If -1 then no filtering is done. One can use this mode, to skip filtering of unseen entities, if
+        train_test_split_unseen was used to create the splits.
 
     Returns
     -------
     filtered X : ndarray, shape [n, 3]
         An array of test triples containing no unseen entities.
     """
+    if strict != -1:
+        logger.debug('Finding entities in test set that are not previously seen by model')
+        ent_seen = np.unique(list(model.ent_to_idx.keys()))
+        df = pd.DataFrame(X, columns=['s', 'p', 'o'])
+        filtered_df = df[df.s.isin(ent_seen) & df.o.isin(ent_seen)]
+        n_removed_ents = df.shape[0] - filtered_df.shape[0]
 
-    logger.debug('Finding entities in test set that are not previously seen by model')
-    ent_seen = np.unique(list(model.ent_to_idx.keys()))
-    df = pd.DataFrame(X, columns=['s', 'p', 'o'])
-    filtered_df = df[df.s.isin(ent_seen) & df.o.isin(ent_seen)]
-    n_removed_ents = df.shape[0] - filtered_df.shape[0]
-
-    if strict and n_removed_ents > 0:
-        msg = 'Unseen entities found in test set, please remove or run evaluate_performance() with strict=False.'
-        logger.error(msg)
-        raise RuntimeError(msg)
-    else:
-        msg = 'Removing {} triples containing unseen entities. '.format(n_removed_ents)
-        if verbose:
-            logger.info(msg)
-        logger.debug(msg)
-        return filtered_df.values
+        if strict==1 and n_removed_ents > 0:
+            msg = 'Unseen entities found in test set, please remove or run evaluate_performance() with strict=False.'
+            logger.error(msg)
+            raise RuntimeError(msg)
+        else:
+            msg = 'Removing {} triples containing unseen entities. '.format(n_removed_ents)
+            if verbose:
+                logger.info(msg)
+            logger.debug(msg)
+            return filtered_df.values
+    return X
 
 
 def _remove_unused_params(params):
