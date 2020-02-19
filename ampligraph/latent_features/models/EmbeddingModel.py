@@ -377,11 +377,27 @@ class EmbeddingModel(abc.ABC):
             logger.warning('Evaluation would take longer than usual.')
 
         if not self.dealing_with_large_graphs:
+            # (We use tf.variable for future - to load and continue training)
             self.ent_emb = tf.Variable(self.trained_model_params[0], dtype=tf.float32)
         else:
-            self.ent_emb_cpu = self.trained_model_params[0]
-            self.ent_emb = tf.Variable(np.zeros((self.batch_size, self.internal_k)), dtype=tf.float32)
+            # Embeddings of all the corruptions entities will not fit on GPU. 
+            # During training we loaded batch_size*2 embeddings on GPU as only 2* batch_size unique
+            # entities can be present in one batch.
+            # During corruption generation in eval mode, one side(s/o) is fixed and only the other side varies.
+            # Hence we use a batch size of 2 * training_batch_size for corruption generation i.e. those many
+            # corruption embeddings would be loaded per batch on the GPU. In other words, those corruptions
+            # would be processed as a batch.
 
+            self.corr_batch_size = self.batch_size * 2
+
+            # Load the entity embeddings on the cpu
+            self.ent_emb_cpu = self.trained_model_params[0]
+            # (We use tf.variable for future - to load and continue training)
+            # create empty variable on GPU.
+            # we initialize it with zeros because the actual embeddings will be loaded on the fly.
+            self.ent_emb = tf.Variable(np.zeros((self.corr_batch_size, self.internal_k)), dtype=tf.float32)
+
+        # (We use tf.variable for future - to load and continue training)
         self.rel_emb = tf.Variable(self.trained_model_params[1], dtype=tf.float32)
 
     def get_embeddings(self, entities, embedding_type='entity'):
@@ -1048,7 +1064,7 @@ class EmbeddingModel(abc.ABC):
             if self.dealing_with_large_graphs:
                 # since we are dealing with only one triple (2 entities)
                 unique_ent = np.unique(np.array([out[0, 0], out[0, 2]]))
-                needed = (self.batch_size - unique_ent.shape[0])
+                needed = (self.corr_batch_size - unique_ent.shape[0])
                 large_number = np.zeros((needed, self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
                 entity_embeddings = np.concatenate((self.ent_emb_cpu[unique_ent, :], large_number), axis=0)
                 unique_ent = unique_ent.reshape(-1, 1)
@@ -1056,7 +1072,7 @@ class EmbeddingModel(abc.ABC):
             yield out, indices_obj, indices_sub, entity_embeddings, unique_ent
 
     def _generate_corruptions_for_large_graphs(self):
-        """Corruption generator for large graphs.
+        """Corruption generator for large graph mode only.
            It generates corruptions in batches and also yields the corresponding entity embeddings.
         """
 
@@ -1075,11 +1091,10 @@ class EmbeddingModel(abc.ABC):
         entity_embeddings = np.empty(shape=(0, self.internal_k), dtype=np.float32)
 
         for i in range(self.corr_batches_count):
-            all_ent = corruption_entities[i * self.batch_size:(i + 1) * self.batch_size]
-            if self.dealing_with_large_graphs:
-                needed = (self.batch_size - all_ent.shape[0])
-                large_number = np.zeros((needed, self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
-                entity_embeddings = np.concatenate((self.ent_emb_cpu[all_ent, :], large_number), axis=0)
+            all_ent = corruption_entities[i * self.corr_batch_size:(i + 1) * self.corr_batch_size]
+            needed = (self.corr_batch_size - all_ent.shape[0])
+            large_number = np.zeros((needed, self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
+            entity_embeddings = np.concatenate((self.ent_emb_cpu[all_ent, :], large_number), axis=0)
 
             all_ent = all_ent.reshape(-1, 1)
             yield all_ent, entity_embeddings
@@ -1149,7 +1164,7 @@ class EmbeddingModel(abc.ABC):
                 self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
 
                 # Generate corruptions in batches
-                self.corr_batches_count = int(np.ceil(len(self.ent_to_idx) / self.batch_size))
+                self.corr_batches_count = int(np.ceil(len(self.ent_to_idx) / (self.corr_batch_size)))
 
                 # Corruption generator -
                 # returns corruptions and their corresponding embeddings that need to be loaded on the GPU
