@@ -1060,6 +1060,7 @@ class ConvE(EmbeddingModel):
         # Scores for all triples
         self.sigmoid_scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)), name='sigmoid_scores')
 
+
     def _get_subject_ranks(self, dataset_handle, corruption_batch_size=None):
         """ Internal function for obtaining subject ranks.
 
