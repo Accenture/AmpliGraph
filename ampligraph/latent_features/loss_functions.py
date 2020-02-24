@@ -23,6 +23,12 @@ DEFAULT_ALPHA_ADVERSARIAL = 0.5
 # Default margin used by margin based adversarial loss
 DEFAULT_MARGIN_ADVERSARIAL = 3
 
+# Min score below which the values will be clipped before applying exponential
+DEFAULT_CLIP_EXP_LOWER = -75.0
+
+# Max score above which the values will be clipped before applying exponential
+DEFAULT_CLIP_EXP_UPPER = 75.0
+
 
 def register_loss(name, external_params=None, class_params=None):
     if external_params is None:
@@ -47,6 +53,14 @@ def register_loss(name, external_params=None, class_params=None):
         return class_handle
 
     return insert_in_registry
+
+
+def clip_before_exp(value):
+    """Clip the value for stability of exponential
+    """
+    return tf.clip_by_value(value,
+                            clip_value_min=DEFAULT_CLIP_EXP_LOWER,
+                            clip_value_max=DEFAULT_CLIP_EXP_UPPER)
 
 
 class Loss(abc.ABC):
@@ -298,6 +312,8 @@ class NLLLoss(Loss):
             The loss value that must be minimized.
 
         """
+        scores_neg = clip_before_exp(scores_neg)
+        scores_pos = clip_before_exp(scores_pos)
         scores = tf.concat([-scores_pos, scores_neg], 0)
         return tf.reduce_sum(tf.log(1 + tf.exp(scores)))
 
@@ -528,6 +544,10 @@ class NLLMulticlass(Loss):
            The loss value that must be minimized.
 
        """
+        # Fix for numerical instability of multiclass loss
+        scores_pos = clip_before_exp(scores_pos)
+        scores_neg = clip_before_exp(scores_neg)
+
         scores_neg_reshaped = tf.reshape(scores_neg, [self._loss_parameters['eta'], tf.shape(scores_pos)[0]])
         neg_exp = tf.exp(scores_neg_reshaped)
         pos_exp = tf.exp(scores_pos)
