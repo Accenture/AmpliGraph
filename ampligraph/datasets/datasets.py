@@ -206,6 +206,36 @@ def _fetch_dataset(remote, data_home=None, check_md5hash=False):
     return dataset_dir
 
 
+def _add_reciprocal_relations(triples_df):
+    """Add reciprocal relations to the triples
+
+    Parameters
+    ----------
+
+    triples_df : Dataframe
+        Dataframe of triples
+
+    Returns
+    -------
+    triples_df : Dataframe
+        Dataframe of triples and their reciprocals
+    """
+    # create a copy of the original triples to add reciprocal relations
+    df_reciprocal = triples_df.copy()
+
+    # swap subjects and objects
+    cols = list(df_reciprocal.columns)
+    cols[0], cols[2] = cols[2], cols[0]
+    df_reciprocal.columns = cols
+
+    # add reciprocal relations
+    df_reciprocal.iloc[:, 1] = df_reciprocal.iloc[:, 1] + "_reciprocal"
+
+    # append to original triples
+    triples_df = triples_df.append(df_reciprocal)
+    return triples_df
+
+
 def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciprocal_rels=False):
     """Load a knowledge graph from a csv file
     
@@ -271,19 +301,7 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciproc
     logger.debug('Dropping duplicates.')
     df = df.drop_duplicates()
     if add_reciprocal_rels:
-        # create a copy of the original triples to add reciprocal relations
-        df_reciprocal = df.copy()
-
-        # swap subjects and objects
-        cols = list(df_reciprocal.columns)
-        cols[0], cols[2] = cols[2], cols[0]
-        df_reciprocal.columns = cols
-
-        # add reciprocal relations
-        df_reciprocal.iloc[:, 1] = df_reciprocal.iloc[:, 1] + "_reciprocal"
-
-        # append to original triples
-        df = df.append(df_reciprocal)
+        df = _add_reciprocal_relations(df)
 
     return df.values
 
@@ -960,7 +978,12 @@ def load_from_rdf(folder_name, file_name, rdf_format='nt', data_home=None, add_r
     from rdflib import Graph
     g = Graph()
     g.parse(os.path.join(data_home, folder_name, file_name), format=rdf_format, publicID='http://test#')
-    return np.array(g)
+    triples = pd.DataFrame(np.array(g))
+    triples = triples.drop_duplicates()
+    if add_reciprocal_rels:
+        triples = _add_reciprocal_relations(triples)
+
+    return triples.values
 
 
 def load_from_ntriples(folder_name, file_name, data_home=None, add_reciprocal_rels=False):
@@ -1010,4 +1033,8 @@ def load_from_ntriples(folder_name, file_name, data_home=None, add_reciprocal_re
                      names=None,
                      dtype=str,
                      usecols=[0, 1, 2])
-    return df.as_matrix()
+
+    if add_reciprocal_rels:
+        df = _add_reciprocal_relations(df)
+
+    return df.values
