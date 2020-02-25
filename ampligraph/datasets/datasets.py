@@ -270,6 +270,21 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciproc
                      dtype=str)
     logger.debug('Dropping duplicates.')
     df = df.drop_duplicates()
+    if add_reciprocal_rels:
+        # create a copy of the original triples to add reciprocal relations
+        df_reciprocal = df.copy()
+
+        # swap subjects and objects
+        cols = list(df_reciprocal.columns)
+        cols[0], cols[2] = cols[2], cols[0]
+        df_reciprocal.columns = cols
+
+        # add reciprocal relations
+        df_reciprocal.iloc[:, 1] = df_reciprocal.iloc[:, 1] + "_reciprocal"
+
+        # append to original triples
+        df = df.append(df_reciprocal)
+
     return df.values
 
 
@@ -303,9 +318,15 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
                                                              .url.rfind('.')]
     dataset_path = _fetch_dataset(dataset_metadata, data_home, check_md5hash)
 
-    train = load_from_csv(dataset_path, dataset_metadata.train_name, add_reciprocal_rels)
-    valid = load_from_csv(dataset_path, dataset_metadata.valid_name, add_reciprocal_rels)
-    test = load_from_csv(dataset_path, dataset_metadata.test_name, add_reciprocal_rels)
+    train = load_from_csv(dataset_path, 
+                          dataset_metadata.train_name, 
+                          add_reciprocal_rels=add_reciprocal_rels)
+    valid = load_from_csv(dataset_path, 
+                          dataset_metadata.valid_name, 
+                          add_reciprocal_rels=add_reciprocal_rels)
+    test = load_from_csv(dataset_path, 
+                         dataset_metadata.test_name, 
+                         add_reciprocal_rels=add_reciprocal_rels)
 
     return {'train': train, 'valid': valid, 'test': test}
 
@@ -375,7 +396,8 @@ def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
         test_checksum='b035247a8916c7ec3443fa949e1ff02c'
     )
 
-    return _load_dataset(wn18, data_home=None, 
+    return _load_dataset(wn18, 
+                         data_home=None, 
                          check_md5hash=check_md5hash, 
                          add_reciprocal_rels=add_reciprocal_rels)
 
