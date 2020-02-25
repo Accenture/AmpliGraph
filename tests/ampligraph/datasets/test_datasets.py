@@ -43,6 +43,23 @@ def test_load_wn18():
     assert len(distinct_rel) == 18
 
 
+def test_reciprocals():
+    """Test for reciprocal relations
+    """
+    # Create dataset with reciprocal relations and test if the are added
+    fb15k = load_fb15k(add_reciprocal_rels=True)
+    train_reciprocal = fb15k['train']
+    triple = train_reciprocal[0]
+    reciprocal_triple = train_reciprocal[train_reciprocal.shape[0]//2]
+    assert(triple[0]==reciprocal_triple[2])
+    assert(triple[2]==reciprocal_triple[0])
+    assert(triple[1]+'_reciprocal'==reciprocal_triple[1])
+    
+    # create the same dataset without reciprocals. Now the number of triples should be half of prev
+    fb15k = load_fb15k(add_reciprocal_rels=False)
+    assert(fb15k['train'].shape[0]==train_reciprocal.shape[0]//2)
+
+
 def test_load_fb15k():
     fb15k = load_fb15k()
     assert len(fb15k['train']) == 483142
