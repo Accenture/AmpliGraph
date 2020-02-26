@@ -368,28 +368,29 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
 
 
 def _convert_to_idx(X, ent_to_idx, rel_to_idx, obj_to_idx):
-    unseen_msg = 'Input triples include one or more entities not present in the training set. ' \
-                 'Please filter X using evaluation.filter_unseen_entities(), or retrain the model on a training set ' \
-                 'that includes all the desired distinct entities.'
+    unseen_msg = 'Input triples include one or more {concept_type} not present in the training set. ' \
+                 'Please filter all concepts in X that do not occur in the training test ' \
+                 '(set filter_unseen=True in evaluate_performance) or retrain the model on a ' \
+                 'training set that includes all the desired concept types.'
 
     try:
         x_idx_s = np.vectorize(ent_to_idx.get)(X[:, 0])
         x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
         x_idx_o = np.vectorize(obj_to_idx.get)(X[:, 2])
     except TypeError:
+        unseen_msg = unseen_msg.format(**{'concept_type': 'concepts'})
         logger.error(unseen_msg)
         raise ValueError(unseen_msg)
 
     if None in x_idx_s or None in x_idx_o:
+        unseen_msg = unseen_msg.format(**{'concept_type': 'entities'})
         logger.error(unseen_msg)
         raise ValueError(unseen_msg)
 
     if None in x_idx_p:
-        msg = 'Input triples include one or more relation type not present in the training set. ' \
-              'Please filter all relation in X that do not occur in the training test. ' \
-              'or retrain the model on a training set that includes all the desired relation types.'
-        logger.error(msg)
-        raise ValueError(msg)
+        unseen_msg = unseen_msg.format(**{'concept_type': 'relations'})
+        logger.error(unseen_msg)
+        raise ValueError(unseen_msg)
 
     return np.dstack([x_idx_s, x_idx_p, x_idx_o]).reshape((-1, 3))
 
@@ -416,7 +417,7 @@ def to_idx(X, ent_to_idx, rel_to_idx):
     return _convert_to_idx(X, ent_to_idx, rel_to_idx, ent_to_idx)
 
 
-def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=1, entities_subset=None,
+def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_unseen=True, entities_subset=None,
                          corrupt_side='s+o', use_default_protocol=True):
     """Evaluate the performance of an embedding model.
 
@@ -482,11 +483,11 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=1,
 
     verbose : bool
         Verbose mode
-    strict : int
-        Strict mode. If 1 then any unseen entity will cause a RuntimeError.
-        If 0 then triples containing unseen entities will be filtered out.
-        If -1 then no filtering is done. One can use this mode, to skip filtering of unseen entities, if
-        train_test_split_unseen was used to create the splits.
+    filter_unseen : bool
+        If True then any unseen entity will be filtered out, if False it will cause a RuntimeError.
+        One can set this to False, to skip filtering of unseen entities, for eg, if train_test_split_unseen 
+        was used to create the splits.
+        
     entities_subset: array-like
         List of entities to use for corruptions. If None, will generate corruptions
         using all distinct entities. Default is None.
@@ -548,11 +549,14 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=1,
     try:
         logger.debug('Evaluating the performance of the embedding model.')
         if isinstance(X, np.ndarray):
-            X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
-
+            if filter_unseen:
+                X = filter_unseen_entities(X, model, verbose=verbose)
+            else:
+                logger.warning("If your test set or filter triples contain unseen entities you may get a" 
+                               "runtime error. You can filter them by setting filter_unseen=True")
             dataset_handle = NumpyDatasetAdapter()
             dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
-            dataset_handle.set_data(X_test, "test")
+            dataset_handle.set_data(X, "test")
         elif isinstance(X, AmpligraphDatasetAdapter):
             dataset_handle = X
         else:
@@ -563,7 +567,8 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=1,
         if filter_triples is not None:
             if isinstance(filter_triples, np.ndarray):
                 logger.debug('Getting filtered triples.')
-                filter_triples = filter_unseen_entities(filter_triples, model, verbose=verbose, strict=strict)
+                if filter_unseen:
+                    filter_triples = filter_unseen_entities(filter_triples, model, verbose=verbose)
                 dataset_handle.set_filter(filter_triples)
                 model.set_filter_for_eval()
             elif isinstance(X, AmpligraphDatasetAdapter):
@@ -606,7 +611,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=1,
         raise e
 
 
-def filter_unseen_entities(X, model, verbose=False, strict=1):
+def filter_unseen_entities(X, model, verbose=False):
     """Filter unseen entities in the test set.
 
     Parameters
@@ -617,34 +622,23 @@ def filter_unseen_entities(X, model, verbose=False, strict=1):
         A knowledge graph embedding model.
     verbose : bool
         Verbose mode.
-    strict : int
-        Strict mode. If 1 then any unseen entity will cause a RuntimeError.
-        If 0 then triples containing unseen entities will be filtered out.
-        If -1 then no filtering is done. One can use this mode, to skip filtering of unseen entities, if
-        train_test_split_unseen was used to create the splits.
 
     Returns
     -------
     filtered X : ndarray, shape [n, 3]
         An array of test triples containing no unseen entities.
     """
-    if strict != -1:
-        logger.debug('Finding entities in test set that are not previously seen by model')
-        ent_seen = np.unique(list(model.ent_to_idx.keys()))
-        df = pd.DataFrame(X, columns=['s', 'p', 'o'])
-        filtered_df = df[df.s.isin(ent_seen) & df.o.isin(ent_seen)]
-        n_removed_ents = df.shape[0] - filtered_df.shape[0]
-
-        if strict == 1 and n_removed_ents > 0:
-            msg = 'Unseen entities found in test set, please remove or run evaluate_performance() with strict=False.'
-            logger.error(msg)
-            raise RuntimeError(msg)
-        else:
-            msg = 'Removing {} triples containing unseen entities. '.format(n_removed_ents)
-            if verbose:
-                logger.info(msg)
-            logger.debug(msg)
-            return filtered_df.values
+    logger.debug('Finding entities in the dataset that are not previously seen by model')
+    ent_seen = np.unique(list(model.ent_to_idx.keys()))
+    df = pd.DataFrame(X, columns=['s', 'p', 'o'])
+    filtered_df = df[df.s.isin(ent_seen) & df.o.isin(ent_seen)]
+    n_removed_ents = df.shape[0] - filtered_df.shape[0]
+    if n_removed_ents > 0:
+        msg = 'Removing {} triples containing unseen entities. '.format(n_removed_ents)
+        if verbose:
+            logger.info(msg)
+        logger.debug(msg)
+        return filtered_df.values
     return X
 
 

@@ -318,7 +318,7 @@ def test_to_idx():
 
     np.testing.assert_array_equal(X_idx, X_idx_expected)
 
-
+@pytest.mark.skip(reason="deprecated")  
 def test_filter_unseen_entities_with_strict_mode():
     from collections import namedtuple
     base_model = namedtuple('test_model', 'ent_to_idx')
@@ -333,7 +333,7 @@ def test_filter_unseen_entities_with_strict_mode():
         _ = filter_unseen_entities(X, model, strict=True)
 
 
-def test_filter_unseen_entities_without_strict_mode():
+def test_filter_unseen_entities():
     from collections import namedtuple
     base_model = namedtuple('test_model', 'ent_to_idx')
 
@@ -343,7 +343,7 @@ def test_filter_unseen_entities_without_strict_mode():
 
     model = base_model({'a': 1, 'b': 2, 'c': 3, 'd': 4})
 
-    X_filtered = filter_unseen_entities(X, model, strict=False)
+    X_filtered = filter_unseen_entities(X, model)
 
     X_expected = np.array([['a', 'x', 'b'],
                            ['c', 'y', 'd']])
