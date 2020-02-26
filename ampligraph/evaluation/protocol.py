@@ -559,8 +559,8 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=1,
     # try-except block is mainly to handle clean up in case of exception or manual stop in jupyter notebook
     try:
         if use_default_protocol:
-            logger.warning('DeprecationWarning: use_default_protocol will be removed in future. \
-                            Please use corrupt_side argument instead.')
+            logger.warning('DeprecationWarning: use_default_protocol will be removed in future. '
+                           'Please use corrupt_side argument instead.')
             corrupt_side = 's,o'
 
         logger.debug('Evaluating the performance of the embedding model.')
