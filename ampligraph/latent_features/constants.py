@@ -25,7 +25,7 @@ DEFAULT_CRITERIA_EARLY_STOPPING = 'mrr'
 DEFAULT_NORMALIZE_EMBEDDINGS = False
 
 # Default side to corrupt for evaluation
-DEFAULT_CORRUPT_SIDE_EVAL = 's+o'
+DEFAULT_CORRUPT_SIDE_EVAL = 's,o'
 
 # default hyperparameter for transE
 DEFAULT_NORM_TRANSE = 1
@@ -64,8 +64,5 @@ DEFAULT_REGULARIZER = None
 # Default value for verbose
 DEFAULT_VERBOSE = False
 
-# Flag to indicate whether to use default protocol for eval - for faster evaluation
-DEFAULT_PROTOCOL_EVAL = False
-
 # Specifies how to generate corruptions for training - default does s and o together and applies the loss
-DEFAULT_CORRUPT_SIDE_TRAIN = ['s+o']
+DEFAULT_CORRUPT_SIDE_TRAIN = ['s,o']

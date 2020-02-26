@@ -179,7 +179,7 @@ def create_mappings(X):
     return _create_unique_mappings(unique_ent, unique_rel)
 
 
-def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'):
+def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s,o'):
     """Generate corruptions for evaluation.
 
         Create corruptions (subject and object) for a given triple x, in compliance with the
@@ -197,6 +197,7 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
         - 's': corrupt only subject.
         - 'o': corrupt only object
         - 's+o': corrupt both subject and object
+        - 's,o': corrupt both subject and object but ranks are computed separately.
 
     Returns
     -------
@@ -208,6 +209,10 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
     logger.debug('Generating corruptions for evaluation.')
 
     logger.debug('Getting repeating subjects.')
+    if corrupt_side == 's,o':
+        # Both subject and object are corrupted but ranks are computed separately.
+        corrupt_side = 's+o'
+        
     if corrupt_side not in ['s+o', 's', 'o']:
         msg = 'Invalid argument value for corruption side passed for evaluation'
         logger.error(msg)
@@ -256,7 +261,7 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
     return out
 
 
-def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o', entities_size=0, rnd=None):
+def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s,o', entities_size=0, rnd=None):
     """Generate corruptions for training.
 
     Creates corrupted triples for each statement in an array of statements,
@@ -294,6 +299,7 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
         - 's': corrupt only subject.
         - 'o': corrupt only object
         - 's+o': corrupt both subject and object
+        - 's,o': corrupt both subject and object
     entities_size: int
         Size of entities to be used while generating corruptions. It assumes entity id's start from 0 and are
         continuous. (default: 0).
@@ -316,6 +322,10 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
 
     """
     logger.debug('Generating corruptions for fit.')
+    if corrupt_side == 's,o':
+        # Both subject and object are corrupted but ranks are computed separately.
+        corrupt_side = 's+o'
+        
     if corrupt_side not in ['s+o', 's', 'o']:
         msg = 'Invalid argument value {} for corruption side passed for evaluation.'.format(corrupt_side)
         logger.error(msg)
@@ -416,8 +426,8 @@ def to_idx(X, ent_to_idx, rel_to_idx):
     return _convert_to_idx(X, ent_to_idx, rel_to_idx, ent_to_idx)
 
 
-def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=True, entities_subset=None,
-                         corrupt_side='s+o', use_default_protocol=True):
+def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=1, entities_subset=None,
+                         corrupt_side='s,o', use_default_protocol=False):
     """Evaluate the performance of an embedding model.
 
     The evaluation protocol follows the procedure defined in :cite:`bordes2013translating` and can be summarised as:
@@ -494,26 +504,29 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         - 's': corrupt only subject.
         - 'o': corrupt only object.
         - 's+o': corrupt both subject and object.
-          With ``use_default_protocol`` set to `True`, this mode is forced irrespective of the user choice.
-
-    use_default_protocol: bool
-        Flag to indicate whether to use the standard protocol used in literature defined in
-        :cite:`bordes2013translating` (default: True).
-        If set to `True`, ``corrupt_side`` will be set to `'s+o'`.
-        This corresponds to the evaluation protocol used in literature, where head and tail corruptions
-        are evaluated separately.
-
+        - 's,o': corrupt subject and object sides independently and return 2 ranks. This corresponds to the 
+                 evaluation protocol used in literature, where head and tail corruptions are evaluated 
+                 separately.
+        
         .. note::
-            When ``use_default_protocol=True`` the function will return 2*n ranks as a [n, 2] array.
+            When ``corrupt_side='s,o'`` the function will return 2*n ranks as a [n, 2] array.
             The first column of the array represents the subject corruptions.
             The second column of the array represents the object corruptions.
             Otherwise, the function returns n ranks as [n] array.
+            
+
+    use_default_protocol: bool
+        Flag to indicate whether to use the standard protocol used in literature defined in
+        :cite:`bordes2013translating` (default: False).
+        If set to `True`, ``corrupt_side`` will be set to `'s,o'`.
+        This corresponds to the evaluation protocol used in literature, where head and tail corruptions
+        are evaluated separately, i.e. in corrupt_side='s,o' mode
 
     Returns
     -------
-    ranks : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
+    ranks : ndarray, shape [n] or [n,2] depending on the value of corrupt_side.
         An array of ranks of test triples.
-        When ``use_default_protocol=True`` the function returns [n,2]. The first column represents the rank against
+        When ``corrupt_side='s,o'`` the function returns [n,2]. The first column represents the rank against
         subject corruptions and the second column represents the rank against object corruptions.
         In other cases, it returns [n] i.e. rank against the specified corruptions.
 
@@ -542,9 +555,16 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     0.4
     """
     dataset_handle = None
+
     # try-except block is mainly to handle clean up in case of exception or manual stop in jupyter notebook
     try:
+        if use_default_protocol:
+            logger.warning('DeprecationWarning: use_default_protocol will be removed in future. \
+                            Please use corrupt_side argument instead.')
+            corrupt_side = 's,o'
+
         logger.debug('Evaluating the performance of the embedding model.')
+        assert corrupt_side in ['s', 'o', 's+o', 's,o'], 'Invalid value for corrupt_side.'
         if isinstance(X, np.ndarray):
             X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
 
@@ -572,11 +592,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
             else:
                 raise Exception('Invalid datatype for filter. Expected a numpy array or preset data in the adapter.')
 
-        eval_dict = {'default_protocol': False}
-
-        if use_default_protocol:
-            corrupt_side = 's+o'
-            eval_dict['default_protocol'] = True
+        eval_dict = {}
 
         if entities_subset is not None:
             idx_entities = np.asarray([idx for uri, idx in model.ent_to_idx.items() if uri in entities_subset])
@@ -881,7 +897,7 @@ def _scalars_into_lists(param_grid):
 def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid, max_combinations=None,
                               param_grid_random_seed=0, use_filter=True, early_stopping=False,
                               early_stopping_params=None, use_test_for_selection=False, entities_subset=None,
-                              corrupt_side='s+o', use_default_protocol=True, retrain_best_model=False, verbose=False):
+                              corrupt_side='s,o', use_default_protocol=False, retrain_best_model=False, verbose=False):
     """Model selection routine for embedding models via either grid search or random search.
     
     For grid search, pass a fixed ``param_grid`` and leave ``max_combinations`` as `None`
@@ -987,10 +1003,11 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         ``s`` is to corrupt only subject.
         ``o`` is to corrupt only object.
         ``s+o`` is to corrupt both subject and object.
+        ``s,o`` is to corrupt both subject and object but ranks are computed separately (default).
     use_default_protocol: bool
-        Flag to indicate whether to evaluate head and tail corruptions separately(default:True).
+        Flag to indicate whether to evaluate head and tail corruptions separately(default:False).
         If this is set to true, it will ignore corrupt_side argument and corrupt both head
-        and tail separately and rank triples.
+        and tail separately and rank triples i.e. corrupt_side='s,o' mode.
     retrain_best_model: bool
         Flag to indicate whether best model should be re-trained at the end with the validation set used in the search.
         Default: False.
@@ -1013,9 +1030,9 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     best_mrr_train : float
         The MRR (unfiltered) of the best model computed over the validation set in the model selection loop.
 
-    ranks_test : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
+    ranks_test : ndarray, shape [n] or [n,2] depending on the value of corrupt_side.
         An array of ranks of test triples.
-        When ``use_default_protocol=True`` the function returns [n,2]. The first column represents the rank against 
+        When ``corrupt_side='s,o'`` the function returns [n,2]. The first column represents the rank against 
         subject corruptions and the second column represents the rank against object corruptions. 
         In other cases, it returns [n] i.e. rank against the specified corruptions.
         
@@ -1066,6 +1083,10 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
     """
     logger.debug('Starting gridsearch over hyperparameters. {}'.format(param_grid))
+    if use_default_protocol:
+        logger.warning('DeprecationWarning: use_default_protocol will be removed in future. \
+                        Please use corrupt_side argument instead.')
+        corrupt_side = 's,o'
 
     if early_stopping_params is None:
         early_stopping_params = {}
