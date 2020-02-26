@@ -380,7 +380,7 @@ class EmbeddingModel(abc.ABC):
             # (We use tf.variable for future - to load and continue training)
             self.ent_emb = tf.Variable(self.trained_model_params[0], dtype=tf.float32)
         else:
-            # Embeddings of all the corruptions entities will not fit on GPU. 
+            # Embeddings of all the corruptions entities will not fit on GPU.
             # During training we loaded batch_size*2 embeddings on GPU as only 2* batch_size unique
             # entities can be present in one batch.
             # During corruption generation in eval mode, one side(s/o) is fixed and only the other side varies.

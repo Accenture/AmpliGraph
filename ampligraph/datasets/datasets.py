@@ -324,7 +324,7 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
 
     check_md5hash : boolean
         If True, check the md5hash of the files after they are downloaded (default: False).
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
@@ -337,14 +337,14 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
                                                              .url.rfind('.')]
     dataset_path = _fetch_dataset(dataset_metadata, data_home, check_md5hash)
 
-    train = load_from_csv(dataset_path, 
-                          dataset_metadata.train_name, 
+    train = load_from_csv(dataset_path,
+                          dataset_metadata.train_name,
                           add_reciprocal_rels=add_reciprocal_rels)
-    valid = load_from_csv(dataset_path, 
-                          dataset_metadata.valid_name, 
+    valid = load_from_csv(dataset_path,
+                          dataset_metadata.valid_name,
                           add_reciprocal_rels=add_reciprocal_rels)
-    test = load_from_csv(dataset_path, 
-                         dataset_metadata.test_name, 
+    test = load_from_csv(dataset_path,
+                         dataset_metadata.test_name,
                          add_reciprocal_rels=add_reciprocal_rels)
 
     return {'train': train, 'valid': valid, 'test': test}
@@ -381,7 +381,7 @@ def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
     ----------
     check_md5hash : bool
         If ``True`` check the md5hash of the files. Defaults to ``False``.
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
@@ -415,9 +415,9 @@ def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
         test_checksum='b035247a8916c7ec3443fa949e1ff02c'
     )
 
-    return _load_dataset(wn18, 
-                         data_home=None, 
-                         check_md5hash=check_md5hash, 
+    return _load_dataset(wn18,
+                         data_home=None,
+                         check_md5hash=check_md5hash,
                          add_reciprocal_rels=add_reciprocal_rels)
 
 
@@ -455,7 +455,7 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fals
 
     check_md5hash : bool
         If ``True`` check the md5hash of the datset files. Defaults to ``False``.
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
@@ -489,14 +489,14 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fals
     )
 
     if clean_unseen:
-        return _clean_data(_load_dataset(wn18rr, 
-                                         data_home=None, 
-                                         check_md5hash=check_md5hash, 
+        return _clean_data(_load_dataset(wn18rr,
+                                         data_home=None,
+                                         check_md5hash=check_md5hash,
                                          add_reciprocal_rels=add_reciprocal_rels))
     else:
-        return _load_dataset(wn18rr, 
-                             data_home=None, 
-                             check_md5hash=check_md5hash, 
+        return _load_dataset(wn18rr,
+                             data_home=None,
+                             check_md5hash=check_md5hash,
                              add_reciprocal_rels=add_reciprocal_rels)
 
 
@@ -531,7 +531,7 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
     ----------
     check_md5hash : boolean
         If ``True`` check the md5hash of the files. Defaults to ``False``.
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
@@ -571,9 +571,9 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
         test_checksum='71098693b0efcfb8ac6cd61cf3a3b505'
     )
 
-    return _load_dataset(FB15K, 
-                         data_home=None, 
-                         check_md5hash=check_md5hash, 
+    return _load_dataset(FB15K,
+                         data_home=None,
+                         check_md5hash=check_md5hash,
                          add_reciprocal_rels=add_reciprocal_rels)
 
 
@@ -612,7 +612,7 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=F
 
     clean_unseen : bool
         If ``True``, filters triples in validation and test sets that include entities not present in the training set.
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
@@ -647,14 +647,14 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=F
     )
 
     if clean_unseen:
-        return _clean_data(_load_dataset(fb15k_237, 
-                                         data_home=None, 
-                                         check_md5hash=check_md5hash, 
+        return _clean_data(_load_dataset(fb15k_237,
+                                         data_home=None,
+                                         check_md5hash=check_md5hash,
                                          add_reciprocal_rels=add_reciprocal_rels))
     else:
-        return _load_dataset(fb15k_237, 
-                             data_home=None, 
-                             check_md5hash=check_md5hash, 
+        return _load_dataset(fb15k_237,
+                             data_home=None,
+                             check_md5hash=check_md5hash,
                              add_reciprocal_rels=add_reciprocal_rels)
 
 
@@ -689,7 +689,7 @@ def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fa
 
     clean_unseen : bool
         If ``True``, filters triples in validation and test sets that include entities not present in the training set.
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
@@ -722,14 +722,14 @@ def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fa
     )
 
     if clean_unseen:
-        return _clean_data(_load_dataset(yago3_10, 
-                                         data_home=None, 
-                                         check_md5hash=check_md5hash, 
+        return _clean_data(_load_dataset(yago3_10,
+                                         data_home=None,
+                                         check_md5hash=check_md5hash,
                                          add_reciprocal_rels=add_reciprocal_rels))
     else:
-        return _load_dataset(yago3_10, 
-                             data_home=None, 
-                             check_md5hash=check_md5hash, 
+        return _load_dataset(yago3_10,
+                             data_home=None,
+                             check_md5hash=check_md5hash,
                              add_reciprocal_rels=add_reciprocal_rels)
 
 
@@ -769,7 +769,7 @@ def load_wn11(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
 
     clean_unseen : bool
         If ``True``, filters triples in validation and test sets that include entities not present in the training set.
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
@@ -806,8 +806,8 @@ def load_wn11(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
         test_checksum='24113b464f8042c339e3e6833c1cebdf'
     )
 
-    dataset = _load_dataset(wn11, data_home=None, 
-                            check_md5hash=check_md5hash, 
+    dataset = _load_dataset(wn11, data_home=None,
+                            check_md5hash=check_md5hash,
                             add_reciprocal_rels=add_reciprocal_rels)
 
     valid_labels = dataset['valid'][:, 3]
@@ -866,7 +866,7 @@ def load_fb13(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
 
     clean_unseen : bool
         If ``True``, filters triples in validation and test sets that include entities not present in the training set.
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
@@ -903,9 +903,9 @@ def load_fb13(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
         test_checksum='f9af2eac7c5a86996c909bdffd295528'
     )
 
-    dataset = _load_dataset(fb13, 
-                            data_home=None, 
-                            check_md5hash=check_md5hash, 
+    dataset = _load_dataset(fb13,
+                            data_home=None,
+                            check_md5hash=check_md5hash,
                             add_reciprocal_rels=add_reciprocal_rels)
 
     valid_labels = dataset['valid'][:, 3]
