@@ -16,7 +16,8 @@ from tqdm import tqdm
 import tensorflow as tf
 
 from ..evaluation import mrr_score, hits_at_n_score, mr_score
-from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
+from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter, OneToNDatasetAdapter
+# from ampligraph.latent_features.models import ConvE
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -25,7 +26,7 @@ logger.setLevel(logging.DEBUG)
 def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False):
     """Split into train and test sets.
 
-     This function carves out a test set that contains only entities 
+     This function carves out a test set that contains only entities
      and relations which also occur in the training set.
 
     Parameters
@@ -33,12 +34,12 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
     X : ndarray, size[n, 3]
         The dataset to split.
     test_size : int, float
-        If int, the number of triples in the test set. 
+        If int, the number of triples in the test set.
         If float, the percentage of total triples.
     seed : int
         A random seed used to split the dataset.
     allow_duplication: boolean
-        Flag to indicate if the test set can contain duplicated triples. 
+        Flag to indicate if the test set can contain duplicated triples.
 
     Returns
     -------
@@ -202,7 +203,7 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
     -------
     out : Tensor, shape [n, 3]
         An array of corruptions for the triples for x.
-        
+
     """
 
     logger.debug('Generating corruptions for evaluation.')
@@ -493,6 +494,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
         - 's': corrupt only subject.
         - 'o': corrupt only object.
+        - '1-N': object only corruption using the fast strategy given in `cite`Dettmers2016. Only valid for ConvE model.
         - 's+o': corrupt both subject and object.
           With ``use_default_protocol`` set to `True`, this mode is forced irrespective of the user choice.
 
@@ -541,16 +543,25 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     >>> hits_at_n_score(ranks, n=10)
     0.4
     """
+
+    from ampligraph.latent_features import ConvE  # avoids circular import hell
+
     dataset_handle = None
     # try-except block is mainly to handle clean up in case of exception or manual stop in jupyter notebook
     try:
         logger.debug('Evaluating the performance of the embedding model.')
         if isinstance(X, np.ndarray):
+
             X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
 
-            dataset_handle = NumpyDatasetAdapter()
+            if isinstance(model, ConvE):
+                dataset_handle = OneToNDatasetAdapter()
+            else:
+                dataset_handle = NumpyDatasetAdapter()
+
             dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
             dataset_handle.set_data(X_test, "test")
+
         elif isinstance(X, AmpligraphDatasetAdapter):
             dataset_handle = X
         else:
@@ -587,12 +598,12 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
         logger.debug('Configuring evaluation protocol.')
         model.configure_evaluation_protocol(eval_dict)
-        logger.debug('Making predictions.')
 
+        logger.debug('Making predictions.')
         ranks = model.get_ranks(dataset_handle)
 
-        model.end_evaluation()
         logger.debug('Ending Evaluation')
+        model.end_evaluation()
 
         logger.debug('Returning ranks of positive test triples obtained by corrupting {}.'.format(corrupt_side))
         return np.array(ranks)
@@ -883,7 +894,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
                               early_stopping_params=None, use_test_for_selection=False, entities_subset=None,
                               corrupt_side='s+o', use_default_protocol=True, retrain_best_model=False, verbose=False):
     """Model selection routine for embedding models via either grid search or random search.
-    
+
     For grid search, pass a fixed ``param_grid`` and leave ``max_combinations`` as `None`
     so that all combinations will be explored.
 
@@ -924,7 +935,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         or ``"lr": lambda: np.random.uniform(0.01, 0.1)``.
     max_combinations: int
         Maximum number of combinations to explore.
-        By default (None) all combinations will be explored, 
+        By default (None) all combinations will be explored,
         which makes it incompatible with random parameters for random search.
     param_grid_random_seed: int
         Random seed for the parameters that are callables and random.
@@ -1015,10 +1026,10 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
     ranks_test : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
         An array of ranks of test triples.
-        When ``use_default_protocol=True`` the function returns [n,2]. The first column represents the rank against 
-        subject corruptions and the second column represents the rank against object corruptions. 
+        When ``use_default_protocol=True`` the function returns [n,2]. The first column represents the rank against
+        subject corruptions and the second column represents the rank against object corruptions.
         In other cases, it returns [n] i.e. rank against the specified corruptions.
-        
+
     mrr_test : float
         The MRR (filtered) of the best model, retrained on the concatenation of training and validation sets,
         computed over the test set.

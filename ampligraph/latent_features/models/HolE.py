@@ -76,8 +76,8 @@ class HolE(ComplEx):
         seed : int
             The seed used by the internal random numbers generator.
         embedding_model_params : dict
-            HolE-specific hyperparams: 
-            
+            HolE-specific hyperparams:
+
             - **negative_corruption_entities** - Entities to be used for generation of corruptions while training.
               It can take the following values :
               ``all`` (default: all entities),
@@ -86,7 +86,7 @@ class HolE(ComplEx):
               or an int (which indicates how many entities that should be used for corruption generation).
             - **corrupt_sides** : Specifies how to generate corruptions for training.
               Takes values `s`, `o`, `s+o` or any combination passed as a list.
-            
+
         optimizer : string
             The optimizer used to minimize the loss function. Choose between 'sgd',
             'adagrad', 'adam', 'momentum'.
@@ -112,7 +112,7 @@ class HolE(ComplEx):
               Switch to multiclass loss defined in :cite:`chen2015` by passing
               'corrupt_sides' as ['s','o'] to embedding_model_params.
               To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params.
-            
+
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
             documentation for additional details.

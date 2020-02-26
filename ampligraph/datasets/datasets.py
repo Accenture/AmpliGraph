@@ -190,7 +190,7 @@ def _fetch_dataset(remote, data_home=None, check_md5hash=False):
 
     Returns
     ------
-    
+
     str
         The location of the dataset.
     """
@@ -238,7 +238,7 @@ def _add_reciprocal_relations(triples_df):
 
 def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciprocal_rels=False):
     """Load a knowledge graph from a csv file
-    
+
     Loads a knowledge graph serialized in a csv file as:
 
     .. code-block:: text
@@ -260,7 +260,7 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciproc
 
     Parameters
     ----------
-    
+
     directory_path: str
         Folder where the input file is stored.
     file_name : str
@@ -272,16 +272,17 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciproc
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False)
-    
+
+
     Returns
     -------
-    
+
     triples : ndarray , shape [n, 3]
         The actual triples of the file.
-    
+
     Examples
     --------
-    
+
     >>> from ampligraph.datasets import load_from_csv
     >>> X = load_from_csv('folder', 'dataset.csv', sep=',')
     >>> X[:3]
@@ -390,7 +391,7 @@ def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
 
     splits : dict
         The dataset splits {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-    
+
     Examples
     --------
     >>> from ampligraph.datasets import load_wn18
@@ -461,18 +462,18 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fals
 
     Returns
     -------
-    
+
     splits : dict
         The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-    
+
     Examples
     -------
-    
+
     >>> from ampligraph.datasets import load_wn18rr
     >>> X = load_wn18rr()
     >>> X["valid"][0]
     array(['02174461', '_hypernym', '02176268'], dtype=object)
-    
+
     """
 
     wn18rr = DatasetMetadata(
@@ -515,7 +516,7 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
     or ``~/ampligraph_datasets``.
 
     The dataset is divided in three splits:
-    
+
     - ``train``
     - ``valid``
     - ``test``
@@ -538,13 +539,13 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
 
     Returns
     -------
-    
+
     splits : dict
         The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-    
+
     Examples
     --------
-    
+
     >>> from ampligraph.datasets import load_fb15k
     >>> X = load_fb15k()
     >>> X['test'][:3]
@@ -659,7 +660,7 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=F
 
 def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False):
     """Load the YAGO3-10 dataset
-   
+
     The dataset is a split of YAGO3 :cite:`mahdisoltani2013yago3`,
     and has been first presented in :cite:`DettmersMS018`.
 
@@ -685,7 +686,7 @@ def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fa
     ----------
     check_md5hash : boolean
         If ``True`` check the md5hash of the files. Defaults to ``False``.
-    
+
     clean_unseen : bool
         If ``True``, filters triples in validation and test sets that include entities not present in the training set.
         
@@ -695,18 +696,18 @@ def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fa
 
     Returns
     -------
-    
+
     splits : dict
         The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-    
+
     Examples
     -------
-    
+
     >>> from ampligraph.datasets import load_yago3_10
     >>> X = load_yago3_10()
     >>> X["valid"][0]
-    array(['Mikheil_Khutsishvili', 'playsFor', 'FC_Merani_Tbilisi'], dtype=object)    
-    
+    array(['Mikheil_Khutsishvili', 'playsFor', 'FC_Merani_Tbilisi'], dtype=object)
+
     """
     yago3_10 = DatasetMetadata(
         dataset_name='YAGO3-10',

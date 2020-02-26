@@ -21,7 +21,7 @@ def get_entity_triples(entity, graph):
     """
     Given an entity label e included in the graph G, returns an list of all triples where e appears either
     as subject or object.
-    
+
     Parameters
     ----------
     entity : str, shape [n, 1]
