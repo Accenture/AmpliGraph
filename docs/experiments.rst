@@ -10,7 +10,7 @@ Predictive Performance
 We report the filtered MR, MRR, Hits@1,3,10 for the most common datasets used in literature.
 
 
-FB15K-237 
+FB15K-237
 ---------
 
 ========== ======== ====== ======== ======== ========== ========================
@@ -91,7 +91,7 @@ FB15K-237
                                                          seed: 0;
                                                          batches_count: 300;
 
-  ConvE    1060     0.26       0.19     0.28     0.38    k: 200;
+  ConvE    1060     0.26   0.19     0.28     0.38       k: 200;
                                                          epochs: 4000;
                                                          loss: bce;
                                                          loss_params: {label_smoothing=0.1}
@@ -109,7 +109,7 @@ FB15K-237
                                                          seed: 0;
                                                          batches_count: 100;
 
-  ConvE* 234     0.32       0.23     0.35     0.50       k: 200;
+  ConvE*     234      0.32   0.23     0.35     0.50       k: 200;
                                                          epochs: 4000;
                                                          loss: bce;
                                                          loss_params: {label_smoothing=0.1}
@@ -224,7 +224,7 @@ WN18RR
                                                          seed: 0;
                                                          batches_count: 300;
 
-  ConvE    5346     0.45      0.42     0.47     0.52     k: 200;
+  ConvE     5346      0.45     0.42    0.47    0.52      k: 200;
                                                          epochs: 4000;
                                                          loss: bce;
                                                          loss_params: {label_smoothing=0.1}
@@ -241,7 +241,6 @@ WN18RR
                                                          use_bias: True};
                                                          seed: 0;
                                                          batches_count: 100;
-
 
   ConvE*    4842     0.48       0.45     0.49     0.54   k: 200;
                                                          epochs: 4000;
@@ -273,6 +272,7 @@ WN18RR
     reported in the literature. The ConvE row indicates results obtained from the standard evaluation procedure,
     however with reciprocal relations added, as in contrast to FB15k-237 in this case adding reciprocal relations
     improves all metrics.
+
 
 YAGO3-10
 --------
@@ -354,7 +354,7 @@ ConvKB   2820     0.30    0.21    0.34     0.50      k: 200;
                                                      seed: 0;
                                                      batches_count: 3000;
 
- ConvE   6063    0.40    0.33     0.42  0.53         k: 300;
+ ConvE    6063     0.40   0.33     0.42     0.53     k: 300;
                                                      epochs: 4000;
                                                      loss: bce;
                                                      loss_params: {label_smoothing=0.1}
@@ -370,9 +370,9 @@ ConvKB   2820     0.30    0.21    0.34     0.50      k: 200;
                                                      use_batchnorm: True,
                                                      use_bias: True};
                                                      seed: 0;
-                                                     xbatches_count: 300;
+                                                     batches_count: 300;
 
- ConvE   6063    0.40    0.33     0.42  0.53         k: 300;
+ ConvE*   2741    0.55    0.48     0.60     0.69     k: 300;
                                                      epochs: 4000;
                                                      loss: bce;
                                                      loss_params: {label_smoothing=0.1}
@@ -388,25 +388,7 @@ ConvKB   2820     0.30    0.21    0.34     0.50      k: 200;
                                                      use_batchnorm: True,
                                                      use_bias: True};
                                                      seed: 0;
-                                                     xbatches_count: 300;
-
- ConvE*   2741    0.55    0.48     0.60   0.69       k: 300;
-                                                     epochs: 4000;
-                                                     loss: bce;
-                                                     loss_params: {label_smoothing=0.1}
-                                                     optimizer: adam;
-                                                     optimizer_params:
-                                                     lr: 0.0001;
-                                                     embedding_model_params:{
-                                                     conv_filters: 32,
-                                                     conv_kernel_size: 3,
-                                                     dropout_embed: 0.2,
-                                                     dropout_conv: 0.1,
-                                                     dropout_dense: 0.3,
-                                                     use_batchnorm: True,
-                                                     use_bias: True};
-                                                     seed: 0;
-                                                     xbatches_count: 300;
+                                                     batches_count: 300;
 
 ======== ======== ====== ======== ======== ========= =========================
 
@@ -500,7 +482,7 @@ FB15K
                                                          seed: 0;
                                                          batches_count: 300;
 
-  ConvE    385     0.50       0.42     0.52     0.66     k: 300;
+  ConvE     385      0.50    0.42     0.52     0.66      k: 300;
                                                          epochs: 4000;
                                                          loss: bce;
                                                          loss_params: {label_smoothing=0.1}
@@ -518,7 +500,7 @@ FB15K
                                                          seed: 0;
                                                          batches_count: 100;
 
-  ConvE*    55     0.80       0.74     0.84     0.89     k: 300;
+  ConvE*    55       0.80     0.74    0.84     0.89      k: 300;
                                                          epochs: 4000;
                                                          loss: bce;
                                                          loss_params: {label_smoothing=0.1}
@@ -618,7 +600,7 @@ TransE     260      0.66    0.44     0.88      0.95     k: 150;
                                                          seed: 0;
                                                          batches_count: 300;
 
-  ConvE    492     0.93       0.91     0.94     0.95     k: 300;
+  ConvE     492      0.93   0.91     0.94     0.95       k: 300;
                                                          epochs: 4000;
                                                          loss: bce;
                                                          loss_params: {label_smoothing=0.1}
@@ -636,7 +618,7 @@ TransE     260      0.66    0.44     0.88      0.95     k: 150;
                                                          seed: 0;
                                                          batches_count: 100;
 
-  ConvE*    436    0.95       0.93     0.95     0.95     k: 300;
+  ConvE*    436      0.95    0.93     0.95     0.95      k: 300;
                                                          epochs: 4000;
                                                          loss: bce;
                                                          loss_params: {label_smoothing=0.1}
@@ -655,6 +637,7 @@ TransE     260      0.66    0.44     0.88      0.95     k: 150;
                                                          batches_count: 100;
 
 ========== ======== ====== ======== ======== ========== ========================
+
 
 To reproduce the above results: ::
 

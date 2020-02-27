@@ -40,7 +40,7 @@ def test_output_sizes():
     def perform_test():
         X = load_wn18rr()
         k = 5
-        unique_entities = np.unique(np.concatenate([X['train'][:, 0], 
+        unique_entities = np.unique(np.concatenate([X['train'][:, 0],
                                                     X['train'][:, 2]], 0))
         unique_relations = np.unique(X['train'][:, 1])
         model = TransE(batches_count=100, seed=555, epochs=1, k=k, loss='multiclass_nll', loss_params={'margin': 5},
@@ -329,7 +329,7 @@ def test_is_fitted_on():
 def test_conve_fit_predict_save_restore():
 
     X = load_wn18()
-    model = ConvE(batches_count=2000, seed=22, epochs=1, k=10,
+    model = ConvE(batches_count=100, seed=22, epochs=1, k=10,
                   embedding_model_params={'conv_filters': 16, 'conv_kernel_size': 3},
                   optimizer='adam', optimizer_params={'lr': 0.01},
                   loss='bce', loss_params={},
@@ -351,9 +351,8 @@ def test_conve_fit_predict_save_restore():
 
 
 def test_conve_evaluation_protocol():
-
     X = load_wn18()
-    model = ConvE(batches_count=2000, seed=22, epochs=1, k=10,
+    model = ConvE(batches_count=200, seed=22, epochs=1, k=10,
                   embedding_model_params={'conv_filters': 16, 'conv_kernel_size': 3},
                   optimizer='adam', optimizer_params={'lr': 0.01},
                   loss='bce', loss_params={},

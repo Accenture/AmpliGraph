@@ -930,7 +930,7 @@ class ConvE(EmbeddingModel):
 
         # Note: onehot outputs not required for prediction, but are part of the batch function
         dataset_handle.set_output_mapping(self.output_mapping)
-        dataset_handle.generate_outputs(dataset_type='test')
+        dataset_handle.generate_outputs(dataset_type='test', unique_pairs=False)
         self.eval_dataset_handle = dataset_handle
 
         self.rnd = check_random_state(self.seed)
