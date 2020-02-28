@@ -484,9 +484,8 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
     verbose : bool
         Verbose mode
     filter_unseen : bool
-        If True then any unseen entity will be filtered out, if False it will cause a RuntimeError.
-        One can set this to False, to skip filtering of unseen entities, for eg, if train_test_split_unseen 
-        was used to create the splits.
+        This can be set to False to skip filtering of unseen entities if train_test_split_unseen() was used to 
+        split the original dataset.
         
     entities_subset: array-like
         List of entities to use for corruptions. If None, will generate corruptions
