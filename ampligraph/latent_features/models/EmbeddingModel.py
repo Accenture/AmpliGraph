@@ -1026,8 +1026,8 @@ class EmbeddingModel(abc.ABC):
             - **corruption_entities**: List of entities to be used for corruptions.
               If ``all``, it uses all entities (default: ``all``)
             - **corrupt_side**: Specifies which side to corrupt. ``s``, ``o``, ``s+o``, ``s,o`` (default)
-              In 's,o' mode, s+o corruptions are generated at once but ranked separately for speed up
-              (default: False).
+              In 's,o' mode subject and object corruptions are generated at once but ranked separately 
+              for speed up (default: False).
 
         """
         if config is None:
@@ -1203,14 +1203,14 @@ class EmbeddingModel(abc.ABC):
                     # Execute the dependency
                     with tf.control_dependencies(corr_dependency):
                         emb_corr = tf.squeeze(self._entity_lookup(corr_batch))
-                        if corrupt_side == 's+o' or corrupt_side == 's' or corrupt_side == 's,o':
+                        if 's' in corrupt_side:
                             # compute and store the scores batch wise
                             scores_predict_s_c = self._fn(emb_corr, e_p, e_o)
                             scores_predict_s_corruptions_in = \
                                 scores_predict_s_corruptions_in.scatter(tf.squeeze(corr_batch),
                                                                         tf.squeeze(scores_predict_s_c))
 
-                        if corrupt_side == 's+o' or corrupt_side == 'o' or corrupt_side == 's,o':
+                        if 'o' in corrupt_side:
                             scores_predict_o_c = self._fn(e_s, e_p, emb_corr)
                             scores_predict_o_corruptions_in = \
                                 scores_predict_o_corruptions_in.scatter(tf.squeeze(corr_batch),
@@ -1228,10 +1228,10 @@ class EmbeddingModel(abc.ABC):
                                   back_prop=False,
                                   parallel_iterations=1)
 
-                if corrupt_side == 's+o' or corrupt_side == 's' or corrupt_side == 's,o':
+                if 's' in corrupt_side:
                     subj_corruption_scores = scores_predict_s_corr_out.stack()
 
-                if corrupt_side == 's+o' or corrupt_side == 'o' or corrupt_side == 's,o':
+                if 'o' in corrupt_side:
                     obj_corruption_scores = scores_predict_o_corr_out.stack()
 
                 if corrupt_side == 's+o' or corrupt_side == 's,o':
@@ -1314,10 +1314,10 @@ class EmbeddingModel(abc.ABC):
                     scores_pos_sub = tf.gather(self.scores_predict, indices_sub)
             # compute the ranks of the positives present in the corruptions and
             # see how many are ranked higher than the test triple
-            if corrupt_side == 's+o' or corrupt_side == 'o' or corrupt_side == 's,o':
+            if 'o' in corrupt_side:
                 positives_among_obj_corruptions_ranked_higher = tf.reduce_sum(
                     tf.cast(scores_pos_obj >= self.score_positive, tf.int32))
-            if corrupt_side == 's+o' or corrupt_side == 's' or corrupt_side == 's,o':
+            if 's' in corrupt_side:
                 positives_among_sub_corruptions_ranked_higher = tf.reduce_sum(
                     tf.cast(scores_pos_sub >= self.score_positive, tf.int32))
 
