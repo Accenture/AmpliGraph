@@ -24,8 +24,7 @@ def test_large_graph_mode():
                     verbose=True, optimizer='sgd', optimizer_params={'lr': 0.001})
     model.fit(X['train'])
     X_filter = np.concatenate((X['train'], X['valid'], X['test']), axis=0)
-    evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s+o',
-                         use_default_protocol=True)
+    evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s,o')
 
     y = model.predict(X['test'][:1])
     print(y)
@@ -109,7 +108,6 @@ def test_evaluate_RandomBaseline():
     model.fit(X["train"])
     ranks = evaluate_performance(X["test"],
                                  model=model,
-                                 use_default_protocol=False,
                                  corrupt_side='s+o',
                                  verbose=False)
     hits10 = hits_at_n_score(ranks, n=10)
@@ -119,8 +117,7 @@ def test_evaluate_RandomBaseline():
 
     ranks = evaluate_performance(X["test"],
                                  model=model,
-                                 use_default_protocol=True,
-                                 corrupt_side='s+o',
+                                 corrupt_side='s,o',
                                  verbose=False)
     hits10 = hits_at_n_score(ranks, n=10)
     hits1 = hits_at_n_score(ranks, n=1)
@@ -130,8 +127,7 @@ def test_evaluate_RandomBaseline():
     ranks_filtered = evaluate_performance(X["test"],
                                           filter_triples=np.concatenate((X['train'], X['valid'], X['test'])),
                                           model=model,
-                                          use_default_protocol=True,
-                                          corrupt_side='s+o',
+                                          corrupt_side='s,o',
                                           verbose=False)
     hits10 = hits_at_n_score(ranks_filtered, n=10)
     hits1 = hits_at_n_score(ranks_filtered, n=1)

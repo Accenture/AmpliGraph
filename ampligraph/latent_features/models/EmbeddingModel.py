@@ -131,8 +131,8 @@ class EmbeddingModel(abc.ABC):
             - ``absolute_margin`` the model will use absolute margin likelihood.
             - ``self_adversarial`` the model will use adversarial sampling loss function.
             - ``multiclass_nll`` the model will use multiclass nll loss. Switch to multiclass loss defined in
-              :cite:`chen2015` by passing 'corrupt_sides' as ['s','o'] to embedding_model_params.
-              To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params.
+              :cite:`chen2015` by passing 'corrupt_side' as ['s','o'] to embedding_model_params.
+              To use loss defined in :cite:`kadlecBK17` pass 'corrupt_side' as 'o' to embedding_model_params.
 
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss
@@ -584,7 +584,7 @@ class EmbeddingModel(abc.ABC):
                 entities_size = negative_corruption_entities
 
             loss = 0
-            corruption_sides = self.embedding_model_params.get('corrupt_sides', constants.DEFAULT_CORRUPT_SIDE_TRAIN)
+            corruption_sides = self.embedding_model_params.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_TRAIN)
             if not isinstance(corruption_sides, list):
                 corruption_sides = [corruption_sides]
 
@@ -711,7 +711,10 @@ class EmbeddingModel(abc.ABC):
             # Get each triple and compute the rank for that triple
             for x_test_triple in range(self.eval_dataset_handle.get_size("valid")):
                 rank_triple = self.sess_train.run(self.rank)
-                ranks.append(rank_triple)
+                if self.eval_config.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL) == 's,o':
+                    ranks.append(list(rank_triple))
+                else:
+                    ranks.append(rank_triple)
 
             if self.early_stopping_criteria == 'hits10':
                 current_test_value = hits_at_n_score(ranks, 10)
@@ -850,7 +853,7 @@ class EmbeddingModel(abc.ABC):
                 - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
                 - **'corruption_entities'**: List of entities to be used for corruptions. If 'all',
                   it uses all entities (default: 'all')
-                - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o' (default)
+                - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o', 's,o' (default)
 
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
@@ -1022,22 +1025,15 @@ class EmbeddingModel(abc.ABC):
 
             - **corruption_entities**: List of entities to be used for corruptions.
               If ``all``, it uses all entities (default: ``all``)
-            - **corrupt_side**: Specifies which side to corrupt. ``s``, ``o``, ``s+o`` (default)
-            - **default_protocol**: Boolean flag to indicate whether to use default protocol for evaluation.
-              This computes scores for corruptions of subjects and objects and ranks them separately.
-              This could have been done by evaluating s and o separately and then
-              ranking but it slows down the performance.
-              Hence this mode is used where s+o corruptions are generated at once but ranked separately for speed up
-              (default: False).
+            - **corrupt_side**: Specifies which side to corrupt. ``s``, ``o``, ``s+o``, ``s,o`` (default)
+              In 's,o' mode subject and object corruptions are generated at once but ranked separately 
+              for speed up (default: False).
 
         """
         if config is None:
             config = {'corruption_entities': constants.DEFAULT_CORRUPTION_ENTITIES,
-                      'corrupt_side': constants.DEFAULT_CORRUPT_SIDE_EVAL,
-                      'default_protocol': constants.DEFAULT_PROTOCOL_EVAL}
+                      'corrupt_side': constants.DEFAULT_CORRUPT_SIDE_EVAL}
         self.eval_config = config
-        if self.eval_config['default_protocol']:
-            self.eval_config['corrupt_side'] = 's+o'
 
     def _test_generator(self, mode):
         """Generates the test/validation data. If filter_triples are passed, then it returns the False Negatives
@@ -1120,7 +1116,6 @@ class EmbeddingModel(abc.ABC):
         dataset_iter = tf.data.make_one_shot_iterator(dataset)
         self.X_test_tf, indices_obj, indices_sub, entity_embeddings, unique_ent = dataset_iter.get_next()
 
-        use_default_protocol = self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL)
         corrupt_side = self.eval_config.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL)
 
         # Rather than generating corruptions in batches do it at once on the GPU for small or medium sized graphs
@@ -1208,14 +1203,14 @@ class EmbeddingModel(abc.ABC):
                     # Execute the dependency
                     with tf.control_dependencies(corr_dependency):
                         emb_corr = tf.squeeze(self._entity_lookup(corr_batch))
-                        if corrupt_side == 's+o' or corrupt_side == 's':
+                        if 's' in corrupt_side:
                             # compute and store the scores batch wise
                             scores_predict_s_c = self._fn(emb_corr, e_p, e_o)
                             scores_predict_s_corruptions_in = \
                                 scores_predict_s_corruptions_in.scatter(tf.squeeze(corr_batch),
                                                                         tf.squeeze(scores_predict_s_c))
 
-                        if corrupt_side == 's+o' or corrupt_side == 'o':
+                        if 'o' in corrupt_side:
                             scores_predict_o_c = self._fn(e_s, e_p, emb_corr)
                             scores_predict_o_corruptions_in = \
                                 scores_predict_o_corruptions_in.scatter(tf.squeeze(corr_batch),
@@ -1233,13 +1228,13 @@ class EmbeddingModel(abc.ABC):
                                   back_prop=False,
                                   parallel_iterations=1)
 
-                if corrupt_side == 's+o' or corrupt_side == 's':
+                if 's' in corrupt_side:
                     subj_corruption_scores = scores_predict_s_corr_out.stack()
 
-                if corrupt_side == 's+o' or corrupt_side == 'o':
+                if 'o' in corrupt_side:
                     obj_corruption_scores = scores_predict_o_corr_out.stack()
 
-                if corrupt_side == 's+o':
+                if corrupt_side == 's+o' or corrupt_side == 's,o':
                     self.scores_predict = tf.concat([obj_corruption_scores, subj_corruption_scores], axis=0)
                 elif corrupt_side == 'o':
                     self.scores_predict = obj_corruption_scores
@@ -1265,9 +1260,7 @@ class EmbeddingModel(abc.ABC):
             e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
             self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
 
-            use_default_protocol = self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL)
-
-            if use_default_protocol:
+            if corrupt_side == 's,o':
                 obj_corruption_scores = tf.slice(self.scores_predict,
                                                  [0],
                                                  [tf.shape(self.scores_predict)[0] // 2])
@@ -1310,7 +1303,7 @@ class EmbeddingModel(abc.ABC):
                     indices_sub = tf.boolean_mask(indices_sub, indices_sub < len(corruption_entities))
 
             # get the scores of positives present in corruptions
-            if use_default_protocol:
+            if corrupt_side == 's,o':
                 scores_pos_obj = tf.gather(obj_corruption_scores, indices_obj)
                 scores_pos_sub = tf.gather(subj_corruption_scores, indices_sub)
             else:
@@ -1321,15 +1314,15 @@ class EmbeddingModel(abc.ABC):
                     scores_pos_sub = tf.gather(self.scores_predict, indices_sub)
             # compute the ranks of the positives present in the corruptions and
             # see how many are ranked higher than the test triple
-            if corrupt_side == 's+o' or corrupt_side == 'o':
+            if 'o' in corrupt_side:
                 positives_among_obj_corruptions_ranked_higher = tf.reduce_sum(
                     tf.cast(scores_pos_obj >= self.score_positive, tf.int32))
-            if corrupt_side == 's+o' or corrupt_side == 's':
+            if 's' in corrupt_side:
                 positives_among_sub_corruptions_ranked_higher = tf.reduce_sum(
                     tf.cast(scores_pos_sub >= self.score_positive, tf.int32))
 
         # compute the rank of the test triple and subtract the positives(from corruptions) that are ranked higher
-        if use_default_protocol:
+        if corrupt_side == 's,o':
             self.rank = tf.stack([tf.reduce_sum(tf.cast(
                 subj_corruption_scores >= self.score_positive,
                 tf.int32)) + 1 - positives_among_sub_corruptions_ranked_higher,
@@ -1363,7 +1356,7 @@ class EmbeddingModel(abc.ABC):
 
         Returns
         -------
-        ranks : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
+        ranks : ndarray, shape [n] or [n,2] depending on the value of corrupt_side.
                 An array of ranks of test triples.
         """
         if not self.is_fitted:
@@ -1395,7 +1388,7 @@ class EmbeddingModel(abc.ABC):
 
             for _ in tqdm(range(self.eval_dataset_handle.get_size('test')), disable=(not self.verbose)):
                 rank = sess.run(self.rank)
-                if self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL):
+                if self.eval_config.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL) == 's,o':
                     ranks.append(list(rank))
                 else:
                     ranks.append(rank)
@@ -1473,11 +1466,8 @@ class EmbeddingModel(abc.ABC):
                 scores = []
 
                 for _ in tqdm(range(self.eval_dataset_handle.get_size('test')), disable=(not self.verbose)):
-                    score = sess.run([self.score_positive])
-                    if self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL):
-                        scores.extend(list(score))
-                    else:
-                        scores.append(score)
+                    score = sess.run(self.score_positive)
+                    scores.append(score)
 
                 return scores
 
@@ -1510,7 +1500,7 @@ class EmbeddingModel(abc.ABC):
 
     def _calibrate_with_corruptions(self, X_pos, batches_count):
         """
-        Calibrates model with corruptions. The corruptions are hard-coded to be subject and object ('s+o')
+        Calibrates model with corruptions. The corruptions are hard-coded to be subject and object ('s,o')
         with all available entities.
 
         Parameters
@@ -1553,7 +1543,7 @@ class EmbeddingModel(abc.ABC):
         x_neg_tf = generate_corruptions_for_fit(x_pos_tf,
                                                 entities_list=None,
                                                 eta=1,
-                                                corrupt_side='s+o',
+                                                corrupt_side='s,o',
                                                 entities_size=len(self.ent_to_idx),
                                                 rnd=self.seed)
 
