@@ -427,8 +427,8 @@ def to_idx(X, ent_to_idx, rel_to_idx):
     return _convert_to_idx(X, ent_to_idx, rel_to_idx, ent_to_idx)
 
 
-def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=1, entities_subset=None,
-                         corrupt_side='s,o', use_default_protocol=False):
+def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_unseen=True, entities_subset=None,
+                         corrupt_side='s+o', use_default_protocol=True):
     """Evaluate the performance of an embedding model.
 
     The evaluation protocol follows the procedure defined in :cite:`bordes2013translating` and can be summarised as:
