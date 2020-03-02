@@ -47,8 +47,8 @@
             "TRANSE": {"batches_count": 100, "epochs": 4000, "k": 350, "eta": 30, "loss": "multiclass_nll", "embedding_model_params": {"norm": 1}, "optimizer": "adam", "optimizer_params": {"lr": 0.0001}, "verbose": false, "seed": 0, "regularizer": "LP", "regularizer_params": {"lambda": 0.0001, "p": 2}},
             "DISTMULT": {"batches_count":100,"seed":0,"epochs":4000,"k":350,"eta":50, "loss": "multiclass_nll", "regularizer":"LP", "regularizer_params": {"lambda": 0.0001, "p":3},"optimizer":"adam","optimizer_params":{"lr":5e-05},"verbose":false},
             "COMPLEX": {"batches_count":100,"seed":0,"epochs":4000,"k":350,"eta":30,"loss": "multiclass_nll", "regularizer":"LP", "regularizer_params": {"lambda": 0.0001, "p":3}, "optimizer":"adam","optimizer_params":{"lr":5e-05},"verbose":false},
-            "HOLE": {"batches_count":100,"seed":0,"epochs":4000,"k":350,"eta":30,"loss": "self_adversarial", "loss_params": {"margin": 0.5, "alpha": 1},"optimizer":"adam","optimizer_params":{"lr":0.0001},"verbose":false},
-        }            
+            "HOLE": {"batches_count":100,"seed":0,"epochs":4000,"k":350,"eta":30,"loss": "self_adversarial", "loss_params": {"margin": 0.5, "alpha": 1},"optimizer":"adam","optimizer_params":{"lr":0.0001},"verbose":false}
+        }
     },
     "no_early_stopping": []
 }
