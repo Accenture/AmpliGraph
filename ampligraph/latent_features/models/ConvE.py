@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-@register_model('ConvE', {'conv_filters': 32, 'conv_kernel_size': 3, 'dropout_embed': 0.2, 'dropout_conv': 0.3,
-                          'dropout_dense': 0.2, 'use_bias': True, 'use_batchnorm': True})
+@register_model('ConvE', ['conv_filters', 'conv_kernel_size', 'dropout_embed', 'dropout_conv',
+                          'dropout_dense', 'use_bias', 'use_batchnorm'], {})
 class ConvE(EmbeddingModel):
     r""" Convolutional 2D Knowledge Graph Embeddings
 
@@ -179,9 +179,13 @@ class ConvE(EmbeddingModel):
         """
 
         # Add default values if not provided in embedding_model_params dict
-        default_embedding_model_params = {'conv_filters': 32, 'conv_kernel_size': 3, 'dropout_embed': 0.2,
-                                          'dropout_conv': 0.3, 'dropout_dense': 0.2, 'use_batchnorm': True,
-                                          'use_bias': True}
+        default_embedding_model_params = {'conv_filters': constants.DEFAULT_CONVE_NUM_FILTERS,
+                                          'conv_kernel_size': constants.DEFAULT_CONVE_KERNEL_SIZE,
+                                          'dropout_embed': constants.DEFAULT_CONVE_DROPOUT_EMBED,
+                                          'dropout_conv': constants.DEFAULT_CONVE_DROPOUT_CONV,
+                                          'dropout_dense': constants.DEFAULT_CONVE_DROPOUT_DENSE,
+                                          'use_batchnorm': constants.DEFAULT_CONVE_USE_BATCHNORM,
+                                          'use_bias': constants.DEFAULT_CONVE_USE_BATCHNORM}
 
         for key, val in default_embedding_model_params.items():
             if key not in embedding_model_params.keys():
@@ -827,9 +831,9 @@ class ConvE(EmbeddingModel):
                 logger.error(msg)
                 raise ValueError(msg)
 
-            if self.early_stopping_params['corrupt_side'] in ['s+o', 's']:
-                logger.info('ConvE early stopping only implemented with object corruptions.')
-                self.early_stopping_params['corrupt_side'] = 'o'
+            if self.early_stopping_params['corrupt_side'] in ['s,o', 's']:
+                logger.warning('ConvE with early stopping is significantly slower with subject corruptions.'
+                               'For best performance use ``corrupt_side="o"``.')
 
                 # store the validation data in the data handler
             self.train_dataset_handle.set_data(self.x_valid, 'valid')
@@ -973,13 +977,16 @@ class ConvE(EmbeddingModel):
 
         eval_protocol = self.eval_config.get('corrupt_side', constants.DEFAULT_PROTOCOL_EVAL)
 
+        if eval_protocol == 's+o':
+            raise Exception('ConvE cannot use `s+o` evaluation. Please change to: `s,o`, `s`, `o`.')
+
         if 'o' in eval_protocol:
             object_ranks = self._get_object_ranks(dataset_handle)
 
         if 's' in eval_protocol:
             subject_ranks = self._get_subject_ranks(dataset_handle)
 
-        if eval_protocol == 's+o':
+        if eval_protocol == 's,o':
             ranks = [[s, o] for s, o in zip(subject_ranks, object_ranks)]
         elif eval_protocol == 's':
             ranks = subject_ranks

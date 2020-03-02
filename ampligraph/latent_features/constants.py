@@ -73,3 +73,12 @@ DEFAULT_CORRUPT_SIDE_TRAIN = ['s+o']
 # Subject corruption with a OneToNDatasetAdapter requires an N*N matrix (where N is number of unique entities).
 # Specify a batch size to reduce memory overhead.
 DEFAULT_SUBJECT_CORRUPTION_BATCH_SIZE = 10000
+
+# Default hyperparameters for ConvEmodel
+DEFAULT_CONVE_NUM_FILTERS = 32
+DEFAULT_CONVE_KERNEL_SIZE = 3
+DEFAULT_CONVE_DROPOUT_EMBED = 0.2
+DEFAULT_CONVE_DROPOUT_CONV = 0.3
+DEFAULT_CONVE_DROPOUT_DENSE = 0.2
+DEFAULT_CONVE_USE_BIAS = True
+DEFAULT_CONVE_USE_BATCHNORM = True
