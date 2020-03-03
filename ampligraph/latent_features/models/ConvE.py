@@ -366,7 +366,6 @@ class ConvE(EmbeddingModel):
 
         self.trained_model_params = params_dict
 
-
     def _load_model_from_trained_params(self):
         """Load the model from trained params.
             While restoring make sure that the order of loaded parameters match the saved order.
