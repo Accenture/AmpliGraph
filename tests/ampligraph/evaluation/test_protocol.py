@@ -12,7 +12,7 @@ from itertools import islice
 from ampligraph.latent_features import TransE, ComplEx, RandomBaseline
 from ampligraph.evaluation import evaluate_performance, generate_corruptions_for_eval, \
     generate_corruptions_for_fit, to_idx, create_mappings, mrr_score, hits_at_n_score, select_best_model_ranking, \
-    filter_unseen_entities, TOO_MANY_ENTITIES_TH
+    filter_unseen_entities
 
 from ampligraph.datasets import load_wn18, load_wn18rr, load_yago3_10
 import tensorflow as tf
@@ -33,7 +33,9 @@ def test_evaluate_performance_too_many_entities_warning():
 
     # with larger than threshold entity list
     with pytest.warns(UserWarning):
-        entities_subset = np.union1d(np.unique(X["train"][:, 0]), np.unique(X["train"][:, 2]))[:TOO_MANY_ENTITIES_TH]
+        # TOO_MANY_ENT_TH threshold is set to 50,000 entities. Using explicit value to comply with linting
+        # and thus avoiding exporting unused global variable.
+        entities_subset = np.union1d(np.unique(X["train"][:, 0]), np.unique(X["train"][:, 2]))[:50000]
         evaluate_performance(X['test'][::1], model, verbose=True, corrupt_side='o', entities_subset=entities_subset)
 
     # with small entity list (no exception expected)
