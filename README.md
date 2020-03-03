@@ -72,21 +72,21 @@ Install from pip or conda:
 **CPU-only**
 
 ```
-pip install "tensorflow>=1.13.1,<2.0"
+pip install "tensorflow>=1.14.0,<2.0"
 
 or
 
-conda install tensorflow=1.13.1
+conda install tensorflow=1.14.0
 ```
 
 **GPU support**
 
 ```
-pip install "tensorflow-gpu>=1.13.1,<2.0"
+pip install "tensorflow-gpu>=1.14.0,<2.0"
 
 or
 
-conda install tensorflow-gpu=1.13.1
+conda install tensorflow-gpu=1.14.0
 ```
 
 
