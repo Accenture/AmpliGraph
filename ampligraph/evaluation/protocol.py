@@ -9,6 +9,7 @@
 from collections.abc import Iterable
 from itertools import product, islice
 import logging
+import warnings
 
 import pandas as pd
 import numpy as np
@@ -21,6 +22,8 @@ from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter, OneToNData
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+TOO_MANY_ENTITIES_TH = 50000
 
 
 def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False):
@@ -597,6 +600,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
         if filter_triples is not None:
             if isinstance(filter_triples, np.ndarray):
                 logger.debug('Getting filtered triples.')
+
                 if filter_unseen:
                     filter_triples = filter_unseen_entities(filter_triples, model, verbose=verbose)
                 dataset_handle.set_filter(filter_triples)
@@ -610,6 +614,10 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
                 raise Exception('Invalid datatype for filter. Expected a numpy array or preset data in the adapter.')
 
         eval_dict = {}
+
+        # #186: print warning when trying to evaluate with too many entities.
+        #      Thus will likely result in shooting in your feet, as the protocol will be excessively hard.
+        check_filter_size(model, entities_subset)
 
         if entities_subset is not None:
             idx_entities = np.asarray([idx for uri, idx in model.ent_to_idx.items() if uri in entities_subset])
@@ -635,6 +643,40 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
         if dataset_handle is not None:
             dataset_handle.cleanup()
         raise e
+
+
+def check_filter_size(model, corruption_entities):
+    """ Raise a warning when trying to evaluate with too many entities.
+
+        Doing so will likely result in shooting in your feet, as the protocol will be excessively hard,
+        hence the warning message.
+
+        Addresses #186.
+
+    Parameters
+    ----------
+    model : the model
+    corruption_entities : the corruption_entities used in the protocol
+
+    Returns
+    -------
+    None.
+
+    """
+
+    warn_msg = """You are attempting to use %d distinct entities to generate synthetic negatives in the evaluation 
+    protocol. This may be unnecessary and will lead to a 'harder' task. Besides, it will lead to a much slower 
+    evaluation procedure. We recommended to set the 'corruption_entities' argument to a reasonably sized set 
+    of entities. The size of corruption_entities depends on your domain-specific task."""
+
+    if corruption_entities is None:
+        ent_for_corruption_size = len(model.ent_to_idx)
+    else:
+        ent_for_corruption_size = len(corruption_entities)
+
+    if ent_for_corruption_size >= TOO_MANY_ENTITIES_TH:
+        warnings.warn(warn_msg % ent_for_corruption_size)
+        logger.warning(warn_msg, ent_for_corruption_size)
 
 
 def filter_unseen_entities(X, model, verbose=False):
