@@ -61,13 +61,13 @@ class ConvE(EmbeddingModel):
                  epochs=constants.DEFAULT_EPOCH,
                  batches_count=constants.DEFAULT_BATCH_COUNT,
                  seed=constants.DEFAULT_SEED,
-                 embedding_model_params={'conv_filters': 32,
-                                         'conv_kernel_size': 3,
-                                         'dropout_embed': 0.2,
-                                         'dropout_conv': 0.3,
-                                         'dropout_dense': 0.2,
-                                         'use_bias': True,
-                                         'use_batchnorm': True},
+                 embedding_model_params={'conv_filters': constants.DEFAULT_CONVE_CONV_FILTERS,
+                                         'conv_kernel_size': constants.DEFAULT_CONVE_KERNEL_SIZE,
+                                         'dropout_embed': constants.DEFAULT_CONVE_DROPOUT_EMBED,
+                                         'dropout_conv': constants.DEFAULT_CONVE_DROPOUT_CONV,
+                                         'dropout_dense': constants.DEFAULT_CONVE_DROPOUT_DENSE,
+                                         'use_bias': constants.DEFAULT_CONVE_USE_BIAS,
+                                         'use_batchnorm': constants.DEFAULT_CONVE_USE_BATCHNORM},
                  optimizer=constants.DEFAULT_OPTIM,
                  optimizer_params={'lr': constants.DEFAULT_LR},
                  loss='bce',
@@ -179,7 +179,7 @@ class ConvE(EmbeddingModel):
         """
 
         # Add default values if not provided in embedding_model_params dict
-        default_embedding_model_params = {'conv_filters': constants.DEFAULT_CONVE_NUM_FILTERS,
+        default_embedding_model_params = {'conv_filters': constants.DEFAULT_CONVE_CONV_FILTERS,
                                           'conv_kernel_size': constants.DEFAULT_CONVE_KERNEL_SIZE,
                                           'dropout_embed': constants.DEFAULT_CONVE_DROPOUT_EMBED,
                                           'dropout_conv': constants.DEFAULT_CONVE_DROPOUT_CONV,
@@ -292,8 +292,7 @@ class ConvE(EmbeddingModel):
 
     def _get_model_loss(self, dataset_iterator):
         """Get the current loss including loss due to regularization.
-        This function must be overridden if the model uses combination of different losses(eg: VAE).
-        This function must be overridden if the model uses combination of different losses(eg: VAE).
+        This function must be overridden if the model uses combination of different losses (eg: VAE).
 
         Parameters
         ----------
@@ -311,10 +310,6 @@ class ConvE(EmbeddingModel):
 
         # list of dependent ops that need to be evaluated before computing the loss
         dependencies = []
-
-        # if the graph is large
-        if self.dealing_with_large_graphs:
-            raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
 
         # run the dependencies
         with tf.control_dependencies(dependencies):
@@ -338,42 +333,39 @@ class ConvE(EmbeddingModel):
         The order would be useful for loading the model.
         This method must be overridden if the model has any other parameters (apart from entity-relation embeddings).
         """
-        if not self.dealing_with_large_graphs:
 
-            params_dict = {}
-            params_dict['ent_emb'] = self.sess_train.run(self.ent_emb)
-            params_dict['rel_emb'] = self.sess_train.run(self.rel_emb)
-            params_dict['conv2d_W'] = self.sess_train.run(self.conv2d_W)
-            params_dict['conv2d_B'] = self.sess_train.run(self.conv2d_B)
-            params_dict['dense_W'] = self.sess_train.run(self.dense_W)
-            params_dict['dense_B'] = self.sess_train.run(self.dense_B)
+        params_dict = {}
+        params_dict['ent_emb'] = self.sess_train.run(self.ent_emb)
+        params_dict['rel_emb'] = self.sess_train.run(self.rel_emb)
+        params_dict['conv2d_W'] = self.sess_train.run(self.conv2d_W)
+        params_dict['conv2d_B'] = self.sess_train.run(self.conv2d_B)
+        params_dict['dense_W'] = self.sess_train.run(self.dense_W)
+        params_dict['dense_B'] = self.sess_train.run(self.dense_B)
 
-            if self.embedding_model_params['use_batchnorm']:
+        if self.embedding_model_params['use_batchnorm']:
 
-                bn_dict = {}
+            bn_dict = {}
 
-                for scope in ['batchnorm_input', 'batchnorm_conv', 'batchnorm_dense']:
+            for scope in ['batchnorm_input', 'batchnorm_conv', 'batchnorm_dense']:
 
-                    variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope)
-                    variables = [x for x in variables if 'Adam' not in x.name]  # Filter out any Adam variables
+                variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope)
+                variables = [x for x in variables if 'Adam' not in x.name]  # Filter out any Adam variables
 
-                    var_dict = {x.name.split('/')[-1].split(':')[0]: x for x in variables}
-                    bn_dict[scope] = {'beta': self.sess_train.run(var_dict['beta']),
-                                      'gamma': self.sess_train.run(var_dict['gamma']),
-                                      'moving_mean': self.sess_train.run(var_dict['moving_mean']),
-                                      'moving_variance': self.sess_train.run(var_dict['moving_variance'])}
+                var_dict = {x.name.split('/')[-1].split(':')[0]: x for x in variables}
+                bn_dict[scope] = {'beta': self.sess_train.run(var_dict['beta']),
+                                  'gamma': self.sess_train.run(var_dict['gamma']),
+                                  'moving_mean': self.sess_train.run(var_dict['moving_mean']),
+                                  'moving_variance': self.sess_train.run(var_dict['moving_variance'])}
 
-                params_dict['bn_vars'] = bn_dict
+            params_dict['bn_vars'] = bn_dict
 
-            if self.embedding_model_params['use_bias']:
-                params_dict['bias'] = self.sess_train.run(self.bias)
+        if self.embedding_model_params['use_bias']:
+            params_dict['bias'] = self.sess_train.run(self.bias)
 
-            params_dict['output_mapping'] = self.output_mapping
+        params_dict['output_mapping'] = self.output_mapping
 
-            self.trained_model_params = params_dict
+        self.trained_model_params = params_dict
 
-        else:
-            raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
 
     def _load_model_from_trained_params(self):
         """Load the model from trained params.
@@ -387,40 +379,26 @@ class ConvE(EmbeddingModel):
         # Generate the batch size based on entity length and batch_count
         self.batch_size = int(np.ceil(len(self.ent_to_idx) / self.batches_count))
 
-        if len(self.ent_to_idx) > ENTITY_THRESHOLD:
-            self.dealing_with_large_graphs = True
+        with tf.variable_scope('meta'):
+            self.tf_is_training = tf.Variable(False, trainable=False, name='is_training')
+            self.set_training_true = tf.assign(self.tf_is_training, True)
+            self.set_training_false = tf.assign(self.tf_is_training, False)
 
-            logger.warning('Your graph has a large number of distinct entities. '
-                           'Found {} distinct entities'.format(len(self.ent_to_idx)))
+        self.ent_emb = tf.Variable(self.trained_model_params['ent_emb'], dtype=tf.float32, name='ent_emb')
+        self.rel_emb = tf.Variable(self.trained_model_params['rel_emb'], dtype=tf.float32, name='rel_emb')
 
-            logger.warning('Changing the variable loading strategy to use lazy loading of variables...')
-            logger.warning('Evaluation would take longer than usual.')
+        self.conv2d_W = tf.Variable(self.trained_model_params['conv2d_W'], dtype=tf.float32)
+        self.conv2d_B = tf.Variable(self.trained_model_params['conv2d_B'], dtype=tf.float32)
+        self.dense_W = tf.Variable(self.trained_model_params['dense_W'], dtype=tf.float32)
+        self.dense_B = tf.Variable(self.trained_model_params['dense_B'], dtype=tf.float32)
 
-        if not self.dealing_with_large_graphs:
+        if self.embedding_model_params['use_batchnorm']:
+            self.bn_vars = self.trained_model_params['bn_vars']
 
-            with tf.variable_scope('meta'):
-                self.tf_is_training = tf.Variable(False, trainable=False, name='is_training')
-                self.set_training_true = tf.assign(self.tf_is_training, True)
-                self.set_training_false = tf.assign(self.tf_is_training, False)
+        if self.embedding_model_params['use_bias']:
+            self.bias = tf.Variable(self.trained_model_params['bias'], dtype=tf.float32)
 
-            self.ent_emb = tf.Variable(self.trained_model_params['ent_emb'], dtype=tf.float32, name='ent_emb')
-            self.rel_emb = tf.Variable(self.trained_model_params['rel_emb'], dtype=tf.float32, name='rel_emb')
-
-            self.conv2d_W = tf.Variable(self.trained_model_params['conv2d_W'], dtype=tf.float32)
-            self.conv2d_B = tf.Variable(self.trained_model_params['conv2d_B'], dtype=tf.float32)
-            self.dense_W = tf.Variable(self.trained_model_params['dense_W'], dtype=tf.float32)
-            self.dense_B = tf.Variable(self.trained_model_params['dense_B'], dtype=tf.float32)
-
-            if self.embedding_model_params['use_batchnorm']:
-                self.bn_vars = self.trained_model_params['bn_vars']
-
-            if self.embedding_model_params['use_bias']:
-                self.bias = tf.Variable(self.trained_model_params['bias'], dtype=tf.float32)
-
-            self.output_mapping = self.trained_model_params['output_mapping']
-
-        else:
-            raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
+        self.output_mapping = self.trained_model_params['output_mapping']
 
     def _fn(self, e_s, e_p, e_o):
         r"""The ConvE scoring function.

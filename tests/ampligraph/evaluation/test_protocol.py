@@ -30,8 +30,7 @@ def test_evaluate_performance_filter_without_xtest():
 
     X_filter = np.concatenate((X['train'], X['valid'])) # filter does not contain X_test
     from ampligraph.evaluation import hits_at_n_score, mrr_score, mr_score
-    ranks = evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s+o',
-                                 use_default_protocol=True)
+    ranks = evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s,o')
     assert(mrr_score(ranks)>0)
 
 
@@ -46,8 +45,8 @@ def test_evaluate_performance_ranking_against_specified_entities():
 
 
     from ampligraph.evaluation import hits_at_n_score, mrr_score, mr_score
-    ranks = evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s+o',
-                                 use_default_protocol=True, entities_subset=entities_subset)
+    ranks = evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s,o',
+                                 entities_subset=entities_subset)
     ranks = ranks.reshape(-1)
     assert(np.sum(ranks>len(entities_subset))==0)
 
@@ -65,11 +64,10 @@ def test_evaluate_performance_ranking_against_shuffled_all_entities():
     entities_subset= random.shuffle(list(model.ent_to_idx.keys()))
 
     from ampligraph.evaluation import hits_at_n_score, mrr_score, mr_score
-    ranks_all = evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s+o',
-                                 use_default_protocol=True)
+    ranks_all = evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s,o')
 
-    ranks_suffled_ent = evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s+o',
-                                 use_default_protocol=True, entities_subset=entities_subset)
+    ranks_suffled_ent = evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s,o',
+                                             entities_subset=entities_subset)
     assert(mrr_score(ranks_all)==mrr_score(ranks_suffled_ent))
 
 
@@ -88,15 +86,13 @@ def test_evaluate_performance_default_protocol_without_filter():
     from ampligraph.evaluation import evaluate_performance
     ranks_sep = []
     from ampligraph.evaluation import hits_at_n_score, mrr_score, mr_score
-    ranks = evaluate_performance(wn18['test'][::100], model, verbose=True, corrupt_side='o',
-                                 use_default_protocol=False)
+    ranks = evaluate_performance(wn18['test'][::100], model, verbose=True, corrupt_side='o')
 
     ranks_sep.extend(ranks)
     from ampligraph.evaluation import evaluate_performance
 
     from ampligraph.evaluation import hits_at_n_score, mrr_score, mr_score
-    ranks = evaluate_performance(wn18['test'][::100], model, verbose=True, corrupt_side='s',
-                                 use_default_protocol=False)
+    ranks = evaluate_performance(wn18['test'][::100], model, verbose=True, corrupt_side='s')
     ranks_sep.extend(ranks)
     print('----------EVAL WITHOUT FILTER-----------------')
     print('----------Subj and obj corrupted separately-----------------')
@@ -110,8 +106,7 @@ def test_evaluate_performance_default_protocol_without_filter():
     from ampligraph.evaluation import evaluate_performance
 
     from ampligraph.evaluation import hits_at_n_score, mrr_score, mr_score
-    ranks = evaluate_performance(wn18['test'][::100], model, verbose=True, corrupt_side='s+o',
-                                 use_default_protocol=True)
+    ranks = evaluate_performance(wn18['test'][::100], model, verbose=True, corrupt_side='s,o')
     print('----------corrupted with default protocol-----------------')
     mr_joint = mr_score(ranks)
     mrr_joint = mrr_score(ranks)
@@ -142,15 +137,13 @@ def test_evaluate_performance_default_protocol_with_filter():
     from ampligraph.evaluation import evaluate_performance
     ranks_sep = []
     from ampligraph.evaluation import hits_at_n_score, mrr_score, mr_score
-    ranks = evaluate_performance(wn18['test'][::100], model, X_filter, verbose=True, corrupt_side='o',
-                                 use_default_protocol=False)
+    ranks = evaluate_performance(wn18['test'][::100], model, X_filter, verbose=True, corrupt_side='o')
 
     ranks_sep.extend(ranks)
     from ampligraph.evaluation import evaluate_performance
 
     from ampligraph.evaluation import hits_at_n_score, mrr_score, mr_score
-    ranks = evaluate_performance(wn18['test'][::100], model, X_filter, verbose=True, corrupt_side='s',
-                                 use_default_protocol=False)
+    ranks = evaluate_performance(wn18['test'][::100], model, X_filter, verbose=True, corrupt_side='s')
     ranks_sep.extend(ranks)
     print('----------EVAL WITH FILTER-----------------')
     print('----------Subj and obj corrupted separately-----------------')
@@ -164,8 +157,7 @@ def test_evaluate_performance_default_protocol_with_filter():
     from ampligraph.evaluation import evaluate_performance
 
     from ampligraph.evaluation import hits_at_n_score, mrr_score, mr_score
-    ranks = evaluate_performance(wn18['test'][::100], model, X_filter, verbose=True, corrupt_side='s+o',
-                                 use_default_protocol=True)
+    ranks = evaluate_performance(wn18['test'][::100], model, X_filter, verbose=True, corrupt_side='s,o')
     print('----------corrupted with default protocol-----------------')
     mr_joint = mr_score(ranks)
     mrr_joint = mrr_score(ranks)
@@ -185,8 +177,7 @@ def test_evaluate_performance_so_side_corruptions_with_filter():
                     regularizer=None, optimizer='adam', optimizer_params={'lr': 0.01}, verbose=True)
     model.fit(X['train'])
 
-    ranks = evaluate_performance(X['test'][::20], model=model, verbose=True,
-                                 use_default_protocol=False, corrupt_side='s+o')
+    ranks = evaluate_performance(X['test'][::20], model=model, verbose=True, corrupt_side='s+o')
     mrr = mrr_score(ranks)
     hits_10 = hits_at_n_score(ranks, n=10)
     print("ranks: %s" % ranks)
@@ -202,8 +193,7 @@ def test_evaluate_performance_so_side_corruptions_without_filter():
     model.fit(X['train'])
 
     X_filter = np.concatenate((X['train'], X['valid'], X['test']))
-    ranks = evaluate_performance(X['test'][::20], model, X_filter,  verbose=True,
-                                 use_default_protocol=False, corrupt_side='s+o')
+    ranks = evaluate_performance(X['test'][::20], model, X_filter,  verbose=True, corrupt_side='s+o')
     mrr = mrr_score(ranks)
     hits_10 = hits_at_n_score(ranks, n=10)
     print("ranks: %s" % ranks)
@@ -318,7 +308,7 @@ def test_to_idx():
 
     np.testing.assert_array_equal(X_idx, X_idx_expected)
 
-
+@pytest.mark.skip(reason="deprecated")  
 def test_filter_unseen_entities_with_strict_mode():
     from collections import namedtuple
     base_model = namedtuple('test_model', 'ent_to_idx')
@@ -333,7 +323,7 @@ def test_filter_unseen_entities_with_strict_mode():
         _ = filter_unseen_entities(X, model, strict=True)
 
 
-def test_filter_unseen_entities_without_strict_mode():
+def test_filter_unseen_entities():
     from collections import namedtuple
     base_model = namedtuple('test_model', 'ent_to_idx')
 
@@ -343,7 +333,7 @@ def test_filter_unseen_entities_without_strict_mode():
 
     model = base_model({'a': 1, 'b': 2, 'c': 3, 'd': 4})
 
-    X_filtered = filter_unseen_entities(X, model, strict=False)
+    X_filtered = filter_unseen_entities(X, model)
 
     X_expected = np.array([['a', 'x', 'b'],
                            ['c', 'y', 'd']])
@@ -365,7 +355,7 @@ def test_generate_corruptions_for_fit_corrupt_side_so():
     with tf.Session() as sess:
         all_ent = tf.squeeze(tf.constant(list(ent_to_idx.values()), dtype=tf.int32))
         dataset = tf.constant(X, dtype=tf.int32)
-        X_corr = sess.run(generate_corruptions_for_fit(dataset, eta=eta, corrupt_side='s+o', entities_size=len(X), rnd=0))
+        X_corr = sess.run(generate_corruptions_for_fit(dataset, eta=eta, corrupt_side='s,o', entities_size=len(X), rnd=0))
         print(X_corr)
     # these values occur when seed=0
 

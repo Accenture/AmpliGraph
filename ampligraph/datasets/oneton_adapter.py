@@ -353,11 +353,12 @@ class OneToNDatasetAdapter(NumpyDatasetAdapter):
         Returns
         -------
 
-        test_triples : nd-array, shape=[batch_size, 3]
-            A set of triples from the dataset type specified, that include the predicate currently returned in batch.
-        batch_triples : nd-array of shape (N, 3), where N is number of unique entities.
-            Batch of triples corresponding to one relationship, with all possible subject corruptions.
-        batch_onehot : nd-array of shape (N, N), where N is number of unique entities.
+        test_triples : nd-array of shape (?, 3)
+            The set of all triples from the dataset type specified that include the predicate currently returned
+            in batch_triples.
+        batch_triples : nd-array of shape (M, 3), where M is the subject corruption batch size.
+            A batch of triples corresponding to subject corruptions of just one predicate.
+        batch_onehot : nd-array of shape (M, N), where N is number of unique entities.
             A batch of onehot arrays corresponding to the batch_triples output.
 
         """
