@@ -29,6 +29,12 @@ DEFAULT_CLIP_EXP_LOWER = -75.0
 # Max score above which the values will be clipped before applying exponential
 DEFAULT_CLIP_EXP_UPPER = 75.0
 
+# Default label smoothing for ConvE
+DEFAULT_LABEL_SMOOTHING = None
+
+# Default label weighting for ConvE
+DEFAULT_LABEL_WEIGHTING = False
+
 
 def register_loss(name, external_params=None, class_params=None):
     if external_params is None:
@@ -121,7 +127,7 @@ class Loss(abc.ABC):
 
     def _init_hyperparams(self, hyperparam_dict):
         """Initializes the hyperparameters needed by the algorithm.
-        
+
         Parameters
         ----------
         hyperparam_dict : dictionary
@@ -133,7 +139,7 @@ class Loss(abc.ABC):
 
     def _inputs_check(self, scores_pos, scores_neg):
         """Creates any dependencies that need to be checked before performing loss computations
-        
+
         Parameters
         ----------
         scores_pos : tf.Tensor
@@ -151,14 +157,14 @@ class Loss(abc.ABC):
     def _apply(self, scores_pos, scores_neg):
         """Apply the loss function. Every inherited class must implement this function.
         (All the TF code must go in this function.)
-        
+
         Parameters
         ----------
         scores_pos : tf.Tensor
             A tensor of scores assigned to positive statements.
         scores_neg : tf.Tensor
             A tensor of scores assigned to negative statements.
-        
+
         Returns
         -------
         loss : tf.Tensor
@@ -169,16 +175,16 @@ class Loss(abc.ABC):
         NotImplementedError(msg)
 
     def apply(self, scores_pos, scores_neg):
-        """Interface to external world. 
+        """Interface to external world.
         This function does the input checks, preprocesses input and finally applies loss function.
-        
+
         Parameters
         ----------
         scores_pos : tf.Tensor
             A tensor of scores assigned to positive statements.
         scores_neg : tf.Tensor
             A tensor of scores assigned to negative statements.
-        
+
         Returns
         -------
         loss : tf.Tensor
@@ -226,12 +232,12 @@ class PairwiseLoss(Loss):
 
     def _init_hyperparams(self, hyperparam_dict):
         """Verifies and stores the hyperparameters needed by the algorithm.
-        
+
         Parameters
         ----------
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
-            
+
             - **margin** - Margin to be used in pairwise loss computation(default:1)
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
@@ -288,7 +294,7 @@ class NLLLoss(Loss):
 
     def _init_hyperparams(self, hyperparam_dict):
         """Initializes the hyperparameters needed by the algorithm.
-        
+
         Parameters
         ----------
         hyperparam_dict : dictionary
@@ -354,16 +360,16 @@ class AbsoluteMarginLoss(Loss):
 
     def _init_hyperparams(self, hyperparam_dict):
         """Initializes the hyperparameters needed by the algorithm.
-        
+
         Parameters
         ----------
         hyperparam_dict : dict
            Consists of key value pairs. The Loss will check the keys to get the corresponding params.
-            
+
            **margin** - Margin to be used in loss computation(default:1)
-           
+
         Returns
-        -------    
+        -------
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
 
@@ -437,14 +443,14 @@ class SelfAdversarialLoss(Loss):
 
     def _init_hyperparams(self, hyperparam_dict):
         """Initializes the hyperparameters needed by the algorithm.
-        
+
         Parameters
         ----------
         hyperparam_dict : dictionary
             Consists of key value pairs. The Loss will check the keys to get the corresponding params
-            
+
             - **margin** - Margin to be used in adversarial loss computation (default:3)
-            
+
             - **alpha** - Temperature of sampling (default:0.5)
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN_ADVERSARIAL)
@@ -483,7 +489,7 @@ class SelfAdversarialLoss(Loss):
 @register_loss("multiclass_nll", [], {'require_same_size_pos_neg': False})
 class NLLMulticlass(Loss):
     r"""Multiclass NLL Loss.
-    
+
     Introduced in :cite:`chen2015` where both the subject and objects are corrupted (to use it in this way pass
     corrupt_sides = ['s', 'o'] to embedding_model_params) .
 
@@ -520,7 +526,7 @@ class NLLMulticlass(Loss):
 
     def _init_hyperparams(self, hyperparam_dict):
         """Verifies and stores the hyperparameters needed by the algorithm.
-        
+
         Parameters
         ----------
         hyperparam_dict : dictionary
@@ -554,4 +560,147 @@ class NLLMulticlass(Loss):
         softmax_score = pos_exp / (tf.reduce_sum(neg_exp, axis=0) + pos_exp)
 
         loss = -tf.reduce_sum(tf.log(softmax_score))
+        return loss
+
+
+@register_loss('bce', ['label_smoothing', 'label_weighting'], {'require_same_size_pos_neg': False})
+class BCELoss(Loss):
+    r""" Binary Cross Entropy Loss.
+
+        .. math::
+
+            \mathcal{L} = - \frac{1}{N} \sum_{i=1}^{N} y_i \cdot log(p(y_i)) + (1-y_i) \cdot log(1-p(y_i))
+
+        Examples
+        --------
+        >>> from ampligraph.latent_features.models import ConvE
+        >>> model = ConvE(batches_count=1, seed=555, epochs=20, k=10, loss='bce', loss_params={})
+    """
+
+    def __init__(self, eta, loss_params={}, verbose=False):
+        """Initialize Loss
+
+        Parameters
+        ----------
+        loss_params : dict
+            Dictionary of loss-specific hyperparams:
+
+        """
+        super().__init__(eta, loss_params, verbose)
+
+    def _inputs_check(self, y_true, y_pred):
+        """ Creates any dependencies that need to be checked before performing loss computations
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            A tensor of ground truth values.
+        y_pred : tf.Tensor
+            A tensor of predicted values.
+        """
+
+        logger.debug('Creating dependencies before loss computations.')
+
+        self._dependencies = []
+        logger.debug('Dependencies found: \n\tRequired same size y_true and y_pred. ')
+        self._dependencies.append(tf.Assert(tf.equal(tf.shape(y_pred)[0], tf.shape(y_true)[0]),
+                                            [tf.shape(y_pred)[0], tf.shape(y_true)[0]]))
+
+        if self._loss_parameters['label_smoothing'] is not None:
+            if 'num_entities' not in self._loss_parameters.keys():
+                msg = "To apply label smoothing the number of entities must be known. " \
+                      "Set using '_set_hyperparams('num_entities', value)'."
+                logger.error(msg)
+                raise Exception(msg)
+
+    def _init_hyperparams(self, hyperparam_dict):
+        """ Verifies and stores the hyperparameters needed by the algorithm.
+
+        Parameters
+        ----------
+        hyperparam_dict : dictionary
+            Consists of key value pairs. The Loss will check the keys to get the corresponding params
+            - **label_smoothing** (float): Apply label smoothing to vector of true labels. Can improve multi-class
+            classification training by using soft targets that are a weighted average of hard targets and the
+            uniform distribution over labels. Default: None
+            - **label_weighting** (bool): Apply label weighting to vector of true labels. Gives lower weight to
+            outputs with more positives in one-hot vector. Default: False
+
+        """
+
+        self._loss_parameters['label_smoothing'] = hyperparam_dict.get('label_smoothing', DEFAULT_LABEL_SMOOTHING)
+        self._loss_parameters['label_weighting'] = hyperparam_dict.get('label_weighting', DEFAULT_LABEL_WEIGHTING)
+
+    def _set_hyperparams(self, key, value):
+        """ Set a hyperparameter needed by the loss function.
+
+        Parameters
+        ----------
+        key : key for hyperparams dictionary
+        value : value for hyperparams dictionary
+
+        Returns
+        -------
+
+        """
+
+        if key in self._loss_parameters.keys():
+            msg = '{} already exists in loss hyperparameters dict with value {} \n' \
+                  'Overriding with value {}.'.format(key, self._loss_parameters[key], value)
+            logger.info(msg)
+
+        self._loss_parameters[key] = value
+
+    def apply(self, y_true, y_pred):
+        """ Interface to external world.
+        This function does the input checks, preprocesses input and finally applies loss function.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            A tensor of ground truth values.
+        y_true : tf.Tensor
+            A tensor of predicted values.
+
+        Returns
+        -------
+        loss : tf.Tensor
+            The loss value that must be minimized.
+        """
+        self._inputs_check(y_true, y_pred)
+        with tf.control_dependencies(self._dependencies):
+            loss = self._apply(y_true, y_pred)
+        return loss
+
+    def _apply(self, y_true, y_pred):
+        """ Apply the loss function.
+
+        Parameters
+        ----------
+        y_true : tf.Tensor
+            A tensor of true values.
+        y_pred : tf.Tensor
+            A tensor of predicted values.
+
+       Returns
+       -------
+       loss : float
+           The loss value that must be minimized.
+
+       """
+
+        if self._loss_parameters['label_smoothing'] is not None:
+            y_true = tf.add((1 - self._loss_parameters['label_smoothing']) * y_true,
+                            (self._loss_parameters['label_smoothing']) / self._loss_parameters['num_entities'])
+
+        if self._loss_parameters['label_weighting']:
+
+            eps = 1e-6
+            wt = tf.reduce_mean(y_true)
+            loss = -tf.reduce_sum((1 - wt) * y_true * tf.log_sigmoid(y_pred)
+                                  + wt * (1 - y_true) * tf.log(1 - tf.sigmoid(y_pred) + eps))
+
+        else:
+            loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true, logits=y_pred))
+
         return loss

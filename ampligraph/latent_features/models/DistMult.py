@@ -122,7 +122,7 @@ class DistMult(EmbeddingModel):
               Switch to multiclass loss defined in :cite:`chen2015` by passing 'corrupt_sides'
               as ['s','o'] to embedding_model_params.
               To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params.
-            
+
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
             documentation for additional details.

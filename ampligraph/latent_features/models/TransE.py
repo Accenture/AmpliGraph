@@ -100,7 +100,7 @@ class TransE(EmbeddingModel):
               or an int (which indicates how many entities that should be used for corruption generation).
             - **corrupt_sides** : Specifies how to generate corruptions for training.
               Takes values `s`, `o`, `s+o` or any combination passed as a list.
-            
+
             Example: ``embedding_model_params={'norm': 1, 'normalize_ent_emb': False}``
 
         optimizer : string
@@ -115,7 +115,7 @@ class TransE(EmbeddingModel):
             - **'momentum'** (float): learning momentum (only used when ``optimizer=momentum``). Default: 0.9.
 
             Example: ``optimizer_params={'lr': 0.01}``
-            
+
         loss : string
             The type of loss function to use during training.
 
@@ -127,7 +127,7 @@ class TransE(EmbeddingModel):
               Switch to multiclass loss defined in :cite:`chen2015`
               by passing 'corrupt_sides' as ['s','o'] to embedding_model_params.
               To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params.
-            
+
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
             documentation for additional details.
@@ -135,8 +135,8 @@ class TransE(EmbeddingModel):
             Example: ``optimizer_params={'lr': 0.01}`` if ``loss='pairwise'``.
 
         regularizer : string
-            The regularization strategy to use with the loss function. 
-            
+            The regularization strategy to use with the loss function.
+
             - ``None``: the model will not use any regularizer (default)
             - 'LP': the model will use L1, L2 or L3 based on the value of ``regularizer_params['p']`` (see below).
 

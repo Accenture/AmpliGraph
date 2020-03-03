@@ -312,9 +312,9 @@ class EmbeddingModel(abc.ABC):
         Parameters
         ----------
         output_dict : dictionary
-            Dictionary of saved params. 
+            Dictionary of saved params.
             It's the duty of the model to save all the variables correctly, so that it can be used for restoring later.
-        
+
         """
         output_dict['model_params'] = self.trained_model_params
         output_dict['large_graph'] = self.dealing_with_large_graphs
@@ -322,7 +322,7 @@ class EmbeddingModel(abc.ABC):
 
     def restore_model_params(self, in_dict):
         """Load the model parameters from the input dictionary.
-        
+
         Parameters
         ----------
         in_dict : dictionary
@@ -330,7 +330,7 @@ class EmbeddingModel(abc.ABC):
         """
 
         self.trained_model_params = in_dict['model_params']
-        
+
         # Try catch is for backward compatibility
         try:
             self.calibration_parameters = in_dict['calibration_parameters']
@@ -346,8 +346,8 @@ class EmbeddingModel(abc.ABC):
             self.dealing_with_large_graphs = False
 
     def _save_trained_params(self):
-        """After model fitting, save all the trained parameters in trained_model_params in some order. 
-        The order would be useful for loading the model. 
+        """After model fitting, save all the trained parameters in trained_model_params in some order.
+        The order would be useful for loading the model.
         This method must be overridden if the model has any other parameters (apart from entity-relation embeddings).
         """
         if not self.dealing_with_large_graphs:
@@ -356,7 +356,7 @@ class EmbeddingModel(abc.ABC):
             self.trained_model_params = [self.ent_emb_cpu, self.sess_train.run(self.rel_emb)]
 
     def _load_model_from_trained_params(self):
-        """Load the model from trained params. 
+        """Load the model from trained params.
         While restoring make sure that the order of loaded parameters match the saved order.
         It's the duty of the embedding model to load the variables correctly.
         This method must be overridden if the model has any other parameters (apart from entity-relation embeddings).
@@ -380,7 +380,7 @@ class EmbeddingModel(abc.ABC):
             # (We use tf.variable for future - to load and continue training)
             self.ent_emb = tf.Variable(self.trained_model_params[0], dtype=tf.float32)
         else:
-            # Embeddings of all the corruptions entities will not fit on GPU. 
+            # Embeddings of all the corruptions entities will not fit on GPU.
             # During training we loaded batch_size*2 embeddings on GPU as only 2* batch_size unique
             # entities can be present in one batch.
             # During corruption generation in eval mode, one side(s/o) is fixed and only the other side varies.
@@ -460,7 +460,7 @@ class EmbeddingModel(abc.ABC):
         e_s = self._entity_lookup(x[:, 0])
         e_p = tf.nn.embedding_lookup(self.rel_emb, x[:, 1], name='embedding_lookup_predicate')
         e_o = self._entity_lookup(x[:, 2])
-        return e_s, e_p, e_o        
+        return e_s, e_p, e_o
 
     def _entity_lookup(self, entity):
         """Get the embeddings for entities.
@@ -661,7 +661,7 @@ class EmbeddingModel(abc.ABC):
         elif self.eval_config['corruption_entities'] == 'batch':
             logger.debug('Using batch entities for generation of corruptions for early stopping')
 
-        self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', 
+        self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side',
                                                                           constants.DEFAULT_CORRUPT_SIDE_EVAL)
 
         self.early_stopping_best_value = None
@@ -1026,7 +1026,7 @@ class EmbeddingModel(abc.ABC):
             - **corruption_entities**: List of entities to be used for corruptions.
               If ``all``, it uses all entities (default: ``all``)
             - **corrupt_side**: Specifies which side to corrupt. ``s``, ``o``, ``s+o``, ``s,o`` (default)
-              In 's,o' mode subject and object corruptions are generated at once but ranked separately 
+              In 's,o' mode subject and object corruptions are generated at once but ranked separately
               for speed up (default: False).
 
         """

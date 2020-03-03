@@ -190,7 +190,7 @@ def _fetch_dataset(remote, data_home=None, check_md5hash=False):
 
     Returns
     ------
-    
+
     str
         The location of the dataset.
     """
@@ -238,7 +238,7 @@ def _add_reciprocal_relations(triples_df):
 
 def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciprocal_rels=False):
     """Load a knowledge graph from a csv file
-    
+
     Loads a knowledge graph serialized in a csv file as:
 
     .. code-block:: text
@@ -260,7 +260,7 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciproc
 
     Parameters
     ----------
-    
+
     directory_path: str
         Folder where the input file is stored.
     file_name : str
@@ -272,16 +272,17 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciproc
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False)
-    
+
+
     Returns
     -------
-    
+
     triples : ndarray , shape [n, 3]
         The actual triples of the file.
-    
+
     Examples
     --------
-    
+
     >>> from ampligraph.datasets import load_from_csv
     >>> X = load_from_csv('folder', 'dataset.csv', sep=',')
     >>> X[:3]
@@ -323,7 +324,7 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
 
     check_md5hash : boolean
         If True, check the md5hash of the files after they are downloaded (default: False).
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
@@ -336,14 +337,14 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
                                                              .url.rfind('.')]
     dataset_path = _fetch_dataset(dataset_metadata, data_home, check_md5hash)
 
-    train = load_from_csv(dataset_path, 
-                          dataset_metadata.train_name, 
+    train = load_from_csv(dataset_path,
+                          dataset_metadata.train_name,
                           add_reciprocal_rels=add_reciprocal_rels)
-    valid = load_from_csv(dataset_path, 
-                          dataset_metadata.valid_name, 
+    valid = load_from_csv(dataset_path,
+                          dataset_metadata.valid_name,
                           add_reciprocal_rels=add_reciprocal_rels)
-    test = load_from_csv(dataset_path, 
-                         dataset_metadata.test_name, 
+    test = load_from_csv(dataset_path,
+                         dataset_metadata.test_name,
                          add_reciprocal_rels=add_reciprocal_rels)
 
     return {'train': train, 'valid': valid, 'test': test}
@@ -380,7 +381,7 @@ def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
     ----------
     check_md5hash : bool
         If ``True`` check the md5hash of the files. Defaults to ``False``.
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
@@ -390,7 +391,7 @@ def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
 
     splits : dict
         The dataset splits {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-    
+
     Examples
     --------
     >>> from ampligraph.datasets import load_wn18
@@ -414,9 +415,9 @@ def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
         test_checksum='b035247a8916c7ec3443fa949e1ff02c'
     )
 
-    return _load_dataset(wn18, 
-                         data_home=None, 
-                         check_md5hash=check_md5hash, 
+    return _load_dataset(wn18,
+                         data_home=None,
+                         check_md5hash=check_md5hash,
                          add_reciprocal_rels=add_reciprocal_rels)
 
 
@@ -454,25 +455,25 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fals
 
     check_md5hash : bool
         If ``True`` check the md5hash of the datset files. Defaults to ``False``.
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
 
     Returns
     -------
-    
+
     splits : dict
         The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-    
+
     Examples
     -------
-    
+
     >>> from ampligraph.datasets import load_wn18rr
     >>> X = load_wn18rr()
     >>> X["valid"][0]
     array(['02174461', '_hypernym', '02176268'], dtype=object)
-    
+
     """
 
     wn18rr = DatasetMetadata(
@@ -488,14 +489,14 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fals
     )
 
     if clean_unseen:
-        return _clean_data(_load_dataset(wn18rr, 
-                                         data_home=None, 
-                                         check_md5hash=check_md5hash, 
+        return _clean_data(_load_dataset(wn18rr,
+                                         data_home=None,
+                                         check_md5hash=check_md5hash,
                                          add_reciprocal_rels=add_reciprocal_rels))
     else:
-        return _load_dataset(wn18rr, 
-                             data_home=None, 
-                             check_md5hash=check_md5hash, 
+        return _load_dataset(wn18rr,
+                             data_home=None,
+                             check_md5hash=check_md5hash,
                              add_reciprocal_rels=add_reciprocal_rels)
 
 
@@ -515,7 +516,7 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
     or ``~/ampligraph_datasets``.
 
     The dataset is divided in three splits:
-    
+
     - ``train``
     - ``valid``
     - ``test``
@@ -530,7 +531,7 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
     ----------
     check_md5hash : boolean
         If ``True`` check the md5hash of the files. Defaults to ``False``.
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
@@ -538,13 +539,13 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
 
     Returns
     -------
-    
+
     splits : dict
         The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-    
+
     Examples
     --------
-    
+
     >>> from ampligraph.datasets import load_fb15k
     >>> X = load_fb15k()
     >>> X['test'][:3]
@@ -570,9 +571,9 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
         test_checksum='71098693b0efcfb8ac6cd61cf3a3b505'
     )
 
-    return _load_dataset(FB15K, 
-                         data_home=None, 
-                         check_md5hash=check_md5hash, 
+    return _load_dataset(FB15K,
+                         data_home=None,
+                         check_md5hash=check_md5hash,
                          add_reciprocal_rels=add_reciprocal_rels)
 
 
@@ -611,7 +612,7 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=F
 
     clean_unseen : bool
         If ``True``, filters triples in validation and test sets that include entities not present in the training set.
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
@@ -646,20 +647,20 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=F
     )
 
     if clean_unseen:
-        return _clean_data(_load_dataset(fb15k_237, 
-                                         data_home=None, 
-                                         check_md5hash=check_md5hash, 
+        return _clean_data(_load_dataset(fb15k_237,
+                                         data_home=None,
+                                         check_md5hash=check_md5hash,
                                          add_reciprocal_rels=add_reciprocal_rels))
     else:
-        return _load_dataset(fb15k_237, 
-                             data_home=None, 
-                             check_md5hash=check_md5hash, 
+        return _load_dataset(fb15k_237,
+                             data_home=None,
+                             check_md5hash=check_md5hash,
                              add_reciprocal_rels=add_reciprocal_rels)
 
 
 def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False):
     """Load the YAGO3-10 dataset
-   
+
     The dataset is a split of YAGO3 :cite:`mahdisoltani2013yago3`,
     and has been first presented in :cite:`DettmersMS018`.
 
@@ -685,28 +686,28 @@ def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fa
     ----------
     check_md5hash : boolean
         If ``True`` check the md5hash of the files. Defaults to ``False``.
-    
+
     clean_unseen : bool
         If ``True``, filters triples in validation and test sets that include entities not present in the training set.
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
 
     Returns
     -------
-    
+
     splits : dict
         The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
-    
+
     Examples
     -------
-    
+
     >>> from ampligraph.datasets import load_yago3_10
     >>> X = load_yago3_10()
     >>> X["valid"][0]
-    array(['Mikheil_Khutsishvili', 'playsFor', 'FC_Merani_Tbilisi'], dtype=object)    
-    
+    array(['Mikheil_Khutsishvili', 'playsFor', 'FC_Merani_Tbilisi'], dtype=object)
+
     """
     yago3_10 = DatasetMetadata(
         dataset_name='YAGO3-10',
@@ -721,14 +722,14 @@ def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fa
     )
 
     if clean_unseen:
-        return _clean_data(_load_dataset(yago3_10, 
-                                         data_home=None, 
-                                         check_md5hash=check_md5hash, 
+        return _clean_data(_load_dataset(yago3_10,
+                                         data_home=None,
+                                         check_md5hash=check_md5hash,
                                          add_reciprocal_rels=add_reciprocal_rels))
     else:
-        return _load_dataset(yago3_10, 
-                             data_home=None, 
-                             check_md5hash=check_md5hash, 
+        return _load_dataset(yago3_10,
+                             data_home=None,
+                             check_md5hash=check_md5hash,
                              add_reciprocal_rels=add_reciprocal_rels)
 
 
@@ -768,7 +769,7 @@ def load_wn11(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
 
     clean_unseen : bool
         If ``True``, filters triples in validation and test sets that include entities not present in the training set.
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
@@ -805,8 +806,8 @@ def load_wn11(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
         test_checksum='24113b464f8042c339e3e6833c1cebdf'
     )
 
-    dataset = _load_dataset(wn11, data_home=None, 
-                            check_md5hash=check_md5hash, 
+    dataset = _load_dataset(wn11, data_home=None,
+                            check_md5hash=check_md5hash,
                             add_reciprocal_rels=add_reciprocal_rels)
 
     valid_labels = dataset['valid'][:, 3]
@@ -865,7 +866,7 @@ def load_fb13(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
 
     clean_unseen : bool
         If ``True``, filters triples in validation and test sets that include entities not present in the training set.
-        
+
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
@@ -902,9 +903,9 @@ def load_fb13(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
         test_checksum='f9af2eac7c5a86996c909bdffd295528'
     )
 
-    dataset = _load_dataset(fb13, 
-                            data_home=None, 
-                            check_md5hash=check_md5hash, 
+    dataset = _load_dataset(fb13,
+                            data_home=None,
+                            check_md5hash=check_md5hash,
                             add_reciprocal_rels=add_reciprocal_rels)
 
     valid_labels = dataset['valid'][:, 3]
