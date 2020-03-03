@@ -12,14 +12,38 @@ from itertools import islice
 from ampligraph.latent_features import TransE, ComplEx, RandomBaseline
 from ampligraph.evaluation import evaluate_performance, generate_corruptions_for_eval, \
     generate_corruptions_for_fit, to_idx, create_mappings, mrr_score, hits_at_n_score, select_best_model_ranking, \
-    filter_unseen_entities
+    filter_unseen_entities, TOO_MANY_ENTITIES_TH
 
-from ampligraph.datasets import load_wn18, load_wn18rr
+from ampligraph.datasets import load_wn18, load_wn18rr, load_yago3_10
 import tensorflow as tf
 
 from ampligraph.evaluation import train_test_split_no_unseen
 from ampligraph.evaluation.protocol import _next_hyperparam, _next_hyperparam_random, _remove_unused_params, \
     ParamHistory, _get_param_hash, _sample_parameters, _scalars_into_lists, _flatten_nested_keys, _unflatten_nested_keys
+
+# test for #186
+def test_evaluate_performance_too_many_entities_warning():
+    X = load_yago3_10()
+    model = TransE(batches_count=1000, seed=0, epochs=1, k=5, eta=1, verbose=True)
+    model.fit(X['train'])
+
+    # no entity list declared
+    with pytest.warns(UserWarning):
+        evaluate_performance(X['test'][::1], model, verbose=True, corrupt_side='o')
+
+    # with larger than threshold entity list
+    with pytest.warns(UserWarning):
+        entities_subset = np.union1d(np.unique(X["train"][:, 0]), np.unique(X["train"][:, 2]))[:TOO_MANY_ENTITIES_TH]
+        evaluate_performance(X['test'][::1], model, verbose=True, corrupt_side='o', entities_subset=entities_subset)
+
+    # with small entity list (no exception expected)
+    evaluate_performance(X['test'][::1], model, verbose=True, corrupt_side='o', entities_subset=entities_subset[:10])
+
+    # with smaller dataset, no entity list declared (no exception expected)
+    X_wn18rr = load_wn18rr()
+    model_wn18 = TransE(batches_count=1000, seed=0, epochs=1, k=5, eta=1, verbose=True)
+    model_wn18.fit(X_wn18rr['train'])
+    evaluate_performance(X_wn18rr['test'][::1], model_wn18, verbose=True, corrupt_side='o')
 
 
 def test_evaluate_performance_filter_without_xtest():
