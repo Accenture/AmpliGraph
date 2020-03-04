@@ -1588,9 +1588,13 @@ class EmbeddingModel(abc.ABC):
         return scores_pos, scores_neg
 
     def calibrate(self, X_pos, X_neg=None, positive_base_rate=None, batches_count=100, epochs=50):
-        """Calibrates the predictions using Platt scaling :cite:`platt1999probabilistic`.
+        """Calibrate predictions
 
-        The calibrated predictions can be obtained with ``predict_proba`` after the calibration is done.
+        The method implements the heuristics described in :cite:`calibration`,
+        using Platt scaling :cite:`platt1999probabilistic`.
+
+        The calibrated predictions can be obtained with :meth:`predict_proba`
+        after calibration is done.
 
         Ideally, calibration should be performed on a validation set that was not used to train the embeddings.
 
@@ -1619,7 +1623,12 @@ class EmbeddingModel(abc.ABC):
         cannot be determined automatically or a priori.
 
         .. Note ::
-            Incompatible with large graph mode of operation (i.e., ``self.dealing_with_large_graphs`` is `True`).
+            Incompatible with large graph mode (i.e. if ``self.dealing_with_large_graphs=True``).
+
+        .. Note ::
+            :cite:`calibration` `calibration experiments available here
+            <https://github.com/Accenture/AmpliGraph/tree/paper/ICLR-20/experiments/ICLR-20>`_.
+
 
         Parameters
         ----------
