@@ -3,7 +3,7 @@
 
 ## Prerequisites
 
-* Linux Box
+* Linux or macOS box. (Windows not ufficially supported)
 * Python ≥ 3.6
 
 #### Provision a Virtual Environment
@@ -11,7 +11,7 @@
 Create and activate a virtual environment (conda)
 
 ```
-conda create --name ampligraph python=3.6
+conda create --name ampligraph python=3.7
 source activate ampligraph
 ```
 
@@ -27,7 +27,7 @@ pip install "tensorflow>=1.14.0,<2.0"
 
 or 
 
-conda install tensorflow=1.13.1
+conda install tensorflow'>=1.14.0,<2.0.0'
 ```
 
 **GPU support**
@@ -37,7 +37,7 @@ pip install "tensorflow-gpu>=1.14.0,<2.0"
 
 or 
 
-conda install tensorflow-gpu=1.14.0
+conda install tensorflow-gpu'>=1.14.0,<2.0.0'
 ```
 
 
