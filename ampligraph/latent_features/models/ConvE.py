@@ -20,13 +20,18 @@ logger.setLevel(logging.DEBUG)
 @register_model('ConvE', ['conv_filters', 'conv_kernel_size', 'dropout_embed', 'dropout_conv',
                           'dropout_dense', 'use_bias', 'use_batchnorm'], {})
 class ConvE(EmbeddingModel):
-    r""" Convolutional 2D Knowledge Graph Embeddings
+    r""" Convolutional 2D KG Embeddings
 
-    The ConvE model :cite:`Dettmers2016`:
+    The ConvE model :cite:`DettmersMS018`.
+
+    ConvE uses convolutional layers.
+    :math:`g` is a non-linear activation function, :math:`\ast` is the linear convolution operator,
+    :math:`vec` indicates 2D reshaping.
 
     .. math::
 
-        f(vec(f([\overline{e_s};\overline{r_r}] * \Omega)) W ) e_o
+        f_{ConvE} =  \langle \sigma \, (vec \, ( g \, ([ \overline{\mathbf{e}_s} ; \overline{\mathbf{r}_p} ]
+        \ast \Omega )) \, \mathbf{W} )) \, \mathbf{e}_o\rangle
 
     Examples
     --------

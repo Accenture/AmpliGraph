@@ -25,7 +25,7 @@ class ConvKB(EmbeddingModel):
 
     .. math::
 
-        f_{ConvKB}=concat(g([\mathbf{e}_s, \mathbf{r}_p, \mathbf{e}_o]) * \Omega)) \cdot W
+        f_{ConvKB}= concat \,(g \, ([\mathbf{e}_s, \mathbf{r}_p, \mathbf{e}_o]) * \Omega)) \cdot W
 
     where :math:`g` is a non-linear function,  :math:`*` is the convolution operator,
     :math:`\cdot` is the dot product, :math:`concat` is the concatenation operator

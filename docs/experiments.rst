@@ -91,7 +91,7 @@ FB15K-237
                                                          seed: 0;
                                                          batches_count: 300;
 
-  ConvE    1060     0.26   0.19     0.28     0.38       k: 200;
+  ConvE    1060     0.26   0.19     0.28     0.38        k: 200;
                                                          epochs: 4000;
                                                          loss: bce;
                                                          loss_params: {label_smoothing=0.1}
@@ -109,7 +109,7 @@ FB15K-237
                                                          seed: 0;
                                                          batches_count: 100;
 
-  ConvE*     234      0.32   0.23     0.35     0.50       k: 200;
+  ConvE*     234      0.32   0.23     0.35     0.50      k: 200;
                                                          epochs: 4000;
                                                          loss: bce;
                                                          loss_params: {label_smoothing=0.1}
