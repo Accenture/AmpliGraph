@@ -684,7 +684,7 @@ Experiments can be limited to specific models-dataset combinations as follows: :
     optional arguments:
       -h, --help            show this help message and exit
       -d {fb15k,fb15k-237,wn18,wn18rr,yago310}, --dataset {fb15k,fb15k-237,wn18,wn18rr,yago310}
-      -m {complex,transe,distmult,hole,convkb}, --model {complex,transe,distmult,hole,convkb}
+      -m {complex,transe,distmult,hole,convkb,conve}, --model {complex,transe,distmult,hole,convkb,conve}
 
 
 Runtime Performance
