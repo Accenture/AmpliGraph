@@ -114,6 +114,7 @@ and they can be thus used :ref:`during model selection <eval>`.
     SelfAdversarialLoss
     NLLLoss
     NLLMulticlass
+    BCELoss
     
 .. _ref-reg:
 

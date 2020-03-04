@@ -108,6 +108,7 @@ class ConvE(EmbeddingModel):
 
         embedding_model_params : dict
             ConvE-specific hyperparams:
+
             - **conv_filters** (int): Number of convolution feature maps. Default: 32
             - **conv_kernel_size** (int): Convolution kernel size. Default: 3
             - **dropout_embed** (float|None): Dropout on the embedding layer. Default: 0.2
