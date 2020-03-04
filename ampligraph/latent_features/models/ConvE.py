@@ -934,7 +934,7 @@ class ConvE(EmbeddingModel):
 
             for i in tqdm(range(self.eval_dataset_handle.get_size('test'))):
 
-                score = sess.run([self.score_positive])
+                score = sess.run(self.score_positive)
                 scores.append(score)
 
             return scores
