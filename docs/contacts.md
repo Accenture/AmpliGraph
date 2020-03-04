@@ -47,6 +47,8 @@ Active contributors (in alphabetical order)
 + [Nicholas McCarthy](http://github.com/NicholasMcCarthy)
 + [Rory McGrath](http://github.com/rorymcgrath)
 + [Sumit Pai](http://github.com/sumitpai)
+
+Past contributors
 + [Pedro Tabacof](http://github.com/tabacof)
 
 

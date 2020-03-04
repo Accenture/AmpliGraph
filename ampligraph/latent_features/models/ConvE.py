@@ -37,26 +37,19 @@ class ConvE(EmbeddingModel):
     --------
     >>> import numpy as np
     >>> from ampligraph.latent_features import ConvE
-    >>> from ampligraph.datasets import load_wn18
-    >>> model = ConvE(batches_count=2000, seed=22, epochs=300, k=100,
-    >>>              loss='bce', loss_params={},
-    >>>              regularizer='LP', regularizer_params={'lambda':0.1},
-    >>>              verbose=True, low_memory=True)
+    >>> model = ConvE(batches_count=1, seed=22, epochs=5, k=100)
     >>>
-    >>> X = load_wn18()
-    >>> model.fit(X['train'])
-    >>> model.predict(X['test'][:5])
-    ([-0.06213863, 0.01563319], [13, 3])
-    >>> model.get_embeddings(['f','e'], embedding_type='entity')
-        array([[ 0.17335348,  0.15826802,  0.24862595,  0.21404941, -0.00968813,
-         0.06185953, -0.24956754,  0.01114257, -0.1038138 ,  0.40461722,
-        -0.12298391, -0.10997348,  0.28220937,  0.34238952,  0.58363295,
-         0.03315138, -0.37830347,  0.13480346,  0.49922466, -0.26328272],
-        [-0.19098252,  0.20133668,  0.04635337,  0.4364128 ,  0.07014864,
-         0.5713923 ,  0.28131518,  0.31721675, -0.06636801,  0.2848032 ,
-        -0.2121708 ,  0.56917167, -0.05311433,  0.03093261,  0.01571475,
-        -0.11373658,  0.29417998,  0.34896123,  0.22993243, -0.5499186 ]],
-        dtype=float32)
+    >>> X = np.array([['a', 'y', 'b'],
+    >>>               ['b', 'y', 'a'],
+    >>>               ['a', 'y', 'c'],
+    >>>               ['c', 'y', 'a'],
+    >>>               ['a', 'y', 'd'],
+    >>>               ['c', 'y', 'd'],
+    >>>               ['b', 'y', 'c'],
+    >>>               ['f', 'y', 'e']])
+    >>> model.fit(X)
+    >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
+    [0.42921206 0.38998795]
 
     """
 
@@ -880,15 +873,8 @@ class ConvE(EmbeddingModel):
 
             .. note::
 
-                To obtain probability estimates, use a logistic sigmoid: ::
-
-                    >>> model.fit(X)
-                    >>> y_pred = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-                    >>> print(y_pred)
-                    [-0.13863425, -0.09917116]
-                    >>> from scipy.special import expit
-                    >>> expit(y_pred)
-                    array([0.4653968 , 0.47522753], dtype=float32)
+                To obtain probability estimates, calibrate the model with :func:`~ConvE.calibrate`,
+                then call :func:`~ConvE.predict_proba`.
 
         Parameters
         ----------
