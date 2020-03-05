@@ -581,11 +581,6 @@ class ConvE(EmbeddingModel):
 
         """
 
-        if early_stopping_params['corrupt_side'] == 's+o':
-            msg = "ConvE does not support `s+o` corruption strategy. Please change to: 's', 'o', or 's, o'"
-            logger.error(msg)
-            raise ValueError(msg)
-
         self.train_dataset_handle = None
         # try-except block is mainly to handle clean up in case of exception or manual stop in jupyter notebook
         try:
@@ -810,6 +805,11 @@ class ConvE(EmbeddingModel):
 
             if self.x_valid.ndim <= 1 or (np.shape(self.x_valid)[1]) != 3:
                 msg = 'Invalid size for input x_valid. Expected (n,3):  got {}'.format(np.shape(self.x_valid))
+                logger.error(msg)
+                raise ValueError(msg)
+
+            if self.early_stopping_params['corrupt_side'] == 's+o':
+                msg = "ConvE does not support `s+o` corruption strategy. Please change to: 's', 'o', or 's, o'"
                 logger.error(msg)
                 raise ValueError(msg)
 
