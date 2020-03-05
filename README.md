@@ -133,6 +133,8 @@ Their predictive power is reported below and compared against the state-of-the-a
 | DistMult (AmpliGraph)        |  0.31    | 0.47    | 0.50      | 0.78       | 0.82          |
 | ComplEx  (AmpliGraph)        |  0.32    | **0.51**| 0.49      | 0.80       | 0.94          |
 | HolE (AmpliGraph)            |  0.31    | 0.47    | 0.50      | 0.80       | 0.94          |
+| ConvE (AmpliGraph)           |  0.26    | 0.45    | 0.30      | 0.50       | 0.93          |
+| ConvE (1-N, AmpliGraph)      |  0.32    | 0.48    | 0.40      | 0.80       | **0.95**      |
 | ConvKB (AmpliGraph)          |  0.23    | 0.39    | 0.30      | 0.65       | 0.80          |
 
 <sub>
