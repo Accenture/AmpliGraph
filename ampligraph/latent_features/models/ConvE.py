@@ -581,7 +581,7 @@ class ConvE(EmbeddingModel):
 
         """
 
-        if self.early_stopping_params['corrupt_side'] == 's+o':
+        if early_stopping_params['corrupt_side'] == 's+o':
             msg = "ConvE does not support `s+o` corruption strategy. Please change to: 's', 'o', or 's, o'"
             logger.error(msg)
             raise ValueError(msg)
