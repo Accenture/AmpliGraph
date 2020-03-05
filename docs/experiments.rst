@@ -10,40 +10,40 @@ Predictive Performance
 We report the filtered MR, MRR, Hits@1,3,10 for the most common datasets used in literature.
 
 
-A note on ConvE Evaluation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Results reported in the literature for ConvE are based on the alternative `1-N` evaluation protocol which requires
-that reciprocal relations are added to the dataset:
+.. note:: **On ConvE Evaluation**.
+    Results reported in the literature for ConvE are based on the alternative *1-N* evaluation protocol which requires
+    that reciprocal relations are added to the dataset :cite:`DettmersMS018`:
 
-.. math::
-    D \leftarrow (D, D_recip)
+    .. math::
+        D \leftarrow (D, D_{recip})
 
-.. math::
-    D_recip \leftarrow \{ \, (o, p_r, s) \,|\, \forall x \in D, x = (s, p, o) \}
+    .. math::
+        D_{recip} \leftarrow \{ \, (o, p_r, s) \,|\, \forall x \in D, x = (s, p, o) \}
 
-During training each unique pair of subject and predicate can predict all possible object scores for that pairs, and
-therefore object corruptions evaluation can be performed with a single forward pass:
+    During training each unique pair of subject and predicate can predict all possible object scores for that pairs, and
+    therefore object corruptions evaluation can be performed with a single forward pass:
 
-.. math::
-    ConvE(s, p, o)
+    .. math::
+        ConvE(s, p, o)
 
-In the standard corruption procedure the subject entity is replaced by corruptions:
+    In the standard corruption procedure the subject entity is replaced by corruptions:
 
-.. math::
-    ConvE(s_corr, p, o),
+    .. math::
+        ConvE(s_{corr}, p, o),
 
-However in the `1-N` protocol subject corruptions are interpreted as object corruptions of the reciprocal relation:
+    However in the `1-N` protocol subject corruptions are interpreted as object corruptions of the reciprocal relation:
 
-.. math::
-    ConvE(o, p_r, s_corr)
+    .. math::
+        ConvE(o, p_r, s_{corr})
 
 
-To reproduce the results reported in the literature using the `1-N` evaluation protocol, add reciprocal relations by
-specifying `add_reciprocal_rels` in the dataset loader function, e.g. `load_fb15k(add_reciprocal_rels=True)`, and run
-the evaluation protocol with object corruptions by specifying `corrupt_sides='o'`.
+    To reproduce the results reported in the literature using the `1-N` evaluation protocol, add reciprocal relations by
+    specifying ``add_reciprocal_rels`` in the dataset loader function, e.g. ``load_fb15k(add_reciprocal_rels=True)``,
+    and run the evaluation protocol with object corruptions by specifying ``corrupt_sides='o'``.
 
-Results obtained with the standard evaluation protocol are labeled `ConvE`, while those obtained with the `1-N`
-protocol are marked `ConvE(1-N)`.
+    Results obtained with the standard evaluation protocol are labeled *ConvE*, while those obtained with the *1-N*
+    protocol are marked *ConvE(1-N)*.
+
 
 
 FB15K-237

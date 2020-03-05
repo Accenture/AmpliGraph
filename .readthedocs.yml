@@ -1,0 +1,21 @@
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+# requirements_readthedocs.txt is only used by readthedocs and includes tensorflow, which is imported
+#  in the root __init__.py since d7fbb98 to suppress tf 1.x deprecation warnings.
+#  This causes readthedocs.io builds to fail.
+
+version: 2
+
+sphinx:
+  configuration: docs/conf.py
+
+formats: all
+
+python:
+   version: 3.7
+   install:
+      - requirements: docs/requirements_readthedocs.txt
+      - method: setuptools
+        path: .
+   system_packages: true
