@@ -3,7 +3,7 @@
 
 ## Prerequisites
 
-* Linux or macOS box. (Windows not ufficially supported)
+* Linux, macOS, Windows
 * Python ≥ 3.6
 
 #### Provision a Virtual Environment

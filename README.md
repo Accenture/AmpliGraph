@@ -43,7 +43,7 @@ It then combines embeddings with model-specific scoring functions to predict uns
 AmpliGraph includes the following submodules:
 
 * **Datasets**: helper functions to load datasets (knowledge graphs).
-* **Models**: knowledge graph embedding models. AmpliGraph contains **TransE**, **DistMult**, **ComplEx**, **HolE**, **ConvKB**. (More to come!)
+* **Models**: knowledge graph embedding models. AmpliGraph contains **TransE**, **DistMult**, **ComplEx**, **HolE**, **ConvE**, **ConvKB**. (More to come!)
 * **Evaluation**: metrics and evaluation protocols to assess the predictive power of the models.
 * **Discovery**: High-level convenience APIs for knowledge discovery (discover new facts, cluster entities, predict near duplicates).
 
@@ -52,7 +52,7 @@ AmpliGraph includes the following submodules:
 
 ### Prerequisites
 
-* Linux or macOS box. (Windows not ufficially supported)
+* Linux, macOS, Windows
 * Python ≥ 3.6
 
 #### Provision a Virtual Environment
@@ -122,7 +122,7 @@ pip install -e .
 
 ## Predictive Power Evaluation (MRR Filtered)
 
-AmpliGraph includes implementations of TransE, DistMult, ComplEx, HolE and ConvKB.
+AmpliGraph includes implementations of TransE, DistMult, ComplEx, HolE, ConvE, and ConvKB.
 Their predictive power is reported below and compared against the state-of-the-art results in literature.
 [More details available here](https://docs.ampligraph.org/en/latest/experiments.html).
 
