@@ -574,11 +574,17 @@ class ConvE(EmbeddingModel):
                 - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
                 - **'corruption_entities'**: List of entities to be used for corruptions. If 'all',
                   it uses all entities (default: 'all')
-                - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o' (default)
+                - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's,o' (default). Note: ConvE does not
+                    currently support 's+o' evaluation mode.
 
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
         """
+
+        if self.early_stopping_params['corrupt_side'] == 's+o':
+            msg = "ConvE does not support `s+o` corruption strategy. Please change to: 's', 'o', or 's, o'"
+            logger.error(msg)
+            raise ValueError(msg)
 
         self.train_dataset_handle = None
         # try-except block is mainly to handle clean up in case of exception or manual stop in jupyter notebook
@@ -945,9 +951,6 @@ class ConvE(EmbeddingModel):
             raise RuntimeError(msg)
 
         eval_protocol = self.eval_config.get('corrupt_side', constants.DEFAULT_PROTOCOL_EVAL)
-
-        if eval_protocol == 's+o':
-            raise Exception('ConvE cannot use `s+o` evaluation. Please change to: `s,o`, `s`, `o`.')
 
         if 'o' in eval_protocol:
             object_ranks = self._get_object_ranks(dataset_handle)
