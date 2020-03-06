@@ -19,6 +19,22 @@ from ampligraph.utils import save_model, restore_model
 from ampligraph.evaluation.protocol import to_idx
 
 
+def test_conve_bce_combo():
+    # no exception
+    model = ConvE(loss='bce')
+
+    # no exception
+    model = TransE(loss='nll')
+
+    # Invalid combination. Hence exception.
+    with pytest.raises(ValueError):
+        model = TransE(loss='bce')
+
+    # Invalid combination. Hence exception.
+    with pytest.raises(ValueError):
+        model = ConvE(loss='nll')
+
+
 def test_large_graph_mode():
     set_entity_threshold(10)
     X = load_wn18()

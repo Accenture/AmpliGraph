@@ -174,6 +174,10 @@ class EmbeddingModel(abc.ABC):
         verbose : bool
             Verbose mode.
         """
+        if (loss == "bce") ^ (self.name == "ConvE"):
+            raise ValueError('Invalid Model - Loss combination. '
+                             'ConvE model can be used with BCE loss only and vice versa.')
+
         # Store for restoring later.
         self.all_params = \
             {
