@@ -131,8 +131,8 @@ class EmbeddingModel(abc.ABC):
             - ``absolute_margin`` the model will use absolute margin likelihood.
             - ``self_adversarial`` the model will use adversarial sampling loss function.
             - ``multiclass_nll`` the model will use multiclass nll loss. Switch to multiclass loss defined in
-              :cite:`chen2015` by passing 'corrupt_sides' as ['s','o'] to embedding_model_params.
-              To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params.
+              :cite:`chen2015` by passing 'corrupt_side' as ['s','o'] to embedding_model_params.
+              To use loss defined in :cite:`kadlecBK17` pass 'corrupt_side' as 'o' to embedding_model_params.
 
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss
@@ -174,6 +174,10 @@ class EmbeddingModel(abc.ABC):
         verbose : bool
             Verbose mode.
         """
+        if (loss == "bce") ^ (self.name == "ConvE"):
+            raise ValueError('Invalid Model - Loss combination. '
+                             'ConvE model can be used with BCE loss only and vice versa.')
+
         # Store for restoring later.
         self.all_params = \
             {
@@ -312,9 +316,9 @@ class EmbeddingModel(abc.ABC):
         Parameters
         ----------
         output_dict : dictionary
-            Dictionary of saved params. 
+            Dictionary of saved params.
             It's the duty of the model to save all the variables correctly, so that it can be used for restoring later.
-        
+
         """
         output_dict['model_params'] = self.trained_model_params
         output_dict['large_graph'] = self.dealing_with_large_graphs
@@ -322,7 +326,7 @@ class EmbeddingModel(abc.ABC):
 
     def restore_model_params(self, in_dict):
         """Load the model parameters from the input dictionary.
-        
+
         Parameters
         ----------
         in_dict : dictionary
@@ -330,7 +334,7 @@ class EmbeddingModel(abc.ABC):
         """
 
         self.trained_model_params = in_dict['model_params']
-        
+
         # Try catch is for backward compatibility
         try:
             self.calibration_parameters = in_dict['calibration_parameters']
@@ -346,8 +350,8 @@ class EmbeddingModel(abc.ABC):
             self.dealing_with_large_graphs = False
 
     def _save_trained_params(self):
-        """After model fitting, save all the trained parameters in trained_model_params in some order. 
-        The order would be useful for loading the model. 
+        """After model fitting, save all the trained parameters in trained_model_params in some order.
+        The order would be useful for loading the model.
         This method must be overridden if the model has any other parameters (apart from entity-relation embeddings).
         """
         if not self.dealing_with_large_graphs:
@@ -356,7 +360,7 @@ class EmbeddingModel(abc.ABC):
             self.trained_model_params = [self.ent_emb_cpu, self.sess_train.run(self.rel_emb)]
 
     def _load_model_from_trained_params(self):
-        """Load the model from trained params. 
+        """Load the model from trained params.
         While restoring make sure that the order of loaded parameters match the saved order.
         It's the duty of the embedding model to load the variables correctly.
         This method must be overridden if the model has any other parameters (apart from entity-relation embeddings).
@@ -377,11 +381,27 @@ class EmbeddingModel(abc.ABC):
             logger.warning('Evaluation would take longer than usual.')
 
         if not self.dealing_with_large_graphs:
+            # (We use tf.variable for future - to load and continue training)
             self.ent_emb = tf.Variable(self.trained_model_params[0], dtype=tf.float32)
         else:
-            self.ent_emb_cpu = self.trained_model_params[0]
-            self.ent_emb = tf.Variable(np.zeros((self.batch_size, self.internal_k)), dtype=tf.float32)
+            # Embeddings of all the corruptions entities will not fit on GPU.
+            # During training we loaded batch_size*2 embeddings on GPU as only 2* batch_size unique
+            # entities can be present in one batch.
+            # During corruption generation in eval mode, one side(s/o) is fixed and only the other side varies.
+            # Hence we use a batch size of 2 * training_batch_size for corruption generation i.e. those many
+            # corruption embeddings would be loaded per batch on the GPU. In other words, those corruptions
+            # would be processed as a batch.
 
+            self.corr_batch_size = self.batch_size * 2
+
+            # Load the entity embeddings on the cpu
+            self.ent_emb_cpu = self.trained_model_params[0]
+            # (We use tf.variable for future - to load and continue training)
+            # create empty variable on GPU.
+            # we initialize it with zeros because the actual embeddings will be loaded on the fly.
+            self.ent_emb = tf.Variable(np.zeros((self.corr_batch_size, self.internal_k)), dtype=tf.float32)
+
+        # (We use tf.variable for future - to load and continue training)
         self.rel_emb = tf.Variable(self.trained_model_params[1], dtype=tf.float32)
 
     def get_embeddings(self, entities, embedding_type='entity'):
@@ -444,7 +464,7 @@ class EmbeddingModel(abc.ABC):
         e_s = self._entity_lookup(x[:, 0])
         e_p = tf.nn.embedding_lookup(self.rel_emb, x[:, 1], name='embedding_lookup_predicate')
         e_o = self._entity_lookup(x[:, 2])
-        return e_s, e_p, e_o        
+        return e_s, e_p, e_o
 
     def _entity_lookup(self, entity):
         """Get the embeddings for entities.
@@ -484,7 +504,7 @@ class EmbeddingModel(abc.ABC):
 
             self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
-            self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size * 2, self.internal_k],
+            self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
 
     def _get_model_loss(self, dataset_iterator):
@@ -568,7 +588,7 @@ class EmbeddingModel(abc.ABC):
                 entities_size = negative_corruption_entities
 
             loss = 0
-            corruption_sides = self.embedding_model_params.get('corrupt_sides', constants.DEFAULT_CORRUPT_SIDE_TRAIN)
+            corruption_sides = self.embedding_model_params.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_TRAIN)
             if not isinstance(corruption_sides, list):
                 corruption_sides = [corruption_sides]
 
@@ -645,7 +665,7 @@ class EmbeddingModel(abc.ABC):
         elif self.eval_config['corruption_entities'] == 'batch':
             logger.debug('Using batch entities for generation of corruptions for early stopping')
 
-        self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side', 
+        self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side',
                                                                           constants.DEFAULT_CORRUPT_SIDE_EVAL)
 
         self.early_stopping_best_value = None
@@ -695,7 +715,10 @@ class EmbeddingModel(abc.ABC):
             # Get each triple and compute the rank for that triple
             for x_test_triple in range(self.eval_dataset_handle.get_size("valid")):
                 rank_triple = self.sess_train.run(self.rank)
-                ranks.append(rank_triple)
+                if self.eval_config.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL) == 's,o':
+                    ranks.append(list(rank_triple))
+                else:
+                    ranks.append(rank_triple)
 
             if self.early_stopping_criteria == 'hits10':
                 current_test_value = hits_at_n_score(ranks, 10)
@@ -834,7 +857,7 @@ class EmbeddingModel(abc.ABC):
                 - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
                 - **'corruption_entities'**: List of entities to be used for corruptions. If 'all',
                   it uses all entities (default: 'all')
-                - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o' (default)
+                - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o', 's,o' (default)
 
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
@@ -1006,22 +1029,15 @@ class EmbeddingModel(abc.ABC):
 
             - **corruption_entities**: List of entities to be used for corruptions.
               If ``all``, it uses all entities (default: ``all``)
-            - **corrupt_side**: Specifies which side to corrupt. ``s``, ``o``, ``s+o`` (default)
-            - **default_protocol**: Boolean flag to indicate whether to use default protocol for evaluation.
-              This computes scores for corruptions of subjects and objects and ranks them separately.
-              This could have been done by evaluating s and o separately and then
-              ranking but it slows down the performance.
-              Hence this mode is used where s+o corruptions are generated at once but ranked separately for speed up
-              (default: False).
+            - **corrupt_side**: Specifies which side to corrupt. ``s``, ``o``, ``s+o``, ``s,o`` (default)
+              In 's,o' mode subject and object corruptions are generated at once but ranked separately
+              for speed up (default: False).
 
         """
         if config is None:
             config = {'corruption_entities': constants.DEFAULT_CORRUPTION_ENTITIES,
-                      'corrupt_side': constants.DEFAULT_CORRUPT_SIDE_EVAL,
-                      'default_protocol': constants.DEFAULT_PROTOCOL_EVAL}
+                      'corrupt_side': constants.DEFAULT_CORRUPT_SIDE_EVAL}
         self.eval_config = config
-        if self.eval_config['default_protocol']:
-            self.eval_config['corrupt_side'] = 's+o'
 
     def _test_generator(self, mode):
         """Generates the test/validation data. If filter_triples are passed, then it returns the False Negatives
@@ -1048,7 +1064,7 @@ class EmbeddingModel(abc.ABC):
             if self.dealing_with_large_graphs:
                 # since we are dealing with only one triple (2 entities)
                 unique_ent = np.unique(np.array([out[0, 0], out[0, 2]]))
-                needed = (self.batch_size - unique_ent.shape[0])
+                needed = (self.corr_batch_size - unique_ent.shape[0])
                 large_number = np.zeros((needed, self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
                 entity_embeddings = np.concatenate((self.ent_emb_cpu[unique_ent, :], large_number), axis=0)
                 unique_ent = unique_ent.reshape(-1, 1)
@@ -1056,7 +1072,7 @@ class EmbeddingModel(abc.ABC):
             yield out, indices_obj, indices_sub, entity_embeddings, unique_ent
 
     def _generate_corruptions_for_large_graphs(self):
-        """Corruption generator for large graphs.
+        """Corruption generator for large graph mode only.
            It generates corruptions in batches and also yields the corresponding entity embeddings.
         """
 
@@ -1075,11 +1091,10 @@ class EmbeddingModel(abc.ABC):
         entity_embeddings = np.empty(shape=(0, self.internal_k), dtype=np.float32)
 
         for i in range(self.corr_batches_count):
-            all_ent = corruption_entities[i * self.batch_size:(i + 1) * self.batch_size]
-            if self.dealing_with_large_graphs:
-                needed = (self.batch_size - all_ent.shape[0])
-                large_number = np.zeros((needed, self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
-                entity_embeddings = np.concatenate((self.ent_emb_cpu[all_ent, :], large_number), axis=0)
+            all_ent = corruption_entities[i * self.corr_batch_size:(i + 1) * self.corr_batch_size]
+            needed = (self.corr_batch_size - all_ent.shape[0])
+            large_number = np.zeros((needed, self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
+            entity_embeddings = np.concatenate((self.ent_emb_cpu[all_ent, :], large_number), axis=0)
 
             all_ent = all_ent.reshape(-1, 1)
             yield all_ent, entity_embeddings
@@ -1105,7 +1120,6 @@ class EmbeddingModel(abc.ABC):
         dataset_iter = tf.data.make_one_shot_iterator(dataset)
         self.X_test_tf, indices_obj, indices_sub, entity_embeddings, unique_ent = dataset_iter.get_next()
 
-        use_default_protocol = self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL)
         corrupt_side = self.eval_config.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL)
 
         # Rather than generating corruptions in batches do it at once on the GPU for small or medium sized graphs
@@ -1149,7 +1163,7 @@ class EmbeddingModel(abc.ABC):
                 self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
 
                 # Generate corruptions in batches
-                self.corr_batches_count = int(np.ceil(len(self.ent_to_idx) / self.batch_size))
+                self.corr_batches_count = int(np.ceil(len(self.ent_to_idx) / (self.corr_batch_size)))
 
                 # Corruption generator -
                 # returns corruptions and their corresponding embeddings that need to be loaded on the GPU
@@ -1193,14 +1207,14 @@ class EmbeddingModel(abc.ABC):
                     # Execute the dependency
                     with tf.control_dependencies(corr_dependency):
                         emb_corr = tf.squeeze(self._entity_lookup(corr_batch))
-                        if corrupt_side == 's+o' or corrupt_side == 's':
+                        if 's' in corrupt_side:
                             # compute and store the scores batch wise
                             scores_predict_s_c = self._fn(emb_corr, e_p, e_o)
                             scores_predict_s_corruptions_in = \
                                 scores_predict_s_corruptions_in.scatter(tf.squeeze(corr_batch),
                                                                         tf.squeeze(scores_predict_s_c))
 
-                        if corrupt_side == 's+o' or corrupt_side == 'o':
+                        if 'o' in corrupt_side:
                             scores_predict_o_c = self._fn(e_s, e_p, emb_corr)
                             scores_predict_o_corruptions_in = \
                                 scores_predict_o_corruptions_in.scatter(tf.squeeze(corr_batch),
@@ -1218,13 +1232,13 @@ class EmbeddingModel(abc.ABC):
                                   back_prop=False,
                                   parallel_iterations=1)
 
-                if corrupt_side == 's+o' or corrupt_side == 's':
+                if 's' in corrupt_side:
                     subj_corruption_scores = scores_predict_s_corr_out.stack()
 
-                if corrupt_side == 's+o' or corrupt_side == 'o':
+                if 'o' in corrupt_side:
                     obj_corruption_scores = scores_predict_o_corr_out.stack()
 
-                if corrupt_side == 's+o':
+                if corrupt_side == 's+o' or corrupt_side == 's,o':
                     self.scores_predict = tf.concat([obj_corruption_scores, subj_corruption_scores], axis=0)
                 elif corrupt_side == 'o':
                     self.scores_predict = obj_corruption_scores
@@ -1250,9 +1264,7 @@ class EmbeddingModel(abc.ABC):
             e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
             self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
 
-            use_default_protocol = self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL)
-
-            if use_default_protocol:
+            if corrupt_side == 's,o':
                 obj_corruption_scores = tf.slice(self.scores_predict,
                                                  [0],
                                                  [tf.shape(self.scores_predict)[0] // 2])
@@ -1295,7 +1307,7 @@ class EmbeddingModel(abc.ABC):
                     indices_sub = tf.boolean_mask(indices_sub, indices_sub < len(corruption_entities))
 
             # get the scores of positives present in corruptions
-            if use_default_protocol:
+            if corrupt_side == 's,o':
                 scores_pos_obj = tf.gather(obj_corruption_scores, indices_obj)
                 scores_pos_sub = tf.gather(subj_corruption_scores, indices_sub)
             else:
@@ -1306,15 +1318,15 @@ class EmbeddingModel(abc.ABC):
                     scores_pos_sub = tf.gather(self.scores_predict, indices_sub)
             # compute the ranks of the positives present in the corruptions and
             # see how many are ranked higher than the test triple
-            if corrupt_side == 's+o' or corrupt_side == 'o':
+            if 'o' in corrupt_side:
                 positives_among_obj_corruptions_ranked_higher = tf.reduce_sum(
                     tf.cast(scores_pos_obj >= self.score_positive, tf.int32))
-            if corrupt_side == 's+o' or corrupt_side == 's':
+            if 's' in corrupt_side:
                 positives_among_sub_corruptions_ranked_higher = tf.reduce_sum(
                     tf.cast(scores_pos_sub >= self.score_positive, tf.int32))
 
         # compute the rank of the test triple and subtract the positives(from corruptions) that are ranked higher
-        if use_default_protocol:
+        if corrupt_side == 's,o':
             self.rank = tf.stack([tf.reduce_sum(tf.cast(
                 subj_corruption_scores >= self.score_positive,
                 tf.int32)) + 1 - positives_among_sub_corruptions_ranked_higher,
@@ -1348,7 +1360,7 @@ class EmbeddingModel(abc.ABC):
 
         Returns
         -------
-        ranks : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
+        ranks : ndarray, shape [n] or [n,2] depending on the value of corrupt_side.
                 An array of ranks of test triples.
         """
         if not self.is_fitted:
@@ -1380,7 +1392,7 @@ class EmbeddingModel(abc.ABC):
 
             for _ in tqdm(range(self.eval_dataset_handle.get_size('test')), disable=(not self.verbose)):
                 rank = sess.run(self.rank)
-                if self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL):
+                if self.eval_config.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL) == 's,o':
                     ranks.append(list(rank))
                 else:
                     ranks.append(rank)
@@ -1458,11 +1470,8 @@ class EmbeddingModel(abc.ABC):
                 scores = []
 
                 for _ in tqdm(range(self.eval_dataset_handle.get_size('test')), disable=(not self.verbose)):
-                    score = sess.run([self.score_positive])
-                    if self.eval_config.get('default_protocol', constants.DEFAULT_PROTOCOL_EVAL):
-                        scores.extend(list(score))
-                    else:
-                        scores.append(score)
+                    score = sess.run(self.score_positive)
+                    scores.append(score)
 
                 return scores
 
@@ -1495,7 +1504,7 @@ class EmbeddingModel(abc.ABC):
 
     def _calibrate_with_corruptions(self, X_pos, batches_count):
         """
-        Calibrates model with corruptions. The corruptions are hard-coded to be subject and object ('s+o')
+        Calibrates model with corruptions. The corruptions are hard-coded to be subject and object ('s,o')
         with all available entities.
 
         Parameters
@@ -1538,7 +1547,7 @@ class EmbeddingModel(abc.ABC):
         x_neg_tf = generate_corruptions_for_fit(x_pos_tf,
                                                 entities_list=None,
                                                 eta=1,
-                                                corrupt_side='s+o',
+                                                corrupt_side='s,o',
                                                 entities_size=len(self.ent_to_idx),
                                                 rnd=self.seed)
 
@@ -1583,9 +1592,13 @@ class EmbeddingModel(abc.ABC):
         return scores_pos, scores_neg
 
     def calibrate(self, X_pos, X_neg=None, positive_base_rate=None, batches_count=100, epochs=50):
-        """Calibrates the predictions using Platt scaling :cite:`platt1999probabilistic`.
+        """Calibrate predictions
 
-        The calibrated predictions can be obtained with ``predict_proba`` after the calibration is done.
+        The method implements the heuristics described in :cite:`calibration`,
+        using Platt scaling :cite:`platt1999probabilistic`.
+
+        The calibrated predictions can be obtained with :meth:`predict_proba`
+        after calibration is done.
 
         Ideally, calibration should be performed on a validation set that was not used to train the embeddings.
 
@@ -1614,7 +1627,12 @@ class EmbeddingModel(abc.ABC):
         cannot be determined automatically or a priori.
 
         .. Note ::
-            Incompatible with large graph mode of operation (i.e., ``self.dealing_with_large_graphs`` is `True`).
+            Incompatible with large graph mode (i.e. if ``self.dealing_with_large_graphs=True``).
+
+        .. Note ::
+            :cite:`calibration` `calibration experiments available here
+            <https://github.com/Accenture/AmpliGraph/tree/paper/ICLR-20/experiments/ICLR-20>`_.
+
 
         Parameters
         ----------

@@ -5,11 +5,14 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-"""Explainable Link Prediction is a library for relational learning on knowledge graphs."""
+"""AmpliGraph is a library for relational learning on knowledge graphs."""
 import logging.config
 import pkg_resources
 
-__version__ = '1.2.0'
+import tensorflow as tf
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+
+__version__ = '1.3.0'
 __all__ = ['datasets', 'latent_features', 'discovery', 'evaluation', 'utils']
 
 logging.config.fileConfig(pkg_resources.resource_filename(__name__, 'logger.conf'), disable_existing_loggers=False)

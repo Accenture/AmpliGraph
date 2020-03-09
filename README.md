@@ -43,7 +43,7 @@ It then combines embeddings with model-specific scoring functions to predict uns
 AmpliGraph includes the following submodules:
 
 * **Datasets**: helper functions to load datasets (knowledge graphs).
-* **Models**: knowledge graph embedding models. AmpliGraph contains **TransE**, **DistMult**, **ComplEx**, **HolE**, **ConvKB**. (More to come!)
+* **Models**: knowledge graph embedding models. AmpliGraph contains **TransE**, **DistMult**, **ComplEx**, **HolE**, **ConvE**, **ConvKB**. (More to come!)
 * **Evaluation**: metrics and evaluation protocols to assess the predictive power of the models.
 * **Discovery**: High-level convenience APIs for knowledge discovery (discover new facts, cluster entities, predict near duplicates).
 
@@ -52,7 +52,7 @@ AmpliGraph includes the following submodules:
 
 ### Prerequisites
 
-* Linux Box
+* Linux, macOS, Windows
 * Python ≥ 3.6
 
 #### Provision a Virtual Environment
@@ -60,7 +60,7 @@ AmpliGraph includes the following submodules:
 Create and activate a virtual environment (conda)
 
 ```
-conda create --name ampligraph python=3.6
+conda create --name ampligraph python=3.7
 source activate ampligraph
 ```
 
@@ -72,21 +72,21 @@ Install from pip or conda:
 **CPU-only**
 
 ```
-pip install "tensorflow>=1.13.1,<2.0"
+pip install "tensorflow>=1.14.0,<2.0"
 
 or
 
-conda install tensorflow=1.13.1
+conda install tensorflow'>=1.14.0,<2.0.0'
 ```
 
 **GPU support**
 
 ```
-pip install "tensorflow-gpu>=1.13.1,<2.0"
+pip install "tensorflow-gpu>=1.14.0,<2.0"
 
 or
 
-conda install tensorflow-gpu=1.13.1
+conda install tensorflow-gpu'>=1.14.0,<2.0.0'
 ```
 
 
@@ -116,13 +116,13 @@ pip install -e .
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'1.2.0'
+'1.3.0'
 ```
 
 
 ## Predictive Power Evaluation (MRR Filtered)
 
-AmpliGraph includes implementations of TransE, DistMult, ComplEx, HolE and ConvKB.
+AmpliGraph includes implementations of TransE, DistMult, ComplEx, HolE, ConvE, and ConvKB.
 Their predictive power is reported below and compared against the state-of-the-art results in literature.
 [More details available here](https://docs.ampligraph.org/en/latest/experiments.html).
 
@@ -133,6 +133,8 @@ Their predictive power is reported below and compared against the state-of-the-a
 | DistMult (AmpliGraph)        |  0.31    | 0.47    | 0.50      | 0.78       | 0.82          |
 | ComplEx  (AmpliGraph)        |  0.32    | **0.51**| 0.49      | 0.80       | 0.94          |
 | HolE (AmpliGraph)            |  0.31    | 0.47    | 0.50      | 0.80       | 0.94          |
+| ConvE (AmpliGraph)           |  0.26    | 0.45    | 0.30      | 0.50       | 0.93          |
+| ConvE (1-N, AmpliGraph)      |  0.32    | 0.48    | 0.40      | 0.80       | **0.95**      |
 | ConvKB (AmpliGraph)          |  0.23    | 0.39    | 0.30      | 0.65       | 0.80          |
 
 <sub>

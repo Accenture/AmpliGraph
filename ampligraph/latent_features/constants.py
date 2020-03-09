@@ -25,7 +25,7 @@ DEFAULT_CRITERIA_EARLY_STOPPING = 'mrr'
 DEFAULT_NORMALIZE_EMBEDDINGS = False
 
 # Default side to corrupt for evaluation
-DEFAULT_CORRUPT_SIDE_EVAL = 's+o'
+DEFAULT_CORRUPT_SIDE_EVAL = 's,o'
 
 # default hyperparameter for transE
 DEFAULT_NORM_TRANSE = 1
@@ -64,8 +64,18 @@ DEFAULT_REGULARIZER = None
 # Default value for verbose
 DEFAULT_VERBOSE = False
 
-# Flag to indicate whether to use default protocol for eval - for faster evaluation
-DEFAULT_PROTOCOL_EVAL = False
-
 # Specifies how to generate corruptions for training - default does s and o together and applies the loss
-DEFAULT_CORRUPT_SIDE_TRAIN = ['s+o']
+DEFAULT_CORRUPT_SIDE_TRAIN = ['s,o']
+
+# Subject corruption with a OneToNDatasetAdapter requires an N*N matrix (where N is number of unique entities).
+# Specify a batch size to reduce memory overhead.
+DEFAULT_SUBJECT_CORRUPTION_BATCH_SIZE = 10000
+
+# Default hyperparameters for ConvEmodel
+DEFAULT_CONVE_CONV_FILTERS = 32
+DEFAULT_CONVE_KERNEL_SIZE = 3
+DEFAULT_CONVE_DROPOUT_EMBED = 0.2
+DEFAULT_CONVE_DROPOUT_CONV = 0.3
+DEFAULT_CONVE_DROPOUT_DENSE = 0.2
+DEFAULT_CONVE_USE_BIAS = True
+DEFAULT_CONVE_USE_BATCHNORM = True

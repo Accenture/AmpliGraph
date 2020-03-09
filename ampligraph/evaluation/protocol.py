@@ -9,6 +9,7 @@
 from collections.abc import Iterable
 from itertools import product, islice
 import logging
+import warnings
 
 import pandas as pd
 import numpy as np
@@ -16,16 +17,19 @@ from tqdm import tqdm
 import tensorflow as tf
 
 from ..evaluation import mrr_score, hits_at_n_score, mr_score
-from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
+from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter, OneToNDatasetAdapter
+# from ampligraph.latent_features.models import ConvE
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+TOO_MANY_ENTITIES_TH = 50000
 
 
 def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False):
     """Split into train and test sets.
 
-     This function carves out a test set that contains only entities 
+     This function carves out a test set that contains only entities
      and relations which also occur in the training set.
 
     Parameters
@@ -33,12 +37,12 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
     X : ndarray, size[n, 3]
         The dataset to split.
     test_size : int, float
-        If int, the number of triples in the test set. 
+        If int, the number of triples in the test set.
         If float, the percentage of total triples.
     seed : int
         A random seed used to split the dataset.
     allow_duplication: boolean
-        Flag to indicate if the test set can contain duplicated triples. 
+        Flag to indicate if the test set can contain duplicated triples.
 
     Returns
     -------
@@ -179,7 +183,7 @@ def create_mappings(X):
     return _create_unique_mappings(unique_ent, unique_rel)
 
 
-def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'):
+def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s,o'):
     """Generate corruptions for evaluation.
 
         Create corruptions (subject and object) for a given triple x, in compliance with the
@@ -197,17 +201,22 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
         - 's': corrupt only subject.
         - 'o': corrupt only object
         - 's+o': corrupt both subject and object
+        - 's,o': corrupt both subject and object but ranks are computed separately.
 
     Returns
     -------
     out : Tensor, shape [n, 3]
         An array of corruptions for the triples for x.
-        
+
     """
 
     logger.debug('Generating corruptions for evaluation.')
 
     logger.debug('Getting repeating subjects.')
+    if corrupt_side == 's,o':
+        # Both subject and object are corrupted but ranks are computed separately.
+        corrupt_side = 's+o'
+
     if corrupt_side not in ['s+o', 's', 'o']:
         msg = 'Invalid argument value for corruption side passed for evaluation'
         logger.error(msg)
@@ -256,7 +265,7 @@ def generate_corruptions_for_eval(X, entities_for_corruption, corrupt_side='s+o'
     return out
 
 
-def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o', entities_size=0, rnd=None):
+def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s,o', entities_size=0, rnd=None):
     """Generate corruptions for training.
 
     Creates corrupted triples for each statement in an array of statements,
@@ -294,6 +303,7 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
         - 's': corrupt only subject.
         - 'o': corrupt only object
         - 's+o': corrupt both subject and object
+        - 's,o': corrupt both subject and object
     entities_size: int
         Size of entities to be used while generating corruptions. It assumes entity id's start from 0 and are
         continuous. (default: 0).
@@ -316,6 +326,10 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
 
     """
     logger.debug('Generating corruptions for fit.')
+    if corrupt_side == 's,o':
+        # Both subject and object are corrupted but ranks are computed separately.
+        corrupt_side = 's+o'
+
     if corrupt_side not in ['s+o', 's', 'o']:
         msg = 'Invalid argument value {} for corruption side passed for evaluation.'.format(corrupt_side)
         logger.error(msg)
@@ -324,8 +338,7 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
     dataset = tf.reshape(tf.tile(tf.reshape(X, [-1]), [eta]), [tf.shape(X)[0] * eta, 3])
 
     if corrupt_side == 's+o':
-        keep_subj_mask = tf.tile(tf.cast(tf.random_uniform([tf.shape(X)[0]], 0, 2, dtype=tf.int32, seed=rnd), tf.bool),
-                                 [eta])
+        keep_subj_mask = tf.cast(tf.random_uniform([tf.shape(X)[0] * eta], 0, 2, dtype=tf.int32, seed=rnd), tf.bool)
     else:
         keep_subj_mask = tf.cast(tf.ones(tf.shape(X)[0] * eta, tf.int32), tf.bool)
         if corrupt_side == 's':
@@ -369,28 +382,29 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s+o
 
 
 def _convert_to_idx(X, ent_to_idx, rel_to_idx, obj_to_idx):
-    unseen_msg = 'Input triples include one or more entities not present in the training set. ' \
-                 'Please filter X using evaluation.filter_unseen_entities(), or retrain the model on a training set ' \
-                 'that includes all the desired distinct entities.'
+    unseen_msg = 'Input triples include one or more {concept_type} not present in the training set. ' \
+                 'Please filter all concepts in X that do not occur in the training test ' \
+                 '(set filter_unseen=True in evaluate_performance) or retrain the model on a ' \
+                 'training set that includes all the desired concept types.'
 
     try:
         x_idx_s = np.vectorize(ent_to_idx.get)(X[:, 0])
         x_idx_p = np.vectorize(rel_to_idx.get)(X[:, 1])
         x_idx_o = np.vectorize(obj_to_idx.get)(X[:, 2])
     except TypeError:
+        unseen_msg = unseen_msg.format(**{'concept_type': 'concepts'})
         logger.error(unseen_msg)
         raise ValueError(unseen_msg)
 
     if None in x_idx_s or None in x_idx_o:
+        unseen_msg = unseen_msg.format(**{'concept_type': 'entities'})
         logger.error(unseen_msg)
         raise ValueError(unseen_msg)
 
     if None in x_idx_p:
-        msg = 'Input triples include one or more relation type not present in the training set. ' \
-              'Please filter all relation in X that do not occur in the training test. ' \
-              'or retrain the model on a training set that includes all the desired relation types.'
-        logger.error(msg)
-        raise ValueError(msg)
+        unseen_msg = unseen_msg.format(**{'concept_type': 'relations'})
+        logger.error(unseen_msg)
+        raise ValueError(unseen_msg)
 
     return np.dstack([x_idx_s, x_idx_p, x_idx_o]).reshape((-1, 3))
 
@@ -417,8 +431,8 @@ def to_idx(X, ent_to_idx, rel_to_idx):
     return _convert_to_idx(X, ent_to_idx, rel_to_idx, ent_to_idx)
 
 
-def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=True, entities_subset=None,
-                         corrupt_side='s+o', use_default_protocol=True):
+def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_unseen=True, entities_subset=None,
+                         corrupt_side='s,o', use_default_protocol=False):
     """Evaluate the performance of an embedding model.
 
     The evaluation protocol follows the procedure defined in :cite:`bordes2013translating` and can be summarised as:
@@ -483,9 +497,10 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
     verbose : bool
         Verbose mode
-    strict : bool
-        Strict mode. If True then any unseen entity will cause a RuntimeError.
-        If False then triples containing unseen entities will be filtered out.
+    filter_unseen : bool
+        This can be set to False to skip filtering of unseen entities if train_test_split_unseen() was used to
+        split the original dataset.
+
     entities_subset: array-like
         List of entities to use for corruptions. If None, will generate corruptions
         using all distinct entities. Default is None.
@@ -495,26 +510,29 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         - 's': corrupt only subject.
         - 'o': corrupt only object.
         - 's+o': corrupt both subject and object.
-          With ``use_default_protocol`` set to `True`, this mode is forced irrespective of the user choice.
-
-    use_default_protocol: bool
-        Flag to indicate whether to use the standard protocol used in literature defined in
-        :cite:`bordes2013translating` (default: True).
-        If set to `True`, ``corrupt_side`` will be set to `'s+o'`.
-        This corresponds to the evaluation protocol used in literature, where head and tail corruptions
-        are evaluated separately.
+        - 's,o': corrupt subject and object sides independently and return 2 ranks. This corresponds to the
+                 evaluation protocol used in literature, where head and tail corruptions are evaluated
+                 separately.
 
         .. note::
-            When ``use_default_protocol=True`` the function will return 2*n ranks as a [n, 2] array.
+            When ``corrupt_side='s,o'`` the function will return 2*n ranks as a [n, 2] array.
             The first column of the array represents the subject corruptions.
             The second column of the array represents the object corruptions.
             Otherwise, the function returns n ranks as [n] array.
 
+
+    use_default_protocol: bool
+        Flag to indicate whether to use the standard protocol used in literature defined in
+        :cite:`bordes2013translating` (default: False).
+        If set to `True`, ``corrupt_side`` will be set to `'s,o'`.
+        This corresponds to the evaluation protocol used in literature, where head and tail corruptions
+        are evaluated separately, i.e. in corrupt_side='s,o' mode
+
     Returns
     -------
-    ranks : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
+    ranks : ndarray, shape [n] or [n,2] depending on the value of corrupt_side.
         An array of ranks of test triples.
-        When ``use_default_protocol=True`` the function returns [n,2]. The first column represents the rank against
+        When ``corrupt_side='s,o'`` the function returns [n,2]. The first column represents the rank against
         subject corruptions and the second column represents the rank against object corruptions.
         In other cases, it returns [n] i.e. rank against the specified corruptions.
 
@@ -542,16 +560,36 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
     >>> hits_at_n_score(ranks, n=10)
     0.4
     """
+
+    from ampligraph.latent_features import ConvE  # avoids circular import hell
+
     dataset_handle = None
+
     # try-except block is mainly to handle clean up in case of exception or manual stop in jupyter notebook
     try:
-        logger.debug('Evaluating the performance of the embedding model.')
-        if isinstance(X, np.ndarray):
-            X_test = filter_unseen_entities(X, model, verbose=verbose, strict=strict)
+        if use_default_protocol:
+            logger.warning('DeprecationWarning: use_default_protocol will be removed in future. '
+                           'Please use corrupt_side argument instead.')
+            corrupt_side = 's,o'
 
-            dataset_handle = NumpyDatasetAdapter()
+        logger.debug('Evaluating the performance of the embedding model.')
+        assert corrupt_side in ['s', 'o', 's+o', 's,o'], 'Invalid value for corrupt_side.'
+        if isinstance(X, np.ndarray):
+
+            if filter_unseen:
+                X = filter_unseen_entities(X, model, verbose=verbose)
+            else:
+                logger.warning("If your test set or filter triples contain unseen entities you may get a"
+                               "runtime error. You can filter them by setting filter_unseen=True")
+
+            if isinstance(model, ConvE):
+                dataset_handle = OneToNDatasetAdapter()
+            else:
+                dataset_handle = NumpyDatasetAdapter()
+
             dataset_handle.use_mappings(model.rel_to_idx, model.ent_to_idx)
-            dataset_handle.set_data(X_test, "test")
+            dataset_handle.set_data(X, 'test')
+
         elif isinstance(X, AmpligraphDatasetAdapter):
             dataset_handle = X
         else:
@@ -562,7 +600,9 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         if filter_triples is not None:
             if isinstance(filter_triples, np.ndarray):
                 logger.debug('Getting filtered triples.')
-                filter_triples = filter_unseen_entities(filter_triples, model, verbose=verbose, strict=strict)
+
+                if filter_unseen:
+                    filter_triples = filter_unseen_entities(filter_triples, model, verbose=verbose)
                 dataset_handle.set_filter(filter_triples)
                 model.set_filter_for_eval()
             elif isinstance(X, AmpligraphDatasetAdapter):
@@ -573,11 +613,11 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
             else:
                 raise Exception('Invalid datatype for filter. Expected a numpy array or preset data in the adapter.')
 
-        eval_dict = {'default_protocol': False}
+        eval_dict = {}
 
-        if use_default_protocol:
-            corrupt_side = 's+o'
-            eval_dict['default_protocol'] = True
+        # #186: print warning when trying to evaluate with too many entities.
+        #      Thus will likely result in shooting in your feet, as the protocol will be excessively hard.
+        check_filter_size(model, entities_subset)
 
         if entities_subset is not None:
             idx_entities = np.asarray([idx for uri, idx in model.ent_to_idx.items() if uri in entities_subset])
@@ -588,12 +628,12 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
 
         logger.debug('Configuring evaluation protocol.')
         model.configure_evaluation_protocol(eval_dict)
-        logger.debug('Making predictions.')
 
+        logger.debug('Making predictions.')
         ranks = model.get_ranks(dataset_handle)
 
-        model.end_evaluation()
         logger.debug('Ending Evaluation')
+        model.end_evaluation()
 
         logger.debug('Returning ranks of positive test triples obtained by corrupting {}.'.format(corrupt_side))
         return np.array(ranks)
@@ -605,7 +645,41 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, strict=Tr
         raise e
 
 
-def filter_unseen_entities(X, model, verbose=False, strict=True):
+def check_filter_size(model, corruption_entities):
+    """ Raise a warning when trying to evaluate with too many entities.
+
+        Doing so will likely result in shooting in your feet, as the protocol will be excessively hard,
+        hence the warning message.
+
+        Addresses #186.
+
+    Parameters
+    ----------
+    model : the model
+    corruption_entities : the corruption_entities used in the protocol
+
+    Returns
+    -------
+    None.
+
+    """
+
+    warn_msg = """You are attempting to use %d distinct entities to generate synthetic negatives in the evaluation 
+    protocol. This may be unnecessary and will lead to a 'harder' task. Besides, it will lead to a much slower 
+    evaluation procedure. We recommended to set the 'corruption_entities' argument to a reasonably sized set 
+    of entities. The size of corruption_entities depends on your domain-specific task."""
+
+    if corruption_entities is None:
+        ent_for_corruption_size = len(model.ent_to_idx)
+    else:
+        ent_for_corruption_size = len(corruption_entities)
+
+    if ent_for_corruption_size >= TOO_MANY_ENTITIES_TH:
+        warnings.warn(warn_msg % ent_for_corruption_size)
+        logger.warning(warn_msg, ent_for_corruption_size)
+
+
+def filter_unseen_entities(X, model, verbose=False):
     """Filter unseen entities in the test set.
 
     Parameters
@@ -616,32 +690,24 @@ def filter_unseen_entities(X, model, verbose=False, strict=True):
         A knowledge graph embedding model.
     verbose : bool
         Verbose mode.
-    strict : bool
-        Strict mode. If True then any unseen entity will cause a RuntimeError.
-        If False then triples containing unseen entities will be filtered out.
 
     Returns
     -------
     filtered X : ndarray, shape [n, 3]
         An array of test triples containing no unseen entities.
     """
-
-    logger.debug('Finding entities in test set that are not previously seen by model')
+    logger.debug('Finding entities in the dataset that are not previously seen by model')
     ent_seen = np.unique(list(model.ent_to_idx.keys()))
     df = pd.DataFrame(X, columns=['s', 'p', 'o'])
     filtered_df = df[df.s.isin(ent_seen) & df.o.isin(ent_seen)]
     n_removed_ents = df.shape[0] - filtered_df.shape[0]
-
-    if strict and n_removed_ents > 0:
-        msg = 'Unseen entities found in test set, please remove or run evaluate_performance() with strict=False.'
-        logger.error(msg)
-        raise RuntimeError(msg)
-    else:
+    if n_removed_ents > 0:
         msg = 'Removing {} triples containing unseen entities. '.format(n_removed_ents)
         if verbose:
             logger.info(msg)
         logger.debug(msg)
         return filtered_df.values
+    return X
 
 
 def _remove_unused_params(params):
@@ -882,9 +948,9 @@ def _scalars_into_lists(param_grid):
 def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid, max_combinations=None,
                               param_grid_random_seed=0, use_filter=True, early_stopping=False,
                               early_stopping_params=None, use_test_for_selection=False, entities_subset=None,
-                              corrupt_side='s+o', use_default_protocol=True, retrain_best_model=False, verbose=False):
+                              corrupt_side='s,o', use_default_protocol=False, retrain_best_model=False, verbose=False):
     """Model selection routine for embedding models via either grid search or random search.
-    
+
     For grid search, pass a fixed ``param_grid`` and leave ``max_combinations`` as `None`
     so that all combinations will be explored.
 
@@ -925,7 +991,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         or ``"lr": lambda: np.random.uniform(0.01, 0.1)``.
     max_combinations: int
         Maximum number of combinations to explore.
-        By default (None) all combinations will be explored, 
+        By default (None) all combinations will be explored,
         which makes it incompatible with random parameters for random search.
     param_grid_random_seed: int
         Random seed for the parameters that are callables and random.
@@ -988,10 +1054,11 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         ``s`` is to corrupt only subject.
         ``o`` is to corrupt only object.
         ``s+o`` is to corrupt both subject and object.
+        ``s,o`` is to corrupt both subject and object but ranks are computed separately (default).
     use_default_protocol: bool
-        Flag to indicate whether to evaluate head and tail corruptions separately(default:True).
+        Flag to indicate whether to evaluate head and tail corruptions separately(default:False).
         If this is set to true, it will ignore corrupt_side argument and corrupt both head
-        and tail separately and rank triples.
+        and tail separately and rank triples i.e. corrupt_side='s,o' mode.
     retrain_best_model: bool
         Flag to indicate whether best model should be re-trained at the end with the validation set used in the search.
         Default: False.
@@ -1014,12 +1081,12 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     best_mrr_train : float
         The MRR (unfiltered) of the best model computed over the validation set in the model selection loop.
 
-    ranks_test : ndarray, shape [n] or [n,2] depending on the value of use_default_protocol.
+    ranks_test : ndarray, shape [n] or [n,2] depending on the value of corrupt_side.
         An array of ranks of test triples.
-        When ``use_default_protocol=True`` the function returns [n,2]. The first column represents the rank against 
-        subject corruptions and the second column represents the rank against object corruptions. 
+        When ``corrupt_side='s,o'`` the function returns [n,2]. The first column represents the rank against
+        subject corruptions and the second column represents the rank against object corruptions.
         In other cases, it returns [n] i.e. rank against the specified corruptions.
-        
+
     mrr_test : float
         The MRR (filtered) of the best model, retrained on the concatenation of training and validation sets,
         computed over the test set.
@@ -1067,6 +1134,10 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
     """
     logger.debug('Starting gridsearch over hyperparameters. {}'.format(param_grid))
+    if use_default_protocol:
+        logger.warning('DeprecationWarning: use_default_protocol will be removed in future. \
+                        Please use corrupt_side argument instead.')
+        corrupt_side = 's,o'
 
     if early_stopping_params is None:
         early_stopping_params = {}

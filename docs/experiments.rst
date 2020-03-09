@@ -10,7 +10,43 @@ Predictive Performance
 We report the filtered MR, MRR, Hits@1,3,10 for the most common datasets used in literature.
 
 
-FB15K-237 
+.. note:: **On ConvE Evaluation**.
+    Results reported in the literature for ConvE are based on the alternative *1-N* evaluation protocol which requires
+    that reciprocal relations are added to the dataset :cite:`DettmersMS018`:
+
+    .. math::
+        D \leftarrow (D, D_{recip})
+
+    .. math::
+        D_{recip} \leftarrow \{ \, (o, p_r, s) \,|\, \forall x \in D, x = (s, p, o) \}
+
+    During training each unique pair of subject and predicate can predict all possible object scores for that pairs, and
+    therefore object corruptions evaluation can be performed with a single forward pass:
+
+    .. math::
+        ConvE(s, p, o)
+
+    In the standard corruption procedure the subject entity is replaced by corruptions:
+
+    .. math::
+        ConvE(s_{corr}, p, o),
+
+    However in the `1-N` protocol subject corruptions are interpreted as object corruptions of the reciprocal relation:
+
+    .. math::
+        ConvE(o, p_r, s_{corr})
+
+
+    To reproduce the results reported in the literature using the `1-N` evaluation protocol, add reciprocal relations by
+    specifying ``add_reciprocal_rels`` in the dataset loader function, e.g. ``load_fb15k(add_reciprocal_rels=True)``,
+    and run the evaluation protocol with object corruptions by specifying ``corrupt_sides='o'``.
+
+    Results obtained with the standard evaluation protocol are labeled *ConvE*, while those obtained with the *1-N*
+    protocol are marked *ConvE(1-N)*.
+
+
+
+FB15K-237
 ---------
 
 ========== ======== ====== ======== ======== ========== ========================
@@ -91,6 +127,42 @@ FB15K-237
                                                          seed: 0;
                                                          batches_count: 300;
 
+  ConvE    1060     0.26   0.19     0.28     0.38        k: 200;
+                                                         epochs: 4000;
+                                                         loss: bce;
+                                                         loss_params: {label_smoothing=0.1}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         conv_filters: 32,
+                                                         conv_kernel_size: 3,
+                                                         dropout_embed: 0.2,
+                                                         dropout_conv: 0.1,
+                                                         dropout_dense: 0.3,
+                                                         use_batchnorm: True,
+                                                         use_bias: True};
+                                                         seed: 0;
+                                                         batches_count: 100;
+
+ConvE(1-N)   234     0.32   0.23      0.35     0.50      k: 200;
+                                                         epochs: 4000;
+                                                         loss: bce;
+                                                         loss_params: {label_smoothing=0.1}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         conv_filters: 32,
+                                                         conv_kernel_size: 3,
+                                                         dropout_embed: 0.2,
+                                                         dropout_conv: 0.1,
+                                                         dropout_dense: 0.3,
+                                                         use_batchnorm: True,
+                                                         use_bias: True};
+                                                         seed: 0;
+                                                         batches_count: 100;
+
 ========== ======== ====== ======== ======== ========== ========================
 
 .. note:: FB15K-237 validation and test sets include triples with entities that do not occur
@@ -99,176 +171,248 @@ FB15K-237
     set and 28 from the test set).
 
 
-
 WN18RR
 ------
 
-========== ========= ====== ======== ======== ========== =======================
-  Model       MR      MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
-========== ========= ====== ======== ======== ========== =======================
-  TransE    2692      0.22    0.03     0.37      0.54     k: 350;
-                                                          epochs: 4000;
-                                                          eta: 30;
-                                                          loss: multiclass_nll;
-                                                          optimizer: adam;
-                                                          optimizer_params:
-                                                          lr: 0.0001;
-                                                          regularizer: LP;
-                                                          regularizer_params:
-                                                          lambda: 0.0001;
-                                                          p: 2;
-                                                          seed: 0;
-                                                          normalize_ent_emb: false;
-                                                          embedding_model_params:
-                                                          norm: 1;
-                                                          batches_count: 150;
+============ =========== ======== ========== ========== ============ =========================
+ Model        MR          MRR      Hits@1     Hits@3     Hits\@10     Hyperparameters
+============ =========== ======== ========== ========== ============ =========================
+  TransE      2692        0.22     0.03       0.37       0.54         k: 350;
+                                                                      epochs: 4000;
+                                                                      eta: 30;
+                                                                      loss: multiclass_nll;
+                                                                      optimizer: adam;
+                                                                      optimizer_params:
+                                                                      lr: 0.0001;
+                                                                      regularizer: LP;
+                                                                      regularizer_params:
+                                                                      lambda: 0.0001;
+                                                                      p: 2;
+                                                                      seed: 0;
+                                                                      normalize_ent_emb: false;
+                                                                      embedding_model_params:
+                                                                      norm: 1;
+                                                                      batches_count: 150;
 
- DistMult   5531      0.47    0.43     0.48      0.53     k: 350;
-                                                          epochs: 4000;
-                                                          eta: 30;
-                                                          loss: multiclass_nll;
-                                                          optimizer: adam;
-                                                          optimizer_params:
-                                                          lr: 0.0001;
-                                                          regularizer: LP;
-                                                          regularizer_params:
-                                                          lambda: 0.0001;
-                                                          p: 2;
-                                                          seed: 0;
-                                                          normalize_ent_emb: false;
-                                                          batches_count: 100;
+ DistMult     5531        0.47     0.43       0.48       0.53         k: 350;
+                                                                      epochs: 4000;
+                                                                      eta: 30;
+                                                                      loss: multiclass_nll;
+                                                                      optimizer: adam;
+                                                                      optimizer_params:
+                                                                      lr: 0.0001;
+                                                                      regularizer: LP;
+                                                                      regularizer_params:
+                                                                      lambda: 0.0001;
+                                                                      p: 2;
+                                                                      seed: 0;
+                                                                      normalize_ent_emb: false;
+                                                                      batches_count: 100;
 
- ComplEx    4177      0.51    0.46     0.53      0.58     k: 200;
-                                                          epochs: 4000;
-                                                          eta: 20;
-                                                          loss: multiclass_nll;
-                                                          loss_params:
-                                                          margin: 1;
-                                                          optimizer: adam;
-                                                          optimizer_params:
-                                                          lr: 0.0005;
-                                                          seed: 0;
-                                                          regularizer: LP;
-                                                          regularizer_params:
-                                                          lambda: 0.05;
-                                                          p: 3;
-                                                          batches_count: 10;
+ ComplEx      4177        0.51     0.46       0.53       0.58         k: 200;
+                                                                      epochs: 4000;
+                                                                      eta: 20;
+                                                                      loss: multiclass_nll;
+                                                                      loss_params:
+                                                                      margin: 1;
+                                                                      optimizer: adam;
+                                                                      optimizer_params:
+                                                                      lr: 0.0005;
+                                                                      seed: 0;
+                                                                      regularizer: LP;
+                                                                      regularizer_params:
+                                                                      lambda: 0.05;
+                                                                      p: 3;
+                                                                      batches_count: 10;
 
-  HolE     7028      0.47    0.44     0.48       0.53     k: 200;
-                                                          epochs: 4000;
-                                                          eta: 20;
-                                                          loss: self_adversarial;
-                                                          loss_params:
-                                                          margin: 1;
-                                                          optimizer: adam;
-                                                          optimizer_params:
-                                                          lr: 0.0005;
-                                                          seed: 0;
-                                                          batches_count: 50;
+ HolE         7028        0.47     0.44       0.48       0.53         k: 200;
+                                                                      epochs: 4000;
+                                                                      eta: 20;
+                                                                      loss: self_adversarial;
+                                                                      loss_params:
+                                                                      margin: 1;
+                                                                      optimizer: adam;
+                                                                      optimizer_params:
+                                                                      lr: 0.0005;
+                                                                      seed: 0;
+                                                                      batches_count: 50;
 
-  ConvKB   3652      0.39    0.33     0.42       0.48    k: 200;
-                                                         epochs: 500;
-                                                         eta: 10;
-                                                         loss: multiclass_nll;
-                                                         loss_params: {}
-                                                         optimizer: adam;
-                                                         optimizer_params:
-                                                         lr: 0.0001;
-                                                         embedding_model_params:{
-                                                         num_filters: 32,
-                                                         filter_sizes: 1,
-                                                         dropout: 0.1};
-                                                         seed: 0;
-                                                         batches_count: 300;
+ ConvKB       3652        0.39     0.33       0.42       0.48         k: 200;
+                                                                      epochs: 500;
+                                                                      eta: 10;
+                                                                      loss: multiclass_nll;
+                                                                      loss_params: {}
+                                                                      optimizer: adam;
+                                                                      optimizer_params:
+                                                                      lr: 0.0001;
+                                                                      embedding_model_params:{
+                                                                      num_filters: 32,
+                                                                      filter_sizes: 1,
+                                                                      dropout: 0.1};
+                                                                      seed: 0;
+                                                                      batches_count: 300;
 
-========== ========= ====== ======== ======== ========== =======================
+ ConvE        5346        0.45     0.42       0.47       0.52         k: 200;
+                                                                      epochs: 4000;
+                                                                      loss: bce;
+                                                                      loss_params: {label_smoothing=0.1}
+                                                                      optimizer: adam;
+                                                                      optimizer_params:
+                                                                      lr: 0.0001;
+                                                                      embedding_model_params:{
+                                                                      conv_filters: 32,
+                                                                      conv_kernel_size: 3,
+                                                                      dropout_embed: 0.2,
+                                                                      dropout_conv: 0.1,
+                                                                      dropout_dense: 0.3,
+                                                                      use_batchnorm: True,
+                                                                      use_bias: True};
+                                                                      seed: 0;
+                                                                      batches_count: 100;
+
+ ConvE(1-N)   4842        0.48     0.45       0.49       0.54         k: 200;
+                                                                      epochs: 4000;
+                                                                      loss: bce;
+                                                                      loss_params: {label_smoothing=0.1}
+                                                                      optimizer: adam;
+                                                                      optimizer_params:
+                                                                      lr: 0.0001;
+                                                                      embedding_model_params:{
+                                                                      conv_filters: 32,
+                                                                      conv_kernel_size: 3,
+                                                                      dropout_embed: 0.2,
+                                                                      dropout_conv: 0.1,
+                                                                      dropout_dense: 0.3,
+                                                                      use_batchnorm: True,
+                                                                      use_bias: True};
+                                                                      seed: 0;
+                                                                      batches_count: 100;
+
+============ =========== ======== ========== ========== ============ =========================
 
 .. note:: WN18RR validation and test sets include triples with entities that do not occur
     in the training set. We found 198 unseen entities in the validation set and 209 in the test set.
     In the experiments we excluded the triples where such entities appear (210 triples in from the validation
     set and 210 from the test set).
 
+
 YAGO3-10
 --------
 
-======== ======== ====== ======== ======== ========= =========================
- Model      MR     MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
-======== ======== ====== ======== ======== ========= =========================
-TransE   1264      0.51   0.41     0.57     0.67      k: 350;
-                                                      epochs: 4000;
-                                                      eta: 30;
-                                                      loss: multiclass_nll;
-                                                      optimizer: adam;
-                                                      optimizer_params:
-                                                      lr: 0.0001;
-                                                      regularizer: LP;
-                                                      regularizer_params:
-                                                      lambda: 0.0001;
-                                                      p: 2;
-                                                      embedding_model_params:
-                                                      norm: 1;
-                                                      normalize_ent_emb: false;
-                                                      seed: 0;
-                                                      batches_count: 100;
+========== ========== ======== ========== ========== =========== ===========================
+ Model      MR         MRR      Hits@1     Hits@3     Hits\@10    Hyperparameters
+========== ========== ======== ========== ========== =========== ===========================
+TransE      1264       0.51     0.41       0.57       0.67        k: 350;
+                                                                  epochs: 4000;
+                                                                  eta: 30;
+                                                                  loss: multiclass_nll;
+                                                                  optimizer: adam;
+                                                                  optimizer_params:
+                                                                  lr: 0.0001;
+                                                                  regularizer: LP;
+                                                                  regularizer_params:
+                                                                  lambda: 0.0001;
+                                                                  p: 2;
+                                                                  embedding_model_params:
+                                                                  norm: 1;
+                                                                  normalize_ent_emb: false;
+                                                                  seed: 0;
+                                                                  batches_count: 100;
 
-DistMult 1107     0.50   0.41     0.55     0.66       k: 350;
-                                                      epochs: 4000;
-                                                      eta: 50;
-                                                      loss: multiclass_nll;
-                                                      optimizer: adam;
-                                                      optimizer_params:
-                                                      lr: 5e-05;
-                                                      regularizer: LP;
-                                                      regularizer_params:
-                                                      lambda: 0.0001;
-                                                      p: 3;
-                                                      seed: 0;
-                                                      normalize_ent_emb: false;
-                                                      batches_count: 100;
+DistMult    1107       0.50     0.41       0.55       0.66        k: 350;
+                                                                  epochs: 4000;
+                                                                  eta: 50;
+                                                                  loss: multiclass_nll;
+                                                                  optimizer: adam;
+                                                                  optimizer_params:
+                                                                  lr: 5e-05;
+                                                                  regularizer: LP;
+                                                                  regularizer_params:
+                                                                  lambda: 0.0001;
+                                                                  p: 3;
+                                                                  seed: 0;
+                                                                  normalize_ent_emb: false;
+                                                                  batches_count: 100;
 
-ComplEx  1227     0.49   0.40     0.54     0.66       k: 350;
-                                                      epochs: 4000;
-                                                      eta: 30;
-                                                      loss: multiclass_nll;
-                                                      optimizer: adam;
-                                                      optimizer_params:
-                                                      lr: 5e-05;
-                                                      regularizer: LP;
-                                                      regularizer_params:
-                                                      lambda: 0.0001;
-                                                      p: 3;
-                                                      seed: 0;
-                                                      batches_count: 100
+ComplEx     1227       0.49     0.40       0.54       0.66        k: 350;
+                                                                  epochs: 4000;
+                                                                  eta: 30;
+                                                                  loss: multiclass_nll;
+                                                                  optimizer: adam;
+                                                                  optimizer_params:
+                                                                  lr: 5e-05;
+                                                                  regularizer: LP;
+                                                                  regularizer_params:
+                                                                  lambda: 0.0001;
+                                                                  p: 3;
+                                                                  seed: 0;
+                                                                  batches_count: 100
 
-HolE     6776     0.50   0.42     0.56     0.65       k: 350;
-                                                      epochs: 4000;
-                                                      eta: 30;
-                                                      loss: self_adversarial;
-                                                      loss_params:
-                                                      alpha: 1;
-                                                      margin: 0.5;
-                                                      optimizer: adam;
-                                                      optimizer_params:
-                                                      lr: 0.0001;
-                                                      seed: 0;
-                                                      batches_count: 100
+HolE        6776       0.50     0.42       0.56       0.65        k: 350;
+                                                                  epochs: 4000;
+                                                                  eta: 30;
+                                                                  loss: self_adversarial;
+                                                                  loss_params:
+                                                                  alpha: 1;
+                                                                  margin: 0.5;
+                                                                  optimizer: adam;
+                                                                  optimizer_params:
+                                                                  lr: 0.0001;
+                                                                  seed: 0;
+                                                                  batches_count: 100
 
-ConvKB   2820     0.30    0.21    0.34     0.50      k: 200;
-                                                     epochs: 500;
-                                                     eta: 10;
-                                                     loss: multiclass_nll;
-                                                     loss_params: {}
-                                                     optimizer: adam;
-                                                     optimizer_params:
-                                                     lr: 0.0001;
-                                                     embedding_model_params:{
-                                                     num_filters: 32,
-                                                     filter_sizes: 1,
-                                                     dropout: 0.1};
-                                                     seed: 0;
-                                                     batches_count: 3000;
-======== ======== ====== ======== ======== ========= =========================
+ConvKB      2820       0.30     0.21       0.34       0.50        k: 200;
+                                                                  epochs: 500;
+                                                                  eta: 10;
+                                                                  loss: multiclass_nll;
+                                                                  loss_params: {}
+                                                                  optimizer: adam;
+                                                                  optimizer_params:
+                                                                  lr: 0.0001;
+                                                                  embedding_model_params:{
+                                                                  num_filters: 32,
+                                                                  filter_sizes: 1,
+                                                                  dropout: 0.1};
+                                                                  seed: 0;
+                                                                  batches_count: 3000;
 
+ ConvE      6063       0.40     0.33       0.42       0.53        k: 300;
+                                                                  epochs: 4000;
+                                                                  loss: bce;
+                                                                  loss_params: {label_smoothing=0.1}
+                                                                  optimizer: adam;
+                                                                  optimizer_params:
+                                                                  lr: 0.0001;
+                                                                  embedding_model_params:{
+                                                                  conv_filters: 32,
+                                                                  conv_kernel_size: 3,
+                                                                  dropout_embed: 0.2,
+                                                                  dropout_conv: 0.1,
+                                                                  dropout_dense: 0.3,
+                                                                  use_batchnorm: True,
+                                                                  use_bias: True};
+                                                                  seed: 0;
+                                                                  batches_count: 300;
+
+ConvE(1-N)  2741       0.55     0.48       0.60       0.69        k: 300;
+                                                                  epochs: 4000;
+                                                                  loss: bce;
+                                                                  loss_params: {label_smoothing=0.1}
+                                                                  optimizer: adam;
+                                                                  optimizer_params:
+                                                                  lr: 0.0001;
+                                                                  embedding_model_params:{
+                                                                  conv_filters: 32,
+                                                                  conv_kernel_size: 3,
+                                                                  dropout_embed: 0.2,
+                                                                  dropout_conv: 0.1,
+                                                                  dropout_dense: 0.3,
+                                                                  use_batchnorm: True,
+                                                                  use_bias: True};
+                                                                  seed: 0;
+                                                                  batches_count: 300;
+
+========== ========== ======== ========== ========== =========== ===========================
 
 
 .. note:: YAGO3-10 validation and test sets include triples with entities that do not occur
@@ -358,6 +502,42 @@ FB15K
                                                          seed: 0;
                                                          batches_count: 300;
 
+  ConvE     385      0.50    0.42     0.52     0.66      k: 300;
+                                                         epochs: 4000;
+                                                         loss: bce;
+                                                         loss_params: {label_smoothing=0.1}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         conv_filters: 32,
+                                                         conv_kernel_size: 3,
+                                                         dropout_embed: 0.2,
+                                                         dropout_conv: 0.1,
+                                                         dropout_dense: 0.3,
+                                                         use_batchnorm: True,
+                                                         use_bias: True};
+                                                         seed: 0;
+                                                         batches_count: 100;
+
+ConvE(1-N)    55     0.80     0.74    0.84     0.89      k: 300;
+                                                         epochs: 4000;
+                                                         loss: bce;
+                                                         loss_params: {label_smoothing=0.1}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         conv_filters: 32,
+                                                         conv_kernel_size: 3,
+                                                         dropout_embed: 0.2,
+                                                         dropout_conv: 0.1,
+                                                         dropout_dense: 0.3,
+                                                         use_batchnorm: True,
+                                                         use_bias: True};
+                                                         seed: 0;
+                                                         batches_count: 100;
+
 ========== ======== ====== ======== ======== ========== ========================
 
 WN18
@@ -440,7 +620,44 @@ TransE     260      0.66    0.44     0.88      0.95     k: 150;
                                                          seed: 0;
                                                          batches_count: 300;
 
+  ConvE     492      0.93   0.91     0.94     0.95       k: 300;
+                                                         epochs: 4000;
+                                                         loss: bce;
+                                                         loss_params: {label_smoothing=0.1}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         conv_filters: 32,
+                                                         conv_kernel_size: 3,
+                                                         dropout_embed: 0.2,
+                                                         dropout_conv: 0.1,
+                                                         dropout_dense: 0.3,
+                                                         use_batchnorm: True,
+                                                         use_bias: True};
+                                                         seed: 0;
+                                                         batches_count: 100;
+
+ConvE(1-N)    436    0.95    0.93     0.95     0.95      k: 300;
+                                                         epochs: 4000;
+                                                         loss: bce;
+                                                         loss_params: {label_smoothing=0.1}
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0001;
+                                                         embedding_model_params:{
+                                                         conv_filters: 32,
+                                                         conv_kernel_size: 3,
+                                                         dropout_embed: 0.2,
+                                                         dropout_conv: 0.1,
+                                                         dropout_dense: 0.3,
+                                                         use_batchnorm: True,
+                                                         use_bias: True};
+                                                         seed: 0;
+                                                         batches_count: 100;
+
 ========== ======== ====== ======== ======== ========== ========================
+
 
 To reproduce the above results: ::
 
@@ -448,10 +665,9 @@ To reproduce the above results: ::
     $ python predictive_performance.py
 
 
-.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~97 hours on
+.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~115 hours on
     an Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box equipped with a Tesla V100 16GB.
     The long running time is mostly due to the early stopping configuration (see section below).
-
 
 .. note:: All of the experiments above were conducted with early stopping on half the validation set.
     Typically, the validation set can be found in ``X['valid']``.
@@ -483,12 +699,12 @@ Experiments can be limited to specific models-dataset combinations as follows: :
 
     $ python predictive_performance.py -h
     usage: predictive_performance.py [-h] [-d {fb15k,fb15k-237,wn18,wn18rr,yago310}]
-                                     [-m {complex,transe,distmult,hole,convkb}]
+                                     [-m {complex,transe,distmult,hole,convkb,conve}]
 
     optional arguments:
       -h, --help            show this help message and exit
       -d {fb15k,fb15k-237,wn18,wn18rr,yago310}, --dataset {fb15k,fb15k-237,wn18,wn18rr,yago310}
-      -m {complex,transe,distmult,hole,convkb}, --model {complex,transe,distmult,hole,convkb}
+      -m {complex,transe,distmult,hole,convkb,conve}, --model {complex,transe,distmult,hole,convkb,conve}
 
 
 Runtime Performance
@@ -500,10 +716,14 @@ Ubuntu 16.04 box equipped with a Tesla V100 16GB gives the following runtime rep
 ======== ==============
 model     seconds/epoch
 ======== ==============
-ComplEx     1.34
-TransE      1.20
-DistMult    1.19
+ComplEx     1.33
+TransE      1.22
+DistMult    1.20
 HolE        1.30
-ConvKB      3.01
+ConvKB      2.83
+ConvE       1.13
 ======== ==============
 
+.. note::
+
+    ConvE is trained with ``bce`` loss instead of ``multiclass_nll``.

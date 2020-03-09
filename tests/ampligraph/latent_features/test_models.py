@@ -9,12 +9,30 @@ import numpy as np
 import pytest
 import os
 
-from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline, ConvKB
+from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline, ConvKB, ConvE
 from ampligraph.latent_features import set_entity_threshold, reset_entity_threshold
-from ampligraph.datasets import load_wn18
+from ampligraph.datasets import load_wn18, load_wn18rr
 from ampligraph.utils import save_model, restore_model
 from ampligraph.evaluation import evaluate_performance, hits_at_n_score
+from ampligraph.datasets import OneToNDatasetAdapter
+from ampligraph.utils import save_model, restore_model
 from ampligraph.evaluation.protocol import to_idx
+
+
+def test_conve_bce_combo():
+    # no exception
+    model = ConvE(loss='bce')
+
+    # no exception
+    model = TransE(loss='nll')
+
+    # Invalid combination. Hence exception.
+    with pytest.raises(ValueError):
+        model = TransE(loss='bce')
+
+    # Invalid combination. Hence exception.
+    with pytest.raises(ValueError):
+        model = ConvE(loss='nll')
 
 
 def test_large_graph_mode():
@@ -24,11 +42,38 @@ def test_large_graph_mode():
                     verbose=True, optimizer='sgd', optimizer_params={'lr': 0.001})
     model.fit(X['train'])
     X_filter = np.concatenate((X['train'], X['valid'], X['test']), axis=0)
-    evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s+o',
-                         use_default_protocol=True)
+    evaluate_performance(X['test'][::1000], model, X_filter, verbose=True, corrupt_side='s,o')
 
     y = model.predict(X['test'][:1])
     print(y)
+    reset_entity_threshold()
+
+
+def test_output_sizes():
+    ''' Test to check whether embedding matrix sizes match the input data (num rel/ent and k)
+    '''
+    def perform_test():
+        X = load_wn18rr()
+        k = 5
+        unique_entities = np.unique(np.concatenate([X['train'][:, 0],
+                                                    X['train'][:, 2]], 0))
+        unique_relations = np.unique(X['train'][:, 1])
+        model = TransE(batches_count=100, seed=555, epochs=1, k=k, loss='multiclass_nll', loss_params={'margin': 5},
+                        verbose=True, optimizer='sgd', optimizer_params={'lr': 0.001})
+        model.fit(X['train'])
+        # verify ent and rel shapes
+        assert(model.trained_model_params[0].shape[0] == len(unique_entities))
+        assert(model.trained_model_params[1].shape[0] == len(unique_relations))
+        # verify k
+        assert(model.trained_model_params[0].shape[1] == k)
+        assert(model.trained_model_params[1].shape[1] == k)
+
+    # Normal mode
+    perform_test()
+
+    # Large graph mode
+    set_entity_threshold(10)
+    perform_test()
     reset_entity_threshold()
 
 
@@ -81,7 +126,6 @@ def test_evaluate_RandomBaseline():
     model.fit(X["train"])
     ranks = evaluate_performance(X["test"],
                                  model=model,
-                                 use_default_protocol=False,
                                  corrupt_side='s+o',
                                  verbose=False)
     hits10 = hits_at_n_score(ranks, n=10)
@@ -91,8 +135,7 @@ def test_evaluate_RandomBaseline():
 
     ranks = evaluate_performance(X["test"],
                                  model=model,
-                                 use_default_protocol=True,
-                                 corrupt_side='s+o',
+                                 corrupt_side='s,o',
                                  verbose=False)
     hits10 = hits_at_n_score(ranks, n=10)
     hits1 = hits_at_n_score(ranks, n=1)
@@ -102,8 +145,7 @@ def test_evaluate_RandomBaseline():
     ranks_filtered = evaluate_performance(X["test"],
                                           filter_triples=np.concatenate((X['train'], X['valid'], X['test'])),
                                           model=model,
-                                          use_default_protocol=True,
-                                          corrupt_side='s+o',
+                                          corrupt_side='s,o',
                                           verbose=False)
     hits10 = hits_at_n_score(ranks_filtered, n=10)
     hits1 = hits_at_n_score(ranks_filtered, n=1)
@@ -296,6 +338,54 @@ def test_is_fitted_on():
     assert model.is_fitted_on(X2) is False
 
 
+def test_conve_fit_predict_save_restore():
+
+    X = load_wn18()
+    model = ConvE(batches_count=100, seed=22, epochs=1, k=10,
+                  embedding_model_params={'conv_filters': 16, 'conv_kernel_size': 3},
+                  optimizer='adam', optimizer_params={'lr': 0.01},
+                  loss='bce', loss_params={},
+                  regularizer=None, regularizer_params={'p': 2, 'lambda': 1e-5},
+                  verbose=True, low_memory=True)
+
+    model.fit(X['train'])
+
+    y1 = model.predict(X['test'][:5])
+
+    save_model(model, 'model.tmp')
+    del model
+    model = restore_model('model.tmp')
+
+    y2 = model.predict(X['test'][:5])
+
+    assert np.all(y1 == y2)
+    os.remove('model.tmp')
+
+
+def test_conve_evaluation_protocol():
+    X = load_wn18()
+    model = ConvE(batches_count=200, seed=22, epochs=1, k=10,
+                  embedding_model_params={'conv_filters': 16, 'conv_kernel_size': 3},
+                  optimizer='adam', optimizer_params={'lr': 0.01},
+                  loss='bce', loss_params={},
+                  regularizer=None, regularizer_params={'p': 2, 'lambda': 1e-5},
+                  verbose=True, low_memory=True)
+
+    model.fit(X['train'])
+
+    y1 = model.predict(X['test'][:5])
+
+    save_model(model, 'model.tmp')
+    del model
+    model = restore_model('model.tmp')
+
+    y2 = model.predict(X['test'][:5])
+
+    assert np.all(y1 == y2)
+
+    os.remove('model.tmp')
+
+
 def test_convkb_train_predict():
 
     model = ConvKB(batches_count=2, seed=22, epochs=1, k=10, eta=1,
@@ -312,9 +402,16 @@ def test_convkb_train_predict():
     X = load_wn18()
     model.fit(X['train'])
 
-    y = model.predict(X['test'][:10])
+    y1 = model.predict(X['test'][:5])
 
-    print(y)
+    save_model(model, 'convkb.tmp')
+    del model
+
+    model = restore_model('convkb.tmp')
+
+    y2 = model.predict(X['test'][:5])
+
+    assert np.all(y1 == y2)
 
 
 def test_convkb_save_restore():

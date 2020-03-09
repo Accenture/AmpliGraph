@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.0 
+**9 Mar 2020**
+
+- ConvE model Implementation (#178)
+- Changes to evaluate_performance API (#183)
+- Option to add reciprocal relations (#181)
+- Minor fixes to ConvKB (#168, #167)
+- Minor fixes in large graph mode (#174, #172, #169)
+- Option to skip unseen entities checks when train_test_split is used (#163)
+- Stability of NLL losses (#170)
+- ICLR-20 calibration paper experiments added in branch paper/ICLR-20 
+
+
 ## 1.2.0 
 **22 Oct 2019**
 

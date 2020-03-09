@@ -76,7 +76,7 @@ jobs:
           command: |
             . venv/bin/activate
             venv/bin/python3 -m pip install flake8
-            venv/bin/python3 -m flake8 ampligraph --max-line-length 120 --ignore=W291,W293
+            venv/bin/python3 -m flake8 ampligraph --max-line-length 120 --ignore=W291,W293,W503
 
   docs:
     docker:
@@ -99,8 +99,33 @@ workflows:
   version: 2
   checks:
     jobs:
-      - build
-      - pip-check
-      - lint
-      - docs
-      - test
+      - build:
+          filters:
+            branches:
+              only:  
+                - master
+                - develop
+      - pip-check:
+          filters:
+            branches:
+              only:  
+                - master
+                - develop      
+      - lint:
+          filters:
+            branches:
+              only:  
+                - master
+                - develop      
+      - docs:
+          filters:
+            branches:
+              only:  
+                - master
+                - develop      
+      - test:
+          filters:
+            branches:
+              only:  
+                - master
+                - develop       

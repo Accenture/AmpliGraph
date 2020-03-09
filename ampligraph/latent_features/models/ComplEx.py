@@ -101,7 +101,7 @@ class ComplEx(EmbeddingModel):
             The seed used by the internal random numbers generator.
         embedding_model_params : dict
             ComplEx-specific hyperparams:
-            
+
             - **'negative_corruption_entities'** - Entities to be used for generation of corruptions while training.
               It can take the following values :
               ``all`` (default: all entities),
@@ -136,7 +136,7 @@ class ComplEx(EmbeddingModel):
               Switch to multiclass loss defined in :cite:`chen2015` by passing 'corrupt_sides'
               as ['s','o'] to embedding_model_params.
               To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params.
-            
+
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
             documentation for additional details.
@@ -193,7 +193,7 @@ class ComplEx(EmbeddingModel):
         else:
             self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
-            self.rel_emb = tf.get_variable('rel_emb', shape=[self.batch_size * 2, self.internal_k],
+            self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
                                            initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
 
     def _fn(self, e_s, e_p, e_o):

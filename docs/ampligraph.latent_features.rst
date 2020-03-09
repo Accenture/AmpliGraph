@@ -18,6 +18,7 @@ Knowledge Graph Embedding Models
     DistMult
     ComplEx
     HolE
+    ConvE
     ConvKB
 
 Anatomy of a Model
@@ -74,16 +75,23 @@ and object of a triple :math:`t=(s,p,o)` according to different intuitions:
 .. math::
     f_{ComplEx}=Re(\langle \mathbf{r}_p, \mathbf{e}_s, \overline{\mathbf{e}_o}  \rangle)
 
-+ :class:`HolE` :cite:`nickel2016holographic` uses circular correlation.
++ :class:`HolE` :cite:`nickel2016holographic` uses circular correlation (denoted by :math:`\otimes`):
 
 .. math::
-    f_{HolE}=\mathbf{w}_r \cdot (\mathbf{e}_s \star \mathbf{e}_o) = \frac{1}{k}\mathcal{F}(\mathbf{w}_r)\cdot( \overline{\mathcal{F}(\mathbf{e}_s)} \odot \mathcal{F}(\mathbf{e}_o))
+    f_{HolE}=\mathbf{w}_r \cdot (\mathbf{e}_s \otimes \mathbf{e}_o) = \frac{1}{k}\mathcal{F}(\mathbf{w}_r)\cdot( \overline{\mathcal{F}(\mathbf{e}_s)} \odot \mathcal{F}(\mathbf{e}_o))
+
++ :class:`ConvE` :cite:`DettmersMS018` uses convolutional layers (:math:`g` is a non-linear activation function, :math:`\ast` is the linear convolution operator, :math:`vec` indicates 2D reshaping):
+
+.. math::
+
+    f_{ConvE} =  \langle \sigma \, (vec \, ( g \, ([ \overline{\mathbf{e}_s} ; \overline{\mathbf{r}_p} ] \ast \Omega )) \, \mathbf{W} )) \, \mathbf{e}_o\rangle
+
 
 + :class:`ConvKB` :cite:`Nguyen2018` uses convolutional layers and a dot product:
 
 .. math::
 
-    f_{ConvKB}= concat(g([\mathbf{e}_s, \mathbf{r}_p, \mathbf{e}_o]) * \Omega)) \cdot W
+    f_{ConvKB}= concat \,(g \, ([\mathbf{e}_s, \mathbf{r}_p, \mathbf{e}_o]) * \Omega)) \cdot W
 
 
 .. _loss:
@@ -106,6 +114,7 @@ and they can be thus used :ref:`during model selection <eval>`.
     SelfAdversarialLoss
     NLLLoss
     NLLMulticlass
+    BCELoss
     
 .. _ref-reg:
 

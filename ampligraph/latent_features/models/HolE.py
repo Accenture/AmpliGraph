@@ -32,15 +32,6 @@ class HolE(ComplEx):
     >>> model.fit(X)
     >>> model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
     [[0.009254738], [0.00023370088]]
-    array([[ 0.2503009 , -0.2598746 , -0.27378836,  0.15603328,  0.28826827,
-        -0.19956978,  0.3039347 , -0.2473412 ,  0.08970609, -0.186578  ,
-         0.13491984,  0.267222  ,  0.3285695 , -0.26081076, -0.2255996 ,
-        -0.42164195,  0.02948518, -0.5940778 , -0.36562866,  0.14355545],
-       [-0.18769145,  0.23636112, -0.43104184, -0.32185245,  0.07910233,
-         0.20204252,  0.3211268 ,  0.10365302,  0.3958077 , -0.19850788,
-        -0.06766941, -0.1205449 ,  0.09295252, -0.45956728, -0.03207169,
-        -0.39183694,  0.04791561, -0.11758145, -0.3373933 ,  0.01187571]],
-      dtype=float32)
    """
     def __init__(self,
                  k=constants.DEFAULT_EMBEDDING_SIZE,
@@ -76,8 +67,8 @@ class HolE(ComplEx):
         seed : int
             The seed used by the internal random numbers generator.
         embedding_model_params : dict
-            HolE-specific hyperparams: 
-            
+            HolE-specific hyperparams:
+
             - **negative_corruption_entities** - Entities to be used for generation of corruptions while training.
               It can take the following values :
               ``all`` (default: all entities),
@@ -86,7 +77,7 @@ class HolE(ComplEx):
               or an int (which indicates how many entities that should be used for corruption generation).
             - **corrupt_sides** : Specifies how to generate corruptions for training.
               Takes values `s`, `o`, `s+o` or any combination passed as a list.
-            
+
         optimizer : string
             The optimizer used to minimize the loss function. Choose between 'sgd',
             'adagrad', 'adam', 'momentum'.
@@ -112,7 +103,7 @@ class HolE(ComplEx):
               Switch to multiclass loss defined in :cite:`chen2015` by passing
               'corrupt_sides' as ['s','o'] to embedding_model_params.
               To use loss defined in :cite:`kadlecBK17` pass 'corrupt_sides' as 'o' to embedding_model_params.
-            
+
         loss_params : dict
             Dictionary of loss-specific hyperparameters. See :ref:`loss functions <loss>`
             documentation for additional details.
