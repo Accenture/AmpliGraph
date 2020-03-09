@@ -33,6 +33,12 @@ class ConvE(EmbeddingModel):
         f_{ConvE} =  \langle \sigma \, (vec \, ( g \, ([ \overline{\mathbf{e}_s} ; \overline{\mathbf{r}_p} ]
         \ast \Omega )) \, \mathbf{W} )) \, \mathbf{e}_o\rangle
 
+
+    .. note::
+
+        ConvE does not handle 's+o' corruptions currently, nor ``large_graph`` mode.
+
+
     Examples
     --------
     >>> import numpy as np
@@ -77,7 +83,7 @@ class ConvE(EmbeddingModel):
                  initializer_params={'uniform': DEFAULT_XAVIER_IS_UNIFORM},
                  low_memory=False,
                  verbose=constants.DEFAULT_VERBOSE):
-        """Initialize an EmbeddingModel
+        """Initialize a ConvE model
 
         Also creates a new Tensorflow session for training.
 
