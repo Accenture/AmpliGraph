@@ -724,5 +724,6 @@ ConvKB      2.83
 ConvE       1.13
 ======== ==============
 
-..note::
-    ConvE is trained with `bce` loss instead of `multiclass_nll`.
+.. note::
+
+    ConvE is trained with ``bce`` loss instead of ``multiclass_nll``.
