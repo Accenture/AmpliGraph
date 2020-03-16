@@ -737,7 +737,7 @@ class ConvE(EmbeddingModel):
             raise e
 
     def _initialize_eval_graph(self, mode='test'):
-        """ Initialize the 1-N evaluation graph with the set protocol.
+        """ Initialize the evaluation graph with the set protocol.
 
         Parameters
         ----------
@@ -956,7 +956,7 @@ class ConvE(EmbeddingModel):
             logger.error(msg)
             raise RuntimeError(msg)
 
-        eval_protocol = self.eval_config.get('corrupt_side', constants.DEFAULT_PROTOCOL_EVAL)
+        eval_protocol = self.eval_config.get('corrupt_side', constants.DEFAULT_CORRUPT_SIDE_EVAL)
 
         if 'o' in eval_protocol:
             object_ranks = self._get_object_ranks(dataset_handle)
