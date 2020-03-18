@@ -12,8 +12,9 @@ import pandas as pd
 import numpy.testing as npt
 from ampligraph.utils import save_model, restore_model, create_tensorboard_visualizations, \
                              write_metadata_tsv, dataframe_to_triples
+from ampligraph.latent_features import TransE
 import pytest
-import pickle
+
 
 def test_save_and_restore_model():
 
@@ -72,13 +73,26 @@ def test_restore_model_errors():
 
 
 def test_create_tensorboard_visualizations():
-    # TODO: This
-    pass
+    # test if tensorflow API are still operative
+
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'y', 'a'],
+                  ['a', 'y', 'd'],
+                  ['c', 'y', 'd'],
+                  ['b', 'y', 'c'],
+                  ['f', 'y', 'e']])
+    model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise',
+                   loss_params={'margin': 5})
+    model.fit(X)
+    create_tensorboard_visualizations(model, 'tensorboard_files')
 
 
 def test_write_metadata_tsv():
     # TODO: This
     pass
+
 
 def test_dataframe_to_triples():
     X = pd.read_csv('https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv')
