@@ -554,7 +554,7 @@ class ConvE(EmbeddingModel):
         """Train a ConvE (with optional early stopping).
 
         The model is trained on a training set X using the training protocol
-        described in :cite:`Dettmers2016`.
+        described in :cite:`DettmersMS018`.
 
         Parameters
         ----------

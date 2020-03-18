@@ -492,6 +492,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
             * We compute the rank of the test triple by comparing against ALL the corruptions.
             * We then compute the number of False negatives that are ranked higher than the test triple; and then
               subtract this value from the above computed rank to yield the final filtered rank.
+              
             **Execution Time:** This method takes ~4 minutes on FB15K using ComplEx
             (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
 
@@ -510,16 +511,14 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
         - 's': corrupt only subject.
         - 'o': corrupt only object.
         - 's+o': corrupt both subject and object.
-        - 's,o': corrupt subject and object sides independently and return 2 ranks. This corresponds to the
-                 evaluation protocol used in literature, where head and tail corruptions are evaluated
-                 separately.
+        - 's,o': corrupt subject and object sides independently and return 2 ranks. This corresponds to the \
+        evaluation protocol used in literature, where head and tail corruptions are evaluated separately.
 
         .. note::
             When ``corrupt_side='s,o'`` the function will return 2*n ranks as a [n, 2] array.
             The first column of the array represents the subject corruptions.
             The second column of the array represents the object corruptions.
             Otherwise, the function returns n ranks as [n] array.
-
 
     use_default_protocol: bool
         Flag to indicate whether to use the standard protocol used in literature defined in

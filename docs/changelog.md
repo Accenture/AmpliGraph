@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1 
+**18 Mar 2020**
+
+- Minor bug fix in ConvE (#189)
+
+
 ## 1.3.0 
 **9 Mar 2020**
 
