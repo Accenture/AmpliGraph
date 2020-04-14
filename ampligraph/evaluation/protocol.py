@@ -492,7 +492,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
             * We compute the rank of the test triple by comparing against ALL the corruptions.
             * We then compute the number of False negatives that are ranked higher than the test triple; and then
               subtract this value from the above computed rank to yield the final filtered rank.
-              
+
             **Execution Time:** This method takes ~4 minutes on FB15K using ComplEx
             (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
 
@@ -664,8 +664,8 @@ def check_filter_size(model, corruption_entities):
     """
 
     warn_msg = """You are attempting to use %d distinct entities to generate synthetic negatives in the evaluation 
-    protocol. This may be unnecessary and will lead to a 'harder' task. Besides, it will lead to a much slower 
-    evaluation procedure. We recommended to set the 'corruption_entities' argument to a reasonably sized set 
+    protocol. This may be unnecessary and will lead to a 'harder' task. Besides, it will lead to a much slower
+    evaluation procedure. We recommended to set the 'corruption_entities' argument to a reasonably sized set
     of entities. The size of corruption_entities depends on your domain-specific task."""
 
     if corruption_entities is None:
