@@ -7,7 +7,7 @@
 #
 import numpy as np
 from abc import ABC, abstractmethod
-from quality_reporter import timing_and_memory
+from ampligraph.utils.profiling import timing_and_memory
 
 
 class AbstractGraphPartitioner(ABC):
@@ -37,8 +37,13 @@ class AbstractGraphPartitioner(ABC):
                          if x[2] in vertices or x[0] in vertices])
 
     @abstractmethod
-    def split(self, **kwargs):
+    def split(self, seed=None, **kwargs):
         """Split data into k equal size partitions.
+
+           Parameters
+           ----------
+           seed: seed for repeatability purposes, it is only
+                 used when certain randomization is required
 
            Returns
            -------
@@ -52,7 +57,7 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
         super().__init__(data, k)
 
     @timing_and_memory
-    def split(self, **kwargs):
+    def split(self, seed=None, **kwargs):
         """Split data into k equal size partitions by randomly drawing subset of vertices
            of partition size and retrieving triples associated with these vertices.
 
@@ -66,8 +71,10 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
         self.partition_size = int(self.size / self._k)
         vertices_partitions = []
         remaining_data = indexes
+        if seed is not None:
+            np.random.seed([(seed + i)*i for i in range(self._k) ])
         for part in range(self._k):
-            split = np.random.choice(indexes, self.partition_size)
+            split = np.random.choice(remaining_data, self.partition_size)
             remaining_data = np.setdiff1d(remaining_data, split)
             vertices_partitions.append(self.get_triples(vertices[split]))
 
@@ -79,7 +86,7 @@ class RandomEdgesGraphPartitioner(AbstractGraphPartitioner):
         super().__init__(data, k)
 
     @timing_and_memory
-    def split(self, **kwargs):
+    def split(self, seed=None, **kwargs):
         """Split data into k equal size partitions by randomly drawing subset of
         edges from dataset.
 
@@ -93,8 +100,10 @@ class RandomEdgesGraphPartitioner(AbstractGraphPartitioner):
         self.partition_size = int(self.size / self._k)
         partitions = []
         remaining_data = indexes
+        if seed is not None:
+            np.random.seed(seed)
         for part in range(self._k):
-            split = np.random.choice(indexes, self.partition_size)
+            split = np.random.choice(remaining_data, self.partition_size)
             remaining_data = np.setdiff1d(remaining_data, split)
             partitions.append(self._data[split])
 
@@ -106,7 +115,7 @@ class SortedEdgesGraphPartitioner(AbstractGraphPartitioner):
         super().__init__(data, k)
 
     @timing_and_memory
-    def split(self, **kwargs):
+    def split(self, seed=None, **kwargs):
         """Split data into k equal size partitions by drawing subset of edges from
         sorted dataset.
            
@@ -118,7 +127,7 @@ class SortedEdgesGraphPartitioner(AbstractGraphPartitioner):
         self.size = len(self._data)
         self.partition_size = int(self.size / self._k)
         partitions = []
-        self.sorted_data = np.sort(self._data, axis=0)
+        self.sorted_data = self._data[self._data[:,0].argsort()]
         
         for part in range(self._k):
             split = self.sorted_data[part * self.partition_size:self.partition_size * (1 + part), :]
@@ -132,7 +141,7 @@ class NaiveGraphPartitioner(AbstractGraphPartitioner):
         super().__init__(data, k)
 
     @timing_and_memory
-    def split(self, **kwargs):
+    def split(self, seed=None, **kwargs):
         """Split data into k equal size partitions by drawing subset of edges
         from dataset.
            
@@ -157,7 +166,7 @@ class DoubleSortedEdgesGraphPartitioner(AbstractGraphPartitioner):
         super().__init__(data, k)
 
     @timing_and_memory
-    def split(self, **kwargs):
+    def split(self, seed=None, **kwargs):
         """Split data into k equal size partitions by drawing subset of edges
         from double-sorted (according to subject and object) dataset with refinement.
                   
