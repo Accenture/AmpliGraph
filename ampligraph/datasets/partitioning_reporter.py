@@ -1,11 +1,14 @@
+# Copyright 2020 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 import numpy as np
 import matplotlib.pyplot as plt
-import ampligraph as amp
-from ampligraph import datasets
 import tracemalloc
 from time import time
-import pytest
-from abc import ABC, abstractmethod
 from functools import wraps
 
 
@@ -21,6 +24,7 @@ def get_memory_size():
     total = sum(stat.size for stat in stats)
     return total
 
+
 def get_human_readable_size(size_in_bytes):
     """Convert size in bytes in human readable units.
 
@@ -32,13 +36,14 @@ def get_human_readable_size(size_in_bytes):
     -------
     tuple of new size and unit, size in units GB/MB/KB/Bytes according to thresholds.
     """
-    if size_in_bytes >= 1024*1024*1024:
-        return float(size_in_bytes/(1024*1024*1024)), "GB" # return in GB
-    if size_in_bytes >= 1024*1024:
-        return float(size_in_bytes/(1024*1024)), "MB" # return in MB
+    if size_in_bytes >= 1024 * 1024 * 1024:
+        return float(size_in_bytes / (1024 * 1024 * 1024)), "GB"  # return in GB
+    if size_in_bytes >= 1024 * 1024:
+        return float(size_in_bytes / (1024 * 1024)), "MB"  # return in MB
     if size_in_bytes >= 1024:
-        return float(size_in_bytes/1024), "KB" # return in KB
+        return float(size_in_bytes / 1024), "KB"  # return in KB
     return float(size_in_bytes), "Bytes"
+
 
 def timing_and_memory(f):
     """Decorator to register time and memory used by a function f.
@@ -67,7 +72,10 @@ def timing_and_memory(f):
         mem_diff = mem_after - mem_before
         print("{}: memory before: {:.5}{}, after: {:.5}{}, consumed: {:.5}{}; exec time: {:.5}s".format(
             f.__name__,
-            *get_human_readable_size(mem_before), *get_human_readable_size(mem_after), *get_human_readable_size(mem_diff), end-start))
+            *get_human_readable_size(mem_before), 
+            *get_human_readable_size(mem_after),
+            *get_human_readable_size(mem_diff), 
+            end - start))
 
         if 'log' in kwargs:
             name = kwargs.get('log_name', f.__name__.upper())
@@ -119,7 +127,7 @@ class PartitioningReporter:
         edge_cut = np.mean(intersections)
         edge_cut_proportion = None
         if avg_size:
-            edge_cut_proportion = (edge_cut*100)/avg_size # edge cut with respect to the average partition size
+            edge_cut_proportion = (edge_cut * 100) / avg_size  # edge cut with respect to the average partition size
         return edge_cut, edge_cut_proportion
 
     def get_edge_imbalance(self, avg_size, max_size):
@@ -135,7 +143,7 @@ class PartitioningReporter:
         edge_imb: edge imbalance
         """
 
-        edge_imb = max_size/avg_size - 1
+        edge_imb = max_size / avg_size - 1
         return edge_imb
 
     def get_vertex_imbalance(self, partitions):
@@ -151,9 +159,9 @@ class PartitioningReporter:
         """
         lengths = []
         for partition in partitions:
-            lengths.append(len(np.asarray(list(set(partition[:,0]).union(set(partition[:,2]))))))
+            lengths.append(len(np.asarray(list(set(partition[:, 0]).union(set(partition[:, 2]))))))
 
-        vertex_imb = np.max(lengths)/np.mean(lengths) - 1
+        vertex_imb = np.max(lengths) / np.mean(lengths) - 1
         return vertex_imb
 
     def get_modularity(self):
@@ -168,7 +176,7 @@ class PartitioningReporter:
         """
         raise NotImplementedError
 
-    def report_single_partitioning(self, partitioning, EDGE_CUT=True, \
+    def report_single_partitioning(self, partitioning, EDGE_CUT=True, 
                                    EDGE_IMB=True, VERTEX_IMB=True):
         """Calculate different metrics for a single partition.
 
@@ -207,7 +215,7 @@ class PartitioningReporter:
 
         return metrics
 
-    def report(self, visualize=True, barh=True): # TODO: include plotting parameters 
+    def report(self, visualize=True, barh=True):  # TODO: include plotting parameters 
         """Collect individual reports for every partitioning.
 
         Parameters
@@ -221,11 +229,11 @@ class PartitioningReporter:
         """
         reports = {}
         for name, partitioning in self.partitionings.items():
-            reports[name] = self.report_single_partitioning(partitioning, EDGE_IMB=True, \
-                                                         VERTEX_IMB=True)
+            reports[name] = self.report_single_partitioning(partitioning, EDGE_IMB=True,
+                                                            VERTEX_IMB=True)
 
         if visualize:
-            plt.figure(figsize=(15,10))
+            plt.figure(figsize=(15, 10))
             ind = 1
             row_size = 3
             size = int(len(reports[list(reports.keys())[0]]) / row_size) + 1
@@ -233,8 +241,8 @@ class PartitioningReporter:
                 plot = False
                 dat = []
                 for report in reports:
-                    if reports[report][metric] != None:
-                        dat.append((str(report),reports[report][metric]))
+                    if reports[report][metric] is not None:
+                        dat.append((str(report), reports[report][metric]))
                         plot = True
                 if plot:
                     plt.subplot(size, row_size, ind)
@@ -249,8 +257,10 @@ class PartitioningReporter:
 
         return reports
 
+
 def main():
     pass
+
 
 if __name__ == "__main__":
     main()

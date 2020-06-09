@@ -32,4 +32,3 @@ def test_get_entity_triples():
     N = get_entity_triples(u, X)
 
     assert(np.all(N == XN))
-
