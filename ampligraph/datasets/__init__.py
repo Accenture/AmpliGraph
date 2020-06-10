@@ -16,7 +16,7 @@ from .numpy_adapter import NumpyDatasetAdapter
 from .oneton_adapter import OneToNDatasetAdapter
 from .graph_partitioner import AbstractGraphPartitioner, RandomVerticesGraphPartitioner, RandomEdgesGraphPartitioner, \
     SortedEdgesGraphPartitioner, NaiveGraphPartitioner, DoubleSortedEdgesGraphPartitioner 
-from .partitioning_reporter import PartitioningReporter
+from .partitioning_reporter import PartitioningReporter, compare_partitionings
 
 
 __all__ = ['load_from_csv', 'load_from_rdf', 'load_from_ntriples', 'load_wn18', 'load_fb15k',
@@ -24,4 +24,4 @@ __all__ = ['load_from_csv', 'load_from_rdf', 'load_from_ntriples', 'load_wn18', 
            'AmpligraphDatasetAdapter', 'NumpyDatasetAdapter', 'SQLiteAdapter', 'OneToNDatasetAdapter',
            'AbstractGraphPartitioner', 'RandomVerticesGraphPartitioner', 'RandomEdgesGraphPartitioner', 
            'SortedEdgesGraphPartitioner', 'NaiveGraphPartitioner', 'DoubleSortedEdgesGraphPartitioner',
-           'PartitioningReporter']
+           'PartitioningReporter', 'compare_partitionings']
