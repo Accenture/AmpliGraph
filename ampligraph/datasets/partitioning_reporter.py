@@ -90,6 +90,57 @@ class PartitioningReporter:
         vertex_imb = np.max(lengths) / np.mean(lengths) - 1
         return vertex_imb
 
+    def get_average_deviation_from_ideal_size_vertices(self, partitions):
+        """Metric that calculates the average difference between the
+           ideal size of partition (in terms of vertices) and real,
+           it is expressed as percentage deviation from ideal size.
+
+           Parameters
+           ----------
+           partitions: partitions in one partitioning
+
+           Returns
+           -------
+           percentage_dev: percentage vertex size partition deviation
+        """
+        k = len(partitions)
+        vertices = set()
+        sizes = []
+        for partition in partitions:
+            tmp = set(partition[:,0])
+            tmp.update(set(partition[:,2]))
+            vertices.update(tmp)
+            sizes.append(len(tmp))
+        data_size = len(vertices)
+        ideal_size = data_size/k
+        percentage_dev = ((np.sum([np.abs(ideal_size - size) for size in sizes])/k)/ideal_size)*100
+        return percentage_dev
+
+    def get_average_deviation_from_ideal_size_edges(self, partitions):
+        """Metric that calculates the average difference between the
+           ideal size of partition (in terms of edges) and real,
+           it is expressed as percentage deviation from ideal size.
+
+           Parameters
+           ----------
+           partitions: partitions in one partitioning
+
+           Returns
+           -------
+           percentage_dev: percentage edge size partition deviation
+        """
+
+        k = len(partitions)
+        edges = set()
+        sizes = []
+        for partition in partitions:
+            edges.update(set(["{} {} {}".format(*list(e)) for e in partition]))
+            sizes.append(len(partition))
+        data_size = len(edges)
+        ideal_size = data_size/k
+        percentage_dev = ((np.sum([np.abs(ideal_size - size) for size in sizes])/k)/ideal_size)*100
+        return percentage_dev
+
     def get_vertex_count(self, partitions):
         """Counts number of vertices in each partition 
            that estimates the size of partition.
@@ -180,6 +231,8 @@ class PartitioningReporter:
             metrics["VERTEX_IMB"] = vertex_imb
         metrics["VERTEX_COUNT"] = self.get_vertex_count(partitioning)
         metrics["EDGES_COUNT"] = self.get_edges_count(partitioning)
+        metrics["PERCENTAGE_DEV_EDGES"] = self.get_average_deviation_from_ideal_size_edges(partitioning)
+        metrics["PERCENTAGE_DEV_VERTICES"] = self.get_average_deviation_from_ideal_size_vertices(partitioning)
 
         return metrics
 
