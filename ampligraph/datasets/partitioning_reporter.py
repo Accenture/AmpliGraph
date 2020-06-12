@@ -252,9 +252,9 @@ class PartitioningReporter:
         for name, partitioning in self.partitionings.items():
             reports[name] = self.report_single_partitioning(partitioning, EDGE_IMB=True,
                                                             VERTEX_IMB=True)
-
+        k = len(self.partitionings[list(self.partitionings.keys())[0]][1])
         if visualize:
-            plt.figure(figsize=(15,10))
+            plt.figure(figsize=(15, 15 + 0.3 * k + 0.1 * len(self.partitionings)))
             ind = 1
             row_size = 3
             size = int(len(reports[list(reports.keys())[0]]) / row_size) + 1
@@ -281,8 +281,9 @@ class PartitioningReporter:
                                         'label2':label, 'color':colors[label]})
                         plot = True
                 if plot:
+                    plt.subplots_adjust(wspace = 0.1, hspace = 0.4)
                     plt.subplot(size, row_size, ind) 
-                    
+
                     if barh:
                         unpacked = {k: [dic[k] for dic in dat] for k in dat[0]}
                         data = copy.deepcopy(unpacked)
@@ -293,24 +294,31 @@ class PartitioningReporter:
                         
                     labels = list(colors.keys())
                     handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
-                    #plt.legend(handles, labels)                        
-                    labels = set(list(data["label2"]))
-                    if type(labels) == set:
+                    labels = []
+                    for elem in data["label2"]:
+                        if elem not in labels:
+                            labels.append(elem)
+                    #if type(labels) == set:
+                    if (ind % row_size) == 1:
                         plt.yticks(range(len(list(labels))), list(labels))
+                    else:
+                        plt.yticks([])
                     plt.title(metric)
+                    plt.xticks(rotation=70)
                     ind += 1                    
             plt.show()
             
         return reports
 
 
-def compare_partitionings(list_of_partitioners, data, visualize=True):
+def compare_partitionings(list_of_partitioners, data, num_partitions=2, visualize=True):
     """Wrapper around PartitioningReporter hiding logging settings.
 
        Parameters
        ---------
        list_of_partitioners: list of uninitialized partitioners
        data: numpy array with graoh to be splited into partitions
+       num_partitions: number of partitions required
        visualize [default=True]: flag whether to visualize results or not
     
        Returns
@@ -324,10 +332,15 @@ def compare_partitionings(list_of_partitioners, data, visualize=True):
                           DoubleSortedEdgesGraphPartitioner]
        >>>report = compare_partitionings(partitioners)
     """
+    if isinstance(num_partitions, int):
+        n_partitions = [num_partitions]*len(list_of_partitioners)
+    else:
+        n_partitions = num_partitions
     partitionings = {}    
-    for partitioner in list_of_partitioners:
+    for partitioner, n in zip(list_of_partitioners, n_partitions):
+        print("Running: {}".format(partitioner.__name__))
         logs = {}
-        partitioner_fitted = partitioner(data, k=2)
+        partitioner_fitted = partitioner(data, k=n)
         tmp = partitioner_fitted.split(log=logs)
         partitionings[partitioner.__name__] = (tmp, logs)
     reporter = PartitioningReporter(partitionings=partitionings)
