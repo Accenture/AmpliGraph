@@ -1102,33 +1102,36 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     >>> import numpy as np
     >>>
     >>> X = load_wn18()
+    >>>
     >>> model_class = ComplEx
     >>> param_grid = {
-    >>>                     "batches_count": [50],
-    >>>                     "seed": 0,
-    >>>                     "epochs": [4000],
-    >>>                     "k": [100, 200],
-    >>>                     "eta": [5,10,15],
-    >>>                     "loss": ["pairwise", "nll"],
-    >>>                     "loss_params": {
-    >>>                         "margin": [2]
-    >>>                     },
-    >>>                     "embedding_model_params": {
-    >>>
-    >>>                     },
-    >>>                     "regularizer": ["LP", None],
-    >>>                     "regularizer_params": {
-    >>>                         "p": [1, 3],
-    >>>                         "lambda": [1e-4, 1e-5]
-    >>>                     },
-    >>>                     "optimizer": ["adagrad", "adam"],
-    >>>                     "optimizer_params":{
-    >>>                         "lr": lambda: np.random.uniform(0.0001, 0.01)
-    >>>                     },
-    >>>                     "verbose": False
-    >>>                 }
-    >>> select_best_model_ranking(model_class, X['train'], X['valid'], X['test'], param_grid,
-    >>>                           max_combinations=100, use_filter=True, verbose=True,
+    >>>     "batches_count": [50],
+    >>>     "seed": 0,
+    >>>     "epochs": [100],
+    >>>     "k": [100, 200],
+    >>>     "eta": [5, 10, 15],
+    >>>     "loss": ["pairwise", "nll"],
+    >>>     "loss_params": {
+    >>>         "margin": [2]
+    >>>     },
+    >>>     "embedding_model_params": {
+    >>>     },
+    >>>     "regularizer": ["LP", None],
+    >>>     "regularizer_params": {
+    >>>         "p": [1, 3],
+    >>>         "lambda": [1e-4, 1e-5]
+    >>>     },
+    >>>     "optimizer": ["adagrad", "adam"],
+    >>>     "optimizer_params": {
+    >>>         "lr": lambda: np.random.uniform(0.0001, 0.01)
+    >>>     },
+    >>>     "verbose": False
+    >>> }
+    >>> select_best_model_ranking(model_class, X['train'], X['valid'], X['test'],
+    >>>                           param_grid,
+    >>>                           max_combinations=100,
+    >>>                           use_filter=True,
+    >>>                           verbose=True,
     >>>                           early_stopping=True)
 
     """
