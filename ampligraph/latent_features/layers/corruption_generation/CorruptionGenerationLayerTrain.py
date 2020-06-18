@@ -3,16 +3,15 @@ import tensorflow as tf
 
 class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
 
-    def __init__(self, eta, ent_size, **kwargs):
-        self.eta=eta
-        self.ent_size = ent_size
+    def __init__(self, eta, **kwargs):
+        self.eta = eta
         super(CorruptionGenerationLayerTrain, self).__init__(**kwargs)
 
     def build(self, input_shapes):
         super(CorruptionGenerationLayerTrain, self).build(input_shapes)  
 
     @tf.function
-    def call(self, pos):
+    def call(self, pos, ent_size):
 
         batch_size = tf.shape(pos)[0]
 
@@ -22,7 +21,7 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         keep_obj_mask = tf.logical_not(keep_subj_mask)
         keep_subj_mask = tf.cast(keep_subj_mask, tf.int32)
         keep_obj_mask = tf.cast(keep_obj_mask, tf.int32)
-        replacements = tf.random.uniform([tf.shape(dataset)[0]], 0, self.ent_size, dtype=tf.int32, seed=0)
+        replacements = tf.random.uniform([tf.shape(dataset)[0]], 0, ent_size, dtype=tf.int32, seed=0)
         subjects = tf.math.add(tf.math.multiply(keep_subj_mask, dataset[:, 0]),
                                tf.math.multiply(keep_obj_mask, replacements))
         relationships = dataset[:, 1]
