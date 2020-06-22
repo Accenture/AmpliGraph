@@ -370,10 +370,10 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s,o
                            tf.slice(X, [0, 2], [tf.shape(X)[0], 1])],
                           0)))
 
-        random_indices = tf.squeeze(tf.multinomial(tf.expand_dims(tf.zeros(tf.shape(entities_list)[0]), 0),
-                                                   num_samples=tf.shape(dataset)[0],
-                                                   seed=rnd))
-
+        random_indices = tf.random.uniform(shape=(tf.shape(dataset)[0],),
+                                           maxval=tf.shape(entities_list)[0],
+                                           dtype=tf.int32,
+                                           seed=rnd)
         replacements = tf.gather(entities_list, random_indices)
 
     subjects = tf.math.add(tf.math.multiply(keep_subj_mask, dataset[:, 0]),
