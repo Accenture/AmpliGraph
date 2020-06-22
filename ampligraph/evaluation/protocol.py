@@ -26,7 +26,7 @@ logger.setLevel(logging.DEBUG)
 TOO_MANY_ENTITIES_TH = 50000
 
 
-def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False):
+def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False, filtered_test_predicates=None):
     """Split into train and test sets.
 
      This function carves out a test set that contains only entities
@@ -43,6 +43,10 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
         A random seed used to split the dataset.
     allow_duplication: boolean
         Flag to indicate if the test set can contain duplicated triples.
+    filtered_test_predicates: None, list
+        If None, all predicate types will be considered for the test set.
+        If list, only the predicate types in the list will be considered for
+        the test set.
 
     Returns
     -------
@@ -115,8 +119,14 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
 
     loop_count = 0
     tolerance = len(X) * 10
+    # Set the indices of test set triples. If filtered, reduce candidate triples to certain predicate types.
+    if filtered_test_predicates:
+        test_triples_idx = np.where(np.isin(X[:, 1], filtered_test_predicates))[0]
+    else:
+        test_triples_idx = np.arange(len(X))
+
     while idx_test.shape[0] < test_size:
-        i = rnd.randint(len(X))
+        i = rnd.choice(test_triples_idx)
         if dict_subs[X[i, 0]] > 1 and dict_objs[X[i, 2]] > 1 and dict_rels[X[i, 1]] > 1:
             dict_subs[X[i, 0]] -= 1
             dict_objs[X[i, 2]] -= 1
@@ -133,12 +143,12 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
             if allow_duplication:
                 raise Exception("Cannot create a test split of the desired size. "
                                 "Some entities will not occur in both training and test set. "
-                                "Change seed values, or set test_size to a smaller value.")
+                                "Change seed values, remove filter on test predicates or set test_size to a smaller value.")
             else:
                 raise Exception("Cannot create a test split of the desired size. "
                                 "Some entities will not occur in both training and test set. "
-                                "Set allow_duplication=True, or "
-                                "change seed values, or set test_size to a smaller value.")
+                                "Set allow_duplication=True,"
+                                "change seed values, remove filter on test predicates or set test_size to a smaller value.")
 
     logger.debug('Completed random search.')
 
