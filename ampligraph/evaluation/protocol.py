@@ -143,12 +143,14 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
             if allow_duplication:
                 raise Exception("Cannot create a test split of the desired size. "
                                 "Some entities will not occur in both training and test set. "
-                                "Change seed values, remove filter on test predicates or set test_size to a smaller value.")
+                                "Change seed values, remove filter on test predicates or set "
+                                "test_size to a smaller value.")
             else:
                 raise Exception("Cannot create a test split of the desired size. "
                                 "Some entities will not occur in both training and test set. "
                                 "Set allow_duplication=True,"
-                                "change seed values, remove filter on test predicates or set test_size to a smaller value.")
+                                "change seed values, remove filter on test predicates or "
+                                "set test_size to a smaller value.")
 
     logger.debug('Completed random search.')
 

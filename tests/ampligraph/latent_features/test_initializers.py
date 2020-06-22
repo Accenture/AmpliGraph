@@ -76,3 +76,28 @@ def test_random_uniform():
         # print(np.min(tf_var), np.max(tf_var))
         assert(np.round(np.min(np_var),2)==np.round(np.min(tf_var),2))
         assert(np.round(np.max(np_var),2)==np.round(np.max(tf_var),2))  
+        
+def test_constant():
+    """Constant initializer test
+    """
+    tf.reset_default_graph()
+    tf.random.set_random_seed(117)
+    runiform_class = INITIALIZER_REGISTRY['constant']
+    ent_init = np.random.normal(1, 1, size=(300, 30))
+    rel_init = np.random.normal(2, 2, size=(10, 30))
+    runiform_obj = runiform_class({"entity":ent_init, "relation":rel_init})
+    var1 = tf.get_variable(shape=(300, 30), 
+                           initializer=runiform_obj.get_entity_initializer(300, 30, init_type='tf'), 
+                           name="ent_var")
+    var2 = tf.get_variable(shape=(10, 30), 
+                           initializer=runiform_obj.get_relation_initializer(10, 30, init_type='tf'), 
+                           name="rel_var")
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        tf_var1, tf_var2 = sess.run([var1, var2])
+        np_var1 = runiform_obj.get_entity_initializer(300, 30, init_type='np')
+        np_var2 = runiform_obj.get_relation_initializer(10, 30, init_type='np')
+        assert(np.round(np.mean(tf_var1), 0)==np.round(np.mean(np_var1), 0))
+        assert(np.round(np.std(tf_var1), 0)==np.round(np.std(np_var1), 0))
+        assert(np.round(np.mean(tf_var2), 0)==np.round(np.mean(np_var2), 0))
+        assert(np.round(np.std(tf_var2), 0)==np.round(np.std(np_var2), 0))

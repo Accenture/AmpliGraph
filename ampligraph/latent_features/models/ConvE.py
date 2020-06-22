@@ -255,10 +255,12 @@ class ConvE(EmbeddingModel):
             dense_dim = self.embedding_model_params['dense_dim']
 
             self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k],
-                                           initializer=self.initializer.get_entity_initializer(), 
+                                           initializer=self.initializer.get_entity_initializer(
+                                           len(self.ent_to_idx), self.k),
                                            dtype=tf.float32)
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
-                                           initializer=self.initializer.get_relation_initializer(), 
+                                           initializer=self.initializer.get_relation_initializer(
+                                           len(self.rel_to_idx), self.k),
                                            dtype=tf.float32)
 
             self.conv2d_W = tf.get_variable('conv2d_weights', shape=[ksize, ksize, ninput, nfilters],
