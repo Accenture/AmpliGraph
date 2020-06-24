@@ -1,168 +1,239 @@
-import numpy as np
-from ..datasets import AmpligraphDatasetAdapter
-import tempfile
+# Copyright 2020 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+from ampligraph.datasets.source_identifier import DataSourceIdentifier
 import sqlite3
-import time
+from sqlite3 import Error
+import numpy as np
+from urllib.request import pathname2url
 import os
-import logging
+import shelve
+import pandas as pd
+from datetime import datetime
+from ampligraph.utils.profiling import get_human_readable_size
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-
-class SQLiteAdapter(AmpligraphDatasetAdapter):
-    '''SQLLite adapter
-    '''
-
-    def __init__(self, existing_db_name=None, ent_to_idx=None, rel_to_idx=None):
-        """Initialize the class variables
-        Parameters
-        ----------
-        existing_db_name : string
-            Name of an existing database to use.
-            Assumes that the database has schema as required by the adapter and the persisted data is already mapped
-        ent_to_idx : dictionary of mappings
-            Mappings of entity to idx
-        rel_to_idx : dictionary of mappings
-            Mappings of relation to idx
-        """
-        super(SQLiteAdapter, self).__init__()
-        # persistance status of the data
-        self.persistance_status = {}
-        self.dbname = existing_db_name
-        # flag indicating whether we are using existing db
-        self.using_existing_db = False
-        self.temp_dir = None
-        if self.dbname is not None:
-            # If we are using existing db then the mappings need to be passed
-            assert (self.rel_to_idx is not None)
-            assert (self.ent_to_idx is not None)
-
-            self.using_existing_db = True
-            self.rel_to_idx = rel_to_idx
-            self.ent_to_idx = ent_to_idx
-
-    def get_db_name(self):
-        """Returns the db name
-        """
-        return self.dbname
-
-    def _create_schema(self):
-        """Creates the database schema
-        """
-        if self.using_existing_db:
-            return
-        if self.dbname is not None:
-            self.cleanup()
-
-        self.temp_dir = tempfile.TemporaryDirectory(suffix=None, prefix='ampligraph_', dir=None)
-        self.dbname = os.path.join(self.temp_dir.name, 'Ampligraph_{}.db'.format(int(time.time())))
-
-        conn = sqlite3.connect("{}".format(self.dbname))
-        cur = conn.cursor()
-        cur.execute("CREATE TABLE entity_table (entity_type integer primary key);")
-        cur.execute("CREATE TABLE triples_table (subject integer, \
-                                                    predicate integer, \
-                                                    object integer, \
-                                                    dataset_type text(50), \
-                                                    foreign key (object) references entity_table(entity_type), \
-                                                    foreign key (subject) references entity_table(entity_type) \
-                                                    );")
-
-        cur.execute("CREATE INDEX triples_table_sp_idx ON triples_table (subject, predicate);")
-        cur.execute("CREATE INDEX triples_table_po_idx ON triples_table (predicate, object);")
-        cur.execute("CREATE INDEX triples_table_type_idx ON triples_table (dataset_type);")
-
-        cur.execute("CREATE TABLE integrity_check (validity integer primary key);")
-
-        cur.execute('INSERT INTO integrity_check VALUES (0)')
-        conn.commit()
-        cur.close()
-        conn.close()
-
-    def generate_mappings(self, use_all=False, regenerate=False):
-        """Generate mappings from either train set or use all dataset to generate mappings
-        Parameters
-        ----------
-        use_all : boolean
-            If True, it generates mapping from all the data. If False, it only uses training set to generate mappings
-        regenerate : boolean
-            If true, regenerates the mappings.
-            If regenerating, then the database is created again(to conform to new mapping)
-        Returns
-        -------
-        rel_to_idx : dictionary
-            Relation to idx mapping dictionary
-        ent_to_idx : dictionary
-            entity to idx mapping dictionary
-        """
-        if (len(self.rel_to_idx) == 0 or len(self.ent_to_idx) == 0 or (regenerate is True)) \
-                and (not self.using_existing_db):
-            from ..evaluation import create_mappings
-            self._create_schema()
-            if use_all:
-                complete_dataset = []
-                for key in self.dataset.keys():
-                    complete_dataset.append(self.dataset[key])
-                self.rel_to_idx, self.ent_to_idx = create_mappings(np.concatenate(complete_dataset, axis=0))
-
-            else:
-                self.rel_to_idx, self.ent_to_idx = create_mappings(self.dataset["train"])
-
-            self._insert_entities_in_db()
-        return self.rel_to_idx, self.ent_to_idx
-
-    def _insert_entities_in_db(self):
-        """Inserts entities in the database
-        """
-        # TODO: can change it to just use the values of the dictionary
-        pg_entity_values = np.arange(len(self.ent_to_idx)).reshape(-1, 1).tolist()
-        conn = sqlite3.connect("{}".format(self.dbname))
-        cur = conn.cursor()
+DEFAULT_CHUNKSIZE = 30000
+class SQLiteAdapter():
+    def __init__(self, db_name, chunk_size=DEFAULT_CHUNKSIZE, verbose=False):
+        self.db_name = db_name
+        self.verbose = verbose
+        self.indexed = False
+        if chunk_size is None:
+            chunk_size = DEFAULT_CHUNKSIZE
+            print("Currently {} only supports data given in chunks. \
+            Setting chunksize to {}.".format(self.__name__(), DEFAULT_CHUNKSIZE))
+        else:
+            self.chunk_size = chunk_size
+        
+    def __enter__ (self):
         try:
-            cur.executemany('INSERT INTO entity_table VALUES (?)', pg_entity_values)
-            conn.commit()
-        except sqlite3.Error:
-            conn.rollback()
-        cur.close()
-        conn.close()
+            db_uri = 'file:{}?mode=rw'.format(pathname2url(self.db_name))
+            self.connection = sqlite3.connect(db_uri, uri=True)
+        except sqlite3.OperationalError:
+            print("Missing Database, creating one...")      
+            self.connection = sqlite3.connect(self.db_name)        
+            self._create_database()
+        return self
+    
+    def __exit__ (self, type, value, tb):
+        if tb is None:
+            self.connection.commit()
+            self.connection.close()
+        else:
+            # Exception occurred, so rollback.
+            self.connection.rollback()
+        
+    def _get_db_schema(self):
+        """Create 2 tables, one with indexes of objects and subjects in 
+            other words entities and the other with triples and indexes to 
+            navigate eaily on pairs subject-predicate, predicate-object."""
 
-    def use_mappings(self, rel_to_idx, ent_to_idx):
-        """Use an existing mapping with the datasource.
-        """
-        # cannot change mappings for an existing database.
-        if self.using_existing_db:
-            raise Exception('Cannot change the mappings for an existing DB')
-        super().use_mappings(rel_to_idx, ent_to_idx)
-        self._create_schema()
+        db_schema = [
+        """CREATE TABLE triples_table (subject integer,
+                                    predicate integer,
+                                    object integer,
+                                    dataset_type text(50)
+                                    );""",
+        "CREATE INDEX triples_table_sp_idx ON triples_table (subject, predicate);",
+        "CREATE INDEX triples_table_po_idx ON triples_table (predicate, object);",
+        "CREATE INDEX triples_table_type_idx ON triples_table (dataset_type);"
+        ]
+        return db_schema
 
-        for key in self.dataset.keys():
-            self.mapped_status[key] = False
-            self.persistance_status[key] = False
+    def _get_clean_up(self):
+        clean_up = ["drop index IF EXISTS triples_table_po_idx",
+                    "drop index IF EXISTS triples_table_sp_idx",
+                    "drop index IF EXISTS triples_table_type_idx",
+                    "drop table IF EXISTS triples_table"]
+        return clean_up
 
-        self._insert_entities_in_db()
+    def _execute_query(self, query):
+        cursor = self.connection.cursor()
+        output = None
+        try:
+            cursor.execute(query)
+            output = cursor.fetchall()
+            self.connection.commit()
+            if self.verbose:
+                print("Query executed successfully")
+        except Error as e:
+            print(f"Query failed. The error '{e}' occurred")
+        return output
 
-    def get_size(self, dataset_type="train"):
-        """Returns the size of the specified dataset
+    def _execute_queries(self, list_of_queries):
+        for query in list_of_queries:
+            self._execute_query(query)
+
+    def _insert_values_to_a_table(self, table, values):
+        if self.verbose:
+            print("inserting to a table...")
+        if len(np.shape(values)) < 2:
+            size = 1
+        else:
+            size = np.shape(values)[1]
+        cursor = self.connection.cursor()
+        try:
+            values_placeholder = "({})".format(", ".join(["?"]*size))
+            query = 'INSERT INTO {} VALUES {}'.format(table, values_placeholder)
+            cursor.executemany(query, [(v,) if isinstance(v, int) or isinstance(v, str) else v for v in values])
+            self.connection.commit()
+            if self.verbose:
+                print("commited to table: {}".format(table))
+        except Error as e:
+            print("Error", e)
+            self.connection.rollback()
+        cursor.close()   
+
+    def _create_database(self):
+        self._execute_queries(self._get_db_schema())
+
+    def get_triples(self, chunk, dataset_type="train"): 
+        if self.verbose:
+            print("getting triples...")
+        with shelve.open(self.reversed_entities_shelf) as ents:
+            with shelve.open(self.reversed_relations_shelf) as rels:        
+                subjects = [ents[elem] for elem in chunk.values[:,0]]
+                objects = [str(ents[elem]) for elem in chunk.values[:,2]]
+                predicates = [str(rels[elem]) for elem in chunk.values[:,1]]
+                tmp = np.array((subjects, predicates, objects), dtype=int).T
+                return np.append(tmp, np.array(len(chunk.values)*[dataset_type]).reshape(-1,1), axis=1)
+
+    def index_entities_in_shelf(self):
+        if self.verbose:        
+            print("indexing entities...")
+        date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
+        self.entities_shelf = "entities_shelf_{}.shf".format(date)
+        self.reversed_entities_shelf = "reversed_entities_shelf_{}.shf".format(date)
+        self.relations_shelf = "relations_shelf_{}.shf".format(date)
+        self.reversed_relations_shelf = "reversed_relations_shelf_{}.shf".format(date)
+        with shelve.open(self.entities_shelf, writeback=True) as ents:
+            with shelve.open(self.reversed_entities_shelf, writeback=True) as reverse_ents: 
+                with shelve.open(self.relations_shelf, writeback=True) as rels:
+                    with shelve.open(self.reversed_relations_shelf, writeback=True) as reverse_rels:             
+                        for i, chunk in enumerate(self.data):
+                            entities = set(chunk.values[:,0]).union(set(chunk.values[:,2]))
+                            predicates = set(chunk.values[:,1])
+                            ind = i*len(chunk)
+                            reverse_ents.update({str(value):str(key+ind) for key, value in enumerate(entities)})
+                            ents.update({str(key+ind):str(value) for key, value in enumerate(entities)})                
+                            reverse_rels.update({str(value):str(key+ind) for key, value in enumerate(predicates)})
+                            rels.update({str(key+ind):str(value) for key, value in enumerate(predicates)})                                                
+
+    def index_entities(self):
+        """Get all keys from the shelf and populate database with them"""
+        self.reload_data()
+        self.index_entities_in_shelf() # remember to reinitialize data iterator before passing it through        
+        # TODO: iteratively add entities to the database tables from shelf
+        # maybe a flag letting know the state of the iterator (data source dried out!)
+        #print("Warning! Not yet done, TODO in place.")
+        #self._insert_values_to_a_table("entity_table", values_entities)
+    
+    def is_indexed(self):
+        """Check if shelves with indexes are set."""
+        if not hasattr(self, "entities_shelf"):
+            return False
+        if not hasattr(self, "reversed_entities_shelf"):
+            return False
+        if not hasattr(self, "relations_shelf"):
+            return False
+        if not hasattr(self, "reversed_relations_shelf"):
+            return False
+        return True
+            
+    def reload_data(self, verbose=False):
+        self.data = self.loader(self.data_source, chunk_size=self.chunk_size)
+        if verbose:
+            print("Data reloaded", self.data)
+        
+    def populate(self, data_source, dataset_type="train", get_triples=None, loader=None):
+        """Condition: before you can enter triples you have to index data."""
+        self.data_source = data_source        
+        self.loader = loader
+        if loader is None:
+            self.identifier = DataSourceIdentifier(self.data_source)
+            self.loader = self.identifier.fetch_loader()
+        if not self.is_indexed():
+            if self.verbose:
+                print("indexing...")
+            self.index_entities()
+        else:
+            print("Data is already indexed, using that.")
+        if get_triples is None:
+            get_triples = self.get_triples
+        self.reload_data()
+        for chunk in self.data:
+            values_triples = get_triples(chunk, dataset_type=dataset_type)
+            self._insert_values_to_a_table("triples_table", values_triples)  
+        if self.verbose:
+            print("data is populated")
+    
+    def get_size(self, table="triples_table", condition=""):
+        query = "SELECT count(*) from {} {};".format(table, condition)
+        count = self._execute_query(query)
+        if count is None:
+            print("Table is empty or not such table exists.")
+            return count
+        elif not isinstance(count, list) or not isinstance(count[0], tuple):
+            raise ValueError("Cannot get count for the table with provided condition.")        
+        return count[0][0]
+
+    def clean_up(self):
+        status = self._execute_queries(self._get_clean_up())
+        
+    def remove_db(self):
+        os.remove(self.db_name)        
+        print("Database removed.")
+
+    def _get_complementary_objects(self, triple):
+        return self._execute_query("select {} union select distinct object from triples_table INDEXED BY \
+                    triples_table_sp_idx where subject={} and predicate={}".format(triple[2], triple[0], triple[1]))
+
+    def _get_complementary_subjects(self, triple):
+        return self._execute_query("select {}  union select distinct subject from triples_table INDEXED BY \
+                    triples_table_po_idx where predicate= {}  and object={}".format(triple[0], triple[1], triple[2]))
+
+    def _get_complementary_entities(self, triple):
+        """returns the participating entities in the relation ?-p-o and s-p-?
         Parameters
         ----------
-        dataset_type : string
-            type of the dataset
-
+        x_triple : nd-array (3,)
+            triple (s-p-o) that we are querying
         Returns
         -------
-        size : int
-            size of the specified dataset
+        ent_participating_as_objects : nd-array (n,1)
+            entities participating in the relation s-p-?
+        ent_participating_as_subjects : nd-array (n,1)
+            entities participating in the relation ?-p-o
         """
-        select_query = "SELECT count(*) from triples_table where dataset_type ='{}'"
-        conn = sqlite3.connect("{}".format(self.dbname))
-        cur1 = conn.cursor()
-        cur1.execute(select_query.format(dataset_type))
-        out = cur1.fetchall()
-        cur1.close()
-        return out[0][0]
-
-    def get_next_batch(self, batches_count=-1, dataset_type="train", use_filter=False):
+        entities = self._get_complementary_objects(triple)
+        entities.extend(self._get_complementary_subjects(triple))
+        return list(set(entities))
+    
+    def _get_batch(self, batch_size=1, dataset_type="train", use_filter=False):
         """Generator that returns the next batch of data.
 
         Parameters
@@ -182,278 +253,60 @@ class SQLiteAdapter(AmpligraphDatasetAdapter):
             all objects that were involved in the s-p-? relation. This is returned only if use_filter is set to true.
         participating_subjects : nd-array [n,1]
             all subjects that were involved in the ?-p-o relation. This is returned only if use_filter is set to true.
-        """
-        if (not self.using_existing_db) and (not self.mapped_status[dataset_type]):
-            self.map_data()
-
-        if batches_count == -1:
-            batch_size = 1
-            batches_count = self.get_size(dataset_type)
-        else:
-            batch_size = int(np.ceil(self.get_size(dataset_type) / batches_count))
-
-        select_query = "SELECT subject, predicate,object FROM triples_table INDEXED BY \
-                            triples_table_type_idx where dataset_type ='{}' LIMIT {}, {}"
-
-        for i in range(batches_count):
-            conn = sqlite3.connect("{}".format(self.dbname))
-            cur1 = conn.cursor()
-            cur1.execute(select_query.format(dataset_type, i * batch_size, batch_size))
-            out = np.array(cur1.fetchall(), dtype=np.int32)
-            cur1.close()
+        """              
+        query = "SELECT subject, predicate, object FROM triples_table INDEXED BY \
+                                triples_table_type_idx where dataset_type ='{}' LIMIT {}, {}"
+        
+        if not hasattr(self, "batches_count"):
+            size = self.get_size(condition="where dataset_type ='{}'".format(dataset_type))
+            self.batches_count = int(size/batch_size)
+        
+        for i in range(self.batches_count):
+            out = self._execute_query(query.format(dataset_type, i * batch_size, batch_size))
             if use_filter:
                 # get the filter values
                 participating_objects, participating_subjects = self.get_participating_entities(out)
                 yield out, participating_objects, participating_subjects
             else:
-                yield out
-
-    def _insert_triples(self, triples, key=""):
-        """inserts triples in the database for the specified category
+                yield out                    
+                    
+    def summary(self, count=True):
+        """Desiderata:
+            - does the database exists? +
+            - what tables does it have how many records, what are fields held and its types + example record? +
+            - any triggers?
+            - indexes declared?
+            - other?
         """
-        conn = sqlite3.connect("{}".format(self.dbname))
-        key = np.array([[key]])
-        for j in range(int(np.ceil(triples.shape[0] / 500000.0))):
-            pg_triple_values = triples[j * 500000:(j + 1) * 500000]
-            pg_triple_values = np.concatenate((pg_triple_values, np.repeat(key,
-                                                                           pg_triple_values.shape[0], axis=0)), axis=1)
-            pg_triple_values = pg_triple_values.tolist()
-            cur = conn.cursor()
-            cur.executemany('INSERT INTO triples_table VALUES (?,?,?,?)', pg_triple_values)
-            conn.commit()
-            cur.close()
+        if os.path.exists(self.db_name):
+            print("Summary for Database {}".format(self.db_name))
+            file_size = os.path.getsize(self.db_name)
+            summary = """File size: {:.5}{}\nTables: {}"""
+            tables = self._execute_query("SELECT name FROM sqlite_master WHERE type='table';")
+            tables_names = ", ".join(table[0] for table in tables)
+            print(summary.format(*get_human_readable_size(file_size), tables_names))            
+            types = {"integer":"int", "string":"str"}
+            for table_name in tables:
+                result = self._execute_query("PRAGMA table_info('%s')" % table_name)
+                cols_name_type = ["{} ({}):".format(x[1],types[x[2]] if x[2] in types else x[2]) for x in result]
+                length = len(cols_name_type)
+                print("-------------\n|" + table_name[0].upper() + "|\n-------------\n")
+                formatted_record = "{:7s}{}\n{:7s}{}".format(" ", "{:25s}"*length,"e.g.","{:<25s}"*length)
+                msg = ""
+                example = ["-"]*length
+                if count:
+                    nb_records = self.get_size(table_name[0])
+                    msg = "\n\nRecords: {}".format(nb_records)                    
+                    if nb_records != 0:
+                        record = self._execute_query("SELECT * FROM {} LIMIT {};".format(table_name[0],1))[0]
+                        example = [str(rec) for rec in record]                        
+                else:
+                    print("Count is set to False hence no data displayed")
 
-        conn.close()
-
-    def map_data(self, remap=False):
-        """map the data to the mappings of ent_to_idx and rel_to_idx
-        Parameters
-        ----------
-        remap : boolean
-            remap the data, if already mapped. One would do this if the dictionary is updated.
-        """
-        if self.using_existing_db:
-            # since the assumption is that the persisted data is already mapped for an existing db
-            return
-        from ..evaluation import to_idx
-        if len(self.rel_to_idx) == 0 or len(self.ent_to_idx) == 0:
-            self.generate_mappings()
-
-        for key in self.dataset.keys():
-            if isinstance(self.dataset[key], np.ndarray):
-                if (not self.mapped_status[key]) or (remap is True):
-                    self.dataset[key] = to_idx(self.dataset[key],
-                                               ent_to_idx=self.ent_to_idx,
-                                               rel_to_idx=self.rel_to_idx)
-                    self.mapped_status[key] = True
-                if not self.persistance_status[key]:
-                    self._insert_triples(self.dataset[key], key)
-                    self.persistance_status[key] = True
-
-        conn = sqlite3.connect("{}".format(self.dbname))
-        cur = conn.cursor()
-        # to maintain integrity of data
-        cur.execute('Update integrity_check set validity=1 where validity=0')
-        conn.commit()
-
-        cur.execute('''CREATE TRIGGER IF NOT EXISTS triples_table_ins_integrity_check_trigger
-                        AFTER INSERT ON triples_table
-                        BEGIN
-                            Update integrity_check set validity=0 where validity=1;
-                        END
-                            ;
-                    ''')
-        cur.execute('''CREATE TRIGGER IF NOT EXISTS triples_table_upd_integrity_check_trigger
-                        AFTER UPDATE ON triples_table
-                        BEGIN
-                            Update integrity_check set validity=0 where validity=1;
-                        END
-                            ;
-                    ''')
-        cur.execute('''CREATE TRIGGER IF NOT EXISTS triples_table_del_integrity_check_trigger
-                        AFTER DELETE ON triples_table
-                        BEGIN
-                            Update integrity_check set validity=0 where validity=1;
-                        END
-                            ;
-                    ''')
-
-        cur.execute('''CREATE TRIGGER IF NOT EXISTS entity_table_upd_integrity_check_trigger
-                        AFTER UPDATE ON entity_table
-                        BEGIN
-                            Update integrity_check set validity=0 where validity=1;
-                        END
-                        ;
-                    ''')
-        cur.execute('''CREATE TRIGGER IF NOT EXISTS entity_table_ins_integrity_check_trigger
-                        AFTER INSERT ON entity_table
-                        BEGIN
-                            Update integrity_check set validity=0 where validity=1;
-                        END
-                        ;
-                    ''')
-        cur.execute('''CREATE TRIGGER IF NOT EXISTS entity_table_del_integrity_check_trigger
-                        AFTER DELETE ON entity_table
-                        BEGIN
-                            Update integrity_check set validity=0 where validity=1;
-                        END
-                        ;
-                    ''')
-        cur.close()
-        conn.close()
-
-    def _validate_data(self, data):
-        """validates the data
-        """
-        if type(data) != np.ndarray:
-            msg = 'Invalid type for input data. Expected ndarray, got {}'.format(type(data))
-            raise ValueError(msg)
-
-        if (np.shape(data)[1]) != 3:
-            msg = 'Invalid size for input data. Expected number of column 3, got {}'.format(np.shape(data)[1])
-            raise ValueError(msg)
-
-    def set_data(self, dataset, dataset_type=None, mapped_status=False, persistance_status=False):
-        """set the dataset based on the type.
-            Note: If you pass the same dataset type it will be appended
-
-            #Usage for extremely large datasets:
-            from ampligraph.datasets import SQLiteAdapter
-            adapt = SQLiteAdapter()
-
-            #compute the mappings from the large dataset.
-            #Let's assume that the mappings are already computed in rel_to_idx, ent_to_idx.
-            #Set the mappings
-            adapt.use_mappings(rel_to_idx, ent_to_idx)
-
-            #load and store parts of data in the db as train test or valid
-            #if you have already mapped the entity names to index, set mapped_status = True
-            adapt.set_data(load_part1, 'train', mapped_status = True)
-            adapt.set_data(load_part2, 'train', mapped_status = True)
-            adapt.set_data(load_part3, 'train', mapped_status = True)
-
-            #if mapped_status = False, then the adapter will map the entities to index before persisting
-            adapt.set_data(load_part1, 'test', mapped_status = False)
-            adapt.set_data(load_part2, 'test', mapped_status = False)
-
-            adapt.set_data(load_part1, 'valid', mapped_status = False)
-            adapt.set_data(load_part2, 'valid', mapped_status = False)
-
-            #create the model
-            model = ComplEx(batches_count=10000, seed=0, epochs=10, k=50, eta=10)
-            model.fit(adapt)
-
-        Parameters
-        ----------
-        dataset : nd-array or dictionary
-            dataset of triples
-        dataset_type : string
-            if the dataset parameter is an nd- array then this indicates the type of the data being based
-        mapped_status : bool
-            indicates whether the data has already been mapped to the indices
-        persistance_status : bool
-            indicates whether the data has already been written to the database
-        """
-        if self.using_existing_db:
-            raise Exception('Cannot change the existing DB')
-
-        if isinstance(dataset, dict):
-            for key in dataset.keys():
-                self._validate_data(dataset[key])
-                self.dataset[key] = dataset[key]
-                self.mapped_status[key] = mapped_status
-                self.persistance_status[key] = persistance_status
-        elif dataset_type is not None:
-            self._validate_data(dataset)
-            self.dataset[dataset_type] = dataset
-            self.mapped_status[dataset_type] = mapped_status
-            self.persistance_status[dataset_type] = persistance_status
+                print(formatted_record.format(*cols_name_type, *example), msg)
         else:
-            raise Exception("Incorrect usage. Expected a dictionary or a combination of dataset and it's type.")
-
-        if not (len(self.rel_to_idx) == 0 or len(self.ent_to_idx) == 0):
-            self.map_data()
-
-    def get_participating_entities(self, x_triple):
-        """returns the participating entities in the relation ?-p-o and s-p-?
-        Parameters
-        ----------
-        x_triple : nd-array (3,)
-            triple (s-p-o) that we are querying
-        Returns
-        -------
-        ent_participating_as_objects : nd-array (n,1)
-            entities participating in the relation s-p-?
-        ent_participating_as_subjects : nd-array (n,1)
-            entities participating in the relation ?-p-o
-        """
-        x_triple = np.squeeze(x_triple)
-        conn = sqlite3.connect("{}".format(self.dbname))
-        cur1 = conn.cursor()
-        cur2 = conn.cursor()
-        cur_integrity = conn.cursor()
-        cur_integrity.execute("SELECT * FROM integrity_check")
-
-        if cur_integrity.fetchone()[0] == 0:
-            raise Exception('Data integrity is corrupted. The tables have been modified.')
-
-        query1 = "select " + str(x_triple[2]) + " union select distinct object from triples_table INDEXED BY \
-                    triples_table_sp_idx  where subject=" + str(x_triple[0]) + " and predicate=" + str(x_triple[1])
-        query2 = "select  " + str(x_triple[0]) + " union select distinct subject from triples_table INDEXED BY \
-                    triples_table_po_idx where predicate=" + str(x_triple[1]) + " and object=" + str(x_triple[2])
-
-        cur1.execute(query1)
-        cur2.execute(query2)
-
-        ent_participating_as_objects = np.array(cur1.fetchall())
-        ent_participating_as_subjects = np.array(cur2.fetchall())
-        '''
-        if ent_participating_as_objects.ndim>=1:
-            ent_participating_as_objects = np.squeeze(ent_participating_as_objects)
-
-        if ent_participating_as_subjects.ndim>=1:
-            ent_participating_as_subjects = np.squeeze(ent_participating_as_subjects)
-        '''
-        cur1.close()
-        cur2.close()
-        cur_integrity.close()
-        conn.close()
-
-        return ent_participating_as_objects, ent_participating_as_subjects
-
-    def cleanup(self):
-        """Clean up the database
-        """
-        if self.using_existing_db:
-            # if using an existing db then dont remove
-            self.dbname = None
-            self.using_existing_db = False
-            return
-
-        # Drop the created tables
-        if self.dbname is not None:
-            conn = sqlite3.connect("{}".format(self.dbname))
-            cur = conn.cursor()
-            cur.execute("drop trigger IF EXISTS entity_table_del_integrity_check_trigger")
-            cur.execute("drop trigger IF EXISTS entity_table_ins_integrity_check_trigger")
-            cur.execute("drop trigger IF EXISTS entity_table_upd_integrity_check_trigger")
-
-            cur.execute("drop trigger IF EXISTS triples_table_del_integrity_check_trigger")
-            cur.execute("drop trigger IF EXISTS triples_table_upd_integrity_check_trigger")
-            cur.execute("drop trigger IF EXISTS triples_table_ins_integrity_check_trigger")
-            cur.execute("drop table IF EXISTS integrity_check")
-            cur.execute("drop index IF EXISTS triples_table_po_idx")
-            cur.execute("drop index IF EXISTS triples_table_sp_idx")
-            cur.execute("drop index IF EXISTS triples_table_type_idx")
-            cur.execute("drop table IF EXISTS triples_table")
-            cur.execute("drop table IF EXISTS entity_table")
-            cur.close()
-            conn.close()
-            try:
-                if self.temp_dir is not None:
-                    self.temp_dir.cleanup()
-            except OSError:
-                logger.warning('Unable to remove the created temperory files.')
-                logger.warning('Filename:{}'.format(self.dbname))
-
-            self.dbname = None
+            print("Database does not exist.")
+            
+    def _load(self, data_source, dataset_type="train"):
+        self.data_source = data_source
+        self.populate(self.data_source, dataset_type=dataset_type)
