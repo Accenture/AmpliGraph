@@ -10,33 +10,33 @@ from datetime import datetime
 
 
 class DummyBackend():
-"""Class providing artificial backend, that reads data into memory."""
+    """Class providing artificial backend, that reads data into memory."""
     def __init__(self, identifier, verbose=False):
-    """Initialise DummyBackend.
+        """Initialise DummyBackend.
 
-       Parameters
-       ----------
-       identifier: initialize data source identifier, provides loader. 
-    """
+           Parameters
+           ----------
+           identifier: initialize data source identifier, provides loader. 
+        """
         self.verbose = verbose
         self.identifier = identifier
         
     def __enter__ (self):
-    """Context manager enter function. Required by GraphDataLoader."""
+        """Context manager enter function. Required by GraphDataLoader."""
         return self
     
     def __exit__ (self, type, value, tb):
-    """Context manager exit function. Required by GraphDataLoader."""
+        """Context manager exit function. Required by GraphDataLoader."""
         pass
     
     def _load(self, data_source, dataset_type):
-    """Loads data into self.data.
-       
-       Parameters
-       ----------
-       data_source: file with data.
-       dataset_type: kind of data to be loaded (train | test | validation).
-    """
+        """Loads data into self.data.
+           
+           Parameters
+           ----------
+           data_source: file with data.
+           dataset_type: kind of data to be loaded (train | test | validation).
+        """
         if self.verbose:
             print("Simple in-memory data loading of {} dataset.".format(dataset_type))
         self.data_source = data_source
@@ -44,18 +44,18 @@ class DummyBackend():
         self.data = loader(data_source)
         
     def _get_complementary_entities(self, triple):
-    """Get subjects and objects complementary to a triple (?,p,?).
-       Returns the participating entities in the relation ?-p-o and s-p-?.
+        """Get subjects and objects complementary to a triple (?,p,?).
+           Returns the participating entities in the relation ?-p-o and s-p-?.
 
-       Parameters
-       ----------
-       x_triple: nd-array (3,)
-           triple (s-p-o) that we are querying.
+           Parameters
+           ----------
+           x_triple: nd-array (3,)
+               triple (s-p-o) that we are querying.
 
-       Returns
-       -------
-       entities: list of entities participating in the relations s-p-? and ?-p-o.
-   """
+           Returns
+           -------
+           entities: list of entities participating in the relations s-p-? and ?-p-o.
+       """
 
         if self.verbose:        
             print("Getting complementary entities")
@@ -64,17 +64,17 @@ class DummyBackend():
         return list(set(entities))
 
     def _get_complementary_subjects(self, triple):
-    """Get subjects complementary to a triple (?,p,o).
-       For a given triple retrive all triples whith same objects and predicates.
+        """Get subjects complementary to a triple (?,p,o).
+           For a given triple retrive all triples whith same objects and predicates.
 
-       Parameters
-       ----------
-       triple: list or array with 3 elements (subject, predicate, object).
+           Parameters
+           ----------
+           triple: list or array with 3 elements (subject, predicate, object).
 
-       Returns
-       -------
-       result of a query, list of subjects.
-    """
+           Returns
+           -------
+           result of a query, list of subjects.
+        """
 
         if self.verbose:        
             print("Getting complementary subjects")
@@ -83,17 +83,17 @@ class DummyBackend():
         return subjects
 
     def _get_complementary_objects(self, triple):
-    """Get objects complementary to a triple (s,p,?).
-       For a given triple retrive all triples whith same subjects and predicates.
+        """Get objects complementary to a triple (s,p,?).
+           For a given triple retrive all triples whith same subjects and predicates.
 
-       Parameters
-       ----------
-       triple: list or array with 3 elements (subject, predicate, object).
+           Parameters
+           ----------
+           triple: list or array with 3 elements (subject, predicate, object).
 
-       Returns
-       -------
-       result of a query, list of objects.
-    """
+           Returns
+           -------
+           result of a query, list of objects.
+        """
         if self.verbose:        
             print("Getting complementary objects")
         objects = self.data[self.data[:,0] == triple[0]]
@@ -101,17 +101,17 @@ class DummyBackend():
         return objects
         
     def _get_batch(self, batch_size, dataset_type="train"):
-    """Get next btch of data (generator).
-    
-       Parameters
-       ----------
-       batch_size: size of a batch
-       dataset_type: kind of dataset that is needed (train | test | validation).
+        """Get next btch of data (generator).
+        
+           Parameters
+           ----------
+           batch_size: size of a batch
+           dataset_type: kind of dataset that is needed (train | test | validation).
 
-       Returns
-       --------
-       ndarray(batch_size, 3)
-    """
+           Returns
+           --------
+           ndarray(batch_size, 3)
+        """
         length = len(self.data)
         for ind in range(0, length, batch_size):
             yield self.data[ind:min(ind + batch_size, length)]
@@ -160,11 +160,11 @@ class GraphDataLoader():
         self.batch_iterator = self.get_batch()
       
     def __iter__(self):
-    """Function needed to be used as an itertor."""
+        """Function needed to be used as an itertor."""
         return self
 
     def __next__(self):
-    """Function needed to be used as an itertor."""
+        """Function needed to be used as an itertor."""
         with self.backend as backend:
             return self.batch_iterator.__next__()
         
@@ -174,16 +174,48 @@ class GraphDataLoader():
             return backend._get_batch(self.batch_size, dataset_type=self.dataset_type)
     
     def get_complementary_subjects(self, triple):
-        """Get subjects complementary to a triple (?,p,o)."""
+        """Get subjects complementary to a triple (?,p,o).
+           For a given triple retrive all triples whith same objects and predicates.
+
+           Parameters
+           ----------
+           triple: list or array with 3 elements (subject, predicate, object).
+
+           Returns
+           -------
+           result of a query, list of subjects.
+        """
         with self.backend as backend:
             return backend._get_complementary_subjects(triple)
 
     def get_complementary_objects(self, triple):
-        """Get objects complementary to a triple (s,p,?)."""        
+        """Get objects complementary to a triple (s,p,?).
+           For a given triple retrive all triples whith same subjects and predicates.
+
+           Parameters
+           ----------
+           triple: list or array with 3 elements (subject, predicate, object).
+
+           Returns
+           -------
+           result of a query, list of objects.
+        """
         with self.backend as backend:
             return backend._get_complementary_objects(triple)        
     
     def get_complementary_entities(self, triple):
-        """Get subjects and objects complementary to a triple (?,p,?)."""        
+        """Get subjects and objects complementary to a triple (?,p,?).
+           Returns the participating entities in the relation ?-p-o and s-p-?.
+
+           Parameters
+           ----------
+           x_triple: nd-array (3,)
+               triple (s-p-o) that we are querying.
+
+           Returns
+           -------
+           entities: list of entities participating in the relations s-p-? and ?-p-o.
+       """
+
         with self.backend as backend:
             return backend._get_complementary_entities(triple)

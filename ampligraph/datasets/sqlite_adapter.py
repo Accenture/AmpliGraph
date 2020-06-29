@@ -18,26 +18,26 @@ from ampligraph.utils.profiling import get_human_readable_size
 
 DEFAULT_CHUNKSIZE = 30000
 class SQLiteAdapter():
-""" Class implementing database connection.
-
-    Example
-    -------
-    >>># with GraphDataLoader
-    >>>data = GraphDataLoader("data.csv", backend=SQLiteAdapter)
-    >>># raw
-    >>>backend = SQLiteAdapter("database.db")
-    >>>backend.populate("data.csv", dataset_type="train")
-"""
-    def __init__(self, db_name, chunk_size=DEFAULT_CHUNKSIZE, verbose=False):
-    """ Initialise SQLiteAdapter.
-   
-        Parameters
-        ----------
-        db_name: name of the database.
-        chunk_size: size of a chunk to read data from while feeding the database,
-                    if not provided will be default (DEFAULT_CHUNKSIZE).
-        verbose: print status messages.
+    """ Class implementing database connection.
+    
+        Example
+        -------
+        >>># with GraphDataLoader
+        >>>data = GraphDataLoader("data.csv", backend=SQLiteAdapter)
+        >>># raw
+        >>>backend = SQLiteAdapter("database.db")
+        >>>backend.populate("data.csv", dataset_type="train")
     """
+    def __init__(self, db_name, chunk_size=DEFAULT_CHUNKSIZE, verbose=False):
+        """ Initialise SQLiteAdapter.
+       
+            Parameters
+            ----------
+            db_name: name of the database.
+            chunk_size: size of a chunk to read data from while feeding the database,
+                        if not provided will be default (DEFAULT_CHUNKSIZE).
+            verbose: print status messages.
+        """
         self.db_name = db_name
         self.verbose = verbose
         self.indexed = False
@@ -49,7 +49,7 @@ class SQLiteAdapter():
             self.chunk_size = chunk_size
         
     def __enter__ (self):
-    """Context manager function to open or create if not exists database connection."""
+        """Context manager function to open or create if not exists database connection."""
         try:
             db_uri = 'file:{}?mode=rw'.format(pathname2url(self.db_name))
             self.connection = sqlite3.connect(db_uri, uri=True)
@@ -60,8 +60,8 @@ class SQLiteAdapter():
         return self
     
     def __exit__ (self, type, value, tb):
-    """Context manager exit function, required to used with "with statement", closes
-       the connection and do the rollback if required"""
+        """Context manager exit function, required to used with "with statement", closes
+           the connection and do the rollback if required"""
         if tb is None:
             self.connection.commit()
             self.connection.close()
@@ -70,13 +70,13 @@ class SQLiteAdapter():
             self.connection.rollback()
         
     def _get_db_schema(self):
-    """Defines SQL queries to create a table with triples and indexes to 
-       navigate easily on pairs subject-predicate, predicate-object.
-
-       Returns
-       -------
-       db_schema: list of SQL commands to create tables and indexes.
-    """
+        """Defines SQL queries to create a table with triples and indexes to 
+           navigate easily on pairs subject-predicate, predicate-object.
+    
+           Returns
+           -------
+           db_schema: list of SQL commands to create tables and indexes.
+        """
         db_schema = [
         """CREATE TABLE triples_table (subject integer,
                                     predicate integer,
@@ -90,12 +90,12 @@ class SQLiteAdapter():
         return db_schema
 
     def _get_clean_up(self):
-    """Defines SQL commands to clean the databse (tables and indexes).
-
-       Returns
-       -------
-       clean_up: list of SQL commands to clean tables and indexes.
-    """  
+        """Defines SQL commands to clean the databse (tables and indexes).
+    
+           Returns
+           -------
+           clean_up: list of SQL commands to clean tables and indexes.
+        """  
         clean_up = ["drop index IF EXISTS triples_table_po_idx",
                     "drop index IF EXISTS triples_table_sp_idx",
                     "drop index IF EXISTS triples_table_type_idx",
@@ -103,16 +103,16 @@ class SQLiteAdapter():
         return clean_up
 
     def _execute_query(self, query):
-    """Connects to the database and execute given query.
-
-       Parameters
-       ----------
-       query: SQLite query to be executed.
- 
-       Returns
-       -------
-       output: result of a query with fetchall().
-    """
+        """Connects to the database and execute given query.
+    
+           Parameters
+           ----------
+           query: SQLite query to be executed.
+     
+           Returns
+           -------
+           output: result of a query with fetchall().
+        """
         cursor = self.connection.cursor()
         output = None
         try:
@@ -126,29 +126,29 @@ class SQLiteAdapter():
         return output
 
     def _execute_queries(self, list_of_queries):
-    """Executes given list of queries one by one.
+        """Executes given list of queries one by one.
 
-       Parameters
-       ----------
-       query: list of SQLite queries to be executed.
- 
-       Returns
-       -------
-       output: TODO! result of queries with fetchall().
-      
-    """
+           Parameters
+           ----------
+           query: list of SQLite queries to be executed.
+     
+           Returns
+           -------
+           output: TODO! result of queries with fetchall().
+          
+        """
         for query in list_of_queries:
             self._execute_query(query)
 
     def _insert_values_to_a_table(self, table, values):
-    """Insert data into a given table in a database.
-
-       Parameters
-       ----------
-       table: table where to input data.
-       values: array of data with shape (N,3) to be written to the database, 
-               where N is a number of entries.      
-    """
+        """Insert data into a given table in a database.
+    
+           Parameters
+           ----------
+           table: table where to input data.
+           values: array of data with shape (N,3) to be written to the database, 
+                   where N is a number of entries.      
+        """
         if self.verbose:
             print("inserting to a table...")
         if len(np.shape(values)) < 2:
@@ -169,23 +169,23 @@ class SQLiteAdapter():
         cursor.close()   
 
     def _create_database(self):
-    """Creates database."""
+        """Creates database."""
         self._execute_queries(self._get_db_schema())
 
     def get_triples(self, chunk, dataset_type="train"): 
-    """Get indexed triples.
-
-       Parameters
-       ----------
-       chunk: numpy array with a fragment of data of size (N,3), where each element is:
-              (subject, predicate, object).
-       dataset_type: defines what kind of data is it (train, test, validation).
-       
-       Returns
-       -------
-       tmp: numpy array of size (N,4) with indexed triples,
-            where each element is: (subject index, predicate index, object index, dataset_type).
-       """
+        """Get indexed triples.
+    
+           Parameters
+           ----------
+           chunk: numpy array with a fragment of data of size (N,3), where each element is:
+                  (subject, predicate, object).
+           dataset_type: defines what kind of data is it (train, test, validation).
+           
+           Returns
+           -------
+           tmp: numpy array of size (N,4) with indexed triples,
+                where each element is: (subject index, predicate index, object index, dataset_type).
+           """
         if self.verbose:
             print("getting triples...")
         with shelve.open(self.reversed_entities_shelf) as ents:
@@ -197,17 +197,17 @@ class SQLiteAdapter():
                 return np.append(tmp, np.array(len(chunk.values)*[dataset_type]).reshape(-1,1), axis=1)
 
     def index_entities_in_shelf(self):
-    """Index entities and relations. Creates shelves for mappings between
-       entities and relations to indexes and reverse mapping. 
-
-       Four shelves are created:
-       entities_shelf_<DATE>.shf - with map entities -> indexes
-       reversed_entities_shelf_<DATE>.shf - with map indexes -> entities
-       relations_shelf_<DATE>.shf - with map relations -> indexes
-       reversed_relations_shelf_<DATE>.shf - with map indexes -> relations
-
-       Rememer to use mappings for entities with entities and reltions with relations!
-    """
+        """Index entities and relations. Creates shelves for mappings between
+           entities and relations to indexes and reverse mapping. 
+    
+           Four shelves are created:
+           entities_shelf_<DATE>.shf - with map entities -> indexes
+           reversed_entities_shelf_<DATE>.shf - with map indexes -> entities
+           relations_shelf_<DATE>.shf - with map relations -> indexes
+           reversed_relations_shelf_<DATE>.shf - with map indexes -> relations
+    
+           Rememer to use mappings for entities with entities and reltions with relations!
+        """
         if self.verbose:        
             print("indexing entities...")
         date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
@@ -229,17 +229,17 @@ class SQLiteAdapter():
                             rels.update({str(key+ind):str(value) for key, value in enumerate(predicates)})                                                
 
     def index_entities(self):
-    """Index data. It reloads data before as it is an iterator."""
+        """Index data. It reloads data before as it is an iterator."""
         self.reload_data()
         self.index_entities_in_shelf()
     
     def is_indexed(self):
-    """Check if shelves with indexes are set.
-    
-       Returns
-       -------
-       True/False - flag indicating whether indexing took place.
-    """
+        """Check if shelves with indexes are set.
+        
+           Returns
+           -------
+           True/False - flag indicating whether indexing took place.
+        """
         if not hasattr(self, "entities_shelf"):
             return False
         if not hasattr(self, "reversed_entities_shelf"):
@@ -251,23 +251,23 @@ class SQLiteAdapter():
         return True
             
     def reload_data(self, verbose=False):
-    """Reinitialise an iterator with data."""
+        """Reinitialise an iterator with data."""
         self.data = self.loader(self.data_source, chunk_size=self.chunk_size)
         if verbose:
             print("Data reloaded", self.data)
         
     def populate(self, data_source, dataset_type="train", get_triples=None, loader=None):
-    """Condition: before you can enter triples you have to index data.
-
-       Parameters
-       ----------
-       data_source: file with data (e.g. csv file).
-       dataset_type: what type of data is it? (train | test | validation).
-       get_triples: function to obtain indexed triples.
-       loader: loading function to be used to load data, if None, the
-               DataSourceIdentifier will try to identify type and return
-               adequate loader.
-    """
+        """Condition: before you can enter triples you have to index data.
+    
+           Parameters
+           ----------
+           data_source: file with data (e.g. csv file).
+           dataset_type: what type of data is it? (train | test | validation).
+           get_triples: function to obtain indexed triples.
+           loader: loading function to be used to load data, if None, the
+                   DataSourceIdentifier will try to identify type and return
+                   adequate loader.
+        """
         self.data_source = data_source        
         self.loader = loader
         if loader is None:
@@ -289,17 +289,17 @@ class SQLiteAdapter():
             print("data is populated")
     
     def get_size(self, table="triples_table", condition=""):
-    """Gets the size of the given table [with specified condition].
-
-       Parameters
-       ----------
-       table: table for which to obtain the size.
-       condition: condition to count only a subset of data.
-
-       Returns
-       -------
-       count: number of records in the table.
-    """
+        """Gets the size of the given table [with specified condition].
+    
+           Parameters
+           ----------
+           table: table for which to obtain the size.
+           condition: condition to count only a subset of data.
+    
+           Returns
+           -------
+           count: number of records in the table.
+        """
         query = "SELECT count(*) from {} {};".format(table, condition)
         count = self._execute_query(query)
         if count is None:
@@ -310,39 +310,39 @@ class SQLiteAdapter():
         return count[0][0]
 
     def clean_up(self):
-    """Clean the database."""
+        """Clean the database."""
         status = self._execute_queries(self._get_clean_up())
         
     def remove_db(self):
-    """Remove the database file."""
+        """Remove the database file."""
         os.remove(self.db_name)        
         print("Database removed.")
 
     def _get_complementary_objects(self, triple):
-    """For a given triple retrive all triples whith same subjects and predicates.
+        """For a given triple retrive all triples whith same subjects and predicates.
 
-       Parameters
-       ----------
-       triple: list or array with 3 elements (subject, predicate, object).
+           Parameters
+           ----------
+           triple: list or array with 3 elements (subject, predicate, object).
 
-       Returns
-       -------
-       result of a query, list of objects.
-    """
+           Returns
+           -------
+           result of a query, list of objects.
+        """
         return self._execute_query("select {} union select distinct object from triples_table INDEXED BY \
                     triples_table_sp_idx where subject={} and predicate={}".format(triple[2], triple[0], triple[1]))
 
     def _get_complementary_subjects(self, triple):
-    """For a given triple retrive all triples whith same objects and predicates.
+        """For a given triple retrive all triples whith same objects and predicates.
 
-       Parameters
-       ----------
-       triple: list or array with 3 elements (subject, predicate, object).
+           Parameters
+           ----------
+           triple: list or array with 3 elements (subject, predicate, object).
 
-       Returns
-       -------
-       result of a query, list of subjects.
-    """
+           Returns
+           -------
+           result of a query, list of subjects.
+        """
 
         return self._execute_query("select {}  union select distinct subject from triples_table INDEXED BY \
                     triples_table_po_idx where predicate= {}  and object={}".format(triple[0], triple[1], triple[2]))
@@ -455,13 +455,13 @@ class SQLiteAdapter():
             print("Database does not exist.")
             
     def _load(self, data_source, dataset_type="train"):
-    """Loads data from the data source to the database. Wrapper around populate method,
-       required by the GraphDataLoader interface.
-       
-       Parameters
-       ----------
-       data_source: file from where to read data (e.g. csv file).
-       dataset_type: kind of dataset that is being loaded (train | test | validation).
-    """
+        """Loads data from the data source to the database. Wrapper around populate method,
+           required by the GraphDataLoader interface.
+           
+           Parameters
+           ----------
+           data_source: file from where to read data (e.g. csv file).
+           dataset_type: kind of dataset that is being loaded (train | test | validation).
+        """
         self.data_source = data_source
         self.populate(self.data_source, dataset_type=dataset_type)
