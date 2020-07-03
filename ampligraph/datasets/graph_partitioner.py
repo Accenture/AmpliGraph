@@ -11,8 +11,25 @@ import pandas as pd
 from abc import ABC, abstractmethod
 from ampligraph.utils.profiling import timing_and_memory
 
+
+PARTITION_ALGO_REGISTRY = {}
+
+
+def register_partitioning_strategy(name):
+    def insert_in_registry(class_handle):
+        assert name not in PARTITION_ALGO_REGISTRY.keys(), "Partitioning Strategy with name {} "
+        "already exists!".format(name)
+        
+        PARTITION_ALGO_REGISTRY[name] = class_handle
+        class_handle.name = name
+        return class_handle
+
+    return insert_in_registry
+
+
 def get_number_of_partitions(n):
     return int(n*(n+1)/2)
+
 
 class AbstractGraphPartitioner(ABC):
     """Meta class defining interface for graph partitioning algorithms.
@@ -55,7 +72,8 @@ class AbstractGraphPartitioner(ABC):
         """
         pass
 
-
+    
+@register_partitioning_strategy("Bucket")
 class BucketGraphPartitioner(AbstractGraphPartitioner):
     def __init__(self, data, k=2):
         super().__init__(data, k)
@@ -137,7 +155,8 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
         partitions = [triples_of_bucket_dict[part][sub_part] for part in triples_of_bucket_dict for sub_part in triples_of_bucket_dict[part]]
         return partitions
 
-
+    
+@register_partitioning_strategy("RandomVertices")
 class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
     def __init__(self, data, k=2):
         super().__init__(data, k)
@@ -167,6 +186,7 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
         return vertices_partitions
 
 
+@register_partitioning_strategy("RandomEdges")
 class RandomEdgesGraphPartitioner(AbstractGraphPartitioner):
     def __init__(self, data, k=2):
         super().__init__(data, k)
@@ -196,6 +216,7 @@ class RandomEdgesGraphPartitioner(AbstractGraphPartitioner):
         return partitions
 
 
+@register_partitioning_strategy("SortedEdges")
 class SortedEdgesGraphPartitioner(AbstractGraphPartitioner):
     def __init__(self, data, k=2):
         super().__init__(data, k)
@@ -222,6 +243,7 @@ class SortedEdgesGraphPartitioner(AbstractGraphPartitioner):
         return partitions        
 
 
+@register_partitioning_strategy("NaiveGraph")
 class NaiveGraphPartitioner(AbstractGraphPartitioner):
     def __init__(self, data, k=2):
         super().__init__(data, k)
@@ -247,6 +269,7 @@ class NaiveGraphPartitioner(AbstractGraphPartitioner):
         return partitions      
 
 
+@register_partitioning_strategy("DoubleSortedEdges")
 class DoubleSortedEdgesGraphPartitioner(AbstractGraphPartitioner):
     def __init__(self, data, k=2):
         super().__init__(data, k)
