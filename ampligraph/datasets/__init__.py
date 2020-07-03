@@ -17,7 +17,7 @@ from .numpy_adapter import NumpyDatasetAdapter
 from .oneton_adapter import OneToNDatasetAdapter
 from .graph_partitioner import AbstractGraphPartitioner, RandomVerticesGraphPartitioner, RandomEdgesGraphPartitioner, \
     SortedEdgesGraphPartitioner, NaiveGraphPartitioner, DoubleSortedEdgesGraphPartitioner, BucketGraphPartitioner, \
-    get_number_of_partitions 
+    get_number_of_partitions, PARTITION_ALGO_REGISTRY
 from .partitioning_reporter import PartitioningReporter, compare_partitionings
 from .graph_data_loader import DummyBackend, GraphDataLoader 
 from .source_identifier import DataSourceIdentifier, load_csv, load_tar, load_gz

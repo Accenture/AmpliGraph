@@ -49,7 +49,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # assume that you have max_ent_size unique entities - if it is single partition
         # this would change if we use partitions - based on which partition is in memory
         # this is used by corruption_layer to sample eta corruptions
-        self.unique_entities = self.max_ent_size
+        self.unique_entities = tf.range(self.max_ent_size)
         
         # Create the embedding lookup layer. 
         # size of entity emb is max_ent_size * k and relation emb is  max_rel_size * k

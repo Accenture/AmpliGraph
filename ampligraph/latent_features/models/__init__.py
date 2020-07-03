@@ -1,1 +1,1 @@
-from .EmbeddingModel import EmbeddingModel
+from .ScoringBasedEmbeddingModel import ScoringBasedEmbeddingModel
