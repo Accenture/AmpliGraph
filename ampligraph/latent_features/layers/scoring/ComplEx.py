@@ -9,7 +9,7 @@ class ComplEx(AbstractScoringLayer):
         self.internal_k = 2 * k
 
     @tf.function
-    def compute_scores(self, triples):
+    def _compute_scores(self, triples):
         e_s_real, e_s_img = tf.split(triples[0], 2, axis=1)
         e_p_real, e_p_img = tf.split(triples[1], 2, axis=1)
         e_o_real, e_o_img = tf.split(triples[2], 2, axis=1)
@@ -21,7 +21,7 @@ class ComplEx(AbstractScoringLayer):
         return scores
     
     @tf.function(experimental_relax_shapes=True)
-    def get_subject_corruption_scores(self, triples, ent_matrix):
+    def _get_subject_corruption_scores(self, triples, ent_matrix):
         e_s_real, e_s_img = tf.split(triples[0], 2, axis=1)
         e_p_real, e_p_img = tf.split(triples[1], 2, axis=1)
         e_o_real, e_o_img = tf.split(triples[2], 2, axis=1)
@@ -37,7 +37,7 @@ class ComplEx(AbstractScoringLayer):
         return sub_corr_score
     
     @tf.function(experimental_relax_shapes=True)
-    def get_object_corruption_scores(self, triples, ent_matrix):
+    def _get_object_corruption_scores(self, triples, ent_matrix):
         e_s_real, e_s_img = tf.split(triples[0], 2, axis=1)
         e_p_real, e_p_img = tf.split(triples[1], 2, axis=1)
         e_o_real, e_o_img = tf.split(triples[2], 2, axis=1)

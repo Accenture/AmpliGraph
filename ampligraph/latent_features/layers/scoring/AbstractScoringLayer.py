@@ -31,25 +31,25 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
 
     @tf.function
     def call(self, triples):
-        return self.compute_scores(triples)
+        return self._compute_scores(triples)
     
     @tf.function
-    def compute_scores(self, triples):
+    def _compute_scores(self, triples):
         raise NotImplementedError('Abstract method not implemented!')
         
     @tf.function(experimental_relax_shapes=True)
-    def get_object_corruption_scores(self, triples, ent_matrix):
+    def _get_object_corruption_scores(self, triples, ent_matrix):
         raise NotImplementedError('Abstract method not implemented!')
         
     @tf.function(experimental_relax_shapes=True)
-    def get_subject_corruption_scores(self, triples, ent_matrix):
+    def _get_subject_corruption_scores(self, triples, ent_matrix):
         raise NotImplementedError('Abstract method not implemented!')
 
     @tf.function(experimental_relax_shapes=True)
     def get_ranks(self, triples, ent_matrix):
-        triple_score = self.compute_scores(triples)
-        sub_corr_score = self.get_subject_corruption_scores(triples, ent_matrix)
-        obj_corr_score = self.get_object_corruption_scores(triples, ent_matrix)
+        triple_score = self._compute_scores(triples)
+        sub_corr_score = self._get_subject_corruption_scores(triples, ent_matrix)
+        obj_corr_score = self._get_object_corruption_scores(triples, ent_matrix)
         
         sub_corr_score = tf.cast(sub_corr_score * COMPARISION_PRECISION, tf.int32)
         obj_corr_score = tf.cast(obj_corr_score * COMPARISION_PRECISION, tf.int32)
