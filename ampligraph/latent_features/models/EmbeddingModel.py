@@ -4,7 +4,7 @@ import pandas as pd
 tf.config.set_soft_device_placement(False)
 tf.debugging.set_log_device_placement(True)
 import numpy as np
-from ampligraph.latent_features.layers.scoring import DistMult
+from ampligraph.latent_features.layers.scoring import SCORING_LAYER_REGISTRY
 from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
 from ampligraph.latent_features.layers.corruption_generation import CorruptionGenerationLayerEval, CorruptionGenerationLayerTrain
 
@@ -15,12 +15,14 @@ class EmbeddingModel(tf.keras.Model):
         tf.random.set_seed(seed)
         self.max_ent_size = max_ent_size
         self.max_rel_size = max_rel_size
-        self.k = k
+        
+        self.scoring_layer = SCORING_LAYER_REGISTRY[algo](k)
+        self.k = self.scoring_layer.internal_k
+        print('self.scoring_layer.internal_k:', self.scoring_layer.internal_k)
         
         self.corruption_layer = CorruptionGenerationLayerTrain(eta)
         #self.corruption_layer_eval = CorruptionGenerationLayerEval(len(ent_to_idx), len(ent_to_idx))
         self.encoding_layer = EmbeddingLookupLayer(self.max_ent_size, self.max_rel_size, self.k)
-        self.scoring_layer = DistMult()
         
         
     def compute_output_shape(self, inputShape):
@@ -33,14 +35,7 @@ class EmbeddingModel(tf.keras.Model):
 
     @tf.function
     def call(self, inputs, training=0):
-        print('training', training)
-        #if training==0:
-        #    print('tr')
         corruptions = self.corruption_layer(inputs, self.unique_entities)
-        #else:
-            #print('ev')
-            #corruptions = self.corruption_layer_eval(inputs)
-        print('done')
         inp_emb = self.encoding_layer(inputs)
         corr_emb = self.encoding_layer(corruptions)
 
@@ -48,3 +43,7 @@ class EmbeddingModel(tf.keras.Model):
         corr_score = self.scoring_layer(corr_emb)
 
         return [inp_score, corr_score]
+    
+    @tf.function(experimental_relax_shapes=True)
+    def get_ranks(self, inputs, ent_embs):
+        return self.scoring_layer.get_ranks(inputs, ent_embs)

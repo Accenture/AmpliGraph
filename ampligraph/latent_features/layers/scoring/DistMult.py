@@ -1,20 +1,26 @@
 import tensorflow as tf
+from .AbstractScoringLayer import AbstractScoringLayer, register_layer
 
-
-class DistMult(tf.keras.layers.Layer):
-
-    def __init__(self, **kwargs):
-        super(DistMult, self).__init__(**kwargs)
-
-    def build(self, input_shapes):
-        super(DistMult, self).build(input_shapes)
+@register_layer('DistMult')
+class DistMult(AbstractScoringLayer):
+    
+    def __init__(self, k):
+        super(DistMult, self).__init__(k)
 
     @tf.function
-    def call(self, triples):
+    def compute_scores(self, triples):
         scores = tf.reduce_sum(triples[0] * triples[1] * triples[2], 1)
         return scores
+    
+    @tf.function(experimental_relax_shapes=True)
+    def get_subject_corruption_scores(self, triples, ent_matrix):
+        sub_emb, rel_emb, obj_emb = triples[0], triples[1], triples[2]
+        sub_corr_score = tf.reduce_sum(ent_matrix * tf.expand_dims( rel_emb * obj_emb, 1) , 2)
+        return sub_corr_score
+    
+    @tf.function(experimental_relax_shapes=True)
+    def get_object_corruption_scores(self, triples, ent_matrix):
+        sub_emb, rel_emb, obj_emb = triples[0], triples[1], triples[2]
+        obj_corr_score = tf.reduce_sum(tf.expand_dims(sub_emb * rel_emb, 1) * ent_matrix, 2)
+        return obj_corr_score
 
-    def compute_output_shape(self, input_shape):
-        assert isinstance(input_shape, list)
-        batch_size, _ = input_shape
-        return [batch_size, 1]
