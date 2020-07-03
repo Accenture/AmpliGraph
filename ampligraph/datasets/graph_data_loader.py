@@ -7,7 +7,7 @@
 #
 from ampligraph.datasets.source_identifier import DataSourceIdentifier
 from datetime import datetime
-
+import numpy as np
 
 class DummyBackend():
     """Class providing artificial backend, that reads data into memory."""
@@ -41,7 +41,7 @@ class DummyBackend():
             print("Simple in-memory data loading of {} dataset.".format(dataset_type))
         self.data_source = data_source
         loader = self.identifier.fetch_loader()
-        self.data = loader(data_source)
+        self.data = loader(data_source).astype(np.int32)
         
     def _get_complementary_entities(self, triple):
         """Get subjects and objects complementary to a triple (?,p,?).
