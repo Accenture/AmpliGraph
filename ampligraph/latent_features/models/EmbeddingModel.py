@@ -10,13 +10,16 @@ from ampligraph.latent_features.layers.corruption_generation import CorruptionGe
 
 
 class EmbeddingModel(tf.keras.Model):
-    def __init__(self, eta, ent_to_idx, rel_to_idx, algo='DistMult', seed=0):
+    def __init__(self, eta, ent_to_idx, rel_to_idx, algo=None, seed=0):
         super(EmbeddingModel, self).__init__()
         tf.random.set_seed(seed)
         self.corruption_layer = CorruptionGenerationLayerTrain(eta, len(ent_to_idx))
         self.corruption_layer_eval = CorruptionGenerationLayerEval(len(ent_to_idx), len(ent_to_idx))
         self.encoding_layer = EmbeddingLookupLayer(len(ent_to_idx), len(rel_to_idx), 300)
-        self.scoring_layer = DistMult()
+        if algo is None:
+            self.scoring_layer = DistMult()
+        else:
+            self.scoring_layer = algo()
         
         
     def compute_output_shape(self, inputShape):

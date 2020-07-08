@@ -7,6 +7,7 @@
 #
 from ampligraph.datasets.source_identifier import DataSourceIdentifier
 from datetime import datetime
+import numpy as np
 
 
 class DummyBackend():
@@ -40,8 +41,11 @@ class DummyBackend():
         if self.verbose:
             print("Simple in-memory data loading of {} dataset.".format(dataset_type))
         self.data_source = data_source
-        loader = self.identifier.fetch_loader()
-        self.data = loader(data_source)
+        if isinstance(self.data_source, np.ndarray):
+            self.data = self.data_source
+        else:
+            loader = self.identifier.fetch_loader()
+            self.data = loader(data_source)
         
     def _get_complementary_entities(self, triple):
         """Get subjects and objects complementary to a triple (?,p,?).
@@ -131,7 +135,7 @@ class GraphDataLoader():
        >>>for elem in data:
        >>>    process(data)
     """    
-    def __init__(self, data_source, batch_size=8, dataset_type="train", backend=None, verbose=False):
+    def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, root_directory="./", verbose=False):
         """Initialise persistent/in-memory data storage.
        
            Parameters
@@ -145,11 +149,12 @@ class GraphDataLoader():
         self.dataset_type = dataset_type
         self.data_source = data_source
         self.batch_size = batch_size
+        self.root_directory = root_directory
         self.identifier = DataSourceIdentifier(self.data_source)       
         if isinstance(backend, type):
             self.backend = backend("database_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")), 
-                                   verbose=verbose)
-            print("Initialized Backend with database at: {}".format(self.backend.db_name))
+                                   root_directory=self.root_directory, verbose=verbose)
+            print("Initialized Backend with database at: {}".format(self.backend.db_path))
         elif backend is None:
             self.backend = DummyBackend(self.identifier)
         else:

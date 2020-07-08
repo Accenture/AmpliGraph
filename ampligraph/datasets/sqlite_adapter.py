@@ -22,13 +22,13 @@ class SQLiteAdapter():
     
         Example
         -------
-        >>># with GraphDataLoader
+        >>># using GraphDataLoader
         >>>data = GraphDataLoader("data.csv", backend=SQLiteAdapter)
         >>># raw
         >>>backend = SQLiteAdapter("database.db")
         >>>backend.populate("data.csv", dataset_type="train")
     """
-    def __init__(self, db_name, chunk_size=DEFAULT_CHUNKSIZE, verbose=False):
+    def __init__(self, db_name, chunk_size=DEFAULT_CHUNKSIZE, root_directory="./", verbose=False):
         """ Initialise SQLiteAdapter.
        
             Parameters
@@ -36,9 +36,12 @@ class SQLiteAdapter():
             db_name: name of the database.
             chunk_size: size of a chunk to read data from while feeding the database,
                         if not provided will be default (DEFAULT_CHUNKSIZE).
+            root_directory: directory where data will be stored - database created and mappings.
             verbose: print status messages.
         """
         self.db_name = db_name
+        self.root_directory = root_directory
+        self.db_path = os.path.join(self.root_directory, self.db_name)
         self.verbose = verbose
         self.indexed = False
         if chunk_size is None:
@@ -51,11 +54,11 @@ class SQLiteAdapter():
     def __enter__ (self):
         """Context manager function to open or create if not exists database connection."""
         try:
-            db_uri = 'file:{}?mode=rw'.format(pathname2url(self.db_name))
+            db_uri = 'file:{}?mode=rw'.format(pathname2url(self.db_path))
             self.connection = sqlite3.connect(db_uri, uri=True)
         except sqlite3.OperationalError:
             print("Missing Database, creating one...")      
-            self.connection = sqlite3.connect(self.db_name)        
+            self.connection = sqlite3.connect(self.db_path)        
             self._create_database()
         return self
     
@@ -200,7 +203,7 @@ class SQLiteAdapter():
         """Index entities and relations. Creates shelves for mappings between
            entities and relations to indexes and reverse mapping. 
     
-           Four shelves are created:
+           Four shelves are created in root_directory:
            entities_shelf_<DATE>.shf - with map entities -> indexes
            reversed_entities_shelf_<DATE>.shf - with map indexes -> entities
            relations_shelf_<DATE>.shf - with map relations -> indexes
@@ -211,10 +214,10 @@ class SQLiteAdapter():
         if self.verbose:        
             print("indexing entities...")
         date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
-        self.entities_shelf = "entities_shelf_{}.shf".format(date)
-        self.reversed_entities_shelf = "reversed_entities_shelf_{}.shf".format(date)
-        self.relations_shelf = "relations_shelf_{}.shf".format(date)
-        self.reversed_relations_shelf = "reversed_relations_shelf_{}.shf".format(date)
+        self.entities_shelf = os.path.join(self.root_directory, "entities_shelf_{}.shf".format(date))
+        self.reversed_entities_shelf = os.path.join(self.root_directory, "reversed_entities_shelf_{}.shf".format(date))
+        self.relations_shelf = os.path.join(self.root_directory, "relations_shelf_{}.shf".format(date))
+        self.reversed_relations_shelf = os.path.join(self.root_directory, "reversed_relations_shelf_{}.shf".format(date))
         with shelve.open(self.entities_shelf, writeback=True) as ents:
             with shelve.open(self.reversed_entities_shelf, writeback=True) as reverse_ents: 
                 with shelve.open(self.relations_shelf, writeback=True) as rels:
@@ -315,7 +318,7 @@ class SQLiteAdapter():
         
     def remove_db(self):
         """Remove the database file."""
-        os.remove(self.db_name)        
+        os.remove(self.db_path)        
         print("Database removed.")
 
     def _get_complementary_objects(self, triple):
@@ -363,7 +366,7 @@ class SQLiteAdapter():
         entities.extend(self._get_complementary_subjects(triple))
         return list(set(entities))
     
-    def _get_batch(self, batch_size=1, dataset_type="train"):
+    def _get_batch(self, batch_size=1, dataset_type="train", use_filter=False):
         """Generator that returns the next batch of data.
 
         Parameters
@@ -393,7 +396,7 @@ class SQLiteAdapter():
             out = self._execute_query(query.format(dataset_type, i * batch_size, batch_size))
             if use_filter:
                 # get the filter values
-                participating_entities = self.get_participating_entities(out)
+                participating_entities = self.get_complementary_entities(out)
                 yield out, participating_entities
             else:
                 yield out                    
@@ -425,9 +428,10 @@ class SQLiteAdapter():
            Records: 59070
 
         """
-        if os.path.exists(self.db_name):
+        if os.path.exists(self.db_path):
             print("Summary for Database {}".format(self.db_name))
-            file_size = os.path.getsize(self.db_name)
+            print("Located in {}".format(self.db_path))
+            file_size = os.path.getsize(self.db_path)
             summary = """File size: {:.5}{}\nTables: {}"""
             tables = self._execute_query("SELECT name FROM sqlite_master WHERE type='table';")
             tables_names = ", ".join(table[0] for table in tables)
