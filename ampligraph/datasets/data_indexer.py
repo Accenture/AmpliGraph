@@ -166,7 +166,10 @@ class DataIndexer():
             print("The mappings will be created.")
             
             if self.in_memory:
-                self.update_dictionary_mappings()
+                if isinstance(self.data, np.ndarray):
+                    self.update_dictionary_mappings()
+                else:
+                    self.update_dictionary_mappings_in_chunks() 
             else:
                 if isinstance(self.data, np.ndarray):
                     self.create_persistent_mappings_from_nparray()
@@ -190,7 +193,10 @@ class DataIndexer():
            of elements.
         """
         if self.in_memory:
-            return self.get_indexes_from_a_dictionary(sample)
+            if isinstance(sample, pd.DataFrame):
+                return self.get_indexes_from_a_dictionary(sample.values)
+            else:
+                return self.get_indexes_from_a_dictionary(sample)
         return self.get_indexes_from_shelves(sample)
 
     def create_persistent_mappings_from_nparray(self):
@@ -332,7 +338,13 @@ class DataIndexer():
             return 0
         else:
             return self.max_rels_index + 1
-            
+        
+
+    def update_dictionary_mappings_in_chunks(self):
+        """Update dictionary mappings chunk by chunk."""
+        for chunk in self.data:
+            self.update_dictionary_mappings(chunk.values)
+    
     def update_dictionary_mappings(self, sample=None):
         """Index entities and relations. Creates shelves for mappings between
            entities and relations to indexes and reverse mapping.
