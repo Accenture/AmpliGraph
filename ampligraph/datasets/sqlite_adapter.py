@@ -25,6 +25,12 @@ class SQLiteAdapter():
         -------
         >>># using GraphDataLoader
         >>>data = GraphDataLoader("data.csv", backend=SQLiteAdapter)
+        >>># using initialised backend
+        >>>data = GraphDataLoader("./fb15k/test.txt", backend=SQLiteAdapter("database.db", use_indexer=mapper))
+        >>>for elem in data:
+        >>>    print(elem)
+        >>>    break
+        [(1, 1, 2)]
         >>># raw with default indexing
         >>>with SQLiteAdapter("database.db") as backend:
         >>>    backend.populate("./fb15k/test.txt", dataset_type="train")
