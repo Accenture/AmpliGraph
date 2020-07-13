@@ -8,6 +8,7 @@
 from ampligraph.datasets.source_identifier import DataSourceIdentifier
 from datetime import datetime
 import numpy as np
+import contextlib
 
 class DummyBackend():
     """Class providing artificial backend, that reads data into memory."""
@@ -20,6 +21,7 @@ class DummyBackend():
         """
         self.verbose = verbose
         self.identifier = identifier
+        self.temp_workaround = False
         
     def __enter__ (self):
         """Context manager enter function. Required by GraphDataLoader."""
@@ -114,7 +116,21 @@ class DummyBackend():
         """
         length = len(self.data)
         for ind in range(0, length, batch_size):
-            yield self.data[ind:min(ind + batch_size, length)]
+            if self.temp_workaround:
+                triples = self.data[ind:min(ind + batch_size, length)]
+                yield [self.ent_emb[triples[:, 0]], 
+                        self.rel_emb[triples[:, 1]], 
+                            self.ent_emb[triples[:, 2]]]
+            else:
+                yield self.data[ind:min(ind + batch_size, length)]
+            
+    def temperorily_set_emb_matrix(self, ent_emb, rel_emb):
+        self.temp_workaround = True
+        self.ent_emb = ent_emb
+        self.rel_emb = rel_emb
+            
+    def should_recreate_iterator(self):
+        return True
 
 class GraphDataLoader():
     """Data loader for graphs implemented as a batch iterator
@@ -131,7 +147,9 @@ class GraphDataLoader():
        >>>for elem in data:
        >>>    process(data)
     """    
-    def __init__(self, data_source, batch_size=8, dataset_type="train", backend=None, verbose=False):
+    def __init__(self, data_source, batch_size=8, dataset_type="train", backend=None, verbose=False, 
+                 initial_epoch=0,
+                 epochs=1):
         """Initialise persistent/in-memory data storage.
        
            Parameters
@@ -141,11 +159,15 @@ class GraphDataLoader():
            dataset_type: kind of data provided (train | test | validation),
            backend: name of backend class or, already initialised backend, 
                     if None, DummyBackend is used (in-memory processing).
-        """   
+        """
+        self._initial_epoch = initial_epoch
+        self._epochs = epochs
+        self._insufficient_data = False
         self.dataset_type = dataset_type
         self.data_source = data_source
         self.batch_size = batch_size
-        self.identifier = DataSourceIdentifier(self.data_source)       
+        self.identifier = DataSourceIdentifier(self.data_source)    
+
         if isinstance(backend, type):
             self.backend = backend("database_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")), 
                                    verbose=verbose)
@@ -157,7 +179,22 @@ class GraphDataLoader():
         
         with self.backend as backend:
             backend._load(self.data_source, dataset_type=self.dataset_type)  
+            
+        self._inferred_steps = None#self._infer_steps()#steps_per_epoch, dataset)
+    
+    def enumerate_epochs(self):
         self.batch_iterator = self.get_batch()
+        data_iterator = iter(self.batch_iterator)
+        
+        for epoch in range(self._initial_epoch, self._epochs):
+            #if self._insufficient_data:  # Set by `catch_stop_iteration`.
+            #    print('insufficient enumerate')
+            #    break
+            if self.backend.should_recreate_iterator():
+                self.batch_iterator = self.get_batch()
+                data_iterator = iter(self.batch_iterator)
+            yield epoch, data_iterator
+
       
     def __iter__(self):
         """Function needed to be used as an itertor."""
@@ -219,3 +256,50 @@ class GraphDataLoader():
 
         with self.backend as backend:
             return backend._get_complementary_entities(triple)
+        
+        
+    def steps(self):
+        """Yields steps for the current epoch."""
+        self._current_step = 0
+        # `self._inferred_steps` can be changed by `catch_stop_iteration`.
+        while (self._inferred_steps is None or
+           self._current_step < self._inferred_steps):
+            if self._insufficient_data:  # Set by `catch_stop_iteration`.
+                print('Insufficient data')
+                break
+            yield self._current_step
+            self._current_step += 1
+            
+    @contextlib.contextmanager
+    def catch_stop_iteration(self):
+        """Catches errors when an iterator runs out of data."""
+        try:
+            yield
+
+        except (StopIteration):
+            if (#self._adapter.get_size() is None and 
+                self._inferred_steps is None and
+                self._current_step > 0):
+                # The input passed by the user ran out of batches.
+                # Now we know the cardinality of the input(dataset or generator).
+                self._inferred_steps = self._current_step
+            else:
+                self._insufficient_data = True
+                total_epochs = self._epochs - self._initial_epoch
+                print('Insufficient data')
+
+    @property
+    def inferred_steps(self):
+        """The inferred steps per epoch of the created `Dataset`.
+        This will be `None` in the case where:
+        (1) A `Dataset` of unknown cardinality was passed to the `DataHandler`, and
+        (2) `steps_per_epoch` was not provided, and
+        (3) The first epoch of iteration has not yet completed.
+        Returns:
+          The inferred steps per epoch of the created `Dataset`.
+        """
+        return self._inferred_steps
+    
+    def temperorily_set_emb_matrix(self, ent_emb, rel_emb):
+        with self.backend as backend:
+            backend.temperorily_set_emb_matrix(ent_emb, rel_emb)
