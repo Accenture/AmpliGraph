@@ -255,9 +255,13 @@ class ConvE(EmbeddingModel):
             dense_dim = self.embedding_model_params['dense_dim']
 
             self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k],
-                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
+                                           initializer=self.initializer.get_entity_initializer(
+                                           len(self.ent_to_idx), self.k),
+                                           dtype=tf.float32)
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
-                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
+                                           initializer=self.initializer.get_relation_initializer(
+                                           len(self.rel_to_idx), self.k),
+                                           dtype=tf.float32)
 
             self.conv2d_W = tf.get_variable('conv2d_weights', shape=[ksize, ksize, ninput, nfilters],
                                             initializer=tf.initializers.he_normal(seed=self.seed),
@@ -622,9 +626,6 @@ class ConvE(EmbeddingModel):
                                     "Kindly change the optimizer and restart the experiment")
 
                 raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
-
-                # CPU matrix of embeddings
-                self.ent_emb_cpu = self.initializer.get_np_initializer(len(self.ent_to_idx), self.internal_k)
 
             self.train_dataset_handle.map_data()
 
