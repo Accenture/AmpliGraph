@@ -33,32 +33,30 @@ def get_number_of_partitions(n):
 
 class AbstractGraphPartitioner(ABC):
     """Meta class defining interface for graph partitioning algorithms.
-    
+
     _data: graph data to split across partitions
     _k [default=2]: number of partitions to split into
     """
 
-    def __init__(self, data, k=2):
+    def __init__(self, data, k=2, seed=None, **kwargs):
         self._data = data
         self._k = k
+        self._split(seed=seed, **kwargs)
+        self.generator = self.partitions_generator()
+        
+    def __iter__(self):
+        """Function needed to be used as an itertor."""
+        return self
 
-    def get_triples(self, vertices, **kwargs):
-        """Given list of vertices return all triples which contain them.
+    def partitions_generator(self):
+        for partition in self.partitions:
+            yield partition
+        
+    def __next__(self):
+        """Function needed to be used as an itertor."""
+        return next(self.generator)
 
-        Parameters
-        ----------
-        vertices: list of vertices
-
-        Returns
-        -------
-        array with triples containing vertices
-
-        """
-        return np.array([x for x in self._data 
-                         if x[2] in vertices or x[0] in vertices])
-
-    @abstractmethod
-    def split(self, seed=None, **kwargs):
+    def _split(self, seed=None, **kwargs):
         """Split data into k equal size partitions.
 
            Parameters
@@ -167,11 +165,11 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
     
 @register_partitioning_strategy("RandomVertices")
 class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
-    def __init__(self, data, k=2):
+    def __init__(self, data, k=2, seed=None, **kwargs):
         super().__init__(data, k)
-
+       
     @timing_and_memory
-    def split(self, seed=None, **kwargs):
+    def _split(self, seed=None, **kwargs):
         """Split data into k equal size partitions by randomly drawing subset of vertices
            of partition size and retrieving triples associated with these vertices.
 
@@ -179,20 +177,19 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
            -------
             partitions: parts of equal size with triples
         """
-        vertices = np.asarray(list(set(self._data[:, 0]).union(set(self._data[:, 2]))))
-        self.size = len(vertices)
+        vertices = np.array(list(self._data.backend.mapper.entities_dict.keys()))
+        self.size = self._data.backend.mapper.ents_length
         indexes = range(self.size)
         self.partition_size = int(self.size / self._k)
-        vertices_partitions = []
+        self.partitions = []
         remaining_data = indexes
         if seed is not None:
             np.random.seed([(seed + i)*i for i in range(self._k) ])
         for part in range(self._k):
             split = np.random.choice(remaining_data, self.partition_size)
             remaining_data = np.setdiff1d(remaining_data, split)
-            vertices_partitions.append(self.get_triples(vertices[split]))
-
-        return vertices_partitions
+            tmp = self._data.get_triples(entities=vertices[split])
+            self.partitions.append(tmp)
 
 
 @register_partitioning_strategy("RandomEdges")

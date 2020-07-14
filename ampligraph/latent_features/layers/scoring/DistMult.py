@@ -1,4 +1,6 @@
 import tensorflow as tf
+from ampligraph.latent_features.layers.scoring import register_layer, AbstractScoringLayer
+
 
 @register_layer('DistMult')
 class DistMult(AbstractScoringLayer):

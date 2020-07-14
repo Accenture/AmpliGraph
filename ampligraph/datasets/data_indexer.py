@@ -99,6 +99,11 @@ class DataIndexer():
     def get_max_rels_index(self):
         """Get maximum index from relations dictionary."""
         return max(self.relations_dict.values())
+
+    def get_entities_in_batches(self, batch_size=-1):
+        entities = range(0, self.ents_length, batch_size)
+        for start_index in entities:
+            yield np.array(range(start_index, start_index + batch_size))
     
     def update_properties_dictionary(self):
         """Initialise properties from the in-memory dictionary."""

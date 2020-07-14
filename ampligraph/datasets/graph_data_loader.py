@@ -58,6 +58,22 @@ class DummyBackend():
                 self.data = self.mapper.get_indexes(raw_data)
             else:
                 self.data = loader(self.data_source)
+
+    def _get_triples(self, subjects=None, objects=None, entities=None):
+        """Get triples that objects belongs to objects and subjects to subjects,
+           or if not provided either object or subjet belongs to entities.
+        """
+        if subjects is None and objects is None:
+            msg = "You have to provide either subjects and objects indexes or general entities indexes!"
+            assert(entities is not None), msg 
+            subjects = entities
+            objects = entities
+        check_subjects = np.vectorize(lambda t: t in subjects)
+        check_objects = np.vectorize(lambda t: t in objects)
+        triples_from_subjects = self.data[check_subjects(self.data[:,2])]
+        triples_from_objects = self.data[check_objects(self.data[:,0])]
+        triples = np.vstack([triples_from_subjects, triples_from_objects])
+        return triples 
         
     def _get_complementary_entities(self, triple):
         """Get subjects and objects complementary to a triple (?,p,?).
@@ -191,7 +207,7 @@ class GraphDataLoader():
         """Query data for a next batch."""
         with self.backend as backend:
             return backend._get_batch(self.batch_size, dataset_type=self.dataset_type)
-    
+   
     def get_complementary_subjects(self, triple):
         """Get subjects complementary to a triple (?,p,o).
            For a given triple retrive all triples whith same objects and predicates.
@@ -238,3 +254,9 @@ class GraphDataLoader():
 
         with self.backend as backend:
             return backend._get_complementary_entities(triple)
+
+
+    def get_triples(self, subjects=None, objects=None, entities=None):
+        with self.backend as backend:
+            return backend._get_triples(subjects, objects, entities)
+

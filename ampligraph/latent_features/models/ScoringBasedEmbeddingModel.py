@@ -109,7 +109,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             list of input scores along with their corruptions
         '''
         # generate the corruptions for the input triples
-        corruptions = self.corruption_layer(inputs, self.unique_entities)
+        print(self.unique_entities)
+        print(type(self.unique_entities))
+        corruptions = self.corruption_layer(inputs, len(self.unique_entities))
         # lookup embeddings of the inputs
         inp_emb = self.encoding_layer(inputs)
         # lookup embeddings of the inputs
