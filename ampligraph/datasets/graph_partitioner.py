@@ -51,6 +51,15 @@ class AbstractGraphPartitioner(ABC):
     def partitions_generator(self):
         for partition in self.partitions:
             yield partition
+
+    def get_partitions_iterator(self):
+        """Reinstantiate partitions generator
+           
+           Returns
+           -------
+           partitions generator
+        """
+        return self.partitions_generator()
         
     def __next__(self):
         """Function needed to be used as an itertor."""
@@ -74,93 +83,54 @@ class AbstractGraphPartitioner(ABC):
 @register_partitioning_strategy("Bucket")
 class BucketGraphPartitioner(AbstractGraphPartitioner):
     def __init__(self, data, k=2):
+        self.partitions = []
         super().__init__(data, k)
-
-    @timing_and_memory
-    def split(self, seed=None, verbose=False, **kwargs):
-        """Split data into 
-        
-           Returns
-           -------
-            partitions: created partitions
+       
+    def create_single_partition(self, ind1, ind2, timestamp, partition_nb):
+        """Creates partition based on given two indices of buckets.
+           It appends created partition to the list of partitions (self.partitions).
+          
+           Parameters
+           ----------
+           ind1: index of the first bucket needed to create partition.
+           ind2: index of the second bucket needed to create partition.
+           timestamp: date and time string that the files are created with (shelves).
+           partition_nb: assigned number of partition.
         """
-        unique_ents = set(self._data[:,0])
-        unique_ents.update(set(self._data[:,2]))
-        unique_ents = np.array(list(unique_ents))
-        dataset_df = pd.DataFrame(self._data, columns=['s','p', 'o'])
-        p_triples_bool = dict()
-        p_triples = dict()
-        p_ents = dict()
-
-        p_triples_multiple_buckets = dict()
-        p_ent_multiple_buckets = dict()
-        start_time = time.time()
-        for i in range(self._k):
-            max_triples = unique_ents.shape[0]//self._k  # size of partition
-            p_ents[i] = unique_ents[i * max_triples: (i+1) * max_triples] # chunk vertices based on size
-            p_triples_bool[i] = np.logical_and(dataset_df['s'].isin(p_ents[i]).values,
-                                                    dataset_df['o'].isin(p_ents[i]).values)
-            # filter triples where both subject and predicate are in the created partition
-            p_triples[i] = self._data[p_triples_bool[i], :] # take only these triples
+        with shelve.open("bucket_{}_{}.shf".format(ind1, timestamp), writeback=True) as bucket_partition_1:
+            indexes_1 = bucket_partition_1['indexes']
+        with shelve.open("bucket_{}_{}.shf".format(ind2, timestamp), writeback=True) as bucket_partition_2:
+            indexes_2 = bucket_partition_2['indexes']
             
-            if verbose:
-                print(p_triples[i].shape)
-
-        total_partitions = 0
-        for i in range(self._k):
-            for j in range(i, self._k):
-                if i==j:
-                    try:
-                        p_triples_multiple_buckets[i][i] = p_triples[i]
-                        p_ent_multiple_buckets[i][i] = p_ents[i]
-                    except KeyError:
-                        p_triples_multiple_buckets[i] = dict()
-                        p_ent_multiple_buckets[i] = dict()
-                        p_triples_multiple_buckets[i][i] = p_triples[i]
-                        p_ent_multiple_buckets[i][i] = p_ents[i]
-                else:
-                    try:
-                        p_triples_multiple_buckets[i][j] =  self._data[np.logical_or(
-                                                                np.logical_and(dataset_df['s'].isin(p_ents[i]).values,
-                                                                              dataset_df['o'].isin(p_ents[j]).values),
-                                                                np.logical_and(dataset_df['s'].isin(p_ents[j]).values,
-                                                                              dataset_df['o'].isin(p_ents[i]).values)), :]
-
-
-
-
-
-                        p_ent_multiple_buckets[i][j] = np.array(list(set(p_triples_multiple_buckets[i][j][:, 0]).union(
-                            set(p_triples_multiple_buckets[i][j][:, 2]))))
-                    except KeyError:
-                        p_triples_multiple_buckets[i] = dict()
-                        p_ent_multiple_buckets[i] = dict()
-                        p_triples_multiple_buckets[i][j] =  self._data[np.logical_or(
-                                                                np.logical_and(dataset_df['s'].isin(p_ents[i]).values,
-                                                                              dataset_df['o'].isin(p_ents[j]).values),
-                                                                np.logical_and(dataset_df['s'].isin(p_ents[j]).values,
-                                                                              dataset_df['o'].isin(p_ents[i]).values)), :]
-
-
-
-                        p_ent_multiple_buckets[i][j] = np.array(list(set(p_triples_multiple_buckets[i][j][:, 0]).union(
-                            set(p_triples_multiple_buckets[i][j][:, 2]))))
-                if verbose:                        
-                    print('{} -> {} : {} triples, {} entities'.format(i, j, p_triples_multiple_buckets[i][j].shape,
-                                                                     p_ent_multiple_buckets[i][j].shape))
-                total_partitions +=1
-
-        end_time = time.time()
-
-
-        if verbose:
-            print('Time Taken: {} secs'.format(end_time - start_time) )
-            print('Total node partitions:', self._k)
-            print('Total edge partitions:', total_partitions)
+        triples_1_2 = self._data.get_triples(subjects=indexes_1, objects=indexes_2)
+        triples_2_1 = self._data.get_triples(subjects=indexes_2, objects=indexes_1)        
+        triples = np.vstack([triples_1_2, triples_2_1]).astype(np.int32)
+        triples = np.unique(triples, axis=0)
+        np.savetxt("partition_{}_{}.csv".format(partition_nb, timestamp), triples, delimiter=",", fmt='%d')
+        partition_loader = GraphDataLoader("partition_{}_{}.csv".format(partition_nb, timestamp), use_indexer=False)
+        self.partitions.append(partition_loader)
+    
+    @timing_and_memory
+    def _split(self, seed=None, verbose=False, **kwargs):
+        """Split data into self.k buckets based on unique entities and assign 
+           accordingly triples to k partitions and intermediate partitions.
+        """
+        timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
+        unique_ents = np.array(list(self._data.backend.mapper.entities_dict.keys()))
+        self.size = self._data.backend.mapper.ents_length
+        self.partition_size = int(self.size / self._k)        
+        self.buckets_generator = self._data.backend.mapper.get_entities_in_batches(batch_size=self.partition_size)
         
-        # p_triples_multiple_buckets - nested dictionary
-        partitions = [p_triples_multiple_buckets[part][sub_part] for part in p_triples_multiple_buckets for sub_part in p_triples_multiple_buckets[part]]
-        return partitions
+        for i, bucket in enumerate(self.buckets_generator):
+            # dump entities in partition shelve/file
+            with shelve.open("bucket_{}_{}.shf".format(i, timestamp), writeback=True) as bucket_partition:
+                bucket_partition['indexes'] = bucket
+            
+        partition_nb = 0
+        for i in range(self._k):
+            for j in range(self._k):
+                self.create_single_partition(i, j, timestamp, partition_nb)
+                partition_nb += 1           
 
     
 @register_partitioning_strategy("RandomVertices")
