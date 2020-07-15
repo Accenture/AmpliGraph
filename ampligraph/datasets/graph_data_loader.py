@@ -6,22 +6,26 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 from ampligraph.datasets.source_identifier import DataSourceIdentifier
+from ampligraph.datasets import DataIndexer
 from datetime import datetime
 import numpy as np
 import contextlib
 
+
 class DummyBackend():
     """Class providing artificial backend, that reads data into memory."""
-    def __init__(self, identifier, verbose=False):
+    def __init__(self, identifier, use_indexer=True, verbose=False):
         """Initialise DummyBackend.
 
            Parameters
            ----------
            identifier: initialize data source identifier, provides loader. 
+           use_indexer: flag to tell whether data should be indexed.
         """
         self.verbose = verbose
         self.identifier = identifier
         self.temp_workaround = False
+        self.use_indexer = use_indexer
         
     def __enter__ (self):
         """Context manager enter function. Required by GraphDataLoader."""
@@ -42,8 +46,41 @@ class DummyBackend():
         if self.verbose:
             print("Simple in-memory data loading of {} dataset.".format(dataset_type))
         self.data_source = data_source
-        loader = self.identifier.fetch_loader()
-        self.data = loader(data_source).astype(np.int32)
+
+        #loader = self.identifier.fetch_loader()
+        #self.data = loader(data_source).astype(np.int32)
+
+        if isinstance(self.data_source, np.ndarray):
+            if self.use_indexer:
+                self.mapper = DataIndexer(self.data_source)
+                self.data = self.mapper.get_indexes(self.data_source)
+            else:
+                self.data = self.data_source
+        else:
+            loader = self.identifier.fetch_loader()
+            if self.use_indexer:
+                raw_data = loader(self.data_source)
+                self.mapper = DataIndexer(raw_data)
+                self.data = self.mapper.get_indexes(raw_data)
+            else:
+                self.data = loader(self.data_source)
+
+    def _get_triples(self, subjects=None, objects=None, entities=None):
+        """Get triples that objects belongs to objects and subjects to subjects,
+           or if not provided either object or subjet belongs to entities.
+        """
+        if subjects is None and objects is None:
+            msg = "You have to provide either subjects and objects indexes or general entities indexes!"
+            assert(entities is not None), msg 
+            subjects = entities
+            objects = entities
+        check_subjects = np.vectorize(lambda t: t in subjects)
+        check_objects = np.vectorize(lambda t: t in objects)
+        triples_from_subjects = self.data[check_subjects(self.data[:,2])]
+        triples_from_objects = self.data[check_objects(self.data[:,0])]
+        triples = np.vstack([triples_from_subjects, triples_from_objects])
+        return triples 
+
         
     def _get_complementary_entities(self, triple):
         """Get subjects and objects complementary to a triple (?,p,?).
@@ -147,9 +184,15 @@ class GraphDataLoader():
        >>>for elem in data:
        >>>    process(data)
     """    
-    def __init__(self, data_source, batch_size=8, dataset_type="train", backend=None, verbose=False, 
+    def __init__(self, data_source, 
+                 batch_size=1, 
+                 dataset_type="train", 
+                 backend=None, 
+                 root_directory="./", 
+                 use_indexer=True, 
                  initial_epoch=0,
-                 epochs=1):
+                 epochs=1,
+                 verbose=False):
         """Initialise persistent/in-memory data storage.
        
            Parameters
@@ -159,21 +202,24 @@ class GraphDataLoader():
            dataset_type: kind of data provided (train | test | validation),
            backend: name of backend class or, already initialised backend, 
                     if None, DummyBackend is used (in-memory processing).
-        """
+           use_indexer: flag to tell whether data should be indexed.          
+        """   
         self._initial_epoch = initial_epoch
         self._epochs = epochs
         self._insufficient_data = False
         self.dataset_type = dataset_type
         self.data_source = data_source
         self.batch_size = batch_size
-        self.identifier = DataSourceIdentifier(self.data_source)    
+        self.root_directory = root_directory
+        self.identifier = DataSourceIdentifier(self.data_source)       
+        self.use_indexer = use_indexer
 
         if isinstance(backend, type):
             self.backend = backend("database_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")), 
-                                   verbose=verbose)
-            print("Initialized Backend with database at: {}".format(self.backend.db_name))
+                                   root_directory=self.root_directory, use_indexer=self.use_indexer, verbose=verbose)
+            print("Initialized Backend with database at: {}".format(self.backend.db_path))
         elif backend is None:
-            self.backend = DummyBackend(self.identifier)
+            self.backend = DummyBackend(self.identifier, use_indexer=self.use_indexer)
         else:
             self.backend = backend
         
@@ -209,7 +255,7 @@ class GraphDataLoader():
         """Query data for a next batch."""
         with self.backend as backend:
             return backend._get_batch(self.batch_size, dataset_type=self.dataset_type)
-    
+   
     def get_complementary_subjects(self, triple):
         """Get subjects complementary to a triple (?,p,o).
            For a given triple retrive all triples whith same objects and predicates.
@@ -257,7 +303,6 @@ class GraphDataLoader():
         with self.backend as backend:
             return backend._get_complementary_entities(triple)
         
-        
     def steps(self):
         """Yields steps for the current epoch."""
         self._current_step = 0
@@ -303,3 +348,9 @@ class GraphDataLoader():
     def temperorily_set_emb_matrix(self, ent_emb, rel_emb):
         with self.backend as backend:
             backend.temperorily_set_emb_matrix(ent_emb, rel_emb)
+
+
+    def get_triples(self, subjects=None, objects=None, entities=None):
+        with self.backend as backend:
+            return backend._get_triples(subjects, objects, entities)
+

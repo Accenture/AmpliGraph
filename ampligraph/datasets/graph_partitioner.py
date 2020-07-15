@@ -33,32 +33,39 @@ def get_number_of_partitions(n):
 
 class AbstractGraphPartitioner(ABC):
     """Meta class defining interface for graph partitioning algorithms.
-    
+
     _data: graph data to split across partitions
     _k [default=2]: number of partitions to split into
     """
 
-    def __init__(self, data, k=2):
+    def __init__(self, data, k=2, seed=None, **kwargs):
         self._data = data
         self._k = k
+        self._split(seed=seed, **kwargs)
+        self.generator = self.partitions_generator()
+        
+    def __iter__(self):
+        """Function needed to be used as an itertor."""
+        return self
 
-    def get_triples(self, vertices, **kwargs):
-        """Given list of vertices return all triples which contain them.
+    def partitions_generator(self):
+        for partition in self.partitions:
+            yield partition
 
-        Parameters
-        ----------
-        vertices: list of vertices
-
-        Returns
-        -------
-        array with triples containing vertices
-
+    def get_partitions_iterator(self):
+        """Reinstantiate partitions generator
+           
+           Returns
+           -------
+           partitions generator
         """
-        return np.array([x for x in self._data 
-                         if x[2] in vertices or x[0] in vertices])
+        return self.partitions_generator()
+        
+    def __next__(self):
+        """Function needed to be used as an itertor."""
+        return next(self.generator)
 
-    @abstractmethod
-    def split(self, seed=None, **kwargs):
+    def _split(self, seed=None, **kwargs):
         """Split data into k equal size partitions.
 
            Parameters
@@ -76,93 +83,63 @@ class AbstractGraphPartitioner(ABC):
 @register_partitioning_strategy("Bucket")
 class BucketGraphPartitioner(AbstractGraphPartitioner):
     def __init__(self, data, k=2):
+        self.partitions = []
         super().__init__(data, k)
-
-    @timing_and_memory
-    def split(self, seed=None, verbose=False, **kwargs):
-        """Split data into partitions based on bucketed entities as follows:
-        
-            If you have 2 buckets (0, 1) then you will have 3 partitions i.e.
-               a. edges with sub and obj in bucket 0 (0 - 0)
-               b. edges with sub and obj in bucket 1 (1 - 1)
-               c. edges with sub in 0 and obj in  1 (0 - 1)
-        
-           Returns
-           -------
-            partitions: created partitions
+       
+    def create_single_partition(self, ind1, ind2, timestamp, partition_nb):
+        """Creates partition based on given two indices of buckets.
+           It appends created partition to the list of partitions (self.partitions).
+          
+           Parameters
+           ----------
+           ind1: index of the first bucket needed to create partition.
+           ind2: index of the second bucket needed to create partition.
+           timestamp: date and time string that the files are created with (shelves).
+           partition_nb: assigned number of partition.
         """
-        # get the unique entities (s and o)
-        unique_ents = set(self._data[:,0])
-        unique_ents.update(set(self._data[:,2]))
-        unique_ents = np.array(list(unique_ents))
+        with shelve.open("bucket_{}_{}.shf".format(ind1, timestamp), writeback=True) as bucket_partition_1:
+            indexes_1 = bucket_partition_1['indexes']
+        with shelve.open("bucket_{}_{}.shf".format(ind2, timestamp), writeback=True) as bucket_partition_2:
+            indexes_2 = bucket_partition_2['indexes']
+            
+        triples_1_2 = self._data.get_triples(subjects=indexes_1, objects=indexes_2)
+        triples_2_1 = self._data.get_triples(subjects=indexes_2, objects=indexes_1)        
+        triples = np.vstack([triples_1_2, triples_2_1]).astype(np.int32)
+        triples = np.unique(triples, axis=0)
+        np.savetxt("partition_{}_{}.csv".format(partition_nb, timestamp), triples, delimiter=",", fmt='%d')
+        partition_loader = GraphDataLoader("partition_{}_{}.csv".format(partition_nb, timestamp), use_indexer=False)
+        self.partitions.append(partition_loader)
+    
+    @timing_and_memory
+    def _split(self, seed=None, verbose=False, **kwargs):
+        """Split data into self.k buckets based on unique entities and assign 
+           accordingly triples to k partitions and intermediate partitions.
+        """
+        timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
+        unique_ents = np.array(list(self._data.backend.mapper.entities_dict.keys()))
+        self.size = self._data.backend.mapper.ents_length
+        self.partition_size = int(self.size / self._k)        
+        self.buckets_generator = self._data.backend.mapper.get_entities_in_batches(batch_size=self.partition_size)
         
-        # store entities in buckets
-        bucketed_entities = dict()
-        
-        # Max entities in a bucket 
-        max_entities = np.int32(np.ceil(unique_ents.shape[0] / self._k))
+        for i, bucket in enumerate(self.buckets_generator):
+            # dump entities in partition shelve/file
+            with shelve.open("bucket_{}_{}.shf".format(i, timestamp), writeback=True) as bucket_partition:
+                bucket_partition['indexes'] = bucket
+            
+        partition_nb = 0
         for i in range(self._k):
-            # store the entities in the buckets
-            bucketed_entities[i] = unique_ents[i * max_entities: (i+1) * max_entities]
-
-        # triples in partitions (based on start and end buckets)
-        triples_of_bucket_dict = dict()
-        # entities in the partition
-        entities_of_bucket_dict = dict()
-
-        start_time = time.time()
-        
-        
-        total_partitions = 0
-        for i in range(self._k):
-            for j in range(i, self._k):
-                try:
-                    # based on where the triples start and end, put in respective partitions
-                    triples_of_bucket_dict[i][j] =  self._data[np.logical_or(
-                                                            np.logical_and(np.isin(self._data[:, 0], bucketed_entities[i]),
-                                                                          np.isin(self._data[:, 2], bucketed_entities[j])),
-                                                            np.logical_and(np.isin(self._data[:, 0], bucketed_entities[j]),
-                                                                          np.isin(self._data[:, 2], bucketed_entities[i]))), :]
-
-
-
-                    entities_of_bucket_dict[i][j] = np.array(list(set(triples_of_bucket_dict[i][j][:, 0]).union(
-                        set(triples_of_bucket_dict[i][j][:, 2]))))
-                except KeyError:
-                    triples_of_bucket_dict[i] = dict()
-                    entities_of_bucket_dict[i] = dict()
-                    triples_of_bucket_dict[i][j] =  self._data[np.logical_or(
-                                                            np.logical_and(np.isin(self._data[:, 0], bucketed_entities[i]),
-                                                                          np.isin(self._data[:, 2], bucketed_entities[j])),
-                                                            np.logical_and(np.isin(self._data[:, 0], bucketed_entities[j]),
-                                                                          np.isin(self._data[:, 2], bucketed_entities[i]))), :]
-
-                    entities_of_bucket_dict[i][j] = np.array(list(set(triples_of_bucket_dict[i][j][:, 0]).union(
-                        set(triples_of_bucket_dict[i][j][:, 2]))))
-                print('{} -> {} : {} triples, {} entities'.format(i, j, triples_of_bucket_dict[i][j].shape,
-                                                                 entities_of_bucket_dict[i][j].shape))
-                total_partitions +=1
-
-        end_time = time.time()
-
-
-        if verbose:
-            print('Time Taken: {} secs'.format(end_time - start_time) )
-            print('Total node partitions:', self._k)
-            print('Total edge partitions:', total_partitions)
-        
-        # triples_of_bucket_dict - nested dictionary
-        partitions = [triples_of_bucket_dict[part][sub_part] for part in triples_of_bucket_dict for sub_part in triples_of_bucket_dict[part]]
-        return partitions
+            for j in range(self._k):
+                self.create_single_partition(i, j, timestamp, partition_nb)
+                partition_nb += 1           
 
     
 @register_partitioning_strategy("RandomVertices")
 class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
-    def __init__(self, data, k=2):
+    def __init__(self, data, k=2, seed=None, **kwargs):
         super().__init__(data, k)
-
+       
     @timing_and_memory
-    def split(self, seed=None, **kwargs):
+    def _split(self, seed=None, **kwargs):
         """Split data into k equal size partitions by randomly drawing subset of vertices
            of partition size and retrieving triples associated with these vertices.
 
@@ -170,20 +147,19 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
            -------
             partitions: parts of equal size with triples
         """
-        vertices = np.asarray(list(set(self._data[:, 0]).union(set(self._data[:, 2]))))
-        self.size = len(vertices)
+        vertices = np.array(list(self._data.backend.mapper.entities_dict.keys()))
+        self.size = self._data.backend.mapper.ents_length
         indexes = range(self.size)
         self.partition_size = int(self.size / self._k)
-        vertices_partitions = []
+        self.partitions = []
         remaining_data = indexes
         if seed is not None:
             np.random.seed([(seed + i)*i for i in range(self._k) ])
         for part in range(self._k):
             split = np.random.choice(remaining_data, self.partition_size)
             remaining_data = np.setdiff1d(remaining_data, split)
-            vertices_partitions.append(self.get_triples(vertices[split]))
-
-        return vertices_partitions
+            tmp = self._data.get_triples(entities=vertices[split])
+            self.partitions.append(tmp)
 
 
 @register_partitioning_strategy("RandomEdges")

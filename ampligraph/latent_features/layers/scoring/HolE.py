@@ -1,5 +1,5 @@
 import tensorflow as tf
-from .AbstractScoringLayer import AbstractScoringLayer, register_layer
+from ampligraph.latent_features.layers.scoring import register_layer, AbstractScoringLayer
 from .ComplEx import ComplEx
 
 @register_layer('HolE')

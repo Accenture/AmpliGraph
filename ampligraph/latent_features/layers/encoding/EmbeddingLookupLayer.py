@@ -92,6 +92,4 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         '''
         assert isinstance(input_shape, list)
         batch_size, _ = input_shape
-        return [(batch_size, self.k), (batch_size, self.k), (batch_size, self.k)]
-    
-    
+        return [(batch_size, self.k), (batch_size, self.k), (batch_size, self.k)]    

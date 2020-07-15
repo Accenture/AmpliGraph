@@ -6,6 +6,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 from ampligraph.datasets.source_identifier import DataSourceIdentifier
+from ampligraph.datasets import DataIndexer
 import sqlite3
 from sqlite3 import Error
 import numpy as np
@@ -22,13 +23,23 @@ class SQLiteAdapter():
     
         Example
         -------
-        >>># with GraphDataLoader
+        >>># using GraphDataLoader
         >>>data = GraphDataLoader("data.csv", backend=SQLiteAdapter)
-        >>># raw
-        >>>backend = SQLiteAdapter("database.db")
-        >>>backend.populate("data.csv", dataset_type="train")
+        >>># using initialised backend
+        >>>data = GraphDataLoader("./fb15k/test.txt", backend=SQLiteAdapter("database.db", use_indexer=mapper))
+        >>>for elem in data:
+        >>>    print(elem)
+        >>>    break
+        [(1, 1, 2)]
+        >>># raw with default indexing
+        >>>with SQLiteAdapter("database.db") as backend:
+        >>>    backend.populate("./fb15k/test.txt", dataset_type="train")
+        >>># raw with previously specified indexing
+        >>>mapper = DataIndexer(data.values)
+        >>>with SQLiteAdapter("database.db", use_indexer=mapper) as backend:
+        >>>    backend.populate("data.csv", dataset_type="train")
     """
-    def __init__(self, db_name, chunk_size=DEFAULT_CHUNKSIZE, verbose=False):
+    def __init__(self, db_name, chunk_size=DEFAULT_CHUNKSIZE, root_directory="./", use_indexer=True, verbose=False):
         """ Initialise SQLiteAdapter.
        
             Parameters
@@ -36,11 +47,15 @@ class SQLiteAdapter():
             db_name: name of the database.
             chunk_size: size of a chunk to read data from while feeding the database,
                         if not provided will be default (DEFAULT_CHUNKSIZE).
+            root_directory: directory where data will be stored - database created and mappings.
+            use_indexer: object of type DataIndexer with predifined mapping or bool flag to tell whether data should be indexed.
             verbose: print status messages.
         """
         self.db_name = db_name
+        self.root_directory = root_directory
+        self.db_path = os.path.join(self.root_directory, self.db_name)
+        self.use_indexer = use_indexer
         self.verbose = verbose
-        self.indexed = False
         if chunk_size is None:
             chunk_size = DEFAULT_CHUNKSIZE
             print("Currently {} only supports data given in chunks. \
@@ -51,11 +66,11 @@ class SQLiteAdapter():
     def __enter__ (self):
         """Context manager function to open or create if not exists database connection."""
         try:
-            db_uri = 'file:{}?mode=rw'.format(pathname2url(self.db_name))
+            db_uri = 'file:{}?mode=rw'.format(pathname2url(self.db_path))
             self.connection = sqlite3.connect(db_uri, uri=True)
         except sqlite3.OperationalError:
             print("Missing Database, creating one...")      
-            self.connection = sqlite3.connect(self.db_name)        
+            self.connection = sqlite3.connect(self.db_path)        
             self._create_database()
         return self
     
@@ -188,66 +203,79 @@ class SQLiteAdapter():
            """
         if self.verbose:
             print("getting triples...")
-        with shelve.open(self.reversed_entities_shelf) as ents:
-            with shelve.open(self.reversed_relations_shelf) as rels:        
-                subjects = [ents[elem] for elem in chunk.values[:,0]]
-                objects = [str(ents[elem]) for elem in chunk.values[:,2]]
-                predicates = [str(rels[elem]) for elem in chunk.values[:,1]]
-                tmp = np.array((subjects, predicates, objects), dtype=int).T
-                return np.append(tmp, np.array(len(chunk.values)*[dataset_type]).reshape(-1,1), axis=1)
+        if self.use_indexer != False:
+            triples = self.mapper.get_indexes(chunk)
+            return np.append(triples, np.array(len(chunk.values)*[dataset_type]).reshape(-1,1), axis=1)
+        else:
+            return np.append(chunk.values, np.array(len(chunk.values)*[dataset_type]).reshape(-1,1), axis=1)
 
-    def index_entities_in_shelf(self):
-        """Index entities and relations. Creates shelves for mappings between
-           entities and relations to indexes and reverse mapping. 
-    
-           Four shelves are created:
-           entities_shelf_<DATE>.shf - with map entities -> indexes
-           reversed_entities_shelf_<DATE>.shf - with map indexes -> entities
-           relations_shelf_<DATE>.shf - with map relations -> indexes
-           reversed_relations_shelf_<DATE>.shf - with map indexes -> relations
-    
-           Rememer to use mappings for entities with entities and reltions with relations!
-        """
-        if self.verbose:        
-            print("indexing entities...")
-        date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
-        self.entities_shelf = "entities_shelf_{}.shf".format(date)
-        self.reversed_entities_shelf = "reversed_entities_shelf_{}.shf".format(date)
-        self.relations_shelf = "relations_shelf_{}.shf".format(date)
-        self.reversed_relations_shelf = "reversed_relations_shelf_{}.shf".format(date)
-        with shelve.open(self.entities_shelf, writeback=True) as ents:
-            with shelve.open(self.reversed_entities_shelf, writeback=True) as reverse_ents: 
-                with shelve.open(self.relations_shelf, writeback=True) as rels:
-                    with shelve.open(self.reversed_relations_shelf, writeback=True) as reverse_rels:             
-                        for i, chunk in enumerate(self.data):
-                            entities = set(chunk.values[:,0]).union(set(chunk.values[:,2]))
-                            predicates = set(chunk.values[:,1])
-                            ind = i*len(chunk)
-                            reverse_ents.update({str(value):str(key+ind) for key, value in enumerate(entities)})
-                            ents.update({str(key+ind):str(value) for key, value in enumerate(entities)})                
-                            reverse_rels.update({str(value):str(key+ind) for key, value in enumerate(predicates)})
-                            rels.update({str(key+ind):str(value) for key, value in enumerate(predicates)})                                                
+#        with shelve.open(self.reversed_entities_shelf) as ents:
+#            with shelve.open(self.reversed_relations_shelf) as rels:        
+#                subjects = [ents[elem] for elem in chunk.values[:,0]]
+#                objects = [str(ents[elem]) for elem in chunk.values[:,2]]
+#                predicates = [str(rels[elem]) for elem in chunk.values[:,1]]
+#                tmp = np.array((subjects, predicates, objects), dtype=int).T
+#                return np.append(tmp, np.array(len(chunk.values)*[dataset_type]).reshape(-1,1), axis=1)
+
+#    def index_entities_in_shelf(self):
+#        """Index entities and relations. Creates shelves for mappings between
+#           entities and relations to indexes and reverse mapping. 
+#    
+#           Four shelves are created in root_directory:
+#           entities_shelf_<DATE>.shf - with map entities -> indexes
+#           reversed_entities_shelf_<DATE>.shf - with map indexes -> entities
+#           relations_shelf_<DATE>.shf - with map relations -> indexes
+#           reversed_relations_shelf_<DATE>.shf - with map indexes -> relations
+#    
+#           Rememer to use mappings for entities with entities and reltions with relations!
+#        """
+#        if self.verbose:        
+#            print("indexing entities...")
+#        date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
+#        self.entities_shelf = os.path.join(self.root_directory, "entities_shelf_{}.shf".format(date))
+#        self.reversed_entities_shelf = os.path.join(self.root_directory, "reversed_entities_shelf_{}.shf".format(date))
+#        self.relations_shelf = os.path.join(self.root_directory, "relations_shelf_{}.shf".format(date))
+#        self.reversed_relations_shelf = os.path.join(self.root_directory, "reversed_relations_shelf_{}.shf".format(date))
+#        with shelve.open(self.entities_shelf, writeback=True) as ents:
+#            with shelve.open(self.reversed_entities_shelf, writeback=True) as reverse_ents: 
+#                with shelve.open(self.relations_shelf, writeback=True) as rels:
+#                    with shelve.open(self.reversed_relations_shelf, writeback=True) as reverse_rels:             
+#                        for i, chunk in enumerate(self.data):
+#                            entities = set(chunk.values[:,0]).union(set(chunk.values[:,2]))
+#                            predicates = set(chunk.values[:,1])
+#                            ind = i*len(chunk)
+#                            reverse_ents.update({str(value):str(key+ind) for key, value in enumerate(entities)})
+#                            ents.update({str(key+ind):str(value) for key, value in enumerate(entities)})                
+#                            reverse_rels.update({str(value):str(key+ind) for key, value in enumerate(predicates)})
+#                            rels.update({str(key+ind):str(value) for key, value in enumerate(predicates)})                                                
 
     def index_entities(self):
         """Index data. It reloads data before as it is an iterator."""
         self.reload_data()
-        self.index_entities_in_shelf()
+        if self.use_indexer == True:
+            self.mapper = DataIndexer(self.data)
+        elif self.use_indexer == False:
+            print("Data won't be indexed")
+        elif isinstance(self.use_indexer, DataIndexer):
+            self.mapper = self.use_indexer
+#        self.reload_data()
+#        self.index_entities_in_shelf()
     
     def is_indexed(self):
-        """Check if shelves with indexes are set.
+        """Check if adapter has indexer.
         
            Returns
            -------
            True/False - flag indicating whether indexing took place.
         """
-        if not hasattr(self, "entities_shelf"):
+        if not hasattr(self, "mapper"):
             return False
-        if not hasattr(self, "reversed_entities_shelf"):
-            return False
-        if not hasattr(self, "relations_shelf"):
-            return False
-        if not hasattr(self, "reversed_relations_shelf"):
-            return False
+#        if not hasattr(self, "reversed_entities_shelf"):
+#            return False
+#        if not hasattr(self, "relations_shelf"):
+#            return False
+#        if not hasattr(self, "reversed_relations_shelf"):
+#            return False
         return True
             
     def reload_data(self, verbose=False):
@@ -273,12 +301,12 @@ class SQLiteAdapter():
         if loader is None:
             self.identifier = DataSourceIdentifier(self.data_source)
             self.loader = self.identifier.fetch_loader()
-        if not self.is_indexed():
+        if not self.is_indexed() and self.use_indexer != False:
             if self.verbose:
                 print("indexing...")
             self.index_entities()
         else:
-            print("Data is already indexed, using that.")
+            print("Data is already indexed or no indexing is required.")
         if get_triples is None:
             get_triples = self.get_triples
         self.reload_data()
@@ -315,7 +343,7 @@ class SQLiteAdapter():
         
     def remove_db(self):
         """Remove the database file."""
-        os.remove(self.db_name)        
+        os.remove(self.db_path)        
         print("Database removed.")
 
     def _get_complementary_objects(self, triple):
@@ -363,7 +391,7 @@ class SQLiteAdapter():
         entities.extend(self._get_complementary_subjects(triple))
         return list(set(entities))
     
-    def _get_batch(self, batch_size=1, dataset_type="train"):
+    def _get_batch(self, batch_size=1, dataset_type="train", use_filter=False):
         """Generator that returns the next batch of data.
 
         Parameters
@@ -393,7 +421,7 @@ class SQLiteAdapter():
             out = self._execute_query(query.format(dataset_type, i * batch_size, batch_size))
             if use_filter:
                 # get the filter values
-                participating_entities = self.get_participating_entities(out)
+                participating_entities = self.get_complementary_entities(out)
                 yield out, participating_entities
             else:
                 yield out                    
@@ -425,9 +453,10 @@ class SQLiteAdapter():
            Records: 59070
 
         """
-        if os.path.exists(self.db_name):
+        if os.path.exists(self.db_path):
             print("Summary for Database {}".format(self.db_name))
-            file_size = os.path.getsize(self.db_name)
+            print("Located in {}".format(self.db_path))
+            file_size = os.path.getsize(self.db_path)
             summary = """File size: {:.5}{}\nTables: {}"""
             tables = self._execute_query("SELECT name FROM sqlite_master WHERE type='table';")
             tables_names = ", ".join(table[0] for table in tables)

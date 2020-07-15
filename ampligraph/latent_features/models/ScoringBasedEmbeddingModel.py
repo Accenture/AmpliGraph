@@ -1,18 +1,22 @@
 import os
 import tensorflow as tf
+
 from tensorflow.python.keras import callbacks as callbacks_module
 from tensorflow.python.keras.engine import training_utils
 from tensorflow.python.eager import def_function
+
 import pandas as pd
 tf.config.set_soft_device_placement(False)
 tf.debugging.set_log_device_placement(True)
 import numpy as np
+
 from ampligraph.datasets import GraphDataLoader
 from ampligraph.latent_features.layers.scoring import SCORING_LAYER_REGISTRY
 from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
 from ampligraph.latent_features.layers.corruption_generation import CorruptionGenerationLayerTrain
 from tensorflow.python.keras import metrics as metrics_mod
 import copy
+
 
 class ScoringBasedEmbeddingModel(tf.keras.Model):
     def __init__(self, eta, k, max_ent_size, max_rel_size, scoring_type='DistMult', seed=0):
@@ -40,6 +44,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         
         self.max_ent_size = max_ent_size
         self.max_rel_size = max_rel_size
+        
         self.eta = eta
         
         # get the scoring layer
@@ -55,7 +60,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # assume that you have max_ent_size unique entities - if it is single partition
         # this would change if we use partitions - based on which partition is in memory
         # this is used by corruption_layer to sample eta corruptions
-        self.unique_entities = self.max_ent_size
+        self.unique_entities = tf.range(self.max_ent_size)
         
         # Create the embedding lookup layer. 
         # size of entity emb is max_ent_size * k and relation emb is  max_rel_size * k
@@ -115,7 +120,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             list of input scores along with their corruptions
         '''
         # generate the corruptions for the input triples
-        corruptions = self.corruption_layer(inputs, self.unique_entities)
+        corruptions = self.corruption_layer(inputs, len(self.unique_entities))
         # lookup embeddings of the inputs
         inp_emb = self.encoding_layer(inputs)
         # lookup embeddings of the inputs
@@ -365,5 +370,4 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     callbacks.on_test_batch_end(step)
         callbacks.on_test_end()
         return np.concatenate(self.all_ranks)
-        
-        
+

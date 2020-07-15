@@ -1,5 +1,5 @@
 import tensorflow as tf
-from .AbstractScoringLayer import AbstractScoringLayer, register_layer
+from ampligraph.latent_features.layers.scoring import register_layer, AbstractScoringLayer
 
 @register_layer('TransE')
 class TransE(AbstractScoringLayer):
@@ -73,6 +73,3 @@ class TransE(AbstractScoringLayer):
         # compute scores as -|| s + p - o_corr|| 
         obj_corr_score = tf.negative(tf.norm(tf.expand_dims(sub_emb + rel_emb, 1) - ent_matrix, axis=2))
         return obj_corr_score
-    
-    
-    

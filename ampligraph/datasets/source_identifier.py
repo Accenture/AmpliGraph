@@ -68,8 +68,9 @@ class DataSourceIdentifier():
         self.data_source = data_source
         self.supported_types = {"csv": load_csv, 
                                 "txt": load_csv, 
-                                "gz": load_gz, 
-                                "tar": load_tar}
+                                "gz": load_csv, 
+                                "tar": load_tar,
+                                "obj": lambda x: x}
         self._identify()
                 
     def fetch_loader(self):
@@ -84,4 +85,7 @@ class DataSourceIdentifier():
             self.src =  self.data_source.split(".")[-1] if "." in self.data_source else None           
             if self.src is not None and self.src not in self.supported_types:
                 print("File type not supported! Supported types: {}".format(", ".join(self.supported_types)))
-                self.src = None   
+                self.src = None
+        else:
+            print("data_source is an object")
+            self.src = "obj"   
