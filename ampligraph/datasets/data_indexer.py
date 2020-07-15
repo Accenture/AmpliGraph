@@ -103,6 +103,8 @@ class DataIndexer():
     def get_entities_in_batches(self, batch_size=-1):
         entities = range(0, self.ents_length, batch_size)
         for start_index in entities:
+            if start_index + batch_size >= self.ents_length:
+                batch_size = self.ents_length - start_index
             yield np.array(range(start_index, start_index + batch_size))
     
     def update_properties_dictionary(self):
@@ -229,9 +231,9 @@ class DataIndexer():
         """Update shelves with sample or full data when sample not provided."""
         if sample is None:
             sample = self.data
-        start_ents = self.get_starting_index_ents() + 1
+        start_ents = self.get_starting_index_ents() # deleted + 1
         new_indexes_ents = range(start_ents, start_ents + len(sample))
-        start_rels = self.get_starting_index_rels() + 1
+        start_rels = self.get_starting_index_rels() # deleted + 1
         new_indexes_rels = range(start_rels, start_rels + len(sample))
 
         with shelve.open(self.entities_dict, writeback=True) as ents:
@@ -358,8 +360,8 @@ class DataIndexer():
         """        
         if sample is None:
             sample = self.data
-        i = self.get_starting_index_ents() + 1
-        j = self.get_starting_index_rels() + 1
+        i = self.get_starting_index_ents() # deleted + 1
+        j = self.get_starting_index_rels() # deleted + 1 
         for d in sample:
             if d[0] not in self.reversed_entities_dict:
                 self.reversed_entities_dict[d[0]] = i

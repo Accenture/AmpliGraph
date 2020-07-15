@@ -22,7 +22,7 @@ def load_csv(data_source, chunk_size=None, sep='\t', verbose=False):
         -------
         data: either numpy array with data or lazy iterator if chunk_size was provided.
     """
-    data = pd.read_csv(data_source, sep=sep, chunksize=chunk_size)
+    data = pd.read_csv(data_source, sep=sep, chunksize=chunk_size, header=None)
     if verbose:
         print("data type:", type(data))
         print("CSV loaded, into iterator data.")

@@ -68,11 +68,11 @@ class DummyBackend():
             assert(entities is not None), msg 
             subjects = entities
             objects = entities
-        check_subjects = np.vectorize(lambda t: t in subjects)
-        check_objects = np.vectorize(lambda t: t in objects)
-        triples_from_subjects = self.data[check_subjects(self.data[:,2])]
-        triples_from_objects = self.data[check_objects(self.data[:,0])]
-        triples = np.vstack([triples_from_subjects, triples_from_objects])
+        #check_subjects = np.vectorize(lambda t: t in subjects)
+        check_triples = np.vectorize(lambda t, r: (t in objects and r in subjects) or (t in subjects and r in objects))
+        triples = self.data[check_triples(self.data[:,2],self.data[:,0])]
+        #triples_from_objects = self.data[check_objects(self.data[:,0])]
+        #triples = np.vstack([triples_from_subjects, triples_from_objects])
         return triples 
         
     def _get_complementary_entities(self, triple):
@@ -145,8 +145,11 @@ class DummyBackend():
            ndarray(batch_size, 3)
         """
         length = len(self.data)
-        for ind in range(0, length, batch_size):
-            yield self.data[ind:min(ind + batch_size, length)]
+        triples = range(0, length, batch_size)
+        for start_index in triples:
+            if start_index + batch_size >= length: # if the last batch is smaller than the batch_size
+                batch_size = length - start_index
+            yield self.data[start_index:start_index + batch_size]
 
 class GraphDataLoader():
     """Data loader for graphs implemented as a batch iterator
