@@ -69,7 +69,8 @@ class SQLiteAdapter():
             db_uri = 'file:{}?mode=rw'.format(pathname2url(self.db_path))
             self.connection = sqlite3.connect(db_uri, uri=True)
         except sqlite3.OperationalError:
-            print("Missing Database, creating one...")      
+            if verbose:
+                print("Missing Database, creating one...")
             self.connection = sqlite3.connect(self.db_path)        
             self._create_database()
         return self
@@ -409,7 +410,7 @@ class SQLiteAdapter():
             yields a batch of triples from the dataset type specified
         participating_entities : list of all entities that were involved in the s-p-? and ?-p-o relations. 
                                  This is returned only if use_filter is set to true.
-        """              
+        """
         query = "SELECT subject, predicate, object FROM triples_table INDEXED BY \
                                 triples_table_type_idx where dataset_type ='{}' LIMIT {}, {}"
         

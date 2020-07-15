@@ -237,7 +237,7 @@ class GraphDataLoader():
             #    print('insufficient enumerate')
             #    break
             if self.backend.should_recreate_iterator():
-                self.batch_iterator = self.get_batch()
+                self.batch_iterator = self.backend._get_batch(self.batch_size, dataset_type=self.dataset_type)
                 data_iterator = iter(self.batch_iterator)
             yield epoch, data_iterator
 
@@ -254,7 +254,8 @@ class GraphDataLoader():
     def get_batch(self):
         """Query data for a next batch."""
         with self.backend as backend:
-            return backend._get_batch(self.batch_size, dataset_type=self.dataset_type)
+            self.batch_iterator = backend._get_batch(self.batch_size, dataset_type=self.dataset_type)
+            return self.batch_iterator
    
     def get_complementary_subjects(self, triple):
         """Get subjects complementary to a triple (?,p,o).
