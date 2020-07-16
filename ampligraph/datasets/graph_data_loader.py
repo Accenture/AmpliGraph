@@ -217,6 +217,7 @@ class GraphDataLoader():
         with self.backend as backend:
             backend._load(self.data_source, dataset_type=self.dataset_type)  
         self.batch_iterator = self.get_batch()
+        self.metadata = self.backend.mapper.metadata
       
     def __iter__(self):
         """Function needed to be used as an itertor."""

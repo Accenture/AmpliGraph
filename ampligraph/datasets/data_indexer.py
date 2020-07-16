@@ -76,7 +76,7 @@ class DataIndexer():
         """
         self.data = data
         self.in_memory = in_memory
-        
+        self.metadata = {} 
         self.entities_dict = entities_dict
         self.reversed_entities_dict = reversed_entities_dict
         self.relations_dict = relations_dict
@@ -228,6 +228,11 @@ class DataIndexer():
         self.files_id = "_{}_{}.shf".format(self.name, date)
         files = ["entities", "reversed_entities", "relations", "reversed_relations"]
         print("Mappings are created in the following files:\n{}\n{}\n{}\n{}".format(*[x + self.files_id for x in files]))
+        self.metadata.update({"entities_shelf": self.entities_dict, 
+                         "reversed_entities_shelf": self.reversed_entities_dict, 
+                         "relations":self.relations_dict, 
+                         "reversed_relations_dict":self.reversed_relations_dict,
+                         "name": self.name})
         self.update_shelves()
         
     def update_shelves(self, sample=None):
@@ -293,6 +298,11 @@ class DataIndexer():
         self.files_id = "_{}_{}.shf".format(self.name, date)
         files = ["entities", "reversed_entities", "relations", "reversed_relations"]
         print("Mappings are created in the following files:\n{}\n{}\n{}\n{}".format(*[x + self.files_id for x in files]))
+        self.metadata.update({"entities_shelf": self.entities_dict, 
+                         "reversed_entities_shelf": self.reversed_entities_dict, 
+                         "relations":self.relations_dict, 
+                         "reversed_relations_dict":self.reversed_relations_dict,
+                         "name": self.name})
 
     def get_indexes_from_shelves(self, sample):
         """Get indexed triples.

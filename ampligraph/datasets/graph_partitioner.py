@@ -151,7 +151,7 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
                                                use_indexer=False, 
                                                batch_size=batch_size, 
                                                remap=True, 
-                                               name="partition_{}".format(partition_nb))
+                                               name="partition_{}_buckets_{}-{}".format(partition_nb, ind1, ind2))
             self.partitions.append(partition_loader)
             return 0 # status everything went ok
         else:
