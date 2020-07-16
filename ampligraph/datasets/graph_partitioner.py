@@ -10,6 +10,9 @@ import time
 import pandas as pd
 from abc import ABC, abstractmethod
 from ampligraph.utils.profiling import timing_and_memory
+from ampligraph.datasets.graph_data_loader import GraphDataLoader
+from datetime import datetime
+import shelve
 
 
 PARTITION_ALGO_REGISTRY = {}
@@ -82,6 +85,30 @@ class AbstractGraphPartitioner(ABC):
     
 @register_partitioning_strategy("Bucket")
 class BucketGraphPartitioner(AbstractGraphPartitioner):
+    """Bucket-based partition strategy.
+
+       Example
+       -------
+       >>>d = np.array([[1,1,2], [1,1,3],[1,1,4],[5,1,3],[5,1,2],[6,1,3],[6,1,2],[6,1,4],[6,1,7]])
+       >>>data = GraphDataLoader(d, batch_size=1, dataset_type="test")
+       >>>partitioner = BucketGraphPartitioner(data, k=2)
+       >>>for i, partition in enumerate(partitioner):
+       >>>    print("partition ", i)
+       >>>    for batch in partition:
+       >>>        print(batch)
+        partition  0
+        [['0,0,1']]
+        [['0,0,2']]
+        [['0,0,3']]
+        partition  1
+        [['4,0,1']]
+        [['4,0,2']]
+        [['5,0,1']]
+        [['5,0,2']]
+        [['5,0,3']]
+        partition  2
+        [['5,0,6']]
+    """
     def __init__(self, data, k=2):
         self.partitions = []
         super().__init__(data, k)
@@ -95,29 +122,7 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
            ind1: index of the first bucket needed to create partition.
            ind2: index of the second bucket needed to create partition.
            timestamp: date and time string that the files are created with (shelves).
-           partition_nb: assigned number of partition.
-           
-           Example
-           -------
-           >>>d = np.array([[1,1,2], [1,1,3],[1,1,4],[5,1,3],[5,1,2],[6,1,3],[6,1,2],[6,1,4],[6,1,7]])
-           >>>data = GraphDataLoader(d, batch_size=1, dataset_type="test")
-           >>>partitioner = BucketGraphPartitioner(data, k=2)
-           >>>for i, partition in enumerate(partitioner):
-           >>>    print("partition ", i)
-           >>>    for batch in partition:
-           >>>        print(batch)
-            partition  0
-            [['0,0,1']]
-            [['0,0,2']]
-            [['0,0,3']]
-            partition  1
-            [['4,0,1']]
-            [['4,0,2']]
-            [['5,0,1']]
-            [['5,0,2']]
-            [['5,0,3']]
-            partition  2
-            [['5,0,6']]
+           partition_nb: assigned number of partition.           
         """
         #print("------------------------------------------------")        
         #print("Creating partition nb: {}".format(partition_nb))
@@ -139,8 +144,14 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
         if triples.size != 0:
             triples = np.unique(triples, axis=0)
             #print("unique triples: ", triples)
-            np.savetxt("partition_{}_{}.csv".format(partition_nb, timestamp), triples, delimiter=",", fmt='%d')
-            partition_loader = GraphDataLoader("partition_{}_{}.csv".format(partition_nb, timestamp), use_indexer=False, batch_size=batch_size)
+            np.savetxt("partition_{}_{}.csv".format(partition_nb, timestamp), triples, delimiter="\t", fmt='%d')
+            # special case of GraphDataLoader to create partition datasets: with remapped indexes (0, size_of_partition),
+            # persisted, with partition number to look up remappings
+            partition_loader = GraphDataLoader("partition_{}_{}.csv".format(partition_nb, timestamp), 
+                                               use_indexer=False, 
+                                               batch_size=batch_size, 
+                                               remap=True, 
+                                               name="partition_{}".format(partition_nb))
             self.partitions.append(partition_loader)
             return 0 # status everything went ok
         else:

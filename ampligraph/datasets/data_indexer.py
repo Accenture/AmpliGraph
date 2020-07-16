@@ -56,7 +56,7 @@ class DataIndexer():
        """
 
     def __init__(self, data, in_memory=True, entities_dict=None, reversed_entities_dict=None, 
-                 relations_dict=None, reversed_relations_dict=None, root_directory="./"):
+                 relations_dict=None, reversed_relations_dict=None, root_directory="./", name="main_partition"):
         """Initialise DataIndexer by creating mappings.
         
            Parameters
@@ -83,13 +83,14 @@ class DataIndexer():
         self.reversed_relations_dict = reversed_relations_dict
         
         self.root_directory = root_directory
+        self.name = name
         
-        self.max_ents_index = -1
-        self.max_rels_index = -1  
-        self.ents_length = -1
-        self.rev_ents_length = -1
-        self.rels_length = -1
-        self.rev_rels_length = -1         
+        self.max_ents_index = 0
+        self.max_rels_index = 0  
+        self.ents_length = 0
+        self.rev_ents_length = 0
+        self.rels_length = 0
+        self.rev_rels_length = 0
         self.create_mappings()
     
     def get_max_ents_index(self):
@@ -135,7 +136,6 @@ class DataIndexer():
         assert self.rev_rels_length == self.rels_length , "Reversed relations index size not equal to index size"        
        
     def shelve_exists(self, name):
-        print(name)
         """Check if shelve with a given name exists."""
         if not os.path.isfile(name + ".bak"):
             return False
@@ -170,7 +170,7 @@ class DataIndexer():
              self.reversed_entities_dict is None and\
              self.relations_dict is None and\
              self.reversed_relations_dict is None:
-            print("The mappings will be created.")
+            print("The mappings will be created for data in {}.".format(self.name))
             
             if self.in_memory:
                 if isinstance(self.data, np.ndarray):
@@ -212,36 +212,43 @@ class DataIndexer():
            and relations to indexes and reverse mappings.
 
            Four shelves are created in root_directory:
-           entities_shelf_<DATE>.shf - with map entities -> indexes
-           reversed_entities_shelf_<DATE>.shf - with map indexes -> entities
-           relations_shelf_<DATE>.shf - with map relations -> indexes
-           reversed_relations_shelf_<DATE>.shf - with map indexes -> relations
+           entities_<NAME>_<DATE>.shf - with map entities -> indexes
+           reversed_entities_<NAME>_<DATE>.shf - with map indexes -> entities
+           relations_<NAME>_<DATE>.shf - with map relations -> indexes
+           reversed_relations_<NAME>_<DATE>.shf - with map indexes -> relations
 
            Remember to use mappings for entities with entities and reltions with relations!
         """
         
         date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
-        self.entities_dict = os.path.join(self.root_directory, "entities_shelf_{}.shf".format(date))
-        self.reversed_entities_dict = os.path.join(self.root_directory, "reversed_entities_shelf_{}.shf".format(date))
-        self.relations_dict = os.path.join(self.root_directory, "relations_shelf_{}.shf".format(date))
-        self.reversed_relations_dict = os.path.join(self.root_directory, "reversed_relations_shelf_{}.shf".format(date))
+        self.entities_dict = os.path.join(self.root_directory, "entities_{}_{}.shf".format(self.name, date))
+        self.reversed_entities_dict = os.path.join(self.root_directory, "reversed_entities_{}_{}.shf".format(self.name, date))
+        self.relations_dict = os.path.join(self.root_directory, "relations_{}_{}.shf".format(self.name, date))
+        self.reversed_relations_dict = os.path.join(self.root_directory, "reversed_relations_{}_{}.shf".format(self.name, date))
+        self.files_id = "_{}_{}.shf".format(self.name, date)
+        files = ["entities", "reversed_entities", "relations", "reversed_relations"]
+        print("Mappings are created in the following files:\n{}\n{}\n{}\n{}".format(*[x + self.files_id for x in files]))
         self.update_shelves()
         
     def update_shelves(self, sample=None):
         """Update shelves with sample or full data when sample not provided."""
         if sample is None:
             sample = self.data
-        start_ents = self.get_starting_index_ents() # deleted + 1
-        new_indexes_ents = range(start_ents, start_ents + len(sample))
-        start_rels = self.get_starting_index_rels() # deleted + 1
-        new_indexes_rels = range(start_rels, start_rels + len(sample))
+        #print(sample)
+        entities = set(sample[:,0]).union(set(sample[:,2]))
+        predicates = set(sample[:,1])
+
+        start_ents = self.get_starting_index_ents()
+        new_indexes_ents = range(start_ents, start_ents + len(entities))
+        #print("new indexes entities: ", new_indexes_ents)
+        start_rels = self.get_starting_index_rels()
+        new_indexes_rels = range(start_rels, start_rels + len(predicates))
+        #print("new indexes rels: ", new_indexes_rels)
 
         with shelve.open(self.entities_dict, writeback=True) as ents:
             with shelve.open(self.reversed_entities_dict, writeback=True) as reverse_ents:
                 with shelve.open(self.relations_dict, writeback=True) as rels:
                     with shelve.open(self.reversed_relations_dict, writeback=True) as reverse_rels:
-                        entities = set(sample[:,0]).union(set(sample[:,2]))
-                        predicates = set(sample[:,1])
                         reverse_ents.update({str(value):str(key) for key, value in zip(new_indexes_ents, entities)})
                         ents.update({str(key):str(value) for key, value in zip(new_indexes_ents, entities)})
                         reverse_rels.update({str(value):str(key) for key, value in zip(new_indexes_rels, predicates)}) 
@@ -260,18 +267,18 @@ class DataIndexer():
            entities and relations to indexes and reverse mapping.
 
            Four shelves are created in root_directory:
-           entities_shelf_<DATE>.shf - with map entities -> indexes
-           reversed_entities_shelf_<DATE>.shf - with map indexes -> entities
-           relations_shelf_<DATE>.shf - with map relations -> indexes
-           reversed_relations_shelf_<DATE>.shf - with map indexes -> relations
+           entities_<NAME>_<DATE>.shf - with map entities -> indexes
+           reversed_entities_<NAME>_<DATE>.shf - with map indexes -> entities
+           relations_<NAME>_<DATE>.shf - with map relations -> indexes
+           reversed_relations_<NAME>_<DATE>.shf - with map indexes -> relations
 
            Remember to use mappings for entities with entities and reltions with relations!
         """
         date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
-        self.entities_dict = os.path.join(self.root_directory, "entities_shelf_{}.shf".format(date))
-        self.reversed_entities_dict = os.path.join(self.root_directory, "reversed_entities_shelf_{}.shf".format(date))
-        self.relations_dict = os.path.join(self.root_directory, "relations_shelf_{}.shf".format(date))
-        self.reversed_relations_dict = os.path.join(self.root_directory, "reversed_relations_shelf_{}.shf".format(date))
+        self.entities_dict = os.path.join(self.root_directory, "entities_{}_{}.shf".format(self.name, date))
+        self.reversed_entities_dict = os.path.join(self.root_directory, "reversed_entities_{}_{}.shf".format(self.name, date))
+        self.relations_dict = os.path.join(self.root_directory, "relations_{}_{}.shf".format(self.name, date))
+        self.reversed_relations_dict = os.path.join(self.root_directory, "reversed_relations_{}_{}.shf".format(self.name, date))
         with shelve.open(self.entities_dict, writeback=True) as ents:
             with shelve.open(self.reversed_entities_dict, writeback=True) as reverse_ents:
                 with shelve.open(self.relations_dict, writeback=True) as rels:
@@ -283,7 +290,10 @@ class DataIndexer():
                             reverse_ents.update({str(value):str(key+ind) for key, value in enumerate(entities)})
                             ents.update({str(key+ind):str(value) for key, value in enumerate(entities)})
                             reverse_rels.update({str(value):str(key+ind) for key, value in enumerate(predicates)})        
-    
+        self.files_id = "_{}_{}.shf".format(self.name, date)
+        files = ["entities", "reversed_entities", "relations", "reversed_relations"]
+        print("Mappings are created in the following files:\n{}\n{}\n{}\n{}".format(*[x + self.files_id for x in files]))
+
     def get_indexes_from_shelves(self, sample):
         """Get indexed triples.
 
@@ -299,11 +309,12 @@ class DataIndexer():
            """
         if isinstance(sample, pd.DataFrame):
             sample = sample.values()
+        #print(sample)
         with shelve.open(self.reversed_entities_dict) as ents:
             with shelve.open(self.reversed_relations_dict) as rels:
-                subjects = [ents[elem] for elem in sample[:,0]]
-                objects = [str(ents[elem]) for elem in sample[:,2]]
-                predicates = [str(rels[elem]) for elem in sample[:,1]]
+                subjects = [ents[str(elem)] for elem in sample[:,0]]
+                objects = [ents[str(elem)] for elem in sample[:,2]]
+                predicates = [rels[str(elem)] for elem in sample[:,1]]
                 return np.array((subjects, predicates, objects), dtype=int).T
     
     def get_indexes_from_a_dictionary(self, sample):
@@ -344,7 +355,7 @@ class DataIndexer():
             self.reversed_relations_dict = {}
             return 0
         else:
-            return self.max_rels_index + 1
+            return self.max_rels_index
         
 
     def update_dictionary_mappings_in_chunks(self):
@@ -360,8 +371,8 @@ class DataIndexer():
         """        
         if sample is None:
             sample = self.data
-        i = self.get_starting_index_ents() # deleted + 1
-        j = self.get_starting_index_rels() # deleted + 1 
+        i = self.get_starting_index_ents()
+        j = self.get_starting_index_rels()
         for d in sample:
             if d[0] not in self.reversed_entities_dict:
                 self.reversed_entities_dict[d[0]] = i
@@ -375,7 +386,7 @@ class DataIndexer():
                 self.reversed_relations_dict[d[1]] = j
                 self.relations_dict[j] = d[1]
                 j += 1
-                
+ 
         self.max_ents_index = i - 1
         self.max_rels_index = j - 1
 
