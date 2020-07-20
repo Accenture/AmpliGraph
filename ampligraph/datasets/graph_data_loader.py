@@ -125,7 +125,6 @@ class DummyBackend():
         if self.verbose:        
             print("Getting complementary subjects")
         subjects = []
-        print(type(self.data))
         for triple in triples:
             tmp = self.data[self.data[:,2] == triple[2]]
             subjects.append(list(set(tmp[tmp[:,1] == triple[1]][:,0])))

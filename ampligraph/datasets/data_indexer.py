@@ -356,7 +356,7 @@ class DataIndexer():
             self.reversed_entities_dict = {}
             return 0
         else:
-            return self.max_ents_index
+            return self.max_ents_index + 1
 
     def get_starting_index_rels(self):
         """Returns next index to continue adding elements to relations dictionary."""
@@ -365,7 +365,7 @@ class DataIndexer():
             self.reversed_relations_dict = {}
             return 0
         else:
-            return self.max_rels_index
+            return self.max_rels_index + 1
         
 
     def update_dictionary_mappings_in_chunks(self):
@@ -405,8 +405,8 @@ class DataIndexer():
         self.rels_length = len(self.relations_dict)
         self.rev_rels_length = len(self.reversed_relations_dict)
   
-        assert self.rev_ents_length == self.ents_length, "Reversed entities index size not equal to index size"
-        assert self.rev_rels_length == self.rels_length , "Reversed relations index size not equal to index size"
+        assert self.rev_ents_length == self.ents_length, "Reversed entities index size not equal to index size ({} and {})".format(self.rev_ents_length, self.ents_length)
+        assert self.rev_rels_length == self.rels_length , "Reversed relations index size not equal to index size ({} and {})".format(self.rev_rels_length, self.rels_length)
                 
         print("Mappings updated with: {} ents, {} rev_ents, {} rels and {} rev_rels".format(self.ents_length,
                                                                                             self.rev_ents_length,

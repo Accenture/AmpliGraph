@@ -134,11 +134,11 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
         #print("indexes 1: ", ind1, indexes_1)
         #print("indexes 2: ", ind2, indexes_2)
         
-        triples_1_2 = self._data.get_triples(subjects=indexes_1, objects=indexes_2)
-        triples_2_1 = self._data.get_triples(subjects=indexes_2, objects=indexes_1)
+        triples_1_2 = np.array(self._data.get_triples(subjects=indexes_1, objects=indexes_2))[:,:3]
+        triples_2_1 = np.array(self._data.get_triples(subjects=indexes_2, objects=indexes_1))[:,:3] # Probably not needed!
         
-        #print("triples 1-2: ", triples_1_2)
-        #print("triples 2-1: ", triples_2_1)
+        print("triples 1-2: ", triples_1_2)
+        print("triples 2-1: ", triples_2_1)
         triples = np.vstack([triples_1_2, triples_2_1]).astype(np.int32)
         #print(triples)
         if triples.size != 0:

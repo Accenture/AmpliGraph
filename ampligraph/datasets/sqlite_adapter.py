@@ -39,7 +39,7 @@ class SQLiteAdapter():
         >>>with SQLiteAdapter("database.db", use_indexer=mapper) as backend:
         >>>    backend.populate("data.csv", dataset_type="train")
     """
-    def __init__(self, db_name, chunk_size=DEFAULT_CHUNKSIZE, root_directory="./", use_indexer=True, verbose=False):
+    def __init__(self, db_name, chunk_size=DEFAULT_CHUNKSIZE, root_directory="./", use_indexer=True, verbose=False, remap=False, name='main_partition'):
         """ Initialise SQLiteAdapter.
        
             Parameters
@@ -49,12 +49,16 @@ class SQLiteAdapter():
                         if not provided will be default (DEFAULT_CHUNKSIZE).
             root_directory: directory where data will be stored - database created and mappings.
             use_indexer: object of type DataIndexer with predifined mapping or bool flag to tell whether data should be indexed.
+            remap: wether to remap or not (shouldn't be used here) - NotImplemented here.
             verbose: print status messages.
         """
         self.db_name = db_name
         self.root_directory = root_directory
         self.db_path = os.path.join(self.root_directory, self.db_name)
         self.use_indexer = use_indexer
+        self.remap = remap
+        assert self.remap == False, "Remapping is not supported for DataLoaders with SQLite Adapter as backend"
+        self.name = name
         self.verbose = verbose
         if chunk_size is None:
             chunk_size = DEFAULT_CHUNKSIZE
@@ -187,7 +191,21 @@ class SQLiteAdapter():
         """Creates database."""
         self._execute_queries(self._get_db_schema())
 
-    def get_triples(self, chunk, dataset_type="train"): 
+    def _get_triples(self, subjects=None, objects=None, entities=None):
+        """Get triples that objects belongs to objects and subjects to subjects,
+           or if not provided either object or subjet belongs to entities.
+        """
+        if subjects is None and objects is None:
+            msg = "You have to provide either subjects and objects indexes or general entities indexes!"
+            assert(entities is not None), msg 
+            subjects = entities
+            objects = entities
+
+        query = "select * from triples_table where (subject in ({0}) and object in ({1})) or (subject in ({1}) and object in ({0}));".format(",".join(str(v) for v in  subjects), ",".join(str(v) for v in  objects))
+        triples = self._execute_query(query)
+        return triples 
+
+    def get_indexed_triples(self, chunk, dataset_type="train"): 
         """Get indexed triples.
     
            Parameters
@@ -204,6 +222,7 @@ class SQLiteAdapter():
         if self.verbose:
             print("getting triples...")
         if self.use_indexer != False:
+            #print(chunk)
             triples = self.mapper.get_indexes(chunk)
             return np.append(triples, np.array(len(chunk.values)*[dataset_type]).reshape(-1,1), axis=1)
         else:
@@ -284,14 +303,14 @@ class SQLiteAdapter():
         if verbose:
             print("Data reloaded", self.data)
         
-    def populate(self, data_source, dataset_type="train", get_triples=None, loader=None):
+    def populate(self, data_source, dataset_type="train", get_indexed_triples=None, loader=None):
         """Condition: before you can enter triples you have to index data.
     
            Parameters
            ----------
            data_source: file with data (e.g. csv file).
            dataset_type: what type of data is it? (train | test | validation).
-           get_triples: function to obtain indexed triples.
+           get_indexed_triples: function to obtain indexed triples.
            loader: loading function to be used to load data, if None, the
                    DataSourceIdentifier will try to identify type and return
                    adequate loader.
@@ -307,11 +326,11 @@ class SQLiteAdapter():
             self.index_entities()
         else:
             print("Data is already indexed or no indexing is required.")
-        if get_triples is None:
-            get_triples = self.get_triples
+        if get_indexed_triples is None:
+            get_indexed_triples = self.get_indexed_triples
         self.reload_data()
         for chunk in self.data:
-            values_triples = get_triples(chunk, dataset_type=dataset_type)
+            values_triples = get_indexed_triples(chunk, dataset_type=dataset_type)
             self._insert_values_to_a_table("triples_table", values_triples)  
         if self.verbose:
             print("data is populated")
@@ -346,19 +365,20 @@ class SQLiteAdapter():
         os.remove(self.db_path)        
         print("Database removed.")
 
-    def _get_complementary_objects(self, triple):
+    def _get_complementary_objects(self, triples):
         """For a given triple retrive all triples whith same subjects and predicates.
 
            Parameters
            ----------
-           triple: list or array with 3 elements (subject, predicate, object).
+           triples: list or array with Nx3 elements (subject, predicate, object).
 
            Returns
            -------
            result of a query, list of objects.
         """
-        return self._execute_query("select {} union select distinct object from triples_table INDEXED BY \
-                    triples_table_sp_idx where subject={} and predicate={}".format(triple[2], triple[0], triple[1]))
+        query = "select distinct object from triples_table INDEXED BY triples_table_sp_idx where subject in ({}) and predicate in ({});"
+        query = query.format(",".join(str(v) for v in triples[:,0]),",".join(str(v) for v in triples[:,1]))
+        return self._execute_query(query)
 
     def _get_complementary_subjects(self, triple):
         """For a given triple retrive all triples whith same objects and predicates.

@@ -32,11 +32,11 @@ def load_csv(data_source, chunk_size=None, sep='\t', verbose=False):
     else:
         return data
 
-def load_gz(data_source, verbose=False):
+def load_gz(data_source, chunk_size=None, verbose=False):
     """Gz data loader. Reads compressed file."""
     raise NotImplementedError
     
-def load_tar(data_source, verbose=False):
+def load_tar(data_source, chunk_size=None, verbose=False):
     """Tar data loader. Reads compressed file."""
     raise NotImplementedError
 
@@ -70,7 +70,7 @@ class DataSourceIdentifier():
                                 "txt": load_csv, 
                                 "gz": load_csv, 
                                 "tar": load_tar,
-                                "obj": lambda x: x}
+                                "obj": lambda x, **kwargs: x}
         self._identify()
                 
     def fetch_loader(self):
