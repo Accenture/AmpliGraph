@@ -342,10 +342,10 @@ class DataIndexer():
         """
         
         assert self.entities_dict is not None and self.relations_dict is not None
-        subjects   = tf.convert_to_tensor([self.reversed_entities_dict[x] for x in sample[:,0]],  dtype=tf.int32)
-        objects    = tf.convert_to_tensor([self.reversed_entities_dict[x] for x in sample[:,2]],  dtype=tf.int32)
-        predicates = tf.convert_to_tensor([self.reversed_relations_dict[x] for x in sample[:,1]],  dtype=tf.int32)
-        merged = tf.stack([subjects, predicates, objects], axis=1)
+        subjects   = np.array([self.reversed_entities_dict[x] for x in sample[:,0]],  dtype=np.int32)
+        objects    = np.array([self.reversed_entities_dict[x] for x in sample[:,2]],  dtype=np.int32)
+        predicates = np.array([self.reversed_relations_dict[x] for x in sample[:,1]],  dtype=np.int32)
+        merged = np.stack([subjects, predicates, objects], axis=1)
         return merged
     
     
