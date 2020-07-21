@@ -39,7 +39,7 @@ class SQLiteAdapter():
         >>>with SQLiteAdapter("database.db", use_indexer=mapper) as backend:
         >>>    backend.populate("data.csv", dataset_type="train")
     """
-    def __init__(self, db_name, chunk_size=DEFAULT_CHUNKSIZE, root_directory="./", use_indexer=True, verbose=False, remap=False, name='main_partition'):
+    def __init__(self, db_name, chunk_size=DEFAULT_CHUNKSIZE, root_directory="./", use_indexer=True, verbose=False, remap=False, name='main_partition', parent=None, in_memory=False):
         """ Initialise SQLiteAdapter.
        
             Parameters
@@ -50,6 +50,7 @@ class SQLiteAdapter():
             root_directory: directory where data will be stored - database created and mappings.
             use_indexer: object of type DataIndexer with predifined mapping or bool flag to tell whether data should be indexed.
             remap: wether to remap or not (shouldn't be used here) - NotImplemented here.
+            parent: Not Implemented.
             verbose: print status messages.
         """
         self.db_name = db_name
@@ -59,7 +60,9 @@ class SQLiteAdapter():
         self.remap = remap
         assert self.remap == False, "Remapping is not supported for DataLoaders with SQLite Adapter as backend"
         self.name = name
+        self.parent = parent
         self.verbose = verbose
+        self.in_memory = in_memory
         if chunk_size is None:
             chunk_size = DEFAULT_CHUNKSIZE
             print("Currently {} only supports data given in chunks. \
@@ -272,7 +275,7 @@ class SQLiteAdapter():
         """Index data. It reloads data before as it is an iterator."""
         self.reload_data()
         if self.use_indexer == True:
-            self.mapper = DataIndexer(self.data)
+            self.mapper = DataIndexer(self.data, in_memory=self.in_memory)
         elif self.use_indexer == False:
             print("Data won't be indexed")
         elif isinstance(self.use_indexer, DataIndexer):
@@ -380,7 +383,7 @@ class SQLiteAdapter():
         query = query.format(",".join(str(v) for v in triples[:,0]),",".join(str(v) for v in triples[:,1]))
         return self._execute_query(query)
 
-    def _get_complementary_subjects(self, triple):
+    def _get_complementary_subjects(self, triples):
         """For a given triple retrive all triples whith same objects and predicates.
 
            Parameters
@@ -391,11 +394,13 @@ class SQLiteAdapter():
            -------
            result of a query, list of subjects.
         """
+        query = "select distinct subject from triples_table INDEXED BY \
+                 triples_table_po_idx where predicate in ({})  and object in ({})"
+        query = query.format(",".join(str(v) for v in triples[:,1]), ",".join(str(v) for v in triples[:,2]))
 
-        return self._execute_query("select {}  union select distinct subject from triples_table INDEXED BY \
-                    triples_table_po_idx where predicate= {}  and object={}".format(triple[0], triple[1], triple[2]))
+        return self._execute_query(query)
 
-    def _get_complementary_entities(self, triple):
+    def _get_complementary_entities(self, triples):
         """Returns the participating entities in the relation ?-p-o and s-p-?.
 
         Parameters
@@ -407,9 +412,9 @@ class SQLiteAdapter():
         -------
         entities: list of entities participating in the relations s-p-? and ?-p-o.
         """
-        entities = self._get_complementary_objects(triple)
-        entities.extend(self._get_complementary_subjects(triple))
-        return list(set(entities))
+        objects = self._get_complementary_objects(triples)
+        subjects = self._get_complementary_subjects(triples)
+        return subjects, objects
     
     def _get_batch(self, batch_size=1, dataset_type="train", use_filter=False):
         """Generator that returns the next batch of data.
@@ -512,5 +517,6 @@ class SQLiteAdapter():
            data_source: file from where to read data (e.g. csv file).
            dataset_type: kind of dataset that is being loaded (train | test | validation).
         """
-        self.data_source = data_source
-        self.populate(self.data_source, dataset_type=dataset_type)
+        with self:
+            self.data_source = data_source
+            self.populate(self.data_source, dataset_type=dataset_type)

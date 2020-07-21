@@ -63,7 +63,10 @@ class AbstractGraphPartitioner(ABC):
            partitions generator
         """
         return self.partitions_generator()
-        
+
+    def get_partitions_list(self):
+        return self.partitions       
+ 
     def __next__(self):
         """Function needed to be used as an itertor."""
         return next(self.generator)
@@ -151,6 +154,7 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
                                                use_indexer=False, 
                                                batch_size=batch_size, 
                                                remap=True, 
+                                               parent=self._data,
                                                name="partition_{}_buckets_{}-{}".format(partition_nb, ind1, ind2))
             self.partitions.append(partition_loader)
             return 0 # status everything went ok
@@ -162,10 +166,9 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
            accordingly triples to k partitions and intermediate partitions.
         """
         timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
-        unique_ents = np.array(list(self._data.backend.mapper.entities_dict.keys()))
-        #print(self._data.backend.mapper.entities_dict)
+        print(self._data.backend.mapper.entities_dict)
         self.size = self._data.backend.mapper.ents_length
-        #print(self.size)
+        print(self.size)
         self.partition_size = int(np.ceil(self.size / self._k))
         self.buckets_generator = self._data.backend.mapper.get_entities_in_batches(batch_size=self.partition_size)
         

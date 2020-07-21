@@ -9,11 +9,12 @@ from ampligraph.datasets.source_identifier import DataSourceIdentifier
 from ampligraph.datasets import DataIndexer
 from datetime import datetime
 import numpy as np
+import shelve
 
 
 class DummyBackend():
     """Class providing artificial backend, that reads data into memory."""
-    def __init__(self, identifier, use_indexer=True, remap=False, name="main_partition", verbose=False):
+    def __init__(self, identifier, use_indexer=True, remap=False, name="main_partition", verbose=False, parent=None, in_memory=True):
         """Initialise DummyBackend.
 
            Parameters
@@ -22,6 +23,7 @@ class DummyBackend():
            use_indexer: flag to tell whether data should be indexed.
            remap: flag for partitioner to indicate whether to remap previously 
                   indexed data to (0, <size_of_partition>).
+           parent: parent data loader that persists data.
            name: identifying name of files for indexer, partition name/id.
         """
         self.verbose = verbose
@@ -29,6 +31,8 @@ class DummyBackend():
         self.use_indexer = use_indexer
         self.remap = remap
         self.name = name
+        self.parent = parent
+        self.in_memory = in_memory
         
     def __enter__ (self):
         """Context manager enter function. Required by GraphDataLoader."""
@@ -51,7 +55,7 @@ class DummyBackend():
         self.data_source = data_source
         if isinstance(self.data_source, np.ndarray):
             if self.use_indexer:
-                self.mapper = DataIndexer(self.data_source)
+                self.mapper = DataIndexer(self.data_source, in_memory=self.in_memory)
                 self.data = self.mapper.get_indexes(self.data_source)
             elif self.remap:
                 # create a special mapping for partitions, persistent mapping from main indexes to partition indexes
@@ -63,7 +67,7 @@ class DummyBackend():
             loader = self.identifier.fetch_loader()
             raw_data = loader(self.data_source)
             if self.use_indexer:
-                self.mapper = DataIndexer(raw_data)
+                self.mapper = DataIndexer(raw_data, in_memory=self.in_memory)
                 self.data = self.mapper.get_indexes(raw_data)
             elif self.remap:
                 # create a special mapping for partitions, persistent mapping from main indexes to partition indexes
@@ -91,27 +95,44 @@ class DummyBackend():
     def _get_complementary_entities(self, triples):
         """Get subjects and objects complementary to a triple (?,p,?).
            Returns the participating entities in the relation ?-p-o and s-p-?.
+           Function used duriing evaluation.
 
+           WARNING: If the parent is set the triples returened are coming with parent indexing.
            Parameters
            ----------
-           x_triple: nd-array (3,)
-               triple (s-p-o) that we are querying.
+           x_triple: nd-array (N,3,) of N
+               triples (s-p-o) that we are querying.
 
            Returns
            -------
-           entities: list of entities participating in the relations s-p-? and ?-p-o.
-           TODO: What exactly this should return?
+           entities: two lists, of subjects and objects participating in the relations s-p-? and ?-p-o.
        """
 
         if self.verbose:        
             print("Getting complementary entities")
-        subjects = self._get_complementary_subjects(triples)
-        objects = self._get_complementary_objects(triples)
+
+        if self.parent is not None:
+            print("Parent is set, WARNING: The triples returened are coming with parent indexing.")
+
+            print("Recover original indexes.")
+            with shelve.open(self.mapper.entities_dict) as ents:
+                with shelve.open(self.mapper.relations_dict) as rels:
+                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
+            print("Query parent for data.")
+            print("Original index: ",triples_original_index)
+            subjects = self.parent.get_complementary_subjects(triples_original_index)
+            objects = self.parent.get_complementary_objects(triples_original_index)
+            print("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
+            return subjects, objects
+        else:
+            subjects = self._get_complementary_subjects(triples)
+            objects = self._get_complementary_objects(triples)
         return subjects, objects
 
     def _get_complementary_subjects(self, triples):
         """Get subjects complementary to triples (?,p,o).
            For a given triple retrive all triples whith same objects and predicates.
+           Function used duriing evaluation.
 
            Parameters
            ----------
@@ -125,14 +146,27 @@ class DummyBackend():
         if self.verbose:        
             print("Getting complementary subjects")
         subjects = []
-        for triple in triples:
-            tmp = self.data[self.data[:,2] == triple[2]]
-            subjects.append(list(set(tmp[tmp[:,1] == triple[1]][:,0])))
+        if self.parent is not None:
+            print("Parent is set, WARNING: The triples returened are coming with parent indexing.")
+
+            print("Recover original indexes.")
+            with shelve.open(self.mapper.reversed_entities_dict) as ents:
+                with shelve.open(self.mapper.reversed_relations_dict) as rels:
+                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
+            print("Query parent for data.")
+            subjects = self.parent.get_complementary_subjects(triples_original_index)
+            print("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
+            return subjects
+        else:
+            for triple in triples:
+                tmp = self.data[self.data[:,2] == triple[2]]
+                subjects.append(list(set(tmp[tmp[:,1] == triple[1]][:,0])))
         return subjects
 
     def _get_complementary_objects(self, triples):
         """Get objects complementary to  triples (s,p,?).
            For a given triple retrive all triples whith same subjects and predicates.
+           Function used duriing evaluation.
 
            Parameters
            ----------
@@ -145,9 +179,21 @@ class DummyBackend():
         if self.verbose:        
             print("Getting complementary objects")
         objects = []
-        for triple in triples:
-            tmp = self.data[self.data[:,0] == triple[0]]
-            objects.append(list(set(tmp[tmp[:,1] == triple[1]][:,2])))
+        if self.parent is not None:
+            print("Parent is set, WARNING: The triples returened are coming with parent indexing.")
+
+            print("Recover original indexes.")
+            with shelve.open(self.mapper.reversed_entities_dict) as ents:
+                with shelve.open(self.mapper.reversed_relations_dict) as rels:
+                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
+            print("Query parent for data.")
+            objects = self.parent.get_complementary_objects(triples_original_index)
+            print("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
+            return objects
+        else:
+            for triple in triples:
+                tmp = self.data[self.data[:,0] == triple[0]]
+                objects.append(list(set(tmp[tmp[:,1] == triple[1]][:,2])))
         return objects
         
     def _get_batch(self, batch_size, dataset_type="train"):
@@ -184,7 +230,7 @@ class GraphDataLoader():
        >>>for elem in data:
        >>>    process(data)
     """    
-    def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, root_directory="./", use_indexer=True, verbose=False, remap=False, name="main_partition"):
+    def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, root_directory="./", use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=True):
         """Initialise persistent/in-memory data storage.
        
            Parameters
@@ -199,6 +245,7 @@ class GraphDataLoader():
                      previously indexed data in partition has to be remapped to
                      new indexes (0, <size_of_partition>), to not be used with 
                      use_indexer=True, the new remappngs will be persisted.
+           in_memory: persist indexes or not.
            name: identifying name/id of partition which data loader represents (default main).
         """   
         self.dataset_type = dataset_type
@@ -208,19 +255,21 @@ class GraphDataLoader():
         self.identifier = DataSourceIdentifier(self.data_source)       
         self.use_indexer = use_indexer
         self.remap = remap
+        self.in_memory = in_memory
         self.name = name
+        self.parent = parent
         assert bool(use_indexer) == (not remap), "Either remap or Indexer should be speciferd at the same time."
         if isinstance(backend, type):
             self.backend = backend("database_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")), 
-                                   root_directory=self.root_directory, use_indexer=self.use_indexer, remap=self.remap, name=self.name, verbose=verbose)
+                                   root_directory=self.root_directory, use_indexer=self.use_indexer, remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory, verbose=verbose)
             print("Initialized Backend with database at: {}".format(self.backend.db_path))
         elif backend is None:
-            self.backend = DummyBackend(self.identifier, use_indexer=self.use_indexer, remap=self.remap, name=self.name)
+            self.backend = DummyBackend(self.identifier, use_indexer=self.use_indexer, remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory)
         else:
             self.backend = backend
         
-        with self.backend as backend:
-            backend._load(self.data_source, dataset_type=self.dataset_type)  
+        #with self.backend as backend:
+        self.backend._load(self.data_source, dataset_type=self.dataset_type)  
         self.batch_iterator = self.get_batch()
         self.metadata = self.backend.mapper.metadata
       
@@ -288,6 +337,20 @@ class GraphDataLoader():
 
 
     def get_triples(self, subjects=None, objects=None, entities=None):
+        """Get triples that subject is in subjects and object is in objects, or
+           triples that eiter subject or object is in entities.
+
+           Parameters
+           ----------
+           subjects: list of entities that triples subject should belong to.
+           objects: list of entities that triples object should belong to.
+           entities: list of entities that triples subject and object should belong to.
+        
+           Returns
+           -------
+           triples: list of triples constrained by subjects and objects.
+          
+        """
         with self.backend as backend:
             return backend._get_triples(subjects, objects, entities)
 

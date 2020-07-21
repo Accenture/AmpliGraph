@@ -85,8 +85,8 @@ class DataIndexer():
         self.root_directory = root_directory
         self.name = name
         
-        self.max_ents_index = 0
-        self.max_rels_index = 0  
+        self.max_ents_index = -1
+        self.max_rels_index = -1 
         self.ents_length = 0
         self.rev_ents_length = 0
         self.rels_length = 0
@@ -119,7 +119,7 @@ class DataIndexer():
         self.rev_rels_length = len(self.reversed_relations_dict) 
         
         
-    def update_properties_persistent(self):
+    def update_properties_persistent(self, rough=False):
         """Initialise properties from the persistent dictionary (shelve)."""       
         
         with shelve.open(self.entities_dict) as ents:
@@ -132,8 +132,13 @@ class DataIndexer():
             self.rev_ents_length = len(ents)   
         with shelve.open(self.reversed_relations_dict) as rels:
             self.rev_rels_length = len(rels) 
-        assert self.rev_ents_length == self.ents_length, "Reversed entities index size not equal to index size"
-        assert self.rev_rels_length == self.rels_length , "Reversed relations index size not equal to index size"        
+        if not rough:
+            assert self.rev_ents_length == self.ents_length, "Reversed entities index size not equal to index size ({} and {})".format(self.rev_ents_length, self.ents_length)
+            assert self.rev_rels_length == self.rels_length , "Reversed relations index size not equal to index size ({} and {})".format(self.rev_rels_length, self.rels_length) 
+        else:
+            print("In a rough mode, the sizes may not be equal due to duplicates, it will be fixed in reindexing at the later stage.")
+            print("Reversed entities index size and index size {} and {}".format(self.rev_ents_length, self.ents_length))
+            print("Reversed relations index size and index size: {} and {}".format(self.rev_rels_length, self.rels_length))
        
     def shelve_exists(self, name):
         """Check if shelve with a given name exists."""
@@ -235,7 +240,7 @@ class DataIndexer():
                          "name": self.name})
         self.update_shelves()
         
-    def update_shelves(self, sample=None):
+    def update_shelves(self, sample=None, rough=False):
         """Update shelves with sample or full data when sample not provided."""
         if sample is None:
             sample = self.data
@@ -244,11 +249,17 @@ class DataIndexer():
         predicates = set(sample[:,1])
 
         start_ents = self.get_starting_index_ents()
-        new_indexes_ents = range(start_ents, start_ents + len(entities))
+        print("Start index entities: ",start_ents)
+        new_indexes_ents = range(start_ents, start_ents + len(entities)) # maximum new index, usually less when multiple chunks provided due to chunks
         #print("new indexes entities: ", new_indexes_ents)
+        assert(len(new_indexes_ents) == len(entities)), "Etimated indexes length for entities not equal to entities length ({} and {})".format(len(new_indexes_ents), len(entities))
         start_rels = self.get_starting_index_rels()
         new_indexes_rels = range(start_rels, start_rels + len(predicates))
+        print("Starts index relations: ", start_rels)
+        assert(len(new_indexes_rels) == len(predicates)), "Estimated indexes length for relations not equal to relations length ({} and {})".format(len(new_indexes_rels), len(predicates))
         #print("new indexes rels: ", new_indexes_rels)
+        print("index rels size: {} and rels size: {}".format(len(new_indexes_rels), len(predicates)))
+        print("index ents size: {} and entss size: {}".format(len(new_indexes_ents), len(entities)))
 
         with shelve.open(self.entities_dict, writeback=True) as ents:
             with shelve.open(self.reversed_entities_dict, writeback=True) as reverse_ents:
@@ -258,15 +269,53 @@ class DataIndexer():
                         ents.update({str(key):str(value) for key, value in zip(new_indexes_ents, entities)})
                         reverse_rels.update({str(value):str(key) for key, value in zip(new_indexes_rels, predicates)}) 
                         rels.update({str(key):str(value) for key, value in zip(new_indexes_rels, predicates)}) 
-        self.update_properties_persistent()
+        self.update_properties_persistent(rough=rough)
     
     def update_existing_mappings(self, new_data):
         """Update existing mappings with new data."""
         if self.in_memory:
             self.update_dictionary_mappings(new_data)
         else:
-            self.update_shelves(new_data)
+            self.update_shelves(new_data, rough=True)
+            self.reindex()
+
+    def move_shelve(self, source, destination):
+        """Move shelve to a different files."""
+        os.rename(source + ".dir", destination + ".dir")
+        os.rename(source + ".dat", destination + ".dat")
+        os.rename(source + ".bak", destination + ".bak")
     
+    def reindex(self):
+        """Reindex the data to continous values from 0 to <MAX UNIQUE ENTIITES/RELATIONS>.
+           This is needed where data is provided in chunks as we don't know the overlap 
+           between chunks upfront ant indexes are not coninous.
+           This guarantees that entities and relations have a continous index.
+        """
+        print("starting reindexing...")
+        remapped_ents_file = "remapped_ents.shf"
+        remapped_rev_ents_file = "remapped_rev_ents.shf"
+        remapped_rels_file = "remapped_rels.shf"
+        remapped_rev_rels_file = "remapped_rev_rels.shf"
+        with shelve.open(self.reversed_entities_dict) as ents:
+            with shelve.open(remapped_ents_file, writeback=True) as remapped_ents:
+                with shelve.open(remapped_rev_ents_file, writeback=True) as remapped_rev_ents:
+                    for i, ent in enumerate(ents):
+                        remapped_ents[str(i)] = str(ent)
+                        remapped_rev_ents[str(ent)] = str(i)
+                   
+        with shelve.open(self.reversed_relations_dict) as rels:
+           with shelve.open(remapped_rels_file, writeback=True) as remapped_rels:
+               with shelve.open(remapped_rev_rels_file, writeback=True) as remapped_rev_rels:
+                   for i, rel in enumerate(rels):
+                       remapped_rels[str(i)] = str(rel)
+                       remapped_rev_rels[str(rel)] = str(i)
+        
+        self.move_shelve(remapped_ents_file, self.entities_dict)
+        self.move_shelve(remapped_rev_ents_file, self.reversed_entities_dict)
+        self.move_shelve(remapped_rels_file, self.relations_dict)
+        self.move_shelve(remapped_rev_rels_file, self.reversed_relations_dict)
+        print("reindexing done!")
+        
     def create_persistent_mappings_in_chunks(self):
         """Index entities and relations. Creates shelves for mappings between
            entities and relations to indexes and reverse mapping.
@@ -274,6 +323,8 @@ class DataIndexer():
            Four shelves are created in root_directory:
            entities_<NAME>_<DATE>.shf - with map entities -> indexes
            reversed_entities_<NAME>_<DATE>.shf - with map indexes -> entities
+        for chunk in self.data:
+            self.update_existing_
            relations_<NAME>_<DATE>.shf - with map relations -> indexes
            reversed_relations_<NAME>_<DATE>.shf - with map indexes -> relations
 
@@ -284,17 +335,24 @@ class DataIndexer():
         self.reversed_entities_dict = os.path.join(self.root_directory, "reversed_entities_{}_{}.shf".format(self.name, date))
         self.relations_dict = os.path.join(self.root_directory, "relations_{}_{}.shf".format(self.name, date))
         self.reversed_relations_dict = os.path.join(self.root_directory, "reversed_relations_{}_{}.shf".format(self.name, date))
-        with shelve.open(self.entities_dict, writeback=True) as ents:
-            with shelve.open(self.reversed_entities_dict, writeback=True) as reverse_ents:
-                with shelve.open(self.relations_dict, writeback=True) as rels:
-                    with shelve.open(self.reversed_relations_dict, writeback=True) as reverse_rels:
-                        for i, chunk in enumerate(self.data):
-                            entities = set(chunk.values[:,0]).union(set(chunk.values[:,2]))
-                            predicates = set(chunk.values[:,1])
-                            ind = i*len(chunk)
-                            reverse_ents.update({str(value):str(key+ind) for key, value in enumerate(entities)})
-                            ents.update({str(key+ind):str(value) for key, value in enumerate(entities)})
-                            reverse_rels.update({str(value):str(key+ind) for key, value in enumerate(predicates)})        
+
+        for chunk in self.data:
+            self.update_shelves(chunk.values, rough=True)
+        print("We need to reindex all the data now so the indexes are continous among chunks")
+        self.reindex()
+
+#        with shelve.open(self.entities_dict, writeback=True) as ents:
+#            with shelve.open(self.reversed_entities_dict, writeback=True) as reverse_ents:
+#                with shelve.open(self.relations_dict, writeback=True) as rels:
+#                    with shelve.open(self.reversed_relations_dict, writeback=True) as reverse_rels:
+#                        for i, chunk in enumerate(self.data):
+#                            entities = set(chunk.values[:,0]).union(set(chunk.values[:,2]))
+#                            predicates = set(chunk.values[:,1])
+#                            ind = i*len(chunk)
+#                            reverse_ents.update({str(value):str(key+ind) for key, value in enumerate(entities)})
+#                            ents.update({str(key+ind):str(value) for key, value in enumerate(entities)})
+#                            reverse_rels.update({str(value):str(key+ind) for key, value in enumerate(predicates)})        
+#                            rels.update({str(key+ind):str(value) for key, value in enumerate(predicates)})        
         self.files_id = "_{}_{}.shf".format(self.name, date)
         files = ["entities", "reversed_entities", "relations", "reversed_relations"]
         print("Mappings are created in the following files:\n{}\n{}\n{}\n{}".format(*[x + self.files_id for x in files]))
@@ -303,6 +361,7 @@ class DataIndexer():
                          "relations":self.relations_dict, 
                          "reversed_relations_dict":self.reversed_relations_dict,
                          "name": self.name})
+#        self.update_properties_persistent()
 
     def get_indexes_from_shelves(self, sample):
         """Get indexed triples.
@@ -318,7 +377,7 @@ class DataIndexer():
                 where each element is: (subject index, predicate index, object index).
            """
         if isinstance(sample, pd.DataFrame):
-            sample = sample.values()
+            sample = sample.values
         #print(sample)
         with shelve.open(self.reversed_entities_dict) as ents:
             with shelve.open(self.reversed_relations_dict) as rels:
