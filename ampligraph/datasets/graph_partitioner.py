@@ -13,7 +13,7 @@ from ampligraph.utils.profiling import timing_and_memory
 from ampligraph.datasets.graph_data_loader import GraphDataLoader
 from datetime import datetime
 import shelve
-
+import csv
 
 PARTITION_ALGO_REGISTRY = {}
 
@@ -167,10 +167,10 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
         """
         timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
         print(self._data.backend.mapper.entities_dict)
-        self.size = self._data.backend.mapper.ents_length
-        print(self.size)
-        self.partition_size = int(np.ceil(self.size / self._k))
-        self.buckets_generator = self._data.backend.mapper.get_entities_in_batches(batch_size=self.partition_size)
+        self.ents_size = self._data.backend.mapper.ents_length
+        print(self.ents_size)
+        self.bucket_size = int(np.ceil(self.ents_size / self._k))
+        self.buckets_generator = self._data.backend.mapper.get_entities_in_batches(batch_size=self.bucket_size)
         
         for i, bucket in enumerate(self.buckets_generator):
             # dump entities in partition shelve/file
@@ -193,10 +193,11 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
 @register_partitioning_strategy("RandomVertices")
 class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
     def __init__(self, data, k=2, seed=None, **kwargs):
+        self.partitions = []
         super().__init__(data, k)
        
     @timing_and_memory
-    def _split(self, seed=None, **kwargs):
+    def _split(self, seed=None, batch_size=1, **kwargs):
         """Split data into k equal size partitions by randomly drawing subset of vertices
            of partition size and retrieving triples associated with these vertices.
 
@@ -204,28 +205,35 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
            -------
             partitions: parts of equal size with triples
         """
-        vertices = np.array(list(self._data.backend.mapper.entities_dict.keys()))
-        self.size = self._data.backend.mapper.ents_length
-        indexes = range(self.size)
-        self.partition_size = int(self.size / self._k)
-        self.partitions = []
-        remaining_data = indexes
-        if seed is not None:
-            np.random.seed([(seed + i)*i for i in range(self._k) ])
-        for part in range(self._k):
-            split = np.random.choice(remaining_data, self.partition_size)
-            remaining_data = np.setdiff1d(remaining_data, split)
-            tmp = self._data.get_triples(entities=vertices[split])
-            self.partitions.append(tmp)
+        timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
+        with self._data.backend as backend:
+            self.ents_size = self._data.backend.mapper.ents_length
+            self.partition_size = int(np.ceil(self.ents_size / self._k))
+            self.buckets_generator = backend.mapper.get_entities_in_batches(batch_size=self.partition_size, random=True, seed=seed)
+    
+            for partition_nb, partition in enumerate(self.buckets_generator):
+                triples = np.array(backend._get_triples(entities=partition))[:,:3].astype(np.int32) 
+                #print("unique triples: ", triples)
+                np.savetxt("partition_{}_{}.csv".format(partition_nb, timestamp), triples, delimiter="\t", fmt='%d')
+                # special case of GraphDataLoader to create partition datasets: with remapped indexes (0, size_of_partition),
+                # persisted, with partition number to look up remappings
+                partition_loader = GraphDataLoader("partition_{}_{}.csv".format(partition_nb, timestamp), 
+                                                   use_indexer=False, 
+                                                   batch_size=batch_size, 
+                                                   remap=True, 
+                                                   parent=self._data,
+                                                   name="partition_{}".format(partition_nb))
+                self.partitions.append(partition_loader)
 
 
 @register_partitioning_strategy("RandomEdges")
 class RandomEdgesGraphPartitioner(AbstractGraphPartitioner):
     def __init__(self, data, k=2):
+        self.partitions = []
         super().__init__(data, k)
 
     @timing_and_memory
-    def split(self, seed=None, **kwargs):
+    def _split(self, seed=None, batch_size=1, **kwargs):
         """Split data into k equal size partitions by randomly drawing subset of
         edges from dataset.
 
@@ -233,29 +241,40 @@ class RandomEdgesGraphPartitioner(AbstractGraphPartitioner):
            -------
             partitions: parts of equal size with triples
         """
+        timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
+        with self._data.backend as backend:
+            self.size = backend.get_data_size()
 
-        self.size = len(self._data)
-        indexes = range(self.size)
-        self.partition_size = int(self.size / self._k)
-        partitions = []
-        remaining_data = indexes
-        if seed is not None:
-            np.random.seed(seed)
-        for part in range(self._k):
-            split = np.random.choice(remaining_data, self.partition_size)
-            remaining_data = np.setdiff1d(remaining_data, split)
-            partitions.append(self._data[split])
-
-        return partitions
+            self.partition_size = int(np.ceil(self.size / self._k))
+            print(self.partition_size)
+            
+            for partition_nb in range(self._k):
+                generator = self._data.backend._get_batch(random=True, batch_size=self.partition_size, dataset_type=self._data.dataset_type)
+                def format_batch():
+                    for batch in generator:
+                        yield ["\t".join(str(c) for i,c in enumerate(x) if i != 3) for x in batch]
+                with open("partition_{}_{}.csv".format(partition_nb, timestamp), "w") as file_csv:
+                    writes = csv.writer(file_csv, delimiter='\n', quoting=csv.QUOTE_NONE)
+                    writes.writerows(format_batch())
+                # special case of GraphDataLoader to create partition datasets: with remapped indexes (0, size_of_partition),
+                # persisted, with partition number to look up remappings
+                partition_loader = GraphDataLoader("partition_{}_{}.csv".format(partition_nb, timestamp), 
+                                                   use_indexer=False, 
+                                                   batch_size=batch_size, 
+                                                   remap=True, 
+                                                   parent=self._data,
+                                                   name="partition_{}".format(partition_nb))
+                self.partitions.append(partition_loader)
 
 
 @register_partitioning_strategy("SortedEdges")
 class SortedEdgesGraphPartitioner(AbstractGraphPartitioner):
-    def __init__(self, data, k=2):
+    def __init__(self, data, batch_size=1, k=2):
+        self.partitions = []
         super().__init__(data, k)
 
     @timing_and_memory
-    def split(self, seed=None, **kwargs):
+    def _split(self, seed=None, **kwargs):
         """Split data into k equal size partitions by drawing subset of edges from
         sorted dataset.
            
@@ -263,26 +282,30 @@ class SortedEdgesGraphPartitioner(AbstractGraphPartitioner):
            -------
             partitions: parts of equal size with triples
         """
+        timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
+        with self._data.backend as backend:
+            self.size = backend.get_data_size()
+
+        self.partition_size = int(np.ceil(self.size / self._k))
         
-        self.size = len(self._data)
-        self.partition_size = int(self.size / self._k)
-        partitions = []
+        for part in range(self._k):
+            self.partitions.append(self._data.backend._get_batch(random=True, batch_size=self.partition_size))
+        
         self.sorted_data = self._data[self._data[:,0].argsort()]
         
         for part in range(self._k):
             split = self.sorted_data[part * self.partition_size:self.partition_size * (1 + part), :]
             partitions.append(split)
-        
-        return partitions        
 
 
 @register_partitioning_strategy("NaiveGraph")
 class NaiveGraphPartitioner(AbstractGraphPartitioner):
     def __init__(self, data, k=2):
+        self.partitions = []
         super().__init__(data, k)
 
     @timing_and_memory
-    def split(self, seed=None, **kwargs):
+    def _split(self, seed=None, batch_size=1, **kwargs):
         """Split data into k equal size partitions by drawing subset of edges
         from dataset.
            
@@ -290,25 +313,24 @@ class NaiveGraphPartitioner(AbstractGraphPartitioner):
            -------
             partitions: parts of equal size with triples
         """
-        
-        self.size = len(self._data)
-        self.partition_size = int(self.size / self._k)
-        partitions = []
+        timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
+        with self._data.backend as backend:
+            self.size = backend.get_data_size()
+
+        self.partition_size = int(np.ceil(self.size / self._k))
         
         for part in range(self._k):
-            split = self._data[part * self.partition_size:self.partition_size * (1 + part), :]
-            partitions.append(split)
-        
-        return partitions      
+            self.partitions.append(self._data.backend._get_batch(random=False, batch_size=self.partition_size))
 
 
 @register_partitioning_strategy("DoubleSortedEdges")
 class DoubleSortedEdgesGraphPartitioner(AbstractGraphPartitioner):
     def __init__(self, data, k=2):
+        self.partitions = []
         super().__init__(data, k)
 
     @timing_and_memory
-    def split(self, seed=None, **kwargs):
+    def _split(self, seed=None, batch_size=1, **kwargs):
         """Split data into k equal size partitions by drawing subset of edges
         from double-sorted (according to subject and object) dataset with refinement.
                   
@@ -316,6 +338,10 @@ class DoubleSortedEdgesGraphPartitioner(AbstractGraphPartitioner):
            -------
             partitions: parts of equal size with triples
         """
+        timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
+        with self._data.backend as backend:
+            self.size = backend.get_data_size()
+
 
         self.size = len(self._data)
         self.partition_size = int(self.size / self._k)

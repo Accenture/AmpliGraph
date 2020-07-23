@@ -338,7 +338,7 @@ class SQLiteAdapter():
         if self.verbose:
             print("data is populated")
     
-    def get_size(self, table="triples_table", condition=""):
+    def get_data_size(self, table="triples_table", condition=""):
         """Gets the size of the given table [with specified condition].
     
            Parameters
@@ -416,7 +416,7 @@ class SQLiteAdapter():
         subjects = self._get_complementary_subjects(triples)
         return subjects, objects
     
-    def _get_batch(self, batch_size=1, dataset_type="train", use_filter=False):
+    def _get_batch(self, batch_size=1, dataset_type="train", random=False, use_filter=False):
         """Generator that returns the next batch of data.
 
         Parameters
@@ -439,11 +439,15 @@ class SQLiteAdapter():
                                 triples_table_type_idx where dataset_type ='{}' LIMIT {}, {}"
         
         if not hasattr(self, "batches_count"):
-            size = self.get_size(condition="where dataset_type ='{}'".format(dataset_type))
+            size = self.get_data_size(condition="where dataset_type ='{}'".format(dataset_type))
             self.batches_count = int(size/batch_size)
         
         for i in range(self.batches_count):
-            out = self._execute_query(query.format(dataset_type, i * batch_size, batch_size))
+            query.format(dataset_type, i * batch_size, batch_size)
+            if random:
+                query = "select * from triples_table INDEXED BY triples_table_type_idx \
+                         where dataset_type = '{}' order by random() limit {}, {};".format(dataset_type, i * batch_size, batch_size)
+            out = self._execute_query(query)
             if use_filter:
                 # get the filter values
                 participating_entities = self.get_complementary_entities(out)
@@ -496,7 +500,7 @@ class SQLiteAdapter():
                 msg = ""
                 example = ["-"]*length
                 if count:
-                    nb_records = self.get_size(table_name[0])
+                    nb_records = self.get_data_size(table_name[0])
                     msg = "\n\nRecords: {}".format(nb_records)                    
                     if nb_records != 0:
                         record = self._execute_query("SELECT * FROM {} LIMIT {};".format(table_name[0],1))[0]

@@ -101,8 +101,11 @@ class DataIndexer():
         """Get maximum index from relations dictionary."""
         return max(self.relations_dict.values())
 
-    def get_entities_in_batches(self, batch_size=-1):
-        entities = range(0, self.ents_length, batch_size)
+    def get_entities_in_batches(self, batch_size=-1, random=False, seed=None):
+        entities = list(range(0, self.ents_length, batch_size))
+        if random:
+            np.random.seed(seed) 
+            np.random.shuffle(entities)
         for start_index in entities:
             if start_index + batch_size >= self.ents_length:
                 batch_size = self.ents_length - start_index

@@ -92,6 +92,10 @@ class DummyBackend():
         #triples = np.vstack([triples_from_subjects, triples_from_objects])
         return triples 
         
+    def get_data_size(self):
+        """Returns number of triples."""
+        return np.shape(self.data)[0]
+
     def _get_complementary_entities(self, triples):
         """Get subjects and objects complementary to a triple (?,p,?).
            Returns the participating entities in the relation ?-p-o and s-p-?.
@@ -286,7 +290,12 @@ class GraphDataLoader():
         """Query data for a next batch."""
         with self.backend as backend:
             return backend._get_batch(self.batch_size, dataset_type=self.dataset_type)
-   
+  
+    def get_data_size(self):
+        """Returns number of triples."""
+        with self.backend as backedn:
+            return backend.get_data_size()
+ 
     def get_complementary_subjects(self, triples):
         """Get subjects complementary to triples (?,p,o).
            For a given triple retrive all triples whith same objects and predicates.
