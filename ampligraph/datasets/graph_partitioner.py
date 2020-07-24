@@ -226,14 +226,13 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
                 self.partitions.append(partition_loader)
 
 
-@register_partitioning_strategy("RandomEdges")
-class RandomEdgesGraphPartitioner(AbstractGraphPartitioner):
-    def __init__(self, data, k=2):
+class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
+    def __init__(self, data, k=2, batch_size=1, random=False, index_by=""):
         self.partitions = []
-        super().__init__(data, k)
+        super().__init__(data, k=k, batch_size=batch_size, random=random, index_by=index_by)
 
     @timing_and_memory
-    def _split(self, seed=None, batch_size=1, **kwargs):
+    def _split(self, seed=None, batch_size=1, random=False, index_by="", **kwargs):
         """Split data into k equal size partitions by randomly drawing subset of
         edges from dataset.
 
@@ -249,7 +248,7 @@ class RandomEdgesGraphPartitioner(AbstractGraphPartitioner):
             print(self.partition_size)
             
             for partition_nb in range(self._k):
-                generator = self._data.backend._get_batch(random=True, batch_size=self.partition_size, dataset_type=self._data.dataset_type)
+                generator = self._data.backend._get_batch(random=random, batch_size=self.partition_size, dataset_type=self._data.dataset_type, index_by=index_by)
                 def format_batch():
                     for batch in generator:
                         yield ["\t".join(str(c) for i,c in enumerate(x) if i != 3) for x in batch]
@@ -266,94 +265,29 @@ class RandomEdgesGraphPartitioner(AbstractGraphPartitioner):
                                                    name="partition_{}".format(partition_nb))
                 self.partitions.append(partition_loader)
 
+@register_partitioning_strategy("RandomEdges")
+class RandomEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
+    def __init__(self, data, k=2, batch_size=1):
+        self.partitions = []
+        super().__init__(data, k, batch_size=batch_size, random=True, index_by="")
+
+@register_partitioning_strategy("Naive")
+class NaiveGraphPartitioner(EdgeBasedGraphPartitioner):
+    def __init__(self, data, k=2, batch_size=1):
+        self.partitions = []
+        super().__init__(data, k, batch_size=batch_size, random=False, index_by="")
 
 @register_partitioning_strategy("SortedEdges")
-class SortedEdgesGraphPartitioner(AbstractGraphPartitioner):
-    def __init__(self, data, batch_size=1, k=2):
+class SortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
+    def __init__(self, data, k=2, batch_size=1):
         self.partitions = []
-        super().__init__(data, k)
-
-    @timing_and_memory
-    def _split(self, seed=None, **kwargs):
-        """Split data into k equal size partitions by drawing subset of edges from
-        sorted dataset.
-           
-           Returns
-           -------
-            partitions: parts of equal size with triples
-        """
-        timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
-        with self._data.backend as backend:
-            self.size = backend.get_data_size()
-
-        self.partition_size = int(np.ceil(self.size / self._k))
-        
-        for part in range(self._k):
-            self.partitions.append(self._data.backend._get_batch(random=True, batch_size=self.partition_size))
-        
-        self.sorted_data = self._data[self._data[:,0].argsort()]
-        
-        for part in range(self._k):
-            split = self.sorted_data[part * self.partition_size:self.partition_size * (1 + part), :]
-            partitions.append(split)
-
-
-@register_partitioning_strategy("NaiveGraph")
-class NaiveGraphPartitioner(AbstractGraphPartitioner):
-    def __init__(self, data, k=2):
-        self.partitions = []
-        super().__init__(data, k)
-
-    @timing_and_memory
-    def _split(self, seed=None, batch_size=1, **kwargs):
-        """Split data into k equal size partitions by drawing subset of edges
-        from dataset.
-           
-           Returns
-           -------
-            partitions: parts of equal size with triples
-        """
-        timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
-        with self._data.backend as backend:
-            self.size = backend.get_data_size()
-
-        self.partition_size = int(np.ceil(self.size / self._k))
-        
-        for part in range(self._k):
-            self.partitions.append(self._data.backend._get_batch(random=False, batch_size=self.partition_size))
-
+        super().__init__(data, k, batch_size=batch_size, random=False, index_by="s")
 
 @register_partitioning_strategy("DoubleSortedEdges")
-class DoubleSortedEdgesGraphPartitioner(AbstractGraphPartitioner):
-    def __init__(self, data, k=2):
+class DoubleSortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
+    def __init__(self, data, k=2, batch_size=1):
         self.partitions = []
-        super().__init__(data, k)
-
-    @timing_and_memory
-    def _split(self, seed=None, batch_size=1, **kwargs):
-        """Split data into k equal size partitions by drawing subset of edges
-        from double-sorted (according to subject and object) dataset with refinement.
-                  
-           Returns
-           -------
-            partitions: parts of equal size with triples
-        """
-        timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
-        with self._data.backend as backend:
-            self.size = backend.get_data_size()
-
-
-        self.size = len(self._data)
-        self.partition_size = int(self.size / self._k)
-        partitions = []
-        
-        self.sorted_data = self._data[np.lexsort((self._data[:, 0], self._data[:, 2]))]
-        
-        for part in range(self._k):
-            split = self.sorted_data[part * self.partition_size:self.partition_size * (1 + part)]
-            partitions.append(split)
-        
-        return partitions  
+        super().__init__(data, k, batch_size=batch_size, random=False, index_by="so")
 
 
 def main():

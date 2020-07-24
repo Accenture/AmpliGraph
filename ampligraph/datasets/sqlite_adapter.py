@@ -107,7 +107,10 @@ class SQLiteAdapter():
                                     );""",
         "CREATE INDEX triples_table_sp_idx ON triples_table (subject, predicate);",
         "CREATE INDEX triples_table_po_idx ON triples_table (predicate, object);",
-        "CREATE INDEX triples_table_type_idx ON triples_table (dataset_type);"
+        "CREATE INDEX triples_table_type_idx ON triples_table (dataset_type);",
+        "CREATE INDEX triples_table_sub_obj_idx ON triples_table (subject, object);",
+        "CREATE INDEX triples_table_subject_idx ON triples_table (subject);",
+        "CREATE INDEX triples_table_object_idx ON triples_table (object);"
         ]
         return db_schema
 
@@ -231,45 +234,6 @@ class SQLiteAdapter():
         else:
             return np.append(chunk.values, np.array(len(chunk.values)*[dataset_type]).reshape(-1,1), axis=1)
 
-#        with shelve.open(self.reversed_entities_shelf) as ents:
-#            with shelve.open(self.reversed_relations_shelf) as rels:        
-#                subjects = [ents[elem] for elem in chunk.values[:,0]]
-#                objects = [str(ents[elem]) for elem in chunk.values[:,2]]
-#                predicates = [str(rels[elem]) for elem in chunk.values[:,1]]
-#                tmp = np.array((subjects, predicates, objects), dtype=int).T
-#                return np.append(tmp, np.array(len(chunk.values)*[dataset_type]).reshape(-1,1), axis=1)
-
-#    def index_entities_in_shelf(self):
-#        """Index entities and relations. Creates shelves for mappings between
-#           entities and relations to indexes and reverse mapping. 
-#    
-#           Four shelves are created in root_directory:
-#           entities_shelf_<DATE>.shf - with map entities -> indexes
-#           reversed_entities_shelf_<DATE>.shf - with map indexes -> entities
-#           relations_shelf_<DATE>.shf - with map relations -> indexes
-#           reversed_relations_shelf_<DATE>.shf - with map indexes -> relations
-#    
-#           Rememer to use mappings for entities with entities and reltions with relations!
-#        """
-#        if self.verbose:        
-#            print("indexing entities...")
-#        date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
-#        self.entities_shelf = os.path.join(self.root_directory, "entities_shelf_{}.shf".format(date))
-#        self.reversed_entities_shelf = os.path.join(self.root_directory, "reversed_entities_shelf_{}.shf".format(date))
-#        self.relations_shelf = os.path.join(self.root_directory, "relations_shelf_{}.shf".format(date))
-#        self.reversed_relations_shelf = os.path.join(self.root_directory, "reversed_relations_shelf_{}.shf".format(date))
-#        with shelve.open(self.entities_shelf, writeback=True) as ents:
-#            with shelve.open(self.reversed_entities_shelf, writeback=True) as reverse_ents: 
-#                with shelve.open(self.relations_shelf, writeback=True) as rels:
-#                    with shelve.open(self.reversed_relations_shelf, writeback=True) as reverse_rels:             
-#                        for i, chunk in enumerate(self.data):
-#                            entities = set(chunk.values[:,0]).union(set(chunk.values[:,2]))
-#                            predicates = set(chunk.values[:,1])
-#                            ind = i*len(chunk)
-#                            reverse_ents.update({str(value):str(key+ind) for key, value in enumerate(entities)})
-#                            ents.update({str(key+ind):str(value) for key, value in enumerate(entities)})                
-#                            reverse_rels.update({str(value):str(key+ind) for key, value in enumerate(predicates)})
-#                            rels.update({str(key+ind):str(value) for key, value in enumerate(predicates)})                                                
 
     def index_entities(self):
         """Index data. It reloads data before as it is an iterator."""
@@ -280,8 +244,6 @@ class SQLiteAdapter():
             print("Data won't be indexed")
         elif isinstance(self.use_indexer, DataIndexer):
             self.mapper = self.use_indexer
-#        self.reload_data()
-#        self.index_entities_in_shelf()
     
     def is_indexed(self):
         """Check if adapter has indexer.
@@ -292,12 +254,6 @@ class SQLiteAdapter():
         """
         if not hasattr(self, "mapper"):
             return False
-#        if not hasattr(self, "reversed_entities_shelf"):
-#            return False
-#        if not hasattr(self, "relations_shelf"):
-#            return False
-#        if not hasattr(self, "reversed_relations_shelf"):
-#            return False
         return True
             
     def reload_data(self, verbose=False):
@@ -416,7 +372,7 @@ class SQLiteAdapter():
         subjects = self._get_complementary_subjects(triples)
         return subjects, objects
     
-    def _get_batch(self, batch_size=1, dataset_type="train", random=False, use_filter=False):
+    def _get_batch(self, batch_size=1, dataset_type="train", random=False, use_filter=False, index_by=""):
         """Generator that returns the next batch of data.
 
         Parameters
@@ -427,6 +383,14 @@ class SQLiteAdapter():
             number of elements in a batch (default: 1).
         use_filter : bool
             Flag to indicate whether to return the concepts that need to be filtered
+        index_by: possible values:  {"", so, os, s, o}, indicates whether to use index and which to use,
+                                   index by subject, object or both. Indexes were created for the fields so 
+                                   SQLite should use them here to speed up, see example below:
+                  sqlite> EXPLAIN QUERY PLAN SELECT * FROM triples_table ORDER BY subject, object LIMIT 7000, 30;
+                  QUERY PLAN
+                  `--SCAN TABLE triples_table USING INDEX triples_table_sub_obj_idx
+
+        random: get records from database in a random order.
 
         Returns
         -------
@@ -435,15 +399,25 @@ class SQLiteAdapter():
         participating_entities : list of all entities that were involved in the s-p-? and ?-p-o relations. 
                                  This is returned only if use_filter is set to true.
         """              
-        query = "SELECT subject, predicate, object FROM triples_table INDEXED BY \
-                                triples_table_type_idx where dataset_type ='{}' LIMIT {}, {}"
-        
         if not hasattr(self, "batches_count"):
             size = self.get_data_size(condition="where dataset_type ='{}'".format(dataset_type))
             self.batches_count = int(size/batch_size)
-        
+        index = ""
+        if index_by != "":
+            msg = "Field index_by can only be used with random set to False and can only take values \
+                   from this set: \{s,o,so,os,''\}, instead got: {}".format(index_by)
+            assert((index_by == "s" or index_by == "o" or index_by == "so" or index_by == "os") and random == False), msg       
+            if index_by == "s":
+                index = "ORDER BY subject"
+            if index_by == "o":
+                index = "ORDER BY object"
+            if index_by == "so" or index_by == "os":
+                index = "ORDER BY subject, object"
+        query = "SELECT * FROM triples_table INDEXED BY \
+                 triples_table_type_idx where dataset_type ='{}' {} LIMIT {}, {}"
+
         for i in range(self.batches_count):
-            query.format(dataset_type, i * batch_size, batch_size)
+            query = query.format(dataset_type, index, i * batch_size, batch_size)
             if random:
                 query = "select * from triples_table INDEXED BY triples_table_type_idx \
                          where dataset_type = '{}' order by random() limit {}, {};".format(dataset_type, i * batch_size, batch_size)
