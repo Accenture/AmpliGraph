@@ -5,6 +5,10 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
+"""Reporting for graph partition strategies.
+
+This module provides reporting capabilities for partitioning strategies.
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
@@ -27,6 +31,12 @@ class PartitioningReporter:
     >>>>report = quality.report(visualize=False)
     """
     def __init__(self, partitionings):
+        """Initialises PartitioningReporter.
+           
+           Parameters
+           ----------
+           partitionings: list of partitioning strategies.
+        """
         self.partitionings = partitionings
 
     def get_edge_cut(self, k, partitions, avg_size=None):
@@ -349,6 +359,7 @@ def compare_partitionings(list_of_partitioners, data, num_partitions=2, visualiz
 
 
 def main():
+    """Main function with example usage."""
     dummy_partitionings = {"one": (np.array([[(0,1,2),
                                               (0,1,3),
                                               (0,1,4)],

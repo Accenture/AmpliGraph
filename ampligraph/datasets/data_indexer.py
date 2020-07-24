@@ -5,6 +5,27 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
+"""Data indexer. 
+
+This module provides class that maps raw data to indexes and the other way around.
+It can be persisted and contains supporting functions.
+
+Example
+-------
+    >>>data = np.array([['/m/01',
+                      '/relation1',
+                      '/m/02'],
+                     ['/m/01',
+                      '/relation2',
+                      '/m/07']])
+    >>>mapper = DataIndexer(data, in_memory=True)
+    >>>mapper.entities_dict[1]
+    '/m/02'
+
+.. It extends functionality of to_idx(...) from  AmpliGraph 1:
+   https://docs.ampligraph.org/en/1.3.1/generated/ampligraph.evaluation.to_idx.html?highlight=to_idx
+
+"""
 from datetime import datetime
 import numpy as np
 import os
@@ -102,6 +123,21 @@ class DataIndexer():
         return max(self.relations_dict.values())
 
     def get_entities_in_batches(self, batch_size=-1, random=False, seed=None):
+        """Generator that retrives entities and return them in batches.
+           
+           Parameters
+           ----------
+           batch_size: size of array that the batch should have, 
+                       -1 when the whole dataset is required.
+
+           random: whether to return elements of batch in a random order [defalt False].
+           seed: used with random=True, seed for repeatability of experiments.
+
+           Yields
+           ------
+           numppy array: (batch_size, 3) the batch of entities.
+          
+        """
         entities = list(range(0, self.ents_length, batch_size))
         if random:
             np.random.seed(seed) 

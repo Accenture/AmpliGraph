@@ -156,80 +156,173 @@ def template_test_edges_graph_partitioner(base_partitioner):
     assert(partition1_size in allowable_sizes  or partition2_size in allowable_sizes)
 
 
-def test_get_triples_random_vertices():
-    vertices = [1]
-    data = np.array([[1,2,3],[4,5,1],[1,2,4],[5,2,4]])
-    test_data = np.array([[1,2,3],[4,5,1],[1,2,4]])
-    graph_partitioner = RandomVerticesGraphPartitioner(data, 2)
-    assert (graph_partitioner.get_triples(vertices) == test_data).all()
+def test_register_partitioning_strategy():
+    assert False, "not implemented"
 
-def test_get_triples_random_edges():
-    vertices = [1]
-    data = np.array([[1,2,3],[4,5,1],[1,2,4],[5,2,4]])
-    test_data = np.array([[1,2,3],[4,5,1],[1,2,4]])
-    graph_partitioner = RandomEdgesGraphPartitioner(data, 2)
-    assert (graph_partitioner.get_triples(vertices) == test_data).all()    
+
+def test_insert_in_registry():
+    assert False, "not implemented"
+
+
+def test_get_number_of_partitions():
+    assert False, "not implemented"
+
+
+class TestAbstractGraphPartitioner:
+    def test___init__(self):
+        assert False, "not implemented"
+
+
+    def test___iter__(self):
+        assert False, "not implemented"
+
+
+    def test_partitions_generator(self):
+        assert False, "not implemented"
+
+
+    def test_get_partitions_iterator(self):
+        assert False, "not implemented"
+
+
+    def test_get_partitions_list(self):
+        assert False, "not implemented"
+
+
+    def test___next__(self):
+        assert False, "not implemented"
+
+
+    def test__split(self):
+        assert False, "not implemented"
+
+    def test_abstract_graph_partitioner_get_triples(self):
+        """ Test whether get_triples methods returns correct 
+            triples given set of vertices.
     
-def test_not_equal():
-    vertices = [1]    
-    data = np.array([[1,2,3],[2,3,4],[3,4,1],[1,1,1],[0,3,2]])    
-    test_data = np.array([[1,2,3],[4,5,1],[1,2,4]])
-    graph_partitioner = RandomVerticesGraphPartitioner(data, 2)
-    assert not (graph_partitioner.get_triples(vertices) == test_data).all()
-
-def test_abstract_graph_partitioner_get_triples():
-    """ Test whether get_triples methods returns correct 
-        triples given set of vertices.
-
-      Triples:
-      [['p', 't', 'e'],
-       ['g', 'u', 'l'],
-       ['m', 'v', 'f'],
-       ['c', 'r', 'n'],
-       ['n', 'r', 'c'],
-       ['i', 'v', 'a'],
-       ['g', 'u', 'l']]
-    """
-    generator = dummyGraphGenerator(20,10,4)
-    data = generator.get(seed=100)
-    X = data["train"]    
-    mockPartitioner = metaclass_instantiator(AbstractGraphPartitioner)
-    cut = mockPartitioner(X, 2)
-    vertices = ['g', 'e', 'c']
-    triples = cut.get_triples(vertices)
-
-    subarray = np.array([['p', 't', 'e'],
-                         ['g', 'u', 'l'],
-                         ['c', 'r', 'n'],
-                         ['n', 'r', 'c'],
-                         ['g', 'u', 'l']])
-
-    np.testing.assert_array_equal(triples, subarray)
+          Triples:
+          [['p', 't', 'e'],
+           ['g', 'u', 'l'],
+           ['m', 'v', 'f'],
+           ['c', 'r', 'n'],
+           ['n', 'r', 'c'],
+           ['i', 'v', 'a'],
+           ['g', 'u', 'l']]
+        """
+        generator = dummyGraphGenerator(20,10,4)
+        data = generator.get(seed=100)
+        X = data["train"]    
+        mockPartitioner = metaclass_instantiator(AbstractGraphPartitioner)
+        cut = mockPartitioner(X, 2)
+        vertices = ['g', 'e', 'c']
+        triples = cut.get_triples(vertices)
+    
+        subarray = np.array([['p', 't', 'e'],
+                             ['g', 'u', 'l'],
+                             ['c', 'r', 'n'],
+                             ['n', 'r', 'c'],
+                             ['g', 'u', 'l']])
+    
+        np.testing.assert_array_equal(triples, subarray)
 
 
-def test_random_edges_graph_partitioner():
-    template_test_edges_graph_partitioner(RandomEdgesGraphPartitioner)
+class TestBucketGraphPartitioner:
+    def test___init__(self):
+        assert False, "not implemented"
 
 
-def test_random_vertices_graph_partitioner():
-    X = get_test_graph()
-    partitioner = RandomVerticesGraphPartitioner(X, 2)
-    partitions = partitioner.split(seed=100)
-    partition1_nodes_cnt = len(set(partitions[0][:,0]).union(set(partitions[0][:,2])))
-    partition2_nodes_cnt = len(set(partitions[1][:,0]).union(set(partitions[1][:,2])))
-    all_nodes = set(X[:,0]).union(set(X[:,2]))
-    assert(int(len(all_nodes) / 2) <= partition1_nodes_cnt)
-    assert(int(len(all_nodes) / 2) <= partition2_nodes_cnt)
+    def test_create_single_partition(self):
+        assert False, "not implemented"
 
 
-def test_sorted_edges_graph_partitioner():
-    template_test_edges_graph_partitioner(SortedEdgesGraphPartitioner)
+    def test__split(self):
+        assert False, "not implemented"
 
 
-def test_naive_graph_partitioner():
-    template_test_edges_graph_partitioner(NaiveGraphPartitioner)
+class TestRandomVerticesGraphPartitioner:
+    def test___init__(self):
+        assert False, "not implemented"
+
+    def test__split(self):
+        assert False, "not implemented"   
+    
+    def test_random_vertices_graph_partitioner(self):
+        X = get_test_graph()
+        partitioner = RandomVerticesGraphPartitioner(X, 2)
+        partitions = partitioner.split(seed=100)
+        partition1_nodes_cnt = len(set(partitions[0][:,0]).union(set(partitions[0][:,2])))
+        partition2_nodes_cnt = len(set(partitions[1][:,0]).union(set(partitions[1][:,2])))
+        all_nodes = set(X[:,0]).union(set(X[:,2]))
+        assert(int(len(all_nodes) / 2) <= partition1_nodes_cnt)
+        assert(int(len(all_nodes) / 2) <= partition2_nodes_cnt)
+
+     def test_get_triples_random_vertices(self):
+        vertices = [1]
+        data = np.array([[1,2,3],[4,5,1],[1,2,4],[5,2,4]])
+        test_data = np.array([[1,2,3],[4,5,1],[1,2,4]])
+        graph_partitioner = RandomVerticesGraphPartitioner(data, 2)
+        assert (graph_partitioner.get_triples(vertices) == test_data).all()
+
+    def test_not_equal(self):
+        vertices = [1]    
+        data = np.array([[1,2,3],[2,3,4],[3,4,1],[1,1,1],[0,3,2]])    
+        test_data = np.array([[1,2,3],[4,5,1],[1,2,4]])
+        graph_partitioner = RandomVerticesGraphPartitioner(data, 2)
+        assert not (graph_partitioner.get_triples(vertices) == test_data).all()
 
 
-def test_double_sorted_edges_graph_partitioner():
-    template_test_edges_graph_partitioner(DoubleSortedEdgesGraphPartitioner)
+class TestEdgeBasedGraphPartitioner:
+    def test___init__(self):
+        assert False, "not implemented"
 
+
+    def test__split(self):
+        assert False, "not implemented"
+
+
+    def test_format_batch(self):
+        assert False, "not implemented"
+
+
+class TestRandomEdgesGraphPartitioner:
+    def test___init__(self):
+        assert False, "not implemented"
+
+    def test_random_edges_graph_partitioner(self):
+        template_test_edges_graph_partitioner(RandomEdgesGraphPartitioner)
+
+    def test_get_triples_random_edges(self):
+        vertices = [1]
+        data = np.array([[1,2,3],[4,5,1],[1,2,4],[5,2,4]])
+        test_data = np.array([[1,2,3],[4,5,1],[1,2,4]])
+        graph_partitioner = RandomEdgesGraphPartitioner(data, 2)
+        assert (graph_partitioner.get_triples(vertices) == test_data).all()    
+        
+
+class TestNaiveGraphPartitioner:
+    def test___init__(self):
+        assert False, "not implemented"
+    
+    def test_naive_graph_partitioner(self):
+        template_test_edges_graph_partitioner(NaiveGraphPartitioner)
+
+
+class TestSortedEdgesGraphPartitioner:
+    def test___init__(self):
+        assert False, "not implemented"
+
+    def test_sorted_edges_graph_partitioner(self):
+        template_test_edges_graph_partitioner(SortedEdgesGraphPartitioner)
+    
+
+class TestDoubleSortedEdgesGraphPartitioner:
+    def test___init__(self):
+        assert False, "not implemented"
+       
+    def test_double_sorted_edges_graph_partitioner(self):
+        template_test_edges_graph_partitioner(DoubleSortedEdgesGraphPartitioner)
+
+
+
+def test_main():
+    assert False, "not implemented"

@@ -5,6 +5,12 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
+"""Data source identifier.
+
+This module provides main class and supporting functions for automatic
+identification of data source (whether it is csv, tar.gz or numpy array)
+and provides adequate loader for the data source identified.
+"""
 import pandas as pd
 
 

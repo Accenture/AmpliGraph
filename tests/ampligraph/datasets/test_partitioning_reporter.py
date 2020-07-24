@@ -8,7 +8,55 @@
 from ampligraph.datasets.partitioning_reporter import PartitioningReporter
 import pytest
 
-@pytest.mark.skip(reason="not yet implemented")
-def test_partitioning_reporter():
-    pass
 
+class TestPartitioningReporter:
+    def test___init__(self):
+        assert False, "not implemented"
+
+
+    def test_get_edge_cut(self):
+        assert False, "not implemented"
+
+
+    def test_get_edge_imbalance(self):
+        assert False, "not implemented"
+
+
+    def test_get_vertex_imbalance(self):
+        assert False, "not implemented"
+
+
+    def test_get_average_deviation_from_ideal_size_vertices(self):
+        assert False, "not implemented"
+
+
+    def test_get_average_deviation_from_ideal_size_edges(self):
+        assert False, "not implemented"
+
+
+    def test_get_vertex_count(self):
+        assert False, "not implemented"
+
+
+    def test_get_edges_count(self):
+        assert False, "not implemented"
+
+
+    def test_get_modularity(self):
+        assert False, "not implemented"
+
+
+    def test_report_single_partitioning(self):
+        assert False, "not implemented"
+
+
+    def test_report(self):
+        assert False, "not implemented"
+
+
+def test_compare_partitionings():
+    assert False, "not implemented"
+
+
+def test_main():
+    assert False, "not implemented"

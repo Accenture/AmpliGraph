@@ -10,5 +10,26 @@ import pytest
 from ampligraph.datasets import DataSourceIdentifier
 
 
-def test_csv_loader():
-    pass
+def test_load_csv():
+    assert False, "not implemented"
+
+
+def test_load_gz():
+    assert False, "not implemented"
+
+
+def test_load_tar():
+    assert False, "not implemented"
+
+
+class TestDataSourceIdentifier:
+    def test___init__(self):
+        assert False, "not implemented"
+
+
+    def test_fetch_loader(self):
+        assert False, "not implemented"
+
+
+    def test__identify(self):
+        assert False, "not implemented"

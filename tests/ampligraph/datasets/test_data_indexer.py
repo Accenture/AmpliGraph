@@ -5,102 +5,90 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-from ampligraph.datasets import SQLiteAdapter
+from ampligraph.datasets import DataIndexer
 import pytest
 
 
-class TestSQLiteAdapter:
+class TestDataIndexer:
     def test___init__(self):
         assert False, "not implemented"
 
 
-    def test___enter__(self):
+    def test_get_max_ents_index(self):
         assert False, "not implemented"
 
 
-    def test___exit__(self):
+    def test_get_max_rels_index(self):
         assert False, "not implemented"
 
 
-    def test__get_db_schema(self):
+    def test_get_entities_in_batches(self):
         assert False, "not implemented"
 
 
-    def test__get_clean_up(self):
+    def test_update_properties_dictionary(self):
         assert False, "not implemented"
 
 
-    def test__execute_query(self):
+    def test_update_properties_persistent(self):
         assert False, "not implemented"
 
 
-    def test__execute_queries(self):
+    def test_shelve_exists(self):
         assert False, "not implemented"
 
 
-    def test__insert_values_to_a_table(self):
+    def test_create_mappings(self):
         assert False, "not implemented"
 
 
-    def test__create_database(self):
+    def test_get_indexes(self):
         assert False, "not implemented"
 
 
-    def test__get_triples(self):
+    def test_create_persistent_mappings_from_nparray(self):
         assert False, "not implemented"
 
 
-    def test_get_indexed_triples(self):
+    def test_update_shelves(self):
         assert False, "not implemented"
 
 
-    def test_index_entities(self):
+    def test_update_existing_mappings(self):
         assert False, "not implemented"
 
 
-    def test_is_indexed(self):
+    def test_move_shelve(self):
         assert False, "not implemented"
 
 
-    def test_reload_data(self):
+    def test_reindex(self):
         assert False, "not implemented"
 
 
-    def test_populate(self):
+    def test_create_persistent_mappings_in_chunks(self):
         assert False, "not implemented"
 
 
-    def test_get_data_size(self):
+    def test_get_indexes_from_shelves(self):
         assert False, "not implemented"
 
 
-    def test_clean_up(self):
+    def test_get_indexes_from_a_dictionary(self):
         assert False, "not implemented"
 
 
-    def test_remove_db(self):
+    def test_get_starting_index_ents(self):
         assert False, "not implemented"
 
 
-    def test__get_complementary_objects(self):
+    def test_get_starting_index_rels(self):
         assert False, "not implemented"
 
 
-    def test__get_complementary_subjects(self):
+    def test_update_dictionary_mappings_in_chunks(self):
         assert False, "not implemented"
 
 
-    def test__get_complementary_entities(self):
-        assert False, "not implemented"
-
-
-    def test__get_batch(self):
-        assert False, "not implemented"
-
-
-    def test_summary(self):
-        assert False, "not implemented"
-
-
-    def test__load(self):
+    def test_update_dictionary_mappings(self):
         assert False, "not implemented"

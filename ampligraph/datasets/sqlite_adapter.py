@@ -5,6 +5,15 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
+"""SQLite backend for storing graphs.
+
+This module provides SQLite backend for GraphDataLoader.
+
+Attributes
+----------
+DEFAULT_CHUNKSIZE: [default 30000] size of data that can be at once loaded to the memory,
+                   number of rows, should be set according to available hardware capabilities.
+"""
 from ampligraph.datasets.source_identifier import DataSourceIdentifier
 from ampligraph.datasets import DataIndexer
 import sqlite3

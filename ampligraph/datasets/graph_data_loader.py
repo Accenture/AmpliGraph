@@ -5,6 +5,11 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
+"""Data loader for graphs (big and small).
+
+This module provides GraphDataLoader class that can be parametrized with a backend
+and in-memory backend (DummyBackend).
+"""
 from ampligraph.datasets.source_identifier import DataSourceIdentifier
 from ampligraph.datasets import DataIndexer
 from datetime import datetime
