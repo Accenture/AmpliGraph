@@ -19,6 +19,7 @@ Example
                       '/relation2',
                       '/m/07']])
     >>>mapper = DataIndexer(data, in_memory=True)
+    >>>mapper.get_indexes(data)        
     >>>mapper.entities_dict[1]
     '/m/02'
 
@@ -116,11 +117,21 @@ class DataIndexer():
     
     def get_max_ents_index(self):
         """Get maximum index from entities dictionary."""        
-        return max(self.entities_dict.values())
+        if self.in_memory:
+            return max(self.reversed_entities_dict.values())
+        else:
+            with shelve.open(self.entities_dict) as ents:
+                return int(max(ents.keys(), key=lambda x: int(x)))
+           
 
     def get_max_rels_index(self):
         """Get maximum index from relations dictionary."""
-        return max(self.relations_dict.values())
+        if self.in_memory:
+            return max(self.reversed_relations_dict.values())
+        else:
+            with shelve.open(self.relations_dict) as rels:            
+                return int(max(rels.keys(), key=lambda x: int(x)))
+
 
     def get_entities_in_batches(self, batch_size=-1, random=False, seed=None):
         """Generator that retrives entities and return them in batches.
@@ -138,6 +149,8 @@ class DataIndexer():
            numppy array: (batch_size, 3) the batch of entities.
           
         """
+        if batch_size == -1:
+            batch_size = self.ents_length
         entities = list(range(0, self.ents_length, batch_size))
         for start_index in entities:
             if start_index + batch_size >= self.ents_length:
@@ -387,18 +400,6 @@ class DataIndexer():
         print("We need to reindex all the data now so the indexes are continous among chunks")
         self.reindex()
 
-#        with shelve.open(self.entities_dict, writeback=True) as ents:
-#            with shelve.open(self.reversed_entities_dict, writeback=True) as reverse_ents:
-#                with shelve.open(self.relations_dict, writeback=True) as rels:
-#                    with shelve.open(self.reversed_relations_dict, writeback=True) as reverse_rels:
-#                        for i, chunk in enumerate(self.data):
-#                            entities = set(chunk.values[:,0]).union(set(chunk.values[:,2]))
-#                            predicates = set(chunk.values[:,1])
-#                            ind = i*len(chunk)
-#                            reverse_ents.update({str(value):str(key+ind) for key, value in enumerate(entities)})
-#                            ents.update({str(key+ind):str(value) for key, value in enumerate(entities)})
-#                            reverse_rels.update({str(value):str(key+ind) for key, value in enumerate(predicates)})        
-#                            rels.update({str(key+ind):str(value) for key, value in enumerate(predicates)})        
         self.files_id = "_{}_{}.shf".format(self.name, date)
         files = ["entities", "reversed_entities", "relations", "reversed_relations"]
         print("Mappings are created in the following files:\n{}\n{}\n{}\n{}".format(*[x + self.files_id for x in files]))
@@ -475,7 +476,10 @@ class DataIndexer():
     def update_dictionary_mappings_in_chunks(self):
         """Update dictionary mappings chunk by chunk."""
         for chunk in self.data:
-            self.update_dictionary_mappings(chunk.values)
+            if isinstance(chunk, np.ndarray):
+                self.update_dictionary_mappings(chunk)
+            else:
+                self.update_dictionary_mappings(chunk.values)
     
     def update_dictionary_mappings(self, sample=None):
         """Index entities and relations. Creates shelves for mappings between
@@ -485,6 +489,7 @@ class DataIndexer():
         """        
         if sample is None:
             sample = self.data
+        #print(sample)
         i = self.get_starting_index_ents()
         j = self.get_starting_index_rels()
         for d in sample:

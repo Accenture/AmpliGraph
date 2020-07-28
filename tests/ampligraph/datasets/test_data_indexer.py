@@ -6,89 +6,68 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 from ampligraph.datasets import DataIndexer
+import numpy as np
 import pytest
 
 
-class TestDataIndexer:
-    def test___init__(self):
-        assert False, "not implemented"
+def data_generator(data):
+    for elem in data:
+        yield np.array(elem).reshape((1,3))
+
+np_array =  np.array([['a','b','c'],['c','b','d'],['d','e','f'],['f','e','c'],['a','e','d']])
+generator = lambda: data_generator(np_array) 
 
 
-    def test_get_max_ents_index(self):
-        assert False, "not implemented"
+@pytest.fixture(params=[np_array, pytest.param(generator, marks=pytest.mark.skip("Can't use generators as parameters in fixtures."))])
+def data_type(request):
+    '''Returns an in-memory DataIndexer instance with example data.'''
+    return request.param
 
 
-    def test_get_max_rels_index(self):
-        assert False, "not implemented"
+@pytest.fixture(params=[True, False])#pytest.param(False, marks=pytest.mark.skip)])
+def data_indexer(request, data_type):
+    '''Returns an in-memory DataIndexer instance with example data.'''
+    return DataIndexer(data_type, in_memory=request.param)
 
 
-    def test_get_entities_in_batches(self):
-        assert False, "not implemented"
+def test_get_max_ents_index(data_indexer):
+    max_ents = data_indexer.get_max_ents_index()
+    assert max_ents == 3, "Max index should be 3 for 4 unique entities, instead got {}.".format(max_ents)
 
 
-    def test_update_properties_dictionary(self):
-        assert False, "not implemented"
+def test_get_max_rels_index(data_indexer):
+    print(data_indexer)
+    max_rels = data_indexer.get_max_rels_index()
+    assert max_rels == 1, "Max index should be 1 for 2 unique relations, instead got {}.".format(max_rels)
 
 
-    def test_update_properties_persistent(self):
-        assert False, "not implemented"
+def test_get_entities_in_batches(data_indexer):
+    for batch in data_indexer.get_entities_in_batches(batch_size=3):
+        assert len(batch) == 3
+        break
+    for batch in data_indexer.get_entities_in_batches():
+        assert len(batch) == data_indexer.ents_length
 
 
-    def test_shelve_exists(self):
-        assert False, "not implemented"
+def test_get_indexes(data_indexer):
+    tmp = np.array([['a','b','c']])
+    indexes = data_indexer.get_indexes(tmp)
+    assert np.shape(indexes) == np.shape(tmp), "returnd indexes are not the same shape"
+    assert np.issubdtype(indexes.dtype,  np.integer), "indexes are not integers"
 
 
-    def test_create_mappings(self):
-        assert False, "not implemented"
+def test_update_existing_mappings(data_indexer):
+    new_data = np.array([['g','i','h'],['g','i','a']])
+    data_indexer.update_existing_mappings(new_data)
+    assert data_indexer.ents_length == 6, "entities size should be 6, two new added"
+    assert data_indexer.rels_length == 3, "relations size should be 3, one new added"
 
 
-    def test_get_indexes(self):
-        assert False, "not implemented"
+def test_get_starting_index_ents(data_indexer):
+    ind = data_indexer.get_starting_index_ents()
+    assert ind == data_indexer.ents_length, "index doesn't match etities length"
 
 
-    def test_create_persistent_mappings_from_nparray(self):
-        assert False, "not implemented"
-
-
-    def test_update_shelves(self):
-        assert False, "not implemented"
-
-
-    def test_update_existing_mappings(self):
-        assert False, "not implemented"
-
-
-    def test_move_shelve(self):
-        assert False, "not implemented"
-
-
-    def test_reindex(self):
-        assert False, "not implemented"
-
-
-    def test_create_persistent_mappings_in_chunks(self):
-        assert False, "not implemented"
-
-
-    def test_get_indexes_from_shelves(self):
-        assert False, "not implemented"
-
-
-    def test_get_indexes_from_a_dictionary(self):
-        assert False, "not implemented"
-
-
-    def test_get_starting_index_ents(self):
-        assert False, "not implemented"
-
-
-    def test_get_starting_index_rels(self):
-        assert False, "not implemented"
-
-
-    def test_update_dictionary_mappings_in_chunks(self):
-        assert False, "not implemented"
-
-
-    def test_update_dictionary_mappings(self):
-        assert False, "not implemented"
+def test_get_starting_index_rels(data_indexer):
+    ind = data_indexer.get_starting_index_rels()
+    assert ind == data_indexer.rels_length, "index doesn't match relations length"
