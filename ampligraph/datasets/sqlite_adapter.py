@@ -24,7 +24,7 @@ import os
 import shelve
 from datetime import datetime
 from ampligraph.utils.profiling import get_human_readable_size
-
+import pandas as pd
 
 DEFAULT_CHUNKSIZE = 30000
 class SQLiteAdapter():
@@ -236,12 +236,14 @@ class SQLiteAdapter():
            """
         if self.verbose:
             print("getting triples...")
+        if isinstance(chunk, pd.DataFrame):
+            chunk = chunk.values
         if self.use_indexer != False:
             #print(chunk)
             triples = self.mapper.get_indexes(chunk)
-            return np.append(triples, np.array(len(chunk.values)*[dataset_type]).reshape(-1,1), axis=1)
+            return np.append(triples, np.array(len(chunk)*[dataset_type]).reshape(-1,1), axis=1)
         else:
-            return np.append(chunk.values, np.array(len(chunk.values)*[dataset_type]).reshape(-1,1), axis=1)
+            return np.append(chunk, np.array(len(chunk)*[dataset_type]).reshape(-1,1), axis=1)
 
 
     def index_entities(self):
@@ -414,7 +416,7 @@ class SQLiteAdapter():
         index = ""
         if index_by != "":
             msg = "Field index_by can only be used with random set to False and can only take values \
-                   from this set: \{s,o,so,os,''\}, instead got: {}".format(index_by)
+                   from this set: {{s,o,so,os,''}}, instead got: {}".format(index_by)
             assert((index_by == "s" or index_by == "o" or index_by == "so" or index_by == "os") and random == False), msg       
             if index_by == "s":
                 index = "ORDER BY subject"
@@ -507,3 +509,7 @@ class SQLiteAdapter():
         with self:
             self.data_source = data_source
             self.populate(self.data_source, dataset_type=dataset_type)
+
+    def _intersect(self, dataloader):
+        assert(isinstance(dataloader.backend, SQLiteAdapter)), "Provided dataloader should be of type SQLiteAdapter backend, instead got {}.".format(type(dataloader.backend)) 
+        raise NotImplementedError

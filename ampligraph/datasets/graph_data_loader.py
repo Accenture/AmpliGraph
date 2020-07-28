@@ -204,14 +204,25 @@ class DummyBackend():
                 tmp = self.data[self.data[:,0] == triple[0]]
                 objects.append(list(set(tmp[tmp[:,1] == triple[1]][:,2])))
         return objects
+
+
+    def _intersect(self, dataloader):
+        """Intersect between data and dataloader elements.
+           Works only when dataloader is of type
+           DummyBackend.
+        """
+        assert(isinstance(dataloader.backend, DummyBackend)), "Intersection can only be calculated between same backends (DummyBackend), instead get {}".format(type(dataloader.backend))
+        return np.intersect1d(self.data, dataloader.backend.data)
         
-    def _get_batch(self, batch_size, dataset_type="train"):
+    def _get_batch(self, batch_size, dataset_type="train", random=False, index_by=""):
         """Get next btch of data (generator).
         
            Parameters
            ----------
            batch_size: size of a batch
            dataset_type: kind of dataset that is needed (train | test | validation).
+           random: not implemented.
+           index_by: not implemented.
 
            Returns
            --------
@@ -290,7 +301,11 @@ class GraphDataLoader():
         """Function needed to be used as an itertor."""
         with self.backend as backend:
             return self.batch_iterator.__next__()
-        
+      
+    def reload(self):
+        """Reinstantiate batch iterator."""
+        self.batch_iterator = self.get_batch()
+  
     def get_batch(self):
         """Query data for a next batch."""
         with self.backend as backend:
@@ -298,9 +313,24 @@ class GraphDataLoader():
   
     def get_data_size(self):
         """Returns number of triples."""
-        with self.backend as backedn:
+        with self.backend as backend:
             return backend.get_data_size()
  
+    def intersect(self, dataloader):
+        """Returns intersection between current dataloader elements and another one (argument).
+
+           Parameters
+           ----------
+           dataloader: dataloader for which to calculate the intersection for.
+
+           Returns
+           -------
+           intersection: np.array of intersecting elements.
+        """
+
+        with self.backend as backend:
+            return backend._intersect(dataloader)
+
     def get_complementary_subjects(self, triples):
         """Get subjects complementary to triples (?,p,o).
            For a given triple retrive all triples whith same objects and predicates.

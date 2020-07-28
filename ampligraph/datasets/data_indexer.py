@@ -139,13 +139,14 @@ class DataIndexer():
           
         """
         entities = list(range(0, self.ents_length, batch_size))
-        if random:
-            np.random.seed(seed) 
-            np.random.shuffle(entities)
         for start_index in entities:
             if start_index + batch_size >= self.ents_length:
                 batch_size = self.ents_length - start_index
-            yield np.array(range(start_index, start_index + batch_size))
+            ents = list(range(start_index, start_index + batch_size))
+            if random:
+                np.random.seed(seed) 
+                np.random.shuffle(ents)
+            yield np.array(ents)
     
     def update_properties_dictionary(self):
         """Initialise properties from the in-memory dictionary."""
@@ -354,6 +355,8 @@ class DataIndexer():
         self.move_shelve(remapped_rels_file, self.relations_dict)
         self.move_shelve(remapped_rev_rels_file, self.reversed_relations_dict)
         print("reindexing done!")
+        self.update_properties_persistent()
+        print("properties updated")
         
     def create_persistent_mappings_in_chunks(self):
         """Index entities and relations. Creates shelves for mappings between
@@ -376,7 +379,11 @@ class DataIndexer():
         self.reversed_relations_dict = os.path.join(self.root_directory, "reversed_relations_{}_{}.shf".format(self.name, date))
 
         for chunk in self.data:
-            self.update_shelves(chunk.values, rough=True)
+            if isinstance(chunk, pd.DataFrame):
+                self.update_shelves(chunk.values, rough=True)
+            else:
+                self.update_shelves(chunk, rough=True)
+
         print("We need to reindex all the data now so the indexes are continous among chunks")
         self.reindex()
 
@@ -400,7 +407,6 @@ class DataIndexer():
                          "relations":self.relations_dict, 
                          "reversed_relations_dict":self.reversed_relations_dict,
                          "name": self.name})
-#        self.update_properties_persistent()
 
     def get_indexes_from_shelves(self, sample):
         """Get indexed triples.

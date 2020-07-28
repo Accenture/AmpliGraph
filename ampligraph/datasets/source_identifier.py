@@ -38,6 +38,14 @@ def load_csv(data_source, chunk_size=None, sep='\t', verbose=False):
     else:
         return data
 
+
+def in_memory_chunks(iterable, chunk_size=1, **kwargs):
+    """Chunks generator."""
+    arr_len = len(iterable)
+    for indx in range(0, arr_len, chunk_size):
+        yield iterable[indx:min(indx + chunk_size, arr_len)]
+
+
 def load_gz(data_source, chunk_size=None, verbose=False):
     """Gz data loader. Reads compressed file."""
     raise NotImplementedError
@@ -76,7 +84,7 @@ class DataSourceIdentifier():
                                 "txt": load_csv, 
                                 "gz": load_csv, 
                                 "tar": load_tar,
-                                "obj": lambda x, **kwargs: x}
+                                "obj": in_memory_chunks }
         self._identify()
                 
     def fetch_loader(self):
