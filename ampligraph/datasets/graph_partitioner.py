@@ -24,7 +24,7 @@ from ampligraph.datasets.graph_data_loader import GraphDataLoader
 from datetime import datetime
 import shelve
 import csv
-
+import os
 
 PARTITION_ALGO_REGISTRY = {}
 
@@ -81,6 +81,8 @@ class AbstractGraphPartitioner(ABC):
            data: input data as a GraphDataLoader.
            k: number of partitions or buckets to split data into.
         """
+        self.files = []
+        self.partitions = []
         self._data = data
         self._k = k
         self._split(seed=seed, **kwargs)
@@ -136,6 +138,16 @@ class AbstractGraphPartitioner(ABC):
         """
         pass
 
+    def clean(self):
+        for partition in self.partitions:
+            partition.clean()
+        for f in self.files:
+            if f.split(".")[-1] != "shf":
+                os.remove(f)
+            else:
+                os.remove(f + ".bak")
+                os.remove(f + ".dir")
+                os.remove(f + ".dat")
     
 @register_partitioning_strategy("Bucket")
 class BucketGraphPartitioner(AbstractGraphPartitioner):
@@ -186,9 +198,11 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
         """
         #print("------------------------------------------------")        
         #print("Creating partition nb: {}".format(partition_nb))
-        with shelve.open("bucket_{}_{}.shf".format(ind1, timestamp), writeback=True) as bucket_partition_1:
+        fname = "bucket_{}_{}.shf".format(ind1, timestamp)
+        with shelve.open(fname, writeback=True) as bucket_partition_1:
             indexes_1 = bucket_partition_1['indexes']
-        with shelve.open("bucket_{}_{}.shf".format(ind2, timestamp), writeback=True) as bucket_partition_2:
+        fname = "bucket_{}_{}.shf".format(ind2, timestamp) 
+        with shelve.open(fname, writeback=True) as bucket_partition_2:
             indexes_2 = bucket_partition_2['indexes']
             
         #print("indexes 1: ", ind1, indexes_1)
@@ -204,10 +218,12 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
         if triples.size != 0:
             triples = np.unique(triples, axis=0)
             #print("unique triples: ", triples)
-            np.savetxt("partition_{}_{}.csv".format(partition_nb, timestamp), triples, delimiter="\t", fmt='%d')
+            fname = "partition_{}_{}.csv".format(partition_nb, timestamp)
+            self.files.append(fname)
+            np.savetxt(fname, triples, delimiter="\t", fmt='%d')
             # special case of GraphDataLoader to create partition datasets: with remapped indexes (0, size_of_partition),
             # persisted, with partition number to look up remappings
-            partition_loader = GraphDataLoader("partition_{}_{}.csv".format(partition_nb, timestamp), 
+            partition_loader = GraphDataLoader(fname, 
                                                use_indexer=False, 
                                                batch_size=batch_size, 
                                                remap=True, 
@@ -231,7 +247,9 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
         
         for i, bucket in enumerate(self.buckets_generator):
             # dump entities in partition shelve/file
-            with shelve.open("bucket_{}_{}.shf".format(i, timestamp), writeback=True) as bucket_partition:
+            fname = "bucket_{}_{}.shf".format(i, timestamp)
+            self.files.append(fname)
+            with shelve.open(fname, writeback=True) as bucket_partition:
                 bucket_partition['indexes'] = bucket
             #print(bucket)
             
@@ -287,10 +305,12 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
                 if tmp.size != 0:
                     triples = np.array(backend._get_triples(entities=partition))[:,:3].astype(np.int32) 
                     #print("unique triples: ", triples)
-                    np.savetxt("partition_{}_{}.csv".format(partition_nb, timestamp), triples, delimiter="\t", fmt='%d')
+                    fname = "partition_{}_{}.csv".format(partition_nb, timestamp)
+                    self.files.append(fname)
+                    np.savetxt(fname, triples, delimiter="\t", fmt='%d')
                     # special case of GraphDataLoader to create partition datasets: with remapped indexes (0, size_of_partition),
                     # persisted, with partition number to look up remappings
-                    partition_loader = GraphDataLoader("partition_{}_{}.csv".format(partition_nb, timestamp), 
+                    partition_loader = GraphDataLoader(fname, 
                                                        use_indexer=False, 
                                                        batch_size=batch_size, 
                                                        remap=True, 
@@ -340,17 +360,19 @@ class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
             print(self.partition_size)
             
             for partition_nb in range(self._k):
-                generator = self._data.backend._get_batch(random=random, batch_size=self.partition_size, dataset_type=self._data.dataset_type, index_by=index_by)
+                generator = self._data.backend._get_batch_generator(random=random, batch_size=self.partition_size, dataset_type=self._data.dataset_type, index_by=index_by)
                 def format_batch():
                     """Generator that formats output of generator of batches."""
                     for batch in generator:
                         yield ["\t".join(str(c) for i,c in enumerate(x) if i != 3) for x in batch]
-                with open("partition_{}_{}.csv".format(partition_nb, timestamp), "w") as file_csv:
+                fname = "partition_{}_{}.csv".format(partition_nb, timestamp)
+                self.files.append(fname)
+                with open(fname, "w") as file_csv:
                     writes = csv.writer(file_csv, delimiter='\n', quoting=csv.QUOTE_NONE)
                     writes.writerows(format_batch())
                 # special case of GraphDataLoader to create partition datasets: with remapped indexes (0, size_of_partition),
                 # persisted, with partition number to look up remappings
-                partition_loader = GraphDataLoader("partition_{}_{}.csv".format(partition_nb, timestamp), 
+                partition_loader = GraphDataLoader(fname, 
                                                    use_indexer=False, 
                                                    batch_size=batch_size, 
                                                    remap=True, 
