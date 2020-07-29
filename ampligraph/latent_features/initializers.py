@@ -84,7 +84,7 @@ class Initializer(abc.ABC):
 
     def _get_tf_initializer(self, in_shape=None, out_shape=None, concept='e'):
         """Create a tensorflow node for initializer
-        
+
         Parameters
         ----------
         in_shape: int
@@ -118,10 +118,10 @@ class Initializer(abc.ABC):
             Initialized weights
         """
         raise NotImplementedError('Abstract Method not implemented!')
-        
+
     def get_entity_initializer(self, in_shape=None, out_shape=None, init_type='tf'):
         """ Initializer for entity embeddings
-        
+
         Parameters
         ----------
         in_shape: int
@@ -141,10 +141,10 @@ class Initializer(abc.ABC):
             return self._get_tf_initializer(in_shape, out_shape, 'e')
         else:
             return self._get_np_initializer(in_shape, out_shape, 'e')
-    
+
     def get_relation_initializer(self, in_shape=None, out_shape=None, init_type='tf'):
         """ Initializer for relation embeddings
-        
+
         Parameters
         ----------
         in_shape: int
@@ -216,7 +216,7 @@ class RandomNormal(Initializer):
 
     def _get_tf_initializer(self, in_shape=None, out_shape=None, concept='e'):
         """Create a tensorflow node for initializer
-        
+
         Parameters
         ----------
         in_shape: int
@@ -306,7 +306,7 @@ class RandomUniform(Initializer):
 
     def _get_tf_initializer(self, in_shape=None, out_shape=None, concept='e'):
         """Create a tensorflow node for initializer
-        
+
         Parameters
         ----------
         in_shape: int
@@ -404,7 +404,7 @@ class Xavier(Initializer):
 
     def _get_tf_initializer(self, in_shape=None, out_shape=None, concept='e'):
         """Create a tensorflow node for initializer
-        
+
         Parameters
         ----------
         in_shape: int
@@ -495,7 +495,7 @@ class Constant(Initializer):
 
     def _get_tf_initializer(self, in_shape=None, out_shape=None, concept='e'):
         """Create a tensorflow node for initializer
-        
+
         Parameters
         ----------
         in_shape: int
@@ -509,20 +509,20 @@ class Constant(Initializer):
         -------
         initializer_instance: An Initializer instance.
         """
-        
+
         if concept == 'e':
             assert self._initializer_params['entity'].shape[0] == in_shape and \
                 self._initializer_params['entity'].shape[1] == out_shape, \
                 "Invalid shape for entity initializer!"
-        
+
             return tf.compat.v1.constant_initializer(self._initializer_params['entity'], dtype=tf.float32)
         else:
             assert self._initializer_params['relation'].shape[0] == in_shape and \
                 self._initializer_params['relation'].shape[1] == out_shape, \
                 "Invalid shape for relation initializer!"
-        
+
             return tf.compat.v1.constant_initializer(self._initializer_params['relation'], dtype=tf.float32)
-        
+
     def _get_np_initializer(self, in_shape, out_shape, concept='e'):
         """Create an initialized numpy array
 
@@ -544,11 +544,11 @@ class Constant(Initializer):
             assert self._initializer_params['entity'].shape[0] == in_shape and \
                 self._initializer_params['entity'].shape[1] == out_shape, \
                 "Invalid shape for entity initializer!"
-        
+
             return self._initializer_params['entity']
         else:
             assert self._initializer_params['relation'].shape[0] == in_shape and \
                 self._initializer_params['relation'].shape[1] == out_shape, \
                 "Invalid shape for relation initializer!"
-        
+
             return self._initializer_params['relation']

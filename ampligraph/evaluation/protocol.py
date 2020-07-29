@@ -675,7 +675,7 @@ def check_filter_size(model, corruption_entities):
 
     """
 
-    warn_msg = """You are attempting to use %d distinct entities to generate synthetic negatives in the evaluation 
+    warn_msg = """You are attempting to use %d distinct entities to generate synthetic negatives in the evaluation
     protocol. This may be unnecessary and will lead to a 'harder' task. Besides, it will lead to a much slower
     evaluation procedure. We recommended to set the 'corruption_entities' argument to a reasonably sized set
     of entities. The size of corruption_entities depends on your domain-specific task."""
