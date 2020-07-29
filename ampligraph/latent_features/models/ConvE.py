@@ -989,6 +989,10 @@ class ConvE(EmbeddingModel):
         self.rnd = check_random_state(self.seed)
         tf.random.set_random_seed(self.seed)
         self._load_model_from_trained_params()
+
+        # Set the output mapping of the dataset handle - this is superceded if a filter has been set.
+        dataset_handle.set_output_mapping(self.output_mapping)
+
         self._initialize_eval_graph()
 
         with tf.Session(config=self.tf_config) as sess:
@@ -1069,6 +1073,10 @@ class ConvE(EmbeddingModel):
         self.rnd = check_random_state(self.seed)
         tf.random.set_random_seed(self.seed)
         self._load_model_from_trained_params()
+
+        # Set the output mapping of the dataset handle - this is superceded if a filter has been set.
+        dataset_handle.set_output_mapping(self.output_mapping)
+
         self._initialize_eval_graph_subject()
 
         if not corruption_batch_size:
