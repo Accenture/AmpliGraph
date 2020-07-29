@@ -24,7 +24,7 @@ def data_type(request):
     return request.param
 
 
-@pytest.fixture(params=[True, False])#pytest.param(False, marks=pytest.mark.skip)])
+@pytest.fixture(params=[True, False])
 def data_indexer(request, data_type):
     '''Returns an in-memory DataIndexer instance with example data.'''
     return DataIndexer(data_type, in_memory=request.param)

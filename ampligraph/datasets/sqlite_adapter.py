@@ -217,7 +217,8 @@ class SQLiteAdapter():
             objects = entities
 
         query = "select * from triples_table where (subject in ({0}) and object in ({1})) or (subject in ({1}) and object in ({0}));".format(",".join(str(v) for v in  subjects), ",".join(str(v) for v in  objects))
-        triples = self._execute_query(query)
+        triples = np.array(self._execute_query(query))
+        triples = np.append(triples[:,:3].astype('int'), triples[:,3].reshape(-1,1), axis=1)
         return triples 
 
     def get_indexed_triples(self, chunk, dataset_type="train"): 
@@ -346,9 +347,12 @@ class SQLiteAdapter():
            -------
            result of a query, list of objects.
         """
-        query = "select distinct object from triples_table INDEXED BY triples_table_sp_idx where subject in ({}) and predicate in ({});"
-        query = query.format(",".join(str(v) for v in triples[:,0]),",".join(str(v) for v in triples[:,1]))
-        return self._execute_query(query)
+        results = []
+        for triple in triples:
+            query = "select distinct object from triples_table INDEXED BY triples_table_sp_idx where subject in ({}) and predicate in ({});"
+            query = query.format(triple[0], triple[1])
+            results.append([y for x in self._execute_query(query) for y in x ])
+        return results
 
     def _get_complementary_subjects(self, triples):
         """For a given triple retrive all triples whith same objects and predicates.
@@ -361,11 +365,13 @@ class SQLiteAdapter():
            -------
            result of a query, list of subjects.
         """
-        query = "select distinct subject from triples_table INDEXED BY \
-                 triples_table_po_idx where predicate in ({})  and object in ({})"
-        query = query.format(",".join(str(v) for v in triples[:,1]), ",".join(str(v) for v in triples[:,2]))
-
-        return self._execute_query(query)
+        results = []
+        for triple in triples:
+            query = "select distinct subject from triples_table INDEXED BY \
+                     triples_table_po_idx where predicate in ({})  and object in ({})"
+            query = query.format(triple[1], triple[2])
+            results.append([y for x in self._execute_query(query) for y in x ])
+        return results
 
     def _get_complementary_entities(self, triples):
         """Returns the participating entities in the relation ?-p-o and s-p-?.
@@ -383,7 +389,7 @@ class SQLiteAdapter():
         subjects = self._get_complementary_subjects(triples)
         return subjects, objects
     
-    def _get_batch(self, batch_size=1, dataset_type="train", random=False, use_filter=False, index_by=""):
+    def _get_batch_generator(self, batch_size=1, dataset_type="train", random=False, use_filter=False, index_by=""):
         """Generator that returns the next batch of data.
 
         Parameters
@@ -410,35 +416,38 @@ class SQLiteAdapter():
         participating_entities : list of all entities that were involved in the s-p-? and ?-p-o relations. 
                                  This is returned only if use_filter is set to true.
         """              
-        if not hasattr(self, "batches_count"):
-            size = self.get_data_size(condition="where dataset_type ='{}'".format(dataset_type))
-            self.batches_count = int(size/batch_size)
-        index = ""
-        if index_by != "":
-            msg = "Field index_by can only be used with random set to False and can only take values \
-                   from this set: {{s,o,so,os,''}}, instead got: {}".format(index_by)
-            assert((index_by == "s" or index_by == "o" or index_by == "so" or index_by == "os") and random == False), msg       
-            if index_by == "s":
-                index = "ORDER BY subject"
-            if index_by == "o":
-                index = "ORDER BY object"
-            if index_by == "so" or index_by == "os":
-                index = "ORDER BY subject, object"
-        query = "SELECT * FROM triples_table INDEXED BY \
-                 triples_table_type_idx where dataset_type ='{}' {} LIMIT {}, {}"
-
-        for i in range(self.batches_count):
-            query = query.format(dataset_type, index, i * batch_size, batch_size)
-            if random:
-                query = "select * from triples_table INDEXED BY triples_table_type_idx \
-                         where dataset_type = '{}' order by random() limit {}, {};".format(dataset_type, i * batch_size, batch_size)
-            out = self._execute_query(query)
-            if use_filter:
-                # get the filter values
-                participating_entities = self.get_complementary_entities(out)
-                yield out, participating_entities
-            else:
-                yield out                    
+        with self:
+            if not hasattr(self, "batches_count"):
+                size = self.get_data_size(condition="where dataset_type ='{}'".format(dataset_type))
+                self.batches_count = int(size/batch_size)
+            index = ""
+            if index_by != "":
+                msg = "Field index_by can only be used with random set to False and can only take values \
+                       from this set: {{s,o,so,os,''}}, instead got: {}".format(index_by)
+                assert((index_by == "s" or index_by == "o" or index_by == "so" or index_by == "os") and random == False), msg       
+                if index_by == "s":
+                    index = "ORDER BY subject"
+                if index_by == "o":
+                    index = "ORDER BY object"
+                if index_by == "so" or index_by == "os":
+                    index = "ORDER BY subject, object"
+            query = "SELECT * FROM triples_table INDEXED BY \
+                     triples_table_type_idx where dataset_type ='{}' {} LIMIT {}, {}"
+    
+            for i in range(self.batches_count):
+                query = query.format(dataset_type, index, i * batch_size, batch_size)
+                if random:
+                    query = "select * from triples_table INDEXED BY triples_table_type_idx \
+                             where dataset_type = '{}' order by random() limit {}, {};".format(dataset_type, i * batch_size, batch_size)
+                out = self._execute_query(query)
+                if out:
+                    out = np.array(out)[:,:3]                   
+                if use_filter:
+                    # get the filter values
+                    participating_entities = self.get_complementary_entities(out)
+                    yield out, participating_entities
+                else:
+                    yield out                    
                     
     def summary(self, count=True):
         """Prints summary of the database, whether it exists, what
@@ -513,3 +522,7 @@ class SQLiteAdapter():
     def _intersect(self, dataloader):
         assert(isinstance(dataloader.backend, SQLiteAdapter)), "Provided dataloader should be of type SQLiteAdapter backend, instead got {}.".format(type(dataloader.backend)) 
         raise NotImplementedError
+
+    def _clean(self):
+        os.remove(self.db_path)
+        self.mapper.clean()

@@ -203,6 +203,12 @@ class DataIndexer():
             return False
         return True
 
+    def remove_shelve(self, name):
+        """Remove shelve with a given name."""
+        os.remove(name + ".bak")
+        os.remove(name + ".dat")
+        os.remove(name + ".dir")
+
     def create_mappings(self):
         """Create mappings of data into indexes. It creates four dictionaries with
            keys as unique entities/relations and values as indexes and reversed 
@@ -243,7 +249,7 @@ class DataIndexer():
         else:
             print("Provided initialization objects are not supported. Can't Initialise mappings.")
     
-    def get_indexes(self, sample):
+    def get_indexes(self, sample=None, type_of="t"):
         """Converts raw data sample to an indexed form according to 
            previously created mappings. Dispatches to the adequate functions 
            for persistent or in-memory mappings.
@@ -251,18 +257,27 @@ class DataIndexer():
            Parameters
            ----------
            sample: numpy array with raw data, that was previously indexed.
-           
+           type_of: type of provided sample, one of the following values: {"t", "e", "r"}, indicates whether provided
+                 sample is an array of triples ("t"), list of entities ("e") or list of
+                 relations ("r").
            Returns
            -------
            array of same size as sample but with indexes of elements instead 
            of elements.
         """
-        if self.in_memory:
-            if isinstance(sample, pd.DataFrame):
-                return self.get_indexes_from_a_dictionary(sample.values)
-            else:
-                return self.get_indexes_from_a_dictionary(sample)
-        return self.get_indexes_from_shelves(sample)
+        assert(type_of in ["t", "e", "r"]), "Type (type_of) should be one of the following: t, e, r, instead got {}".format(type_of)
+
+        if type_of == "t":
+            if self.in_memory:
+                if isinstance(sample, pd.DataFrame):
+                    return self.get_indexes_from_a_dictionary(sample.values)
+                else:
+                    return self.get_indexes_from_a_dictionary(sample)
+            return self.get_indexes_from_shelves(sample)
+        else:
+            if self.in_memory:
+                   return self.get_indexes_from_a_dictionary_single(sample, type_of=type_of)
+            return self.get_indexes_from_shelves_single(sample, type_of=type_of)                     
 
     def create_persistent_mappings_from_nparray(self):
         """Index entities and relations from the array. 
@@ -431,6 +446,30 @@ class DataIndexer():
                 objects = [ents[str(elem)] for elem in sample[:,2]]
                 predicates = [rels[str(elem)] for elem in sample[:,1]]
                 return np.array((subjects, predicates, objects), dtype=int).T
+
+    def get_indexes_from_shelves_single(self, sample, type_of="e"):
+        """Get indexed elements (entities or relations).
+
+           Parameters
+           ----------
+           sample: list of entities or relations to get indexes for.
+           type_of: "e" or "r", get indexes for entities ("e") or relations ("r").
+
+           Returns
+           -------
+           tmp: numpy array of indexes
+           """
+        if type_of == "e":
+            with shelve.open(self.reversed_entities_dict) as ents:
+                indexes = [ents[str(elem)] for elem in sample]
+            return np.array(indexes, dtype=int)
+        elif type_of == "r":
+            with shelve.open(self.reversed_relations_dict) as rels:
+                indexes = [rels[str(elem)] for elem in sample]
+            return np.array(indexes, dtype=int)
+        else:
+            assert type_of in ["r", "e"], "No such option, should be r (relations) or e (entities), instead got".format(type_of)
+ 
     
     def get_indexes_from_a_dictionary(self, sample):
         """Get indexed triples from a in-memory dictionary.
@@ -452,8 +491,31 @@ class DataIndexer():
         predicates = np.array([self.reversed_relations_dict[x] for x in sample[:,1]],  dtype=np.int32)
         merged = np.stack([subjects, predicates, objects], axis=1)
         return merged
-    
-    
+
+    def get_indexes_from_a_dictionary_single(self, sample, type_of="e"):
+        """Get indexed elements (entities, relatiosn) from an in-memory dictionary.
+
+           Parameters
+           ----------
+           sample: list of entities or relations to get indexes for.
+           type_of: "e" or "r", get indexes for entities ("e") or relations ("r").
+
+           Returns
+           -------
+           tmp: numpy array of indexes.
+                where each element is: (subject index, predicate index, object index).        
+        """
+        
+        assert self.entities_dict is not None and self.relations_dict is not None
+        if type_of == "e":
+            indexes   = np.array([self.reversed_entities_dict[x] for x in sample],  dtype=np.int32)
+            return indexes
+        elif type_of == "r":
+            indexes = np.array([self.reversed_relations_dict[x] for x in sample],  dtype=np.int32)
+            return indexes
+        else:
+            assert type_of in ["r", "e"], "No such option, should be r (relations) or e (entities), instead got".format(type_of)
+ 
     def get_starting_index_ents(self):
         """Returns next index to continue adding elements to entities dictionary."""        
         if not self.entities_dict:
@@ -521,3 +583,15 @@ class DataIndexer():
                                                                                             self.rev_ents_length,
                                                                                             self.rels_length,
                                                                                             self.rev_rels_length))
+
+    def clean(self):
+        if self.in_memory:
+            del self.entities_dict
+            del self.reversed_entities_dict
+            del self.relations_dict
+            del self.reversed_relations_dict
+        else:
+            self.remove_shelve(self.entities_dict)
+            self.remove_shelve(self.reversed_entities_dict)
+            self.remove_shelve(self.relations_dict)
+            self.remove_shelve(self.reversed_relations_dict)

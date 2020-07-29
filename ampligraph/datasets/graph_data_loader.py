@@ -58,6 +58,7 @@ class DummyBackend():
         if self.verbose:
             print("Simple in-memory data loading of {} dataset.".format(dataset_type))
         self.data_source = data_source
+        self.dataset_type = dataset_type
         if isinstance(self.data_source, np.ndarray):
             if self.use_indexer:
                 self.mapper = DataIndexer(self.data_source, in_memory=self.in_memory)
@@ -93,6 +94,7 @@ class DummyBackend():
         #check_subjects = np.vectorize(lambda t: t in subjects)
         check_triples = np.vectorize(lambda t, r: (t in objects and r in subjects) or (t in subjects and r in objects))
         triples = self.data[check_triples(self.data[:,2],self.data[:,0])]
+        triples = np.append(triples, np.array(len(triples)*[self.dataset_type]).reshape(-1,1), axis=1)
         #triples_from_objects = self.data[check_objects(self.data[:,0])]
         #triples = np.vstack([triples_from_subjects, triples_from_objects])
         return triples 
@@ -214,8 +216,8 @@ class DummyBackend():
         assert(isinstance(dataloader.backend, DummyBackend)), "Intersection can only be calculated between same backends (DummyBackend), instead get {}".format(type(dataloader.backend))
         return np.intersect1d(self.data, dataloader.backend.data)
         
-    def _get_batch(self, batch_size, dataset_type="train", random=False, index_by=""):
-        """Get next btch of data (generator).
+    def _get_batch_generator(self, batch_size, dataset_type="train", random=False, index_by=""):
+        """Batch generator of data.
         
            Parameters
            ----------
@@ -234,6 +236,10 @@ class DummyBackend():
             if start_index + batch_size >= length: # if the last batch is smaller than the batch_size
                 batch_size = length - start_index
             yield self.data[start_index:start_index + batch_size]
+
+    def _clean(self):
+        del self.data
+        self.mapper.clean()
 
 class GraphDataLoader():
     """Data loader for graphs implemented as a batch iterator
@@ -279,18 +285,18 @@ class GraphDataLoader():
         self.name = name
         self.parent = parent
         assert bool(use_indexer) == (not remap), "Either remap or Indexer should be speciferd at the same time."
-        if isinstance(backend, type):
+        if isinstance(backend, type) and backend != DummyBackend:
             self.backend = backend("database_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")), 
                                    root_directory=self.root_directory, use_indexer=self.use_indexer, remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory, verbose=verbose)
             print("Initialized Backend with database at: {}".format(self.backend.db_path))
-        elif backend is None:
+        elif backend is None or backend == DummyBackend:
             self.backend = DummyBackend(self.identifier, use_indexer=self.use_indexer, remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory)
         else:
             self.backend = backend
         
         #with self.backend as backend:
         self.backend._load(self.data_source, dataset_type=self.dataset_type)  
-        self.batch_iterator = self.get_batch()
+        self.batch_iterator = self.get_batch_generator()
         self.metadata = self.backend.mapper.metadata
       
     def __iter__(self):
@@ -304,12 +310,11 @@ class GraphDataLoader():
       
     def reload(self):
         """Reinstantiate batch iterator."""
-        self.batch_iterator = self.get_batch()
+        self.batch_iterator = self.get_batch_generator()
   
-    def get_batch(self):
-        """Query data for a next batch."""
-        with self.backend as backend:
-            return backend._get_batch(self.batch_size, dataset_type=self.dataset_type)
+    def get_batch_generator(self):
+        """Get batch generator from the backend."""
+        return self.backend._get_batch_generator(self.batch_size, dataset_type=self.dataset_type)
   
     def get_data_size(self):
         """Returns number of triples."""
@@ -397,4 +402,7 @@ class GraphDataLoader():
         """
         with self.backend as backend:
             return backend._get_triples(subjects, objects, entities)
+
+    def clean(self):
+        self.backend._clean()
 
