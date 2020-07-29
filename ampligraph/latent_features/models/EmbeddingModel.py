@@ -906,7 +906,7 @@ class EmbeddingModel(abc.ABC):
             if self.dealing_with_large_graphs:
                 prefetch_batches = 0
                 # CPU matrix of embeddings
-                self.ent_emb_cpu = self.initializer.get_entity_initializer(len(self.ent_to_idx), 
+                self.ent_emb_cpu = self.initializer.get_entity_initializer(len(self.ent_to_idx),
                                                                            self.internal_k,
                                                                            'np')
 
