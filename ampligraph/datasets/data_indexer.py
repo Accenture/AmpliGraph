@@ -249,7 +249,7 @@ class DataIndexer():
         else:
             print("Provided initialization objects are not supported. Can't Initialise mappings.")
     
-    def get_indexes(self, sample=None, type_of="t"):
+    def get_indexes(self, sample=None, type_of="t", order="raw2ind"):
         """Converts raw data sample to an indexed form according to 
            previously created mappings. Dispatches to the adequate functions 
            for persistent or in-memory mappings.
@@ -260,6 +260,7 @@ class DataIndexer():
            type_of: type of provided sample, one of the following values: {"t", "e", "r"}, indicates whether provided
                  sample is an array of triples ("t"), list of entities ("e") or list of
                  relations ("r").
+           order: raw2ind or ind2raw, should it convert raw data to indexes or indexes to raw data?
            Returns
            -------
            array of same size as sample but with indexes of elements instead 
@@ -270,14 +271,14 @@ class DataIndexer():
         if type_of == "t":
             if self.in_memory:
                 if isinstance(sample, pd.DataFrame):
-                    return self.get_indexes_from_a_dictionary(sample.values)
+                    return self.get_indexes_from_a_dictionary(sample.values, order=order)
                 else:
-                    return self.get_indexes_from_a_dictionary(sample)
-            return self.get_indexes_from_shelves(sample)
+                    return self.get_indexes_from_a_dictionary(sample, order=order)
+            return self.get_indexes_from_shelves(sample, order=order)
         else:
             if self.in_memory:
-                   return self.get_indexes_from_a_dictionary_single(sample, type_of=type_of)
-            return self.get_indexes_from_shelves_single(sample, type_of=type_of)                     
+                   return self.get_indexes_from_a_dictionary_single(sample, type_of=type_of, order=order)
+            return self.get_indexes_from_shelves_single(sample, type_of=type_of, order=order)                     
 
     def create_persistent_mappings_from_nparray(self):
         """Index entities and relations from the array. 
@@ -312,6 +313,10 @@ class DataIndexer():
         """Update shelves with sample or full data when sample not provided."""
         if sample is None:
             sample = self.data
+            assert not self.shelve_exists(self.entities_dict) and  not self.shelve_exists(self.reversed_entities_dict) and\
+                   not self.shelve_exists(self.relations_dict) and  not self.shelve_exists(self.reversed_relations_dict), "Shelves exists for some reason and are not empty!"
+
+
         #print(sample)
         entities = set(sample[:,0]).union(set(sample[:,2]))
         predicates = set(sample[:,1])
@@ -319,6 +324,8 @@ class DataIndexer():
         start_ents = self.get_starting_index_ents()
         print("Start index entities: ",start_ents)
         new_indexes_ents = range(start_ents, start_ents + len(entities)) # maximum new index, usually less when multiple chunks provided due to chunks
+        #print(new_indexes_ents)
+        #print(entities)
         #print("new indexes entities: ", new_indexes_ents)
         assert(len(new_indexes_ents) == len(entities)), "Etimated indexes length for entities not equal to entities length ({} and {})".format(len(new_indexes_ents), len(entities))
         start_rels = self.get_starting_index_rels()
@@ -424,13 +431,14 @@ class DataIndexer():
                          "reversed_relations_dict":self.reversed_relations_dict,
                          "name": self.name})
 
-    def get_indexes_from_shelves(self, sample):
+    def get_indexes_from_shelves(self, sample, order="raw2ind"):
         """Get indexed triples.
 
            Parameters
            ----------
            sample: numpy array with a fragment of data of size (N,3), where each element is:
                   (subject, predicate, object).
+           order: raw2ind or ind2raw, should it convert raw data to indexes or indexes to raw data?
 
            Returns
            -------
@@ -440,79 +448,120 @@ class DataIndexer():
         if isinstance(sample, pd.DataFrame):
             sample = sample.values
         #print(sample)
-        with shelve.open(self.reversed_entities_dict) as ents:
-            with shelve.open(self.reversed_relations_dict) as rels:
+        if order == "raw2ind": 
+            entities = self.reversed_entities_dict
+            relations = self.reversed_relations_dict
+        elif order == "ind2raw":
+            entities = self.entities_dict
+            relations = self.relations_dict
+        else:
+            raise Exception("No such order available options: ind2raw, raw2ind, instead got {}.".format(order)) 
+
+        with shelve.open(entities) as ents:
+            with shelve.open(relations) as rels:
                 subjects = [ents[str(elem)] for elem in sample[:,0]]
                 objects = [ents[str(elem)] for elem in sample[:,2]]
                 predicates = [rels[str(elem)] for elem in sample[:,1]]
                 return np.array((subjects, predicates, objects), dtype=int).T
 
-    def get_indexes_from_shelves_single(self, sample, type_of="e"):
+    def get_indexes_from_shelves_single(self, sample, type_of="e", order="raw2ind"):
         """Get indexed elements (entities or relations).
 
            Parameters
            ----------
            sample: list of entities or relations to get indexes for.
            type_of: "e" or "r", get indexes for entities ("e") or relations ("r").
+           order: raw2ind or ind2raw, should it convert raw data to indexes or indexes to raw data?
 
            Returns
            -------
            tmp: numpy array of indexes
            """
+        if order == "raw2ind": 
+            entities = self.reversed_entities_dict
+            relations = self.reversed_relations_dict
+            dtype = int
+        elif order == "ind2raw":
+            entities = self.entities_dict
+            relations = self.relations_dict
+            dtype = str
+        else:
+            raise Exception("No such order available options: ind2raw, raw2ind, instead got {}.".format(order)) 
+
         if type_of == "e":
-            with shelve.open(self.reversed_entities_dict) as ents:
-                indexes = [ents[str(elem)] for elem in sample]
-            return np.array(indexes, dtype=int)
+            with shelve.open(entities) as ents:
+                elements = [ents[str(elem)] for elem in sample]
+            return np.array(elements, dtype=dtype)
         elif type_of == "r":
-            with shelve.open(self.reversed_relations_dict) as rels:
-                indexes = [rels[str(elem)] for elem in sample]
-            return np.array(indexes, dtype=int)
+            with shelve.open(relations) as rels:
+                elements = [rels[str(elem)] for elem in sample]
+            return np.array(elements, dtype=dtype)
         else:
             assert type_of in ["r", "e"], "No such option, should be r (relations) or e (entities), instead got".format(type_of)
  
     
-    def get_indexes_from_a_dictionary(self, sample):
+    def get_indexes_from_a_dictionary(self, sample, order="raw2ind"):
         """Get indexed triples from a in-memory dictionary.
 
            Parameters
            ----------
            sample: numpy array with a fragment of data of size (N,3), where each element is:
                   (subject, predicate, object).
+           order: raw2ind or ind2raw, should it convert raw data to indexes or indexes to raw data?
 
            Returns
            -------
            tmp: numpy array of size (N,3) with indexed triples,
                 where each element is: (subject index, predicate index, object index).        
         """
-        
-        assert self.entities_dict is not None and self.relations_dict is not None
-        subjects   = np.array([self.reversed_entities_dict[x] for x in sample[:,0]],  dtype=np.int32)
-        objects    = np.array([self.reversed_entities_dict[x] for x in sample[:,2]],  dtype=np.int32)
-        predicates = np.array([self.reversed_relations_dict[x] for x in sample[:,1]],  dtype=np.int32)
+        if order == "raw2ind": 
+            entities = self.reversed_entities_dict
+            relations = self.reversed_relations_dict
+        elif order == "ind2raw":
+            entities = self.entities_dict
+            relations = self.relations_dict
+        else:
+            raise Exception("No such order available options: ind2raw, raw2ind, instead got {}.".format(order)) 
+        assert entities is not None and relations is not None
+        subjects   = np.array([entities[x] for x in sample[:,0]],  dtype=np.int32)
+        objects    = np.array([entities[x] for x in sample[:,2]],  dtype=np.int32)
+        predicates = np.array([relations[x] for x in sample[:,1]],  dtype=np.int32)
         merged = np.stack([subjects, predicates, objects], axis=1)
         return merged
 
-    def get_indexes_from_a_dictionary_single(self, sample, type_of="e"):
+
+    def get_indexes_from_a_dictionary_single(self, sample, type_of="e", order="raw2ind"):
         """Get indexed elements (entities, relatiosn) from an in-memory dictionary.
 
            Parameters
            ----------
            sample: list of entities or relations to get indexes for.
            type_of: "e" or "r", get indexes for entities ("e") or relations ("r").
+           order: raw2ind or ind2raw, should it convert raw data to indexes or indexes to raw data?
 
            Returns
            -------
            tmp: numpy array of indexes.
                 where each element is: (subject index, predicate index, object index).        
         """
-        
-        assert self.entities_dict is not None and self.relations_dict is not None
+        if order == "raw2ind": 
+            entities = self.reversed_entities_dict
+            relations = self.reversed_relations_dict
+            dtype = np.int32
+        elif order == "ind2raw":
+            entities = self.entities_dict
+            relations = self.relations_dict
+            dtype = str 
+        else:
+            raise Exception("No such order available options: ind2raw, raw2ind, instead got {}.".format(order)) 
+      
+        assert entities is not None and relations is not None
         if type_of == "e":
-            indexes   = np.array([self.reversed_entities_dict[x] for x in sample],  dtype=np.int32)
-            return indexes
+            elements   = np.array([entities[x] for x in sample],  dtype=dtype)
+            return elements
         elif type_of == "r":
-            indexes = np.array([self.reversed_relations_dict[x] for x in sample],  dtype=np.int32)
-            return indexes
+            elements = np.array([relations[x] for x in sample],  dtype=dtype)
+            return elements
         else:
             assert type_of in ["r", "e"], "No such option, should be r (relations) or e (entities), instead got".format(type_of)
  

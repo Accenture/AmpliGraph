@@ -294,7 +294,6 @@ class GraphDataLoader():
         else:
             self.backend = backend
         
-        #with self.backend as backend:
         self.backend._load(self.data_source, dataset_type=self.dataset_type)  
         self.batch_iterator = self.get_batch_generator()
         self.metadata = self.backend.mapper.metadata
@@ -305,8 +304,7 @@ class GraphDataLoader():
 
     def __next__(self):
         """Function needed to be used as an itertor."""
-        with self.backend as backend:
-            return self.batch_iterator.__next__()
+        return self.batch_iterator.__next__()
       
     def reload(self):
         """Reinstantiate batch iterator."""
@@ -318,8 +316,7 @@ class GraphDataLoader():
   
     def get_data_size(self):
         """Returns number of triples."""
-        with self.backend as backend:
-            return backend.get_data_size()
+        return self.backend.get_data_size()
  
     def intersect(self, dataloader):
         """Returns intersection between current dataloader elements and another one (argument).
@@ -333,8 +330,7 @@ class GraphDataLoader():
            intersection: np.array of intersecting elements.
         """
 
-        with self.backend as backend:
-            return backend._intersect(dataloader)
+        return self.backend._intersect(dataloader)
 
     def get_complementary_subjects(self, triples):
         """Get subjects complementary to triples (?,p,o).
@@ -348,8 +344,7 @@ class GraphDataLoader():
            -------
            result of a query, list of subjects per triple.
         """
-        with self.backend as backend:
-            return backend._get_complementary_subjects(triples)
+        return self.backend._get_complementary_subjects(triples)
 
     def get_complementary_objects(self, triples):
         """Get objects complementary to triples (s,p,?).
@@ -363,8 +358,7 @@ class GraphDataLoader():
            -------
            result of a query, list of objects per triple.
         """
-        with self.backend as backend:
-            return backend._get_complementary_objects(triples)        
+        return self.backend._get_complementary_objects(triples)        
     
     def get_complementary_entities(self, triples):
         """Get subjects and objects complementary to triples (?,p,?).
@@ -381,8 +375,7 @@ class GraphDataLoader():
            TODO: What exactly it should return?
        """
 
-        with self.backend as backend:
-            return backend._get_complementary_entities(triples)
+        return self.backend._get_complementary_entities(triples)
 
 
     def get_triples(self, subjects=None, objects=None, entities=None):
@@ -400,8 +393,7 @@ class GraphDataLoader():
            triples: list of triples constrained by subjects and objects.
           
         """
-        with self.backend as backend:
-            return backend._get_triples(subjects, objects, entities)
+        return self.backend._get_triples(subjects, objects, entities)
 
     def clean(self):
         self.backend._clean()

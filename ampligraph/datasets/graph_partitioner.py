@@ -267,7 +267,7 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
     
 @register_partitioning_strategy("RandomVertices")
 class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
-    """Partitioning strategy that splits vertices into equal size
+    """Partitioning strategy that splits vertices into equal
        sized buckets of random entities from the graph.
     """
     def __init__(self, data, k=2, seed=None, **kwargs):
@@ -291,34 +291,33 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
             partitions: parts of equal size with triples
         """
         timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
-        with self._data.backend as backend:
-            self.ents_size = backend.mapper.ents_length
-           # print(self.ents_size)
-           # print(backend.mapper.max_ents_index)
-            self.partition_size = int(np.ceil(self.ents_size / self._k))
-           # print(self.partition_size)
-            self.buckets_generator = backend.mapper.get_entities_in_batches(batch_size=self.partition_size, random=True, seed=seed)
-    
-            for partition_nb, partition in enumerate(self.buckets_generator):
-                #print(partition)
-                tmp = np.array(backend._get_triples(entities=partition))
-                if tmp.size != 0:
-                    triples = np.array(backend._get_triples(entities=partition))[:,:3].astype(np.int32) 
-                    #print("unique triples: ", triples)
-                    fname = "partition_{}_{}.csv".format(partition_nb, timestamp)
-                    self.files.append(fname)
-                    np.savetxt(fname, triples, delimiter="\t", fmt='%d')
-                    # special case of GraphDataLoader to create partition datasets: with remapped indexes (0, size_of_partition),
-                    # persisted, with partition number to look up remappings
-                    partition_loader = GraphDataLoader(fname, 
-                                                       use_indexer=False, 
-                                                       batch_size=batch_size, 
-                                                       remap=True, 
-                                                       parent=self._data,
-                                                       name="partition_{}".format(partition_nb))
-                    self.partitions.append(partition_loader)
-                else:
-                    print("Partition has no triples, skipping!")
+        self.ents_size = self._data.backend.mapper.ents_length
+       # print(self.ents_size)
+       # print(backend.mapper.max_ents_index)
+        self.partition_size = int(np.ceil(self.ents_size / self._k))
+       # print(self.partition_size)
+        self.buckets_generator = self._data.backend.mapper.get_entities_in_batches(batch_size=self.partition_size, random=True, seed=seed)
+
+        for partition_nb, partition in enumerate(self.buckets_generator):
+            #print(partition)
+            tmp = np.array(self._data.backend._get_triples(entities=partition))
+            if tmp.size != 0:
+                triples = np.array(self._data.backend._get_triples(entities=partition))[:,:3].astype(np.int32) 
+                #print("unique triples: ", triples)
+                fname = "partition_{}_{}.csv".format(partition_nb, timestamp)
+                self.files.append(fname)
+                np.savetxt(fname, triples, delimiter="\t", fmt='%d')
+                # special case of GraphDataLoader to create partition datasets: with remapped indexes (0, size_of_partition),
+                # persisted, with partition number to look up remappings
+                partition_loader = GraphDataLoader(fname, 
+                                                   use_indexer=False, 
+                                                   batch_size=batch_size, 
+                                                   remap=True, 
+                                                   parent=self._data,
+                                                   name="partition_{}".format(partition_nb))
+                self.partitions.append(partition_loader)
+            else:
+                print("Partition has no triples, skipping!")
 
 
 class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
@@ -353,32 +352,25 @@ class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
             partitions: parts of equal size with triples
         """
         timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
-        with self._data.backend as backend:
-            self.size = backend.get_data_size()
+        self.size = self._data.backend.get_data_size()
 
-            self.partition_size = int(np.ceil(self.size / self._k))
-            print(self.partition_size)
-            
-            for partition_nb in range(self._k):
-                generator = self._data.backend._get_batch_generator(random=random, batch_size=self.partition_size, dataset_type=self._data.dataset_type, index_by=index_by)
-                def format_batch():
-                    """Generator that formats output of generator of batches."""
-                    for batch in generator:
-                        yield ["\t".join(str(c) for i,c in enumerate(x) if i != 3) for x in batch]
-                fname = "partition_{}_{}.csv".format(partition_nb, timestamp)
-                self.files.append(fname)
-                with open(fname, "w") as file_csv:
-                    writes = csv.writer(file_csv, delimiter='\n', quoting=csv.QUOTE_NONE)
-                    writes.writerows(format_batch())
-                # special case of GraphDataLoader to create partition datasets: with remapped indexes (0, size_of_partition),
-                # persisted, with partition number to look up remappings
-                partition_loader = GraphDataLoader(fname, 
-                                                   use_indexer=False, 
-                                                   batch_size=batch_size, 
-                                                   remap=True, 
-                                                   parent=self._data,
-                                                   name="partition_{}".format(partition_nb))
-                self.partitions.append(partition_loader)
+        self.partition_size = int(np.ceil(self.size / self._k))
+        print(self.partition_size)
+        generator = self._data.backend._get_batch_generator(random=random, batch_size=self.partition_size, dataset_type=self._data.dataset_type, index_by=index_by)
+       
+        for partition_nb, partition in enumerate(generator):
+            fname = "partition_{}_{}.csv".format(partition_nb, timestamp)
+            self.files.append(fname)
+            np.savetxt(fname, np.array(partition, dtype=int), delimiter='\t', fmt='%d')
+            # special case of GraphDataLoader to create partition datasets: with remapped indexes (0, size_of_partition),
+            # persisted, with partition number to look up remappings
+            partition_loader = GraphDataLoader(fname, 
+                                               use_indexer=False, 
+                                               batch_size=batch_size, 
+                                               remap=True, 
+                                               parent=self._data,
+                                               name="partition_{}".format(partition_nb))
+            self.partitions.append(partition_loader)
 
 @register_partitioning_strategy("RandomEdges")
 class RandomEdgesGraphPartitioner(EdgeBasedGraphPartitioner):

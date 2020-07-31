@@ -63,6 +63,8 @@ class SQLiteAdapter():
             verbose: print status messages.
         """
         self.db_name = db_name
+        self.verbose = verbose
+        self.flag_db_open = False
         self.root_directory = root_directory
         self.db_path = os.path.join(self.root_directory, self.db_name)
         self.use_indexer = use_indexer
@@ -70,35 +72,52 @@ class SQLiteAdapter():
         assert self.remap == False, "Remapping is not supported for DataLoaders with SQLite Adapter as backend"
         self.name = name
         self.parent = parent
-        self.verbose = verbose
         self.in_memory = in_memory
+
         if chunk_size is None:
             chunk_size = DEFAULT_CHUNKSIZE
             print("Currently {} only supports data given in chunks. \
             Setting chunksize to {}.".format(self.__name__(), DEFAULT_CHUNKSIZE))
         else:
             self.chunk_size = chunk_size
-        
-    def __enter__ (self):
+
+    def open_db(self):
+        db_uri = 'file:{}?mode=rw'.format(pathname2url(self.db_path))
+        self.connection = sqlite3.connect(db_uri, uri=True)
+        self.flag_db_open = True
+        print("----------------DB OPENED - normally -----------------------")
+
+    def open_connection(self):
         """Context manager function to open or create if not exists database connection."""
-        try:
-            db_uri = 'file:{}?mode=rw'.format(pathname2url(self.db_path))
-            self.connection = sqlite3.connect(db_uri, uri=True)
-        except sqlite3.OperationalError:
-            print("Missing Database, creating one...")      
-            self.connection = sqlite3.connect(self.db_path)        
-            self._create_database()
+        if self.flag_db_open == False:
+            try:
+                self.open_db()
+            except sqlite3.OperationalError:
+                print("Database does not exists. Creating one.")      
+                self.connection = sqlite3.connect(self.db_path)        
+                self.connection.commit()
+                self.connection.close()
+        
+                self._create_database()
+                self.open_db()
+
+    def __enter__(self):
+        self.open_connection()
         return self
     
     def __exit__ (self, type, value, tb):
         """Context manager exit function, required to used with "with statement", closes
            the connection and do the rollback if required"""
-        if tb is None:
-            self.connection.commit()
-            self.connection.close()
-        else:
-            # Exception occurred, so rollback.
-            self.connection.rollback()
+        if self.flag_db_open:
+            if tb is None:
+                self.connection.commit()
+                self.connection.close()
+            else:
+                # Exception occurred, so rollback.
+                self.connection.rollback()
+            self.flag_db_open = False
+            print("!!!!!!!!----------------DB CLOSED -----------------------")
+
         
     def _get_db_schema(self):
         """Defines SQL queries to create a table with triples and indexes to 
@@ -147,17 +166,18 @@ class SQLiteAdapter():
            -------
            output: result of a query with fetchall().
         """
-        cursor = self.connection.cursor()
-        output = None
-        try:
-            cursor.execute(query)
-            output = cursor.fetchall()
-            self.connection.commit()
-            if self.verbose:
-                print("Query executed successfully")
-        except Error as e:
-            print(f"Query failed. The error '{e}' occurred")
-        return output
+        with self:
+            cursor = self.connection.cursor()
+            output = None
+            try:
+                cursor.execute(query)
+                output = cursor.fetchall()
+                self.connection.commit()
+                if self.verbose:
+                    print("Query executed successfully, {}".format(query))
+            except Error as e:
+                print(f"Query failed. The error '{e}' occurred")
+            return output
 
     def _execute_queries(self, list_of_queries):
         """Executes given list of queries one by one.
@@ -183,24 +203,25 @@ class SQLiteAdapter():
            values: array of data with shape (N,3) to be written to the database, 
                    where N is a number of entries.      
         """
-        if self.verbose:
-            print("inserting to a table...")
-        if len(np.shape(values)) < 2:
-            size = 1
-        else:
-            size = np.shape(values)[1]
-        cursor = self.connection.cursor()
-        try:
-            values_placeholder = "({})".format(", ".join(["?"]*size))
-            query = 'INSERT INTO {} VALUES {}'.format(table, values_placeholder)
-            cursor.executemany(query, [(v,) if isinstance(v, int) or isinstance(v, str) else v for v in values])
-            self.connection.commit()
+        with self:
             if self.verbose:
-                print("commited to table: {}".format(table))
-        except Error as e:
-            print("Error", e)
-            self.connection.rollback()
-        cursor.close()   
+                print("inserting to a table...")
+            if len(np.shape(values)) < 2:
+                size = 1
+            else:
+                size = np.shape(values)[1]
+            cursor = self.connection.cursor()
+            try:
+                values_placeholder = "({})".format(", ".join(["?"]*size))
+                query = 'INSERT INTO {} VALUES {}'.format(table, values_placeholder)
+                cursor.executemany(query, [(v,) if isinstance(v, int) or isinstance(v, str) else v for v in values])
+                self.connection.commit()
+                if self.verbose:
+                    print("commited to table: {}".format(table))
+            except Error as e:
+                print("Error", e)
+                #self.connection.rollback()
+            print("Values were inserted!")
 
     def _create_database(self):
         """Creates database."""
@@ -325,6 +346,7 @@ class SQLiteAdapter():
             return count
         elif not isinstance(count, list) or not isinstance(count[0], tuple):
             raise ValueError("Cannot get count for the table with provided condition.")        
+        #print(count)
         return count[0][0]
 
     def clean_up(self):
@@ -416,38 +438,41 @@ class SQLiteAdapter():
         participating_entities : list of all entities that were involved in the s-p-? and ?-p-o relations. 
                                  This is returned only if use_filter is set to true.
         """              
-        with self:
-            if not hasattr(self, "batches_count"):
-                size = self.get_data_size(condition="where dataset_type ='{}'".format(dataset_type))
-                self.batches_count = int(size/batch_size)
-            index = ""
-            if index_by != "":
-                msg = "Field index_by can only be used with random set to False and can only take values \
-                       from this set: {{s,o,so,os,''}}, instead got: {}".format(index_by)
-                assert((index_by == "s" or index_by == "o" or index_by == "so" or index_by == "os") and random == False), msg       
-                if index_by == "s":
-                    index = "ORDER BY subject"
-                if index_by == "o":
-                    index = "ORDER BY object"
-                if index_by == "so" or index_by == "os":
-                    index = "ORDER BY subject, object"
-            query = "SELECT * FROM triples_table INDEXED BY \
-                     triples_table_type_idx where dataset_type ='{}' {} LIMIT {}, {}"
-    
-            for i in range(self.batches_count):
-                query = query.format(dataset_type, index, i * batch_size, batch_size)
-                if random:
-                    query = "select * from triples_table INDEXED BY triples_table_type_idx \
-                             where dataset_type = '{}' order by random() limit {}, {};".format(dataset_type, i * batch_size, batch_size)
-                out = self._execute_query(query)
-                if out:
-                    out = np.array(out)[:,:3]                   
-                if use_filter:
-                    # get the filter values
-                    participating_entities = self.get_complementary_entities(out)
-                    yield out, participating_entities
-                else:
-                    yield out                    
+        size = self.get_data_size(condition="where dataset_type ='{}'".format(dataset_type))
+        self.batches_count = int(size/batch_size)
+        print("batches count: ",self.batches_count)
+        print("size of data: ",size)
+        index = ""
+        if index_by != "":
+            msg = "Field index_by can only be used with random set to False and can only take values \
+                   from this set: {{s,o,so,os,''}}, instead got: {}".format(index_by)
+            assert((index_by == "s" or index_by == "o" or index_by == "so" or index_by == "os") and random == False), msg       
+            if index_by == "s":
+                index = "ORDER BY subject"
+            if index_by == "o":
+                index = "ORDER BY object"
+            if index_by == "so" or index_by == "os":
+                index = "ORDER BY subject, object"
+            if index == "" and random:
+                index = "ORDER BY random()"
+        query_template = "SELECT * FROM triples_table INDEXED BY \
+                 triples_table_type_idx where dataset_type ='{}' {} LIMIT {}, {};"
+
+        for i in range(self.batches_count):
+            #print("BATCH NUMBER: ", i)
+            #print(i * batch_size)
+            query = query_template.format(dataset_type, index, i * batch_size, batch_size)
+            #print(query)
+            out = self._execute_query(query)
+            #print(out)
+            if out:
+                out = np.array(out)[:,:3]                   
+            if use_filter:
+                # get the filter values
+                participating_entities = self.get_complementary_entities(out)
+                yield out, participating_entities
+            else:
+                yield out                    
                     
     def summary(self, count=True):
         """Prints summary of the database, whether it exists, what
@@ -515,9 +540,8 @@ class SQLiteAdapter():
            data_source: file from where to read data (e.g. csv file).
            dataset_type: kind of dataset that is being loaded (train | test | validation).
         """
-        with self:
-            self.data_source = data_source
-            self.populate(self.data_source, dataset_type=dataset_type)
+        self.data_source = data_source
+        self.populate(self.data_source, dataset_type=dataset_type)
 
     def _intersect(self, dataloader):
         assert(isinstance(dataloader.backend, SQLiteAdapter)), "Provided dataloader should be of type SQLiteAdapter backend, instead got {}.".format(type(dataloader.backend)) 

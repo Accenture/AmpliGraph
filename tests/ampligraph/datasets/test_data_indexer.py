@@ -27,8 +27,9 @@ def data_type(request):
 @pytest.fixture(params=[True, False])
 def data_indexer(request, data_type):
     '''Returns an in-memory DataIndexer instance with example data.'''
-    return DataIndexer(data_type, in_memory=request.param)
-
+    data_indexer = DataIndexer(data_type, in_memory=request.param)
+    yield data_indexer
+    data_indexer.clean()
 
 def test_get_max_ents_index(data_indexer):
     max_ents = data_indexer.get_max_ents_index()

@@ -169,11 +169,17 @@ def k(request):
 
 @pytest.fixture(params = list(PARTITION_ALGO_REGISTRY.keys()), scope=SCOPE)
 def graph_partitioner(request, data, k):
-    partitioner = PARTITION_ALGO_REGISTRY.get(request.param) 
-    partitioner = partitioner(data, k)
+    partitioner_cls = PARTITION_ALGO_REGISTRY.get(request.param) 
+    partitioner = partitioner_cls(data, k)
     yield partitioner, k
     partitioner.clean()
 
+@pytest.fixture(params = [RandomEdgesGraphPartitioner, NaiveGraphPartitioner, SortedEdgesGraphPartitioner, DoubleSortedEdgesGraphPartitioner], scope=SCOPE)
+def edge_graph_partitioner(request, data, k):
+    partitioner_cls = request.param
+    partitioner = partitioner_cls(data, k)
+    yield partitioner, data, k
+    partitioner.clean()
 
 def test_get_number_of_partitions():
     n = get_number_of_partitions(3)
@@ -196,13 +202,13 @@ def test_random_vertices_graph_partitioner(data, k):
         actual = partition.backend.mapper.ents_length
         accept_range = [x for y in [(n_nodes - i, n_nodes + i) for i in range(k)] for x in y]
         assert actual in accept_range, "Nodes in a bucket not equal to expected, got {}, expected {} +- (0, {}).".format(actual, k, n_nodes)
+    partitioner.clean()
 
-
-@pytest.mark.parametrize("partitioner", [RandomEdgesGraphPartitioner, NaiveGraphPartitioner, SortedEdgesGraphPartitioner, DoubleSortedEdgesGraphPartitioner])
-def test_partition_size_in_edge_based_graph_partitioner(partitioner, data, k):
-    partitioner = partitioner(data, k)
+def test_partition_size_in_edge_based_graph_partitioner(edge_graph_partitioner):
+    partitioner, data, k = edge_graph_partitioner
     expected_size = data.get_data_size()//k
     allowable_sizes =  [x for y in [(expected_size - i, expected_size + i) for i in range(k)] for x in y]
     for partition in partitioner:
         actual = partition.get_data_size()
         assert(actual in allowable_sizes), "Partition size is not allowed, expected {} +- (0,{}), actual {}.".format(expected_size, k, actual)
+
