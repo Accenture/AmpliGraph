@@ -35,7 +35,6 @@ def test_graph_data_loader_get_batch_generator(graph_data_loader):
     batch = next(batch_gen)
     assert np.shape(batch) == (1,3), "batch size is wrong, got {}".format(batch)
 
-
 def test_graph_data_loader_get_data_size(graph_data_loader):
     size = graph_data_loader.get_data_size()
     assert size == 6, "Size is not equal to 5"

@@ -48,7 +48,10 @@ def register_partitioning_strategy(name):
     """
     def insert_in_registry(class_handle):
         """Checks if partition already exists and if not registers it."""
-        assert name not in PARTITION_ALGO_REGISTRY.keys(), "Partitioning Strategy with name {} "
+        if name in PARTITION_ALGO_REGISTRY.keys():
+            msg = "Partitioning Strategy with name {} "
+            logger.error(msg)
+            raise Exception(msg)
         "already exists!".format(name)
         
         PARTITION_ALGO_REGISTRY[name] = class_handle
@@ -200,8 +203,8 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
            timestamp: date and time string that the files are created with (shelves).
            partition_nb: assigned number of partition.           
         """
-        #print("------------------------------------------------")        
-        #print("Creating partition nb: {}".format(partition_nb))
+        #logger.debug("------------------------------------------------")        
+        #logger.debug("Creating partition nb: {}".format(partition_nb))
         fname = "bucket_{}_{}.shf".format(ind1, timestamp)
         with shelve.open(fname, writeback=True) as bucket_partition_1:
             indexes_1 = bucket_partition_1['indexes']
@@ -209,19 +212,19 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
         with shelve.open(fname, writeback=True) as bucket_partition_2:
             indexes_2 = bucket_partition_2['indexes']
             
-        #print("indexes 1: ", ind1, indexes_1)
-        #print("indexes 2: ", ind2, indexes_2)
+        #logger.debug("indexes 1: ", ind1, indexes_1)
+        #logger.debug("indexes 2: ", ind2, indexes_2)
         
         triples_1_2 = np.array(self._data.get_triples(subjects=indexes_1, objects=indexes_2))[:,:3]
         triples_2_1 = np.array(self._data.get_triples(subjects=indexes_2, objects=indexes_1))[:,:3] # Probably not needed!
         
-        print("triples 1-2: ", triples_1_2)
-        print("triples 2-1: ", triples_2_1)
+        logger.debug("triples 1-2: ", triples_1_2)
+        logger.debug("triples 2-1: ", triples_2_1)
         triples = np.vstack([triples_1_2, triples_2_1]).astype(np.int32)
-        #print(triples)
+        #logger.debug(triples)
         if triples.size != 0:
             triples = np.unique(triples, axis=0)
-            #print("unique triples: ", triples)
+            #logger.debug("unique triples: ", triples)
             fname = "partition_{}_{}.csv".format(partition_nb, timestamp)
             self.files.append(fname)
             np.savetxt(fname, triples, delimiter="\t", fmt='%d')
@@ -243,9 +246,9 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
            accordingly triples to k partitions and intermediate partitions.
         """
         timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
-        print(self._data.backend.mapper.entities_dict)
+        logger.debug(self._data.backend.mapper.entities_dict)
         self.ents_size = self._data.backend.mapper.ents_length
-        print(self.ents_size)
+        logger.debug(self.ents_size)
         self.bucket_size = int(np.ceil(self.ents_size / self._k))
         self.buckets_generator = self._data.backend.mapper.get_entities_in_batches(batch_size=self.bucket_size)
         
@@ -255,7 +258,7 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
             self.files.append(fname)
             with shelve.open(fname, writeback=True) as bucket_partition:
                 bucket_partition['indexes'] = bucket
-            #print(bucket)
+            #logger.debug(bucket)
             
         partition_nb = 0
         for i in range(self._k):
@@ -296,18 +299,18 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
         """
         timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
         self.ents_size = self._data.backend.mapper.ents_length
-       # print(self.ents_size)
-       # print(backend.mapper.max_ents_index)
+       # logger.debug(self.ents_size)
+       # logger.debug(backend.mapper.max_ents_index)
         self.partition_size = int(np.ceil(self.ents_size / self._k))
-       # print(self.partition_size)
+       # logger.debug(self.partition_size)
         self.buckets_generator = self._data.backend.mapper.get_entities_in_batches(batch_size=self.partition_size, random=True, seed=seed)
 
         for partition_nb, partition in enumerate(self.buckets_generator):
-            #print(partition)
+            #logger.debug(partition)
             tmp = np.array(self._data.backend._get_triples(entities=partition))
             if tmp.size != 0:
                 triples = np.array(self._data.backend._get_triples(entities=partition))[:,:3].astype(np.int32) 
-                #print("unique triples: ", triples)
+                #logger.debug("unique triples: ", triples)
                 fname = "partition_{}_{}.csv".format(partition_nb, timestamp)
                 self.files.append(fname)
                 np.savetxt(fname, triples, delimiter="\t", fmt='%d')
@@ -321,7 +324,7 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
                                                    name="partition_{}".format(partition_nb))
                 self.partitions.append(partition_loader)
             else:
-                print("Partition has no triples, skipping!")
+                logger.debug("Partition has no triples, skipping!")
 
 
 class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
@@ -359,7 +362,7 @@ class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
         self.size = self._data.backend.get_data_size()
 
         self.partition_size = int(np.ceil(self.size / self._k))
-        print(self.partition_size)
+        logger.debug(self.partition_size)
         generator = self._data.backend._get_batch_generator(random=random, batch_size=self.partition_size, dataset_type=self._data.dataset_type, index_by=index_by)
        
         for partition_nb, partition in enumerate(generator):

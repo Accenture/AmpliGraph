@@ -338,7 +338,7 @@ def compare_partitionings(list_of_partitioners, data, num_partitions=2, visualiz
         n_partitions = num_partitions
     partitionings = {}
     for partitioner, n in zip(list_of_partitioners, n_partitions):
-        print("Running: {}".format(partitioner.__name__))
+        logger.debug("Running: {}".format(partitioner.__name__))
         logs = {}
         if n != 0:
             data.reload()

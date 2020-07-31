@@ -7,21 +7,49 @@
 #
 import numpy as np
 import pytest
-from ampligraph.datasets import DataSourceIdentifier
+import pandas as pd
+from ampligraph.datasets import DataSourceIdentifier, load_csv, in_memory_chunks
 
 
+SCOPE = "function"
+np_array =  np.array([['a','b','c'],['c','b','d'],['d','e','f'],['f','e','c'],['a','e','d'], ['a','b','d']])
+df = pd.DataFrame(np_array)
+df.to_csv('test.csv', index=False, header=False, sep='\t')
+df.to_csv('test.txt', index=False, header=False, sep='\t')
+df.to_csv('test.gz', index=False, header=False, sep='\t', compression='gzip')
+
+
+@pytest.fixture(params=[np_array, 'test.csv', 'test.gz', 'test.txt'], scope=SCOPE)
+def data_source(request):
+    return request.param
+
+
+@pytest.fixture(scope=SCOPE)
+def source_identifier(request, data_source):
+    '''Returns a SourceIdentifier instance.'''
+    src_identifier = DataSourceIdentifier(data_source)
+    yield src_identifier, data_source
+
+   
 def test_load_csv():
-    assert False, "not implemented"
+    data = load_csv('test.csv')
+    assert len(data) == len(df), "Loaded data differ from what it should be, got {}, expected {}.".format(len(data), len(df))
 
 
-def test_load_gz():
-    assert False, "not implemented"
+def test_data_source_identifier(source_identifier):
+    src_identifier, data_src = source_identifier
+    if isinstance(data_src, str):
+        src = data_src.split('.')[-1]
+    elif isinstance(data_src, np.ndarray):
+        src = "obj"
+    else:
+        assert False, "Provided data source is not supported."
+    assert src == src_identifier.get_src(), "Source identified not equal to the one provided."
 
 
-def test_load_tar():
-    assert False, "not implemented"
-
-
-def test_data_source_identifier_fetch_loader(self):
-    assert False, "not implemented"
+def test_data_source_identifier_fetch_loader(source_identifier):
+    src_identifier, data_src = source_identifier
+    loader = src_identifier.fetch_loader()
+    data = loader(data_src)
+    assert isinstance(data, np.ndarray) or isinstance(data, pd.DataFrame) or isinstance(data, type(in_memory_chunks([]))), "Returned data should be either in numpy array or pandas data frame, instead got {}".format(type(data))
 

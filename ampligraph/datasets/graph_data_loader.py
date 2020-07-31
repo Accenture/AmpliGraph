@@ -60,8 +60,7 @@ class DummyBackend():
            data_source: file with data.
            dataset_type: kind of data to be loaded (train | test | validation).
         """
-        if self.verbose:
-            print("Simple in-memory data loading of {} dataset.".format(dataset_type))
+        logger.debug("Simple in-memory data loading of {} dataset.".format(dataset_type))
         self.data_source = data_source
         self.dataset_type = dataset_type
         if isinstance(self.data_source, np.ndarray):
@@ -92,8 +91,11 @@ class DummyBackend():
            or if not provided either object or subjet belongs to entities.
         """
         if subjects is None and objects is None:
-            msg = "You have to provide either subjects and objects indexes or general entities indexes!"
-            assert(entities is not None), msg 
+            if entities is None:
+                msg = "You have to provide either subjects and objects indexes or general entities indexes!"
+                logger.error(msg)
+                raise Exception(msg)
+
             subjects = entities
             objects = entities
         #check_subjects = np.vectorize(lambda t: t in subjects)
@@ -124,21 +126,20 @@ class DummyBackend():
            entities: two lists, of subjects and objects participating in the relations s-p-? and ?-p-o.
        """
 
-        if self.verbose:        
-            print("Getting complementary entities")
+        logger.debug("Getting complementary entities")
 
         if self.parent is not None:
-            print("Parent is set, WARNING: The triples returened are coming with parent indexing.")
+            logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
-            print("Recover original indexes.")
+            logger.debug("Recover original indexes.")
             with shelve.open(self.mapper.entities_dict) as ents:
                 with shelve.open(self.mapper.relations_dict) as rels:
                     triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
-            print("Query parent for data.")
-            print("Original index: ",triples_original_index)
+            logger.debug("Query parent for data.")
+            logger.debug("Original index: ",triples_original_index)
             subjects = self.parent.get_complementary_subjects(triples_original_index)
             objects = self.parent.get_complementary_objects(triples_original_index)
-            print("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
+            logger.debug("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
             return subjects, objects
         else:
             subjects = self._get_complementary_subjects(triples)
@@ -159,19 +160,18 @@ class DummyBackend():
            result of a query, list of subjects per triple.
         """
 
-        if self.verbose:        
-            print("Getting complementary subjects")
+        logger.debug("Getting complementary subjects")
         subjects = []
         if self.parent is not None:
-            print("Parent is set, WARNING: The triples returened are coming with parent indexing.")
+            logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
-            print("Recover original indexes.")
+            logger.debug("Recover original indexes.")
             with shelve.open(self.mapper.reversed_entities_dict) as ents:
                 with shelve.open(self.mapper.reversed_relations_dict) as rels:
                     triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
-            print("Query parent for data.")
+            logger.debug("Query parent for data.")
             subjects = self.parent.get_complementary_subjects(triples_original_index)
-            print("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
+            logger.debug("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
             return subjects
         else:
             for triple in triples:
@@ -192,19 +192,18 @@ class DummyBackend():
            -------
            result of a query, list of objects, per triple
         """
-        if self.verbose:        
-            print("Getting complementary objects")
+        logger.debug("Getting complementary objects")
         objects = []
         if self.parent is not None:
-            print("Parent is set, WARNING: The triples returened are coming with parent indexing.")
+            logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
-            print("Recover original indexes.")
+            logger.debug("Recover original indexes.")
             with shelve.open(self.mapper.reversed_entities_dict) as ents:
                 with shelve.open(self.mapper.reversed_relations_dict) as rels:
                     triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
-            print("Query parent for data.")
+            logger.debug("Query parent for data.")
             objects = self.parent.get_complementary_objects(triples_original_index)
-            print("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
+            logger.debug("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
             return objects
         else:
             for triple in triples:
@@ -218,7 +217,10 @@ class DummyBackend():
            Works only when dataloader is of type
            DummyBackend.
         """
-        assert(isinstance(dataloader.backend, DummyBackend)), "Intersection can only be calculated between same backends (DummyBackend), instead get {}".format(type(dataloader.backend))
+        if not isinstance(dataloader.backend, DummyBackend):
+            msg = "Intersection can only be calculated between same backends (DummyBackend), instead get {}".format(type(dataloader.backend))
+            logger.error(msg)
+            raise Exception(msg) 
         return np.intersect1d(self.data, dataloader.backend.data)
         
     def _get_batch_generator(self, batch_size, dataset_type="train", random=False, index_by=""):
@@ -289,11 +291,14 @@ class GraphDataLoader():
         self.in_memory = in_memory
         self.name = name
         self.parent = parent
-        assert bool(use_indexer) == (not remap), "Either remap or Indexer should be speciferd at the same time."
+        if bool(use_indexer) != (not remap):
+            msg = "Either remap or Indexer should be speciferd at the same time."
+            logger.error(msg)
+            raise Exception(msg)
         if isinstance(backend, type) and backend != DummyBackend:
             self.backend = backend("database_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")), 
                                    root_directory=self.root_directory, use_indexer=self.use_indexer, remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory, verbose=verbose)
-            print("Initialized Backend with database at: {}".format(self.backend.db_path))
+            logger.debug("Initialized Backend with database at: {}".format(self.backend.db_path))
         elif backend is None or backend == DummyBackend:
             self.backend = DummyBackend(self.identifier, use_indexer=self.use_indexer, remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory)
         else:

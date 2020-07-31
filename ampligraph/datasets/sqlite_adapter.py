@@ -74,14 +74,17 @@ class SQLiteAdapter():
         self.db_path = os.path.join(self.root_directory, self.db_name)
         self.use_indexer = use_indexer
         self.remap = remap
-        assert self.remap == False, "Remapping is not supported for DataLoaders with SQLite Adapter as backend"
+        if self.remap != False:
+            msg = "Remapping is not supported for DataLoaders with SQLite Adapter as backend"
+            logger.error(msg)
+            raise Exception(msg)
         self.name = name
         self.parent = parent
         self.in_memory = in_memory
 
         if chunk_size is None:
             chunk_size = DEFAULT_CHUNKSIZE
-            print("Currently {} only supports data given in chunks. \
+            logger.debug("Currently {} only supports data given in chunks. \
             Setting chunksize to {}.".format(self.__name__(), DEFAULT_CHUNKSIZE))
         else:
             self.chunk_size = chunk_size
@@ -90,7 +93,7 @@ class SQLiteAdapter():
         db_uri = 'file:{}?mode=rw'.format(pathname2url(self.db_path))
         self.connection = sqlite3.connect(db_uri, uri=True)
         self.flag_db_open = True
-        print("----------------DB OPENED - normally -----------------------")
+        logger.debug("----------------DB OPENED - normally -----------------------")
 
     def open_connection(self):
         """Context manager function to open or create if not exists database connection."""
@@ -98,7 +101,7 @@ class SQLiteAdapter():
             try:
                 self.open_db()
             except sqlite3.OperationalError:
-                print("Database does not exists. Creating one.")      
+                logger.debug("Database does not exists. Creating one.")      
                 self.connection = sqlite3.connect(self.db_path)        
                 self.connection.commit()
                 self.connection.close()
@@ -121,7 +124,7 @@ class SQLiteAdapter():
                 # Exception occurred, so rollback.
                 self.connection.rollback()
             self.flag_db_open = False
-            print("!!!!!!!!----------------DB CLOSED -----------------------")
+            logger.debug("!!!!!!!!----------------DB CLOSED -----------------------")
 
         
     def _get_db_schema(self):
@@ -179,9 +182,9 @@ class SQLiteAdapter():
                 output = cursor.fetchall()
                 self.connection.commit()
                 if self.verbose:
-                    print("Query executed successfully, {}".format(query))
+                    logger.debug("Query executed successfully, {}".format(query))
             except Error as e:
-                print(f"Query failed. The error '{e}' occurred")
+                logger.debug(f"Query failed. The error '{e}' occurred")
             return output
 
     def _execute_queries(self, list_of_queries):
@@ -210,7 +213,7 @@ class SQLiteAdapter():
         """
         with self:
             if self.verbose:
-                print("inserting to a table...")
+                logger.debug("inserting to a table...")
             if len(np.shape(values)) < 2:
                 size = 1
             else:
@@ -222,11 +225,11 @@ class SQLiteAdapter():
                 cursor.executemany(query, [(v,) if isinstance(v, int) or isinstance(v, str) else v for v in values])
                 self.connection.commit()
                 if self.verbose:
-                    print("commited to table: {}".format(table))
+                    logger.debug("commited to table: {}".format(table))
             except Error as e:
-                print("Error", e)
+                logger.debug("Error", e)
                 #self.connection.rollback()
-            print("Values were inserted!")
+            logger.debug("Values were inserted!")
 
     def _create_database(self):
         """Creates database."""
@@ -237,8 +240,11 @@ class SQLiteAdapter():
            or if not provided either object or subjet belongs to entities.
         """
         if subjects is None and objects is None:
-            msg = "You have to provide either subjects and objects indexes or general entities indexes!"
-            assert(entities is not None), msg 
+            if entities is None:
+                msg = "You have to provide either subjects and objects indexes or general entities indexes!"
+                logger.error(msg)
+                raise Exception(msg)
+
             subjects = entities
             objects = entities
 
@@ -262,11 +268,11 @@ class SQLiteAdapter():
                 where each element is: (subject index, predicate index, object index, dataset_type).
            """
         if self.verbose:
-            print("getting triples...")
+            logger.debug("getting triples...")
         if isinstance(chunk, pd.DataFrame):
             chunk = chunk.values
         if self.use_indexer != False:
-            #print(chunk)
+            #logger.debug(chunk)
             triples = self.mapper.get_indexes(chunk)
             return np.append(triples, np.array(len(chunk)*[dataset_type]).reshape(-1,1), axis=1)
         else:
@@ -279,7 +285,7 @@ class SQLiteAdapter():
         if self.use_indexer == True:
             self.mapper = DataIndexer(self.data, in_memory=self.in_memory)
         elif self.use_indexer == False:
-            print("Data won't be indexed")
+            logger.debug("Data won't be indexed")
         elif isinstance(self.use_indexer, DataIndexer):
             self.mapper = self.use_indexer
     
@@ -298,7 +304,7 @@ class SQLiteAdapter():
         """Reinitialise an iterator with data."""
         self.data = self.loader(self.data_source, chunk_size=self.chunk_size)
         if verbose:
-            print("Data reloaded", self.data)
+            logger.debug("Data reloaded", self.data)
         
     def populate(self, data_source, dataset_type="train", get_indexed_triples=None, loader=None):
         """Condition: before you can enter triples you have to index data.
@@ -319,10 +325,10 @@ class SQLiteAdapter():
             self.loader = self.identifier.fetch_loader()
         if not self.is_indexed() and self.use_indexer != False:
             if self.verbose:
-                print("indexing...")
+                logger.debug("indexing...")
             self.index_entities()
         else:
-            print("Data is already indexed or no indexing is required.")
+            logger.debug("Data is already indexed or no indexing is required.")
         if get_indexed_triples is None:
             get_indexed_triples = self.get_indexed_triples
         self.reload_data()
@@ -330,7 +336,7 @@ class SQLiteAdapter():
             values_triples = get_indexed_triples(chunk, dataset_type=dataset_type)
             self._insert_values_to_a_table("triples_table", values_triples)  
         if self.verbose:
-            print("data is populated")
+            logger.debug("data is populated")
     
     def get_data_size(self, table="triples_table", condition=""):
         """Gets the size of the given table [with specified condition].
@@ -347,11 +353,11 @@ class SQLiteAdapter():
         query = "SELECT count(*) from {} {};".format(table, condition)
         count = self._execute_query(query)
         if count is None:
-            print("Table is empty or not such table exists.")
+            logger.debug("Table is empty or not such table exists.")
             return count
         elif not isinstance(count, list) or not isinstance(count[0], tuple):
             raise ValueError("Cannot get count for the table with provided condition.")        
-        #print(count)
+        #logger.debug(count)
         return count[0][0]
 
     def clean_up(self):
@@ -361,7 +367,7 @@ class SQLiteAdapter():
     def remove_db(self):
         """Remove the database file."""
         os.remove(self.db_path)        
-        print("Database removed.")
+        logger.debug("Database removed.")
 
     def _get_complementary_objects(self, triples):
         """For a given triple retrive all triples whith same subjects and predicates.
@@ -445,13 +451,16 @@ class SQLiteAdapter():
         """              
         size = self.get_data_size(condition="where dataset_type ='{}'".format(dataset_type))
         self.batches_count = int(size/batch_size)
-        print("batches count: ",self.batches_count)
-        print("size of data: ",size)
+        logger.debug("batches count: ",self.batches_count)
+        logger.debug("size of data: ",size)
         index = ""
         if index_by != "":
-            msg = "Field index_by can only be used with random set to False and can only take values \
-                   from this set: {{s,o,so,os,''}}, instead got: {}".format(index_by)
-            assert((index_by == "s" or index_by == "o" or index_by == "so" or index_by == "os") and random == False), msg       
+            if (index_by == "s" or index_by == "o" or index_by == "so" or index_by == "os") and random != False:       
+                msg = "Field index_by can only be used with random set to False and can only take values \
+                       from this set: {{s,o,so,os,''}}, instead got: {}".format(index_by)
+                logger.error(msg)
+                raise Exception(msg)
+
             if index_by == "s":
                 index = "ORDER BY subject"
             if index_by == "o":
@@ -464,12 +473,12 @@ class SQLiteAdapter():
                  triples_table_type_idx where dataset_type ='{}' {} LIMIT {}, {};"
 
         for i in range(self.batches_count):
-            #print("BATCH NUMBER: ", i)
-            #print(i * batch_size)
+            #logger.debug("BATCH NUMBER: ", i)
+            #logger.debug(i * batch_size)
             query = query_template.format(dataset_type, index, i * batch_size, batch_size)
-            #print(query)
+            #logger.debug(query)
             out = self._execute_query(query)
-            #print(out)
+            #logger.debug(out)
             if out:
                 out = np.array(out)[:,:3]                   
             if use_filter:
@@ -534,7 +543,7 @@ class SQLiteAdapter():
 
                 print(formatted_record.format(*cols_name_type, *example), msg)
         else:
-            print("Database does not exist.")
+            logger.debug("Database does not exist.")
             
     def _load(self, data_source, dataset_type="train"):
         """Loads data from the data source to the database. Wrapper around populate method,
@@ -549,7 +558,10 @@ class SQLiteAdapter():
         self.populate(self.data_source, dataset_type=dataset_type)
 
     def _intersect(self, dataloader):
-        assert(isinstance(dataloader.backend, SQLiteAdapter)), "Provided dataloader should be of type SQLiteAdapter backend, instead got {}.".format(type(dataloader.backend)) 
+        if not isinstance(dataloader.backend, SQLiteAdapter):
+            msg = "Provided dataloader should be of type SQLiteAdapter backend, instead got {}.".format(type(dataloader.backend)) 
+            logger.error(msg)
+            raise Exception(msg)
         raise NotImplementedError
 
     def _clean(self):
