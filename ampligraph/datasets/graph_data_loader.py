@@ -15,6 +15,11 @@ from ampligraph.datasets import DataIndexer
 from datetime import datetime
 import numpy as np
 import shelve
+import logging
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 class DummyBackend():

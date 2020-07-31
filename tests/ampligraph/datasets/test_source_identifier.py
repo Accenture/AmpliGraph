@@ -22,14 +22,6 @@ def test_load_tar():
     assert False, "not implemented"
 
 
-class TestDataSourceIdentifier:
-    def test___init__(self):
-        assert False, "not implemented"
+def test_data_source_identifier_fetch_loader(self):
+    assert False, "not implemented"
 
-
-    def test_fetch_loader(self):
-        assert False, "not implemented"
-
-
-    def test__identify(self):
-        assert False, "not implemented"

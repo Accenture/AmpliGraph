@@ -12,6 +12,11 @@ identification of data source (whether it is csv, tar.gz or numpy array)
 and provides adequate loader for the data source identified.
 """
 import pandas as pd
+import logging
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 def load_csv(data_source, chunk_size=None, sep='\t', verbose=False):

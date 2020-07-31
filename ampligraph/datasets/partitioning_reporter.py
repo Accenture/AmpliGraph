@@ -13,6 +13,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 import copy
+import logging
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 
 class PartitioningReporter:
     """Assesses the quality of partitioning according to

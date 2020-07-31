@@ -33,6 +33,12 @@ import os
 import shelve
 import tensorflow as tf
 import pandas as pd
+import logging
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 
 class DataIndexer():
     """Index graph unique entities and relations.
@@ -186,12 +192,18 @@ class DataIndexer():
         with shelve.open(self.reversed_relations_dict) as rels:
             self.rev_rels_length = len(rels) 
         if not rough:
-            assert self.rev_ents_length == self.ents_length, "Reversed entities index size not equal to index size ({} and {})".format(self.rev_ents_length, self.ents_length)
-            assert self.rev_rels_length == self.rels_length , "Reversed relations index size not equal to index size ({} and {})".format(self.rev_rels_length, self.rels_length) 
+            if not self.rev_ents_length == self.ents_length:
+                msg = "Reversed entities index size not equal to index size ({} and {})".format(self.rev_ents_length, self.ents_length)
+                logger.error(msg)
+                raise Exception(msg)
+            if not self.rev_rels_length == self.rels_length:
+                msg = "Reversed relations index size not equal to index size ({} and {})".format(self.rev_rels_length, self.rels_length)
+                logger.error(msg)
+                raise Exception(msg)
         else:
-            print("In a rough mode, the sizes may not be equal due to duplicates, it will be fixed in reindexing at the later stage.")
-            print("Reversed entities index size and index size {} and {}".format(self.rev_ents_length, self.ents_length))
-            print("Reversed relations index size and index size: {} and {}".format(self.rev_rels_length, self.rels_length))
+            logger.debug("In a rough mode, the sizes may not be equal due to duplicates, it will be fixed in reindexing at the later stage.")
+            logger.debug("Reversed entities index size and index size {} and {}".format(self.rev_ents_length, self.ents_length))
+            logger.debug("Reversed relations index size and index size: {} and {}".format(self.rev_rels_length, self.rels_length))
        
     def shelve_exists(self, name):
         """Check if shelve with a given name exists."""
@@ -221,33 +233,33 @@ class DataIndexer():
            isinstance(self.relations_dict, dict) and\
            isinstance(self.reversed_relations_dict, dict):
             self.update_properties_dictionary()
-            print("The mappings initialised from in-memory dictionaries.")
+            logger.debug("The mappings initialised from in-memory dictionaries.")
             in_memory = True
         elif isinstance(self.entities_dict, str) and self.shelve_exists(self.entities_dict) and\
              isinstance(self.reversed_entities_dict, str) and self.shelve_exists(self.reversed_entities_dict) and\
              isinstance(self.relations_dict, str) and self.shelve_exists(self.relations_dict) and\
              isinstance(self.reversed_relations_dict, str) and self.shelve_exists(self.reversed_relations_dict):
             self.update_properties_persistent()            
-            print("The mappings initialised from persistent dictionaries (shelves).")
+            logger.debug("The mappings initialised from persistent dictionaries (shelves).")
             in_memory = False
         elif self.entities_dict is None and\
              self.reversed_entities_dict is None and\
              self.relations_dict is None and\
              self.reversed_relations_dict is None:
-            print("The mappings will be created for data in {}.".format(self.name))
+             logger.debug("The mappings will be created for data in {}.".format(self.name))
             
-            if self.in_memory:
-                if isinstance(self.data, np.ndarray):
-                    self.update_dictionary_mappings()
-                else:
-                    self.update_dictionary_mappings_in_chunks() 
-            else:
-                if isinstance(self.data, np.ndarray):
-                    self.create_persistent_mappings_from_nparray()
-                else:
-                    self.create_persistent_mappings_in_chunks()       
+             if self.in_memory:
+                 if isinstance(self.data, np.ndarray):
+                     self.update_dictionary_mappings()
+                 else:
+                     self.update_dictionary_mappings_in_chunks() 
+             else:
+                 if isinstance(self.data, np.ndarray):
+                     self.create_persistent_mappings_from_nparray()
+                 else:
+                     self.create_persistent_mappings_in_chunks()       
         else:
-            print("Provided initialization objects are not supported. Can't Initialise mappings.")
+            logger.debug("Provided initialization objects are not supported. Can't Initialise mappings.")
     
     def get_indexes(self, sample=None, type_of="t", order="raw2ind"):
         """Converts raw data sample to an indexed form according to 
@@ -266,7 +278,10 @@ class DataIndexer():
            array of same size as sample but with indexes of elements instead 
            of elements.
         """
-        assert(type_of in ["t", "e", "r"]), "Type (type_of) should be one of the following: t, e, r, instead got {}".format(type_of)
+        if type_of not in ["t", "e", "r"]: 
+            msg = "Type (type_of) should be one of the following: t, e, r, instead got {}".format(type_of)
+            logger.error(msg)
+            raise Exception(msg)
 
         if type_of == "t":
             if self.in_memory:
@@ -301,7 +316,7 @@ class DataIndexer():
         self.reversed_relations_dict = os.path.join(self.root_directory, "reversed_relations_{}_{}.shf".format(self.name, date))
         self.files_id = "_{}_{}.shf".format(self.name, date)
         files = ["entities", "reversed_entities", "relations", "reversed_relations"]
-        print("Mappings are created in the following files:\n{}\n{}\n{}\n{}".format(*[x + self.files_id for x in files]))
+        logger.debug("Mappings are created in the following files:\n{}\n{}\n{}\n{}".format(*[x + self.files_id for x in files]))
         self.metadata.update({"entities_shelf": self.entities_dict, 
                          "reversed_entities_shelf": self.reversed_entities_dict, 
                          "relations":self.relations_dict, 
@@ -313,28 +328,34 @@ class DataIndexer():
         """Update shelves with sample or full data when sample not provided."""
         if sample is None:
             sample = self.data
-            assert not self.shelve_exists(self.entities_dict) and  not self.shelve_exists(self.reversed_entities_dict) and\
-                   not self.shelve_exists(self.relations_dict) and  not self.shelve_exists(self.reversed_relations_dict), "Shelves exists for some reason and are not empty!"
+            if self.shelve_exists(self.entities_dict) or self.shelve_exists(self.reversed_entities_dict) or\
+               self.shelve_exists(self.relations_dict) or self.shelve_exists(self.reversed_relations_dict):
+                msg =  "Shelves exists for some reason and are not empty!"
+                logger.error(msg)
+                raise Exception(msg)
 
-
-        #print(sample)
+        logger.debug("Sample: {}".format(sample))
         entities = set(sample[:,0]).union(set(sample[:,2]))
         predicates = set(sample[:,1])
 
         start_ents = self.get_starting_index_ents()
-        print("Start index entities: ",start_ents)
+        logger.debug("Start index entities: ",start_ents)
         new_indexes_ents = range(start_ents, start_ents + len(entities)) # maximum new index, usually less when multiple chunks provided due to chunks
-        #print(new_indexes_ents)
-        #print(entities)
-        #print("new indexes entities: ", new_indexes_ents)
-        assert(len(new_indexes_ents) == len(entities)), "Etimated indexes length for entities not equal to entities length ({} and {})".format(len(new_indexes_ents), len(entities))
+        if not len(new_indexes_ents) == len(entities): 
+            msg = "Etimated indexes length for entities not equal to entities length ({} and {})".format(len(new_indexes_ents), len(entities))
+            logger.error(msg)
+            raise Exception(msg)
+
         start_rels = self.get_starting_index_rels()
         new_indexes_rels = range(start_rels, start_rels + len(predicates))
-        print("Starts index relations: ", start_rels)
-        assert(len(new_indexes_rels) == len(predicates)), "Estimated indexes length for relations not equal to relations length ({} and {})".format(len(new_indexes_rels), len(predicates))
+        logger.debug("Starts index relations: ", start_rels)
+        if not len(new_indexes_rels) == len(predicates): 
+            msg = "Estimated indexes length for relations not equal to relations length ({} and {})".format(len(new_indexes_rels), len(predicates))
+            logger.error(msg)
+            raise Exception(msg)
         #print("new indexes rels: ", new_indexes_rels)
-        print("index rels size: {} and rels size: {}".format(len(new_indexes_rels), len(predicates)))
-        print("index ents size: {} and entss size: {}".format(len(new_indexes_ents), len(entities)))
+        logger.debug("index rels size: {} and rels size: {}".format(len(new_indexes_rels), len(predicates)))
+        logger.debug("index ents size: {} and entss size: {}".format(len(new_indexes_ents), len(entities)))
 
         with shelve.open(self.entities_dict, writeback=True) as ents:
             with shelve.open(self.reversed_entities_dict, writeback=True) as reverse_ents:
@@ -366,7 +387,7 @@ class DataIndexer():
            between chunks upfront ant indexes are not coninous.
            This guarantees that entities and relations have a continous index.
         """
-        print("starting reindexing...")
+        logger.debug("starting reindexing...")
         remapped_ents_file = "remapped_ents.shf"
         remapped_rev_ents_file = "remapped_rev_ents.shf"
         remapped_rels_file = "remapped_rels.shf"
@@ -389,9 +410,9 @@ class DataIndexer():
         self.move_shelve(remapped_rev_ents_file, self.reversed_entities_dict)
         self.move_shelve(remapped_rels_file, self.relations_dict)
         self.move_shelve(remapped_rev_rels_file, self.reversed_relations_dict)
-        print("reindexing done!")
+        logger.debug("reindexing done!")
         self.update_properties_persistent()
-        print("properties updated")
+        logger.debug("properties updated")
         
     def create_persistent_mappings_in_chunks(self):
         """Index entities and relations. Creates shelves for mappings between
@@ -419,12 +440,12 @@ class DataIndexer():
             else:
                 self.update_shelves(chunk, rough=True)
 
-        print("We need to reindex all the data now so the indexes are continous among chunks")
+        logger.debug("We need to reindex all the data now so the indexes are continous among chunks")
         self.reindex()
 
         self.files_id = "_{}_{}.shf".format(self.name, date)
         files = ["entities", "reversed_entities", "relations", "reversed_relations"]
-        print("Mappings are created in the following files:\n{}\n{}\n{}\n{}".format(*[x + self.files_id for x in files]))
+        logger.debug("Mappings are created in the following files:\n{}\n{}\n{}\n{}".format(*[x + self.files_id for x in files]))
         self.metadata.update({"entities_shelf": self.entities_dict, 
                          "reversed_entities_shelf": self.reversed_entities_dict, 
                          "relations":self.relations_dict, 
@@ -447,7 +468,7 @@ class DataIndexer():
            """
         if isinstance(sample, pd.DataFrame):
             sample = sample.values
-        #print(sample)
+        #logger.debug(sample)
         if order == "raw2ind": 
             entities = self.reversed_entities_dict
             relations = self.reversed_relations_dict
@@ -455,7 +476,9 @@ class DataIndexer():
             entities = self.entities_dict
             relations = self.relations_dict
         else:
-            raise Exception("No such order available options: ind2raw, raw2ind, instead got {}.".format(order)) 
+            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(order)
+            logger.error(msg)
+            raise Exception(msg) 
 
         with shelve.open(entities) as ents:
             with shelve.open(relations) as rels:
@@ -486,7 +509,9 @@ class DataIndexer():
             relations = self.relations_dict
             dtype = str
         else:
-            raise Exception("No such order available options: ind2raw, raw2ind, instead got {}.".format(order)) 
+            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(order)
+            logger.error(msg)
+            raise Exception(msg) 
 
         if type_of == "e":
             with shelve.open(entities) as ents:
@@ -497,9 +522,11 @@ class DataIndexer():
                 elements = [rels[str(elem)] for elem in sample]
             return np.array(elements, dtype=dtype)
         else:
-            assert type_of in ["r", "e"], "No such option, should be r (relations) or e (entities), instead got".format(type_of)
+            if not type_of in ["r", "e"]:
+                msg = "No such option, should be r (relations) or e (entities), instead got".format(type_of)
+                logger.error(msg)
+                raise Exception(msg)
  
-    
     def get_indexes_from_a_dictionary(self, sample, order="raw2ind"):
         """Get indexed triples from a in-memory dictionary.
 
@@ -521,8 +548,14 @@ class DataIndexer():
             entities = self.entities_dict
             relations = self.relations_dict
         else:
-            raise Exception("No such order available options: ind2raw, raw2ind, instead got {}.".format(order)) 
-        assert entities is not None and relations is not None
+            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(order)
+            logger.error(msg)
+            raise Exception(msg) 
+        if entities is None and relations is None:
+            msg = "Requested entities and relation mappings are empty."
+            logger.error(msg)
+            raise Exception(msg)
+
         subjects   = np.array([entities[x] for x in sample[:,0]],  dtype=np.int32)
         objects    = np.array([entities[x] for x in sample[:,2]],  dtype=np.int32)
         predicates = np.array([relations[x] for x in sample[:,1]],  dtype=np.int32)
@@ -553,9 +586,15 @@ class DataIndexer():
             relations = self.relations_dict
             dtype = str 
         else:
-            raise Exception("No such order available options: ind2raw, raw2ind, instead got {}.".format(order)) 
+            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(order)
+            logger.error(msg)
+            raise Exception(msg) 
       
-        assert entities is not None and relations is not None
+        if entities is None and relations is None:
+            msg = "Requested entities and relations mappings are empty."
+            logger.error(msg)
+            raise Exception(msg)
+
         if type_of == "e":
             elements   = np.array([entities[x] for x in sample],  dtype=dtype)
             return elements
@@ -563,7 +602,10 @@ class DataIndexer():
             elements = np.array([relations[x] for x in sample],  dtype=dtype)
             return elements
         else:
-            assert type_of in ["r", "e"], "No such option, should be r (relations) or e (entities), instead got".format(type_of)
+            if type_of not in ["r", "e"]:
+                msg = "No such option, should be r (relations) or e (entities), instead got".format(type_of)
+                logger.error(msg)
+                raise Exception(msg)
  
     def get_starting_index_ents(self):
         """Returns next index to continue adding elements to entities dictionary."""        
@@ -600,7 +642,7 @@ class DataIndexer():
         """        
         if sample is None:
             sample = self.data
-        #print(sample)
+        #logger.debug(sample)
         i = self.get_starting_index_ents()
         j = self.get_starting_index_rels()
         for d in sample:
@@ -625,10 +667,17 @@ class DataIndexer():
         self.rels_length = len(self.relations_dict)
         self.rev_rels_length = len(self.reversed_relations_dict)
   
-        assert self.rev_ents_length == self.ents_length, "Reversed entities index size not equal to index size ({} and {})".format(self.rev_ents_length, self.ents_length)
-        assert self.rev_rels_length == self.rels_length , "Reversed relations index size not equal to index size ({} and {})".format(self.rev_rels_length, self.rels_length)
-                
-        print("Mappings updated with: {} ents, {} rev_ents, {} rels and {} rev_rels".format(self.ents_length,
+        if self.rev_ents_length != self.ents_length:
+            msg = "Reversed entities index size not equal to index size ({} and {})".format(self.rev_ents_length, self.ents_length)
+            logger.error(msg)
+            raise Exception(msg)        
+
+        if self.rev_rels_length != self.rels_length:
+            msg = "Reversed relations index size not equal to index size ({} and {})".format(self.rev_rels_length, self.rels_length)
+            logger.error(msg)
+            raise Exception(msg)        
+                        
+        logger.debug("Mappings updated with: {} ents, {} rev_ents, {} rels and {} rev_rels".format(self.ents_length,
                                                                                             self.rev_ents_length,
                                                                                             self.rels_length,
                                                                                             self.rev_rels_length))

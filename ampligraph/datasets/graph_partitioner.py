@@ -25,7 +25,11 @@ from datetime import datetime
 import shelve
 import csv
 import os
+import logging
 
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 PARTITION_ALGO_REGISTRY = {}
 
 

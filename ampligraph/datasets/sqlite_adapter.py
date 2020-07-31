@@ -25,6 +25,11 @@ import shelve
 from datetime import datetime
 from ampligraph.utils.profiling import get_human_readable_size
 import pandas as pd
+import logging
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 DEFAULT_CHUNKSIZE = 30000
 class SQLiteAdapter():
