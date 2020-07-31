@@ -60,14 +60,19 @@ class PartitioningReporter:
         edge_cut: average edge cut between partitions"""
 
         intersections = []
+        logger.debug(partitions)
         for partition1 in partitions:
+            logger.debug("Partition 1: {}".format(partition1))
             intersect = []
             for partition2 in partitions:
                 if partition1 == partition2:
                     continue
-                intersect.append(len(partition1.intersect(partition2)))
+                inter = partition1.intersect(partition2)
+                logger.debug("Intersections: {}".format(inter))
+                intersect.append(len(inter))
+                logger.debug("Partition 2: {}".format(partition2))
             intersections.append(np.mean(intersect))
-
+        logger.debug("Intersections: {}".format(intersections))
         edge_cut = np.mean(intersections)
         edge_cut_proportion = None
         if avg_size:
@@ -155,8 +160,11 @@ class PartitioningReporter:
         sizes = []
         for partition in partitions:
             sizes.append(partition.get_data_size())
+        logger.debug("Parent: {}".format(partition.parent.backend.data))
         data_size = partition.parent.get_data_size()
+        logger.debug("Parent data size: {}".format(data_size))
         ideal_size = data_size/k
+        logger.debug("Ideal data size: {}".format(ideal_size))
         percentage_dev = ((np.sum([np.abs(ideal_size - size) for size in sizes])/k)/ideal_size)*100
         return percentage_dev
     

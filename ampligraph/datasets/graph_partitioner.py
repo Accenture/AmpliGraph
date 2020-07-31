@@ -212,19 +212,19 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
         with shelve.open(fname, writeback=True) as bucket_partition_2:
             indexes_2 = bucket_partition_2['indexes']
             
-        #logger.debug("indexes 1: ", ind1, indexes_1)
-        #logger.debug("indexes 2: ", ind2, indexes_2)
+        #logger.debug("indexes 1: {}".format(ind1, indexes_1))
+        #logger.debug("indexes 2: {}".format(ind2, indexes_2))
         
         triples_1_2 = np.array(self._data.get_triples(subjects=indexes_1, objects=indexes_2))[:,:3]
         triples_2_1 = np.array(self._data.get_triples(subjects=indexes_2, objects=indexes_1))[:,:3] # Probably not needed!
         
-        logger.debug("triples 1-2: ", triples_1_2)
-        logger.debug("triples 2-1: ", triples_2_1)
+        logger.debug("triples 1-2: {}".format(triples_1_2))
+        logger.debug("triples 2-1: {}".format(triples_2_1))
         triples = np.vstack([triples_1_2, triples_2_1]).astype(np.int32)
         #logger.debug(triples)
         if triples.size != 0:
             triples = np.unique(triples, axis=0)
-            #logger.debug("unique triples: ", triples)
+            #logger.debug("unique triples: {}".format(triples))
             fname = "partition_{}_{}.csv".format(partition_nb, timestamp)
             self.files.append(fname)
             np.savetxt(fname, triples, delimiter="\t", fmt='%d')
@@ -310,7 +310,7 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
             tmp = np.array(self._data.backend._get_triples(entities=partition))
             if tmp.size != 0:
                 triples = np.array(self._data.backend._get_triples(entities=partition))[:,:3].astype(np.int32) 
-                #logger.debug("unique triples: ", triples)
+                #logger.debug("unique triples: {}".format(triples))
                 fname = "partition_{}_{}.csv".format(partition_nb, timestamp)
                 self.files.append(fname)
                 np.savetxt(fname, triples, delimiter="\t", fmt='%d')

@@ -184,7 +184,7 @@ class SQLiteAdapter():
                 if self.verbose:
                     logger.debug("Query executed successfully, {}".format(query))
             except Error as e:
-                logger.debug(f"Query failed. The error '{e}' occurred")
+                logger.debug("Query failed. The error '{}' occurred".format(e))
             return output
 
     def _execute_queries(self, list_of_queries):
@@ -227,7 +227,7 @@ class SQLiteAdapter():
                 if self.verbose:
                     logger.debug("commited to table: {}".format(table))
             except Error as e:
-                logger.debug("Error", e)
+                logger.debug("Error: {}".format(e))
                 #self.connection.rollback()
             logger.debug("Values were inserted!")
 
@@ -304,7 +304,7 @@ class SQLiteAdapter():
         """Reinitialise an iterator with data."""
         self.data = self.loader(self.data_source, chunk_size=self.chunk_size)
         if verbose:
-            logger.debug("Data reloaded", self.data)
+            logger.debug("Data reloaded: {}".format(self.data))
         
     def populate(self, data_source, dataset_type="train", get_indexed_triples=None, loader=None):
         """Condition: before you can enter triples you have to index data.
@@ -451,8 +451,8 @@ class SQLiteAdapter():
         """              
         size = self.get_data_size(condition="where dataset_type ='{}'".format(dataset_type))
         self.batches_count = int(size/batch_size)
-        logger.debug("batches count: ",self.batches_count)
-        logger.debug("size of data: ",size)
+        logger.debug("batches count: {}".format(self.batches_count))
+        logger.debug("size of data: {}".format(size))
         index = ""
         if index_by != "":
             if (index_by == "s" or index_by == "o" or index_by == "so" or index_by == "os") and random != False:       
@@ -473,7 +473,7 @@ class SQLiteAdapter():
                  triples_table_type_idx where dataset_type ='{}' {} LIMIT {}, {};"
 
         for i in range(self.batches_count):
-            #logger.debug("BATCH NUMBER: ", i)
+            #logger.debug("BATCH NUMBER: {}".format(i))
             #logger.debug(i * batch_size)
             query = query_template.format(dataset_type, index, i * batch_size, batch_size)
             #logger.debug(query)

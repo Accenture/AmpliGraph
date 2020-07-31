@@ -34,7 +34,7 @@ def load_csv(data_source, chunk_size=None, sep='\t', verbose=False, **kwargs):
         data: either numpy array with data or lazy iterator if chunk_size was provided.
     """
     data = pd.read_csv(data_source, sep=sep, chunksize=chunk_size, header=None, **kwargs)
-    logger.debug("data type:", type(data))
+    logger.debug("data type: {}".format(type(data)))
     logger.debug("CSV loaded, into iterator data.")
         
     if isinstance(data, pd.DataFrame):

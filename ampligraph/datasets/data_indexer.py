@@ -339,7 +339,7 @@ class DataIndexer():
         predicates = set(sample[:,1])
 
         start_ents = self.get_starting_index_ents()
-        logger.debug("Start index entities: ",start_ents)
+        logger.debug("Start index entities: {}".format(start_ents))
         new_indexes_ents = range(start_ents, start_ents + len(entities)) # maximum new index, usually less when multiple chunks provided due to chunks
         if not len(new_indexes_ents) == len(entities): 
             msg = "Etimated indexes length for entities not equal to entities length ({} and {})".format(len(new_indexes_ents), len(entities))
@@ -348,7 +348,7 @@ class DataIndexer():
 
         start_rels = self.get_starting_index_rels()
         new_indexes_rels = range(start_rels, start_rels + len(predicates))
-        logger.debug("Starts index relations: ", start_rels)
+        logger.debug("Starts index relations: {}".format(start_rels))
         if not len(new_indexes_rels) == len(predicates): 
             msg = "Estimated indexes length for relations not equal to relations length ({} and {})".format(len(new_indexes_rels), len(predicates))
             logger.error(msg)

@@ -136,7 +136,7 @@ class DummyBackend():
                 with shelve.open(self.mapper.relations_dict) as rels:
                     triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
             logger.debug("Query parent for data.")
-            logger.debug("Original index: ",triples_original_index)
+            logger.debug("Original index: {}".format(triples_original_index))
             subjects = self.parent.get_complementary_subjects(triples_original_index)
             objects = self.parent.get_complementary_objects(triples_original_index)
             logger.debug("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
@@ -221,7 +221,10 @@ class DummyBackend():
             msg = "Intersection can only be calculated between same backends (DummyBackend), instead get {}".format(type(dataloader.backend))
             logger.error(msg)
             raise Exception(msg) 
-        return np.intersect1d(self.data, dataloader.backend.data)
+        av = self.data.view([('', self.data.dtype)] * self.data.shape[1]).ravel()
+        bv = dataloader.backend.data.view([('', dataloader.backend.data.dtype)] * dataloader.backend.data.shape[1]).ravel()
+        intersection = np.intersect1d(av, bv).view(self.data.dtype).reshape(-1, self.data.shape[1])
+        return intersection
         
     def _get_batch_generator(self, batch_size, dataset_type="train", random=False, index_by=""):
         """Batch generator of data.
