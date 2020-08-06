@@ -34,6 +34,7 @@ import shelve
 import tensorflow as tf
 import pandas as pd
 import logging
+import tempfile
 
 
 logger = logging.getLogger(__name__)
@@ -84,7 +85,7 @@ class DataIndexer():
        """
 
     def __init__(self, data, in_memory=True, entities_dict=None, reversed_entities_dict=None, 
-                 relations_dict=None, reversed_relations_dict=None, root_directory="./", name="main_partition"):
+                 relations_dict=None, reversed_relations_dict=None, root_directory=tempfile.gettempdir(), name="main_partition"):
         """Initialise DataIndexer by creating mappings.
         
            Parameters

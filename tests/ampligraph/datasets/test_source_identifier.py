@@ -9,20 +9,28 @@ import numpy as np
 import pytest
 import pandas as pd
 from ampligraph.datasets import DataSourceIdentifier, load_csv, in_memory_chunks
-
+import os
 
 SCOPE = "function"
-np_array =  np.array([['a','b','c'],['c','b','d'],['d','e','f'],['f','e','c'],['a','e','d'], ['a','b','d']])
-df = pd.DataFrame(np_array)
-df.to_csv('test.csv', index=False, header=False, sep='\t')
-df.to_csv('test.txt', index=False, header=False, sep='\t')
-df.to_csv('test.gz', index=False, header=False, sep='\t', compression='gzip')
 
+def create_data():
+    np_array =  np.array([['a','b','c'],['c','b','d'],['d','e','f'],['f','e','c'],['a','e','d'], ['a','b','d']])
+    df = pd.DataFrame(np_array)
+    df.to_csv('test.csv', index=False, header=False, sep='\t')
+    df.to_csv('test.txt', index=False, header=False, sep='\t')
+    df.to_csv('test.gz', index=False, header=False, sep='\t', compression='gzip')
+    return np_array, len(df)
 
-@pytest.fixture(params=[np_array, 'test.csv', 'test.gz', 'test.txt'], scope=SCOPE)
+def clean_data():
+    os.remove('test.csv')
+    os.remove('test.txt')
+    os.remove('test.gz')
+
+@pytest.fixture(params=['np_array', 'test.csv', 'test.gz', 'test.txt'], scope=SCOPE)
 def data_source(request):
-    return request.param
-
+    np_array, _ = create_data()
+    return request.param if request.param != 'np_array'  else np_array
+    clean_data()
 
 @pytest.fixture(scope=SCOPE)
 def source_identifier(request, data_source):
@@ -32,9 +40,10 @@ def source_identifier(request, data_source):
 
    
 def test_load_csv():
+    _, length = create_data()
     data = load_csv('test.csv')
-    assert len(data) == len(df), "Loaded data differ from what it should be, got {}, expected {}.".format(len(data), len(df))
-
+    assert len(data) == length, "Loaded data differ from what it should be, got {}, expected {}.".format(len(data), len(df))
+    clean_data()
 
 def test_data_source_identifier(source_identifier):
     src_identifier, data_src = source_identifier

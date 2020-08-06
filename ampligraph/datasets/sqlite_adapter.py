@@ -26,6 +26,7 @@ from datetime import datetime
 from ampligraph.utils.profiling import get_human_readable_size
 import pandas as pd
 import logging
+import tempfile
 
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,8 @@ class SQLiteAdapter():
         >>>with SQLiteAdapter("database.db", use_indexer=mapper) as backend:
         >>>    backend.populate("data.csv", dataset_type="train")
     """
-    def __init__(self, db_name, chunk_size=DEFAULT_CHUNKSIZE, root_directory="./", use_indexer=True, verbose=False, remap=False, name='main_partition', parent=None, in_memory=False):
+    def __init__(self, db_name, chunk_size=DEFAULT_CHUNKSIZE, root_directory=tempfile.gettempdir(),
+                 use_indexer=True, verbose=False, remap=False, name='main_partition', parent=None, in_memory=False):
         """ Initialise SQLiteAdapter.
        
             Parameters
@@ -283,7 +285,7 @@ class SQLiteAdapter():
         """Index data. It reloads data before as it is an iterator."""
         self.reload_data()
         if self.use_indexer == True:
-            self.mapper = DataIndexer(self.data, in_memory=self.in_memory)
+            self.mapper = DataIndexer(self.data, in_memory=self.in_memory, root_directory=self.root_directory)
         elif self.use_indexer == False:
             logger.debug("Data won't be indexed")
         elif isinstance(self.use_indexer, DataIndexer):

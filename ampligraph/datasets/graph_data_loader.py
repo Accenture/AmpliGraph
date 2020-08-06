@@ -16,6 +16,7 @@ from datetime import datetime
 import numpy as np
 import shelve
 import logging
+import tempfile
 
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ logger.setLevel(logging.DEBUG)
 
 class DummyBackend():
     """Class providing artificial backend, that reads data into memory."""
-    def __init__(self, identifier, use_indexer=True, remap=False, name="main_partition", verbose=False, parent=None, in_memory=True):
+    def __init__(self, identifier, use_indexer=True, remap=False, name="main_partition", verbose=False, parent=None, in_memory=True, root_directory=tempfile.gettempdir()):
         """Initialise DummyBackend.
 
            Parameters
@@ -43,6 +44,7 @@ class DummyBackend():
         self.name = name
         self.parent = parent
         self.in_memory = in_memory
+        self.root_directory = root_directory
         
     def __enter__ (self):
         """Context manager enter function. Required by GraphDataLoader."""
@@ -65,11 +67,11 @@ class DummyBackend():
         self.dataset_type = dataset_type
         if isinstance(self.data_source, np.ndarray):
             if self.use_indexer:
-                self.mapper = DataIndexer(self.data_source, in_memory=self.in_memory)
+                self.mapper = DataIndexer(self.data_source, in_memory=self.in_memory, root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(self.data_source)
             elif self.remap:
                 # create a special mapping for partitions, persistent mapping from main indexes to partition indexes
-                self.mapper = DataIndexer(self.data_source, name=self.name, in_memory=False)
+                self.mapper = DataIndexer(self.data_source, name=self.name, in_memory=False, root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(self.data_source)
             else:
                 self.data = self.data_source
@@ -77,11 +79,11 @@ class DummyBackend():
             loader = self.identifier.fetch_loader()
             raw_data = loader(self.data_source)
             if self.use_indexer:
-                self.mapper = DataIndexer(raw_data, in_memory=self.in_memory)
+                self.mapper = DataIndexer(raw_data, in_memory=self.in_memory, root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(raw_data)
             elif self.remap:
                 # create a special mapping for partitions, persistent mapping from main indexes to partition indexes
-                self.mapper = DataIndexer(raw_data, name=self.name, in_memory=False)
+                self.mapper = DataIndexer(raw_data, name=self.name, in_memory=False, root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(raw_data)
             else:
                 self.data = raw_data
@@ -226,7 +228,7 @@ class DummyBackend():
         intersection = np.intersect1d(av, bv).view(self.data.dtype).reshape(-1, self.data.shape[1])
         return intersection
         
-    def _get_batch_generator(self, batch_size, dataset_type="train", random=False, index_by=""):
+    def _get_batch_generator(self, batch_size, dataset_type="train", random=False, index_by="", use_filter=False):
         """Batch generator of data.
         
            Parameters
@@ -245,11 +247,18 @@ class DummyBackend():
         for start_index in triples:
             if start_index + batch_size >= length: # if the last batch is smaller than the batch_size
                 batch_size = length - start_index
-            yield self.data[start_index:start_index + batch_size]
+            out = self.data[start_index:start_index + batch_size]
+            if use_filter:
+                # get the filter values
+                participating_entities = self.get_complementary_entities(out)
+                yield out, participating_entities
+
+            yield out 
 
     def _clean(self):
         del self.data
         self.mapper.clean()
+
 
 class GraphDataLoader():
     """Data loader for graphs implemented as a batch iterator
@@ -266,7 +275,8 @@ class GraphDataLoader():
        >>>for elem in data:
        >>>    process(data)
     """    
-    def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, root_directory="./", use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=True):
+    def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, root_directory=tempfile.gettempdir(),
+                 use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=True, use_filter=False):
         """Initialise persistent/in-memory data storage.
        
            Parameters
@@ -294,6 +304,7 @@ class GraphDataLoader():
         self.in_memory = in_memory
         self.name = name
         self.parent = parent
+        self.use_filter = use_filter
         if bool(use_indexer) != (not remap):
             msg = "Either remap or Indexer should be speciferd at the same time."
             logger.error(msg)
@@ -308,7 +319,7 @@ class GraphDataLoader():
             self.backend = backend
         
         self.backend._load(self.data_source, dataset_type=self.dataset_type)  
-        self.batch_iterator = self.get_batch_generator()
+        self.batch_iterator = self.get_batch_generator(use_filter=self.use_filter)
         self.metadata = self.backend.mapper.metadata
       
     def __iter__(self):
@@ -319,13 +330,17 @@ class GraphDataLoader():
         """Function needed to be used as an itertor."""
         return self.batch_iterator.__next__()
       
-    def reload(self):
+    def reload(self, use_filter=False):
         """Reinstantiate batch iterator."""
-        self.batch_iterator = self.get_batch_generator()
+        self.batch_iterator = self.get_batch_generator(use_filter=use_filter)
   
-    def get_batch_generator(self):
-        """Get batch generator from the backend."""
-        return self.backend._get_batch_generator(self.batch_size, dataset_type=self.dataset_type)
+    def get_batch_generator(self, use_filter=False):
+        """Get batch generator from the backend.
+           Parameters
+           ----------
+           use_filter: filter out true positives
+        """
+        return self.backend._get_batch_generator(self.batch_size, dataset_type=self.dataset_type, use_filter=use_filter)
   
     def get_data_size(self):
         """Returns number of triples."""
@@ -345,9 +360,40 @@ class GraphDataLoader():
 
         return self.backend._intersect(dataloader)
 
+    def get_participating_entities(self, triples, sides="s,o"):
+        """Get entities from triples with fixed subjects, objects or both.
+           Parameters
+           ----------
+           triples: list or array with 3 elements each (subject, predicate, object)
+           sides: what entities to retrive: 's' - subjects, 'o' - objects, 's,o' - subjects and objects, 'o,s' - objects and subjects.
+
+           Returns
+           -------
+           list of subjects or objects or two lists with both.
+        """
+        if sides not in ['s', 'o', 's,o', 'o,s']:
+            msg = "Sides should be either s (subject), o (object), or s,o/o,s (subject, object/object, subject), instead got {}".format(sides)
+            logger.error(msg)
+            raise Exception(msg)
+        if 's' in sides:
+            subjects = get_complementary_subjects(triples)
+
+        if 'o' in sides:
+            objects = get_complementary_objects(triples)
+
+        if sides == 's,o':
+            return subjects, objects
+        if sides == 'o,s':
+            return objects, subjects
+        if sides == 's':
+            return subjects
+        if sides == 'o':
+            return objects
+        
+
     def get_complementary_subjects(self, triples):
         """Get subjects complementary to triples (?,p,o).
-           For a given triple retrive all triples whith same objects and predicates.
+           For a given triple retrive all subjects coming from triples whith same objects and predicates.
 
            Parameters
            ----------
@@ -361,7 +407,7 @@ class GraphDataLoader():
 
     def get_complementary_objects(self, triples):
         """Get objects complementary to triples (s,p,?).
-           For a given triple retrive all triples whith same subjects and predicates.
+           For a given triple retrive all objects coming from triples whith same subjects and predicates.
 
            Parameters
            ----------
