@@ -223,9 +223,11 @@ class DummyBackend():
             msg = "Intersection can only be calculated between same backends (DummyBackend), instead get {}".format(type(dataloader.backend))
             logger.error(msg)
             raise Exception(msg) 
-        av = self.data.view([('', self.data.dtype)] * self.data.shape[1]).ravel()
-        bv = dataloader.backend.data.view([('', dataloader.backend.data.dtype)] * dataloader.backend.data.shape[1]).ravel()
-        intersection = np.intersect1d(av, bv).view(self.data.dtype).reshape(-1, self.data.shape[1])
+        self.data = np.ascontiguousarray(self.data, dtype='int64')
+        dataloader.backend.data = np.ascontiguousarray(dataloader.backend.data, dtype='int64') 
+        av = self.data.view([('', self.data.dtype)] * self.data.shape[1])
+        bv = dataloader.backend.data.view([('', dataloader.backend.data.dtype)] * dataloader.backend.data.shape[1])
+        intersection = np.intersect1d(av, bv).view(self.data.dtype).reshape(-1, self.data.shape[0 if self.data.flags['F_CONTIGUOUS'] else 1])
         return intersection
         
     def _get_batch_generator(self, batch_size, dataset_type="train", random=False, index_by="", use_filter=False):

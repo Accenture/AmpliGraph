@@ -219,7 +219,8 @@ class PartitioningReporter:
         partitioning = partitioning[0]
         tmp = partitioning.get_data()
         k = tmp.get_data_size()
-        partitioning = partitioning.get_partitions_list()
+        partitioner = partitioning
+        partitioning = partitioner.get_partitions_list()
         sizes = [x.get_data_size() for x in partitioning]
         avg_size = np.mean(sizes)
         max_size = np.max(sizes)
@@ -242,7 +243,7 @@ class PartitioningReporter:
         metrics["EDGES_COUNT"] = self.get_edges_count(partitioning)
         metrics["PERCENTAGE_DEV_EDGES"] = self.get_average_deviation_from_ideal_size_edges(partitioning)
         metrics["PERCENTAGE_DEV_VERTICES"] = self.get_average_deviation_from_ideal_size_vertices(partitioning)
-
+        partitioner.clean()
         return metrics
     
     def report(self, visualize=True, barh=True):  # TODO: include plotting parameters
