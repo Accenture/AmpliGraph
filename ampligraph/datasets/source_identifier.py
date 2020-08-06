@@ -5,10 +5,21 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
+"""Data source identifier.
+
+This module provides main class and supporting functions for automatic
+identification of data source (whether it is csv, tar.gz or numpy array)
+and provides adequate loader for the data source identified.
+"""
 import pandas as pd
+import logging
 
 
-def load_csv(data_source, chunk_size=None, sep='\t', verbose=False):
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+
+def load_csv(data_source, chunk_size=None, sep='\t', verbose=False, **kwargs):
     """CSV data loader.
     
         Parameters
@@ -22,21 +33,28 @@ def load_csv(data_source, chunk_size=None, sep='\t', verbose=False):
         -------
         data: either numpy array with data or lazy iterator if chunk_size was provided.
     """
-    data = pd.read_csv(data_source, sep=sep, chunksize=chunk_size)
-    if verbose:
-        print("data type:", type(data))
-        print("CSV loaded, into iterator data.")
+    data = pd.read_csv(data_source, sep=sep, chunksize=chunk_size, header=None, **kwargs)
+    logger.debug("data type: {}".format(type(data)))
+    logger.debug("CSV loaded, into iterator data.")
         
     if isinstance(data, pd.DataFrame):
         return data.values
     else:
         return data
 
-def load_gz(data_source, verbose=False):
+
+def in_memory_chunks(iterable, chunk_size=1, **kwargs):
+    """Chunks generator."""
+    arr_len = len(iterable)
+    for indx in range(0, arr_len, chunk_size):
+        yield iterable[indx:min(indx + chunk_size, arr_len)]
+
+
+def load_gz(data_source, chunk_size=None, verbose=False):
     """Gz data loader. Reads compressed file."""
     raise NotImplementedError
     
-def load_tar(data_source, verbose=False):
+def load_tar(data_source, chunk_size=None, verbose=False):
     """Tar data loader. Reads compressed file."""
     raise NotImplementedError
 
@@ -70,22 +88,25 @@ class DataSourceIdentifier():
                                 "txt": load_csv, 
                                 "gz": load_csv, 
                                 "tar": load_tar,
-                                "obj": lambda x: x}
+                                "obj": in_memory_chunks }
         self._identify()
                 
     def fetch_loader(self):
         """Returns adequate loader required to read  identified file."""
-        if self.verbose:
-            print("Return adequate loader that provides loading of data source.")
+        logger.debug("Return adequate loader that provides loading of data source.")
         return self.supported_types[self.src]
-    
+   
+    def get_src(self):
+        """Returns identified source type."""
+        return self.src
+ 
     def _identify(self):
         """Identifies the data file type based on the file name."""
         if isinstance(self.data_source, str):
             self.src =  self.data_source.split(".")[-1] if "." in self.data_source else None           
             if self.src is not None and self.src not in self.supported_types:
-                print("File type not supported! Supported types: {}".format(", ".join(self.supported_types)))
+                logger.debug("File type not supported! Supported types: {}".format(", ".join(self.supported_types)))
                 self.src = None
         else:
-            print("data_source is an object")
+            logger.debug("data_source is an object")
             self.src = "obj"   
