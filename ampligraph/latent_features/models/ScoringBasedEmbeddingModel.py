@@ -7,7 +7,7 @@ from tensorflow.python.eager import def_function
 
 import pandas as pd
 tf.config.set_soft_device_placement(False)
-tf.debugging.set_log_device_placement(True)
+tf.debugging.set_log_device_placement(False)
 import numpy as np
 
 from ampligraph.datasets import GraphDataLoader
@@ -237,7 +237,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
         with training_utils.RespectCompiledTrainableState(self):
             # create data handler
-            data_handler = GraphDataLoader(x, batch_size=batch_size, dataset_type="train", epochs=epochs)
+            self.data_handler = GraphDataLoader(x, batch_size=batch_size, dataset_type="train", epochs=epochs)
         
         # Container that configures and calls `tf.keras.Callback`s.
         if not isinstance(callbacks, callbacks_module.CallbackList):
@@ -247,17 +247,16 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                         add_progbar=verbose != 0,
                                                         model=self,
                                                         verbose=verbose,
-                                                        epochs=epochs,
-                                                        steps=data_handler.inferred_steps)
+                                                        epochs=epochs)
         self.stop_training = False
         train_function = self.make_train_function()
         callbacks.on_train_begin()
         
         total_loss = []
-        for epoch, iterator in data_handler.enumerate_epochs():
+        for epoch, iterator in self.data_handler.enumerate_epochs():
             callbacks.on_epoch_begin(epoch)
-            with data_handler.catch_stop_iteration():
-                for step in data_handler.steps():
+            with self.data_handler.catch_stop_iteration():
+                for step in self.data_handler.steps():
                     callbacks.on_train_batch_begin(step)
                     with tf.device('{}'.format('GPU:0')):
                         logs = train_function(iterator)
@@ -338,8 +337,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         #self._assert_compile_was_called()
         
-        data_handler = GraphDataLoader(x, batch_size=batch_size, dataset_type="test", epochs=1)
-        data_handler.temperorily_set_emb_matrix(self.encoding_layer.ent_emb.numpy(), self.encoding_layer.rel_emb.numpy())
+        self.data_handler_test = GraphDataLoader(x, batch_size=batch_size, dataset_type="test", epochs=1, use_indexer = self.data_handler.backend.mapper)
+        self.data_handler_test.temperorily_set_emb_matrix(self.encoding_layer.ent_emb.numpy(), self.encoding_layer.rel_emb.numpy())
 
         # Container that configures and calls `tf.keras.Callback`s.
         if not isinstance(callbacks, callbacks_module.CallbackList):
@@ -350,7 +349,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 model=self,
                 verbose=verbose,
                 epochs=1,
-                steps=data_handler.inferred_steps)
+                steps=self.data_handler_test.inferred_steps)
         
         test_function = self.make_test_function()
         callbacks.on_test_begin()
@@ -358,9 +357,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.all_ranks = []
         
         
-        for _, iterator in data_handler.enumerate_epochs(): 
-            with data_handler.catch_stop_iteration():
-                for step in data_handler.steps():
+        for _, iterator in self.data_handler_test.enumerate_epochs(): 
+            with self.data_handler_test.catch_stop_iteration():
+                for step in self.data_handler_test.steps():
                     callbacks.on_test_batch_begin(step)
                     sub_rank, obj_rank = test_function(iterator)
 

@@ -76,6 +76,7 @@ class SQLiteAdapter():
         self.db_path = os.path.join(self.root_directory, self.db_name)
         self.use_indexer = use_indexer
         self.remap = remap
+        self.temp_workaround = False
         if self.remap != False:
             msg = "Remapping is not supported for DataLoaders with SQLite Adapter as backend"
             logger.error(msg)
@@ -91,6 +92,14 @@ class SQLiteAdapter():
         else:
             self.chunk_size = chunk_size
 
+    def temperorily_set_emb_matrix(self, ent_emb, rel_emb):
+        self.temp_workaround = True
+        self.ent_emb = ent_emb
+        self.rel_emb = rel_emb
+    
+    def should_recreate_iterator(self):
+        return True
+        
     def open_db(self):
         db_uri = 'file:{}?mode=rw'.format(pathname2url(self.db_path))
         self.connection = sqlite3.connect(db_uri, uri=True)
@@ -482,10 +491,20 @@ class SQLiteAdapter():
             out = self._execute_query(query)
             #logger.debug(out)
             if out:
-                out = np.array(out)[:,:3]                   
+                out = np.array(out)[:,:3] 
+                
             if use_filter:
                 # get the filter values
                 participating_entities = self.get_complementary_entities(out)
+               
+            out = out.astype(np.int32)
+            if self.temp_workaround:
+                #print(out)
+                out = [self.ent_emb[out[:, 0]], 
+                       self.rel_emb[out[:, 1]], 
+                       self.ent_emb[out[:, 2]]]
+                
+            if use_filter:
                 yield out, participating_entities
             else:
                 yield out                    

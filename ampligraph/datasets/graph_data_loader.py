@@ -11,12 +11,13 @@ This module provides GraphDataLoader class that can be parametrized with a backe
 and in-memory backend (DummyBackend).
 """
 from ampligraph.datasets.source_identifier import DataSourceIdentifier
-from ampligraph.datasets import DataIndexer
+from ampligraph.datasets import DataIndexer, SQLiteAdapter
 from datetime import datetime
 import numpy as np
 import shelve
 import logging
 import tempfile
+import contextlib
 
 
 logger = logging.getLogger(__name__)
@@ -39,13 +40,18 @@ class DummyBackend():
         """
         self.verbose = verbose
         self.identifier = identifier
-        self.temp_workaround = False
         self.use_indexer = use_indexer
         self.remap = remap
         self.name = name
         self.parent = parent
         self.in_memory = in_memory
         self.root_directory = root_directory
+        self.temp_workaround = False
+        
+    def temperorily_set_emb_matrix(self, ent_emb, rel_emb):
+        self.temp_workaround = True
+        self.ent_emb = ent_emb
+        self.rel_emb = rel_emb
         
     def __enter__ (self):
         """Context manager enter function. Required by GraphDataLoader."""
@@ -250,16 +256,26 @@ class DummyBackend():
             if start_index + batch_size >= length: # if the last batch is smaller than the batch_size
                 batch_size = length - start_index
             out = self.data[start_index:start_index + batch_size]
+            
+            if self.temp_workaround:
+                print(out)
+                out = [self.ent_emb[out[:, 0]], 
+                       self.rel_emb[out[:, 1]], 
+                       self.ent_emb[out[:, 2]]]
+                
             if use_filter:
                 # get the filter values
                 participating_entities = self.get_complementary_entities(out)
                 yield out, participating_entities
 
-            yield out 
+            yield out
 
     def _clean(self):
         del self.data
         self.mapper.clean()
+        
+    def should_recreate_iterator(self):
+        return True
 
 
 class GraphDataLoader():
@@ -277,8 +293,8 @@ class GraphDataLoader():
        >>>for elem in data:
        >>>    process(data)
     """    
-    def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, root_directory=tempfile.gettempdir(),
-                 use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=True, use_filter=False):
+    def __init__(self, data_source, batch_size=1, dataset_type="train", backend=SQLiteAdapter, root_directory=tempfile.gettempdir(),
+                 use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=True, use_filter=False, initial_epoch=0, epochs=1):
         """Initialise persistent/in-memory data storage.
        
            Parameters
@@ -298,7 +314,7 @@ class GraphDataLoader():
         """   
         self._initial_epoch = initial_epoch
         self._epochs = epochs
-        self._insufficient_data = False
+        self._inferred_steps = None
         self.dataset_type = dataset_type
         self.data_source = data_source
         self.batch_size = batch_size
@@ -334,10 +350,20 @@ class GraphDataLoader():
     def __next__(self):
         """Function needed to be used as an itertor."""
         return self.batch_iterator.__next__()
+    
+    def temperorily_set_emb_matrix(self, ent_emb, rel_emb):
+        with self.backend as backend:
+            backend.temperorily_set_emb_matrix(ent_emb, rel_emb)
       
     def reload(self, use_filter=False):
         """Reinstantiate batch iterator."""
         self.batch_iterator = self.get_batch_generator(use_filter=use_filter)
+        
+    def enumerate_epochs(self):
+        
+        for epoch in range(self._initial_epoch, self._epochs):
+            self.reload()   
+            yield epoch, self
   
     def get_batch_generator(self, use_filter=False):
         """Get batch generator from the backend.
@@ -346,6 +372,26 @@ class GraphDataLoader():
            use_filter: filter out true positives
         """
         return self.backend._get_batch_generator(self.batch_size, dataset_type=self.dataset_type, use_filter=use_filter)
+    
+    @contextlib.contextmanager
+    def catch_stop_iteration(self):
+        """Catches errors when an iterator runs out of data."""
+        try:
+            yield
+            #context.async_wait()
+        except StopIteration:
+            if self._inferred_steps is None:
+                self._inferred_steps = self._current_iter
+            
+    def steps(self):
+        self._current_iter = 0
+        while self._inferred_steps is None or self._current_iter<self._inferred_steps:
+            self._current_iter += 1
+            yield self._current_iter
+            
+    @property
+    def inferred_steps(self):
+        return self._inferred_steps
   
     def get_data_size(self):
         """Returns number of triples."""
