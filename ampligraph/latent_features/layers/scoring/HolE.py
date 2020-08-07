@@ -1,17 +1,17 @@
 import tensorflow as tf
-from ampligraph.latent_features.layers.scoring import register_layer, AbstractScoringLayer
+from .AbstractScoringLayer import AbstractScoringLayer, register_layer
+from .ComplEx import ComplEx
 
-
-@register_layer('DistMult')
-class DistMult(AbstractScoringLayer):
-    ''' DistMult scoring Layer class
+@register_layer('HolE')
+class HolE(ComplEx):
+    ''' HolE scoring Layer class
     '''
     def __init__(self, k):
-        super(DistMult, self).__init__(k)
+        super(HolE, self).__init__(k)
 
     @tf.function
     def _compute_scores(self, triples):
-        ''' compute scores using distmult scoring function.
+        ''' compute scores using HolE scoring function.
         
         Parameters:
         -----------
@@ -23,9 +23,8 @@ class DistMult(AbstractScoringLayer):
         scores: 
             tensor of scores of inputs
         '''
-        # compute scores as sum(s * p * o)
-        scores = tf.reduce_sum(triples[0] * triples[1] * triples[2], 1)
-        return scores
+        # HolE scoring is 2/k * complex_score
+        return (2 / (self.internal_k / 2)) * (super().compute_scores(triples))
     
     @tf.function(experimental_relax_shapes=True)
     def _get_subject_corruption_scores(self, triples, ent_matrix):
@@ -44,11 +43,9 @@ class DistMult(AbstractScoringLayer):
         scores: (n, 1)
             scores of subject corruptions (corruptions defined by ent_embs matrix)
         '''
-        sub_emb, rel_emb, obj_emb = triples[0], triples[1], triples[2]
-        # compute the score by broadcasting the corruption embeddings(ent_matrix) and using the scoring function
-        # compute scores as sum(s_corr * p * o)
-        sub_corr_score = tf.reduce_sum(ent_matrix * tf.expand_dims( rel_emb * obj_emb, 1) , 2)
-        return sub_corr_score
+        # HolE scoring is 2/k * complex_score
+        return (2 / (self.internal_k / 2)) * (super()._get_subject_corruption_scores(triples, 
+                                                                                     ent_matrix))
     
     @tf.function(experimental_relax_shapes=True)
     def _get_object_corruption_scores(self, triples, ent_matrix):
@@ -67,13 +64,7 @@ class DistMult(AbstractScoringLayer):
         scores: (n, 1)
             scores of object corruptions (corruptions defined by ent_embs matrix)
         '''
-        sub_emb, rel_emb, obj_emb = triples[0], triples[1], triples[2]
-        # compute the score by broadcasting the corruption embeddings(ent_matrix) and using the scoring function
-        # compute scores as sum(s * p * o_corr)
-        obj_corr_score = tf.reduce_sum(tf.expand_dims(sub_emb * rel_emb, 1) * ent_matrix, 2)
-        return obj_corr_score
+        # HolE scoring is 2/k * complex_score
+        return (2 / (self.internal_k / 2)) * (super()._get_object_corruption_scores(triples,  
+                                                                                    ent_matrix))
 
-    def compute_output_shape(self, input_shape):
-        assert isinstance(input_shape, list)
-        batch_size, _ = input_shape
-        return [batch_size, 1]
