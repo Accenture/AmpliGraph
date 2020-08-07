@@ -31,7 +31,7 @@ class DummyBackend():
            Parameters
            ----------
            identifier: initialize data source identifier, provides loader. 
-           use_indexer: flag to tell whether data should be indexed.
+           use_indexer: flag or mapper object to tell whether data should be indexed.
            remap: flag for partitioner to indicate whether to remap previously 
                   indexed data to (0, <size_of_partition>).
            parent: parent data loader that persists data.
@@ -78,15 +78,21 @@ class DummyBackend():
         else:
             loader = self.identifier.fetch_loader()
             raw_data = loader(self.data_source)
-            if self.use_indexer:
+
+            if self.use_indexer == True:
                 self.mapper = DataIndexer(raw_data, in_memory=self.in_memory, root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(raw_data)
-            elif self.remap:
-                # create a special mapping for partitions, persistent mapping from main indexes to partition indexes
-                self.mapper = DataIndexer(raw_data, name=self.name, in_memory=False, root_directory=self.root_directory)
-                self.data = self.mapper.get_indexes(raw_data)
-            else:
-                self.data = raw_data
+            elif self.use_indexer == False:
+                if self.remap:
+                    # create a special mapping for partitions, persistent mapping from main indexes to partition indexes
+                    self.mapper = DataIndexer(raw_data, name=self.name, in_memory=False, root_directory=self.root_directory)
+                    self.data = self.mapper.get_indexes(raw_data)
+                else:
+                    self.data = raw_data
+                    logger.debug("Data won't be indexed")
+            elif isinstance(self.use_indexer, DataIndexer):
+                  self.mapper = self.use_indexer
+
 
     def _get_triples(self, subjects=None, objects=None, entities=None):
         """Get triples that objects belongs to objects and subjects to subjects,
