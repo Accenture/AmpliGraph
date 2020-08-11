@@ -1336,14 +1336,16 @@ class EmbeddingModel(abc.ABC):
 
         # compute the rank of the test triple and subtract the positives(from corruptions) that are ranked higher
         if corrupt_side == 's,o':
-            self.rank = tf.stack([self.perform_comparision(subj_corruption_scores,
-                                                           self.score_positive) + 1 - \
-                                  positives_among_sub_corruptions_ranked_higher,
-                self.perform_comparision(obj_corruption_scores, self.score_positive) + 1 - \
-                                  positives_among_obj_corruptions_ranked_higher], 0)
+            self.rank = tf.stack([
+                self.perform_comparision(subj_corruption_scores,
+                                         self.score_positive) + 1 - positives_among_sub_corruptions_ranked_higher,
+                self.perform_comparision(obj_corruption_scores, 
+                                         self.score_positive) + 1 - positives_among_obj_corruptions_ranked_higher], 0)
         else:
-            self.rank = self.perform_comparision(self.scores_predict, self.score_positive) + 1 - \
-            positives_among_sub_corruptions_ranked_higher - positives_among_obj_corruptions_ranked_higher
+            self.rank = self.perform_comparision(self.scores_predict, 
+                                                 self.score_positive) + 1 - \
+                positives_among_sub_corruptions_ranked_higher - \
+                positives_among_obj_corruptions_ranked_higher
 
     def perform_comparision(self, score_corr, score_pos):
         ''' compares the scores of corruptions and positives using the specified strategy.
@@ -1361,7 +1363,7 @@ class EmbeddingModel(abc.ABC):
             comparision output based on specified strategy
         '''
         comparision_type = self.eval_config.get('ranking_strategy',
-                                               constants.DEFAULT_RANK_COMPARE_STRATEGY)
+                                                constants.DEFAULT_RANK_COMPARE_STRATEGY)
 
         assert comparision_type in ['worst', 'best', 'middle'], 'Invalid score comparision type!'
 
