@@ -900,8 +900,9 @@ class EmbeddingModel(abc.ABC):
                     raise Exception('Early stopping not supported for large graphs')
 
                 if not isinstance(self.optimizer, SGDOptimizer):
-                    raise Exception("This mode works well only with SGD optimizer with decay (read docs for details).\
- Kindly change the optimizer and restart the experiment")
+                    raise Exception("This mode works well only with SGD optimizer with decay.\
+ Kindly change the optimizer and restart the experiment. For details refer the following link: \n \
+ https://docs.ampligraph.org/en/latest/dev_notes.html#dealing-with-large-graphs")
 
             if self.dealing_with_large_graphs:
                 prefetch_batches = 0

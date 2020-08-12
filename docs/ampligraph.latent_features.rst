@@ -146,6 +146,7 @@ and they can be thus used :ref:`during model selection <eval>`.
     RandomNormal
     RandomUniform
     Xavier
+    Constant
 
 
 .. _optimizer:
@@ -159,6 +160,14 @@ assign high scores to positive statements and low scores to statements unlikely 
 We support SGD-based optimizers provided by TensorFlow, by setting the ``optimizer`` argument in a model initializer.
 Best results are currently obtained with Adam.
 
+.. autosummary::
+    :toctree: generated
+    :template: class.rst
+
+    AdamOptimizer
+    AdagradOptimizer
+    SGDOptimizer
+    MomentumOptimizer
 
 Saving/Restoring Models
 -----------------------
