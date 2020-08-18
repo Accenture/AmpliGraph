@@ -34,6 +34,8 @@ AmpliGraph models include the following components:
 + :ref:`Scoring function <scoring>` :math:`f(t)`
 + :ref:`Loss function <loss>` :math:`\mathcal{L}`
 + :ref:`Optimization algorithm <optimizer>`
++ :ref:`Regularizer <ref-reg>`
++ :ref:`Initializer <ref-init>`
 + :ref:`Negatives generation strategy <negatives>`
 
 AmpliGraph comes with a number of such components. They can be used in any combination to come up with a model that
