@@ -79,3 +79,10 @@ DEFAULT_CONVE_DROPOUT_CONV = 0.3
 DEFAULT_CONVE_DROPOUT_DENSE = 0.2
 DEFAULT_CONVE_USE_BIAS = True
 DEFAULT_CONVE_USE_BATCHNORM = True
+
+# Default value for comparision strategy to use while comparing scores of corruptions against positive
+DEFAULT_RANK_COMPARE_STRATEGY = 'worst'
+
+# Score comparision precision 
+# (Multiplies the score with this value and truncates the decimal part for comparision)
+SCORE_COMPARISION_PRECISION = 1e5

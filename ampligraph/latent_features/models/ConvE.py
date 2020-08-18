@@ -780,10 +780,10 @@ class ConvE(EmbeddingModel):
         self.scores_filtered = tf.boolean_mask(scores, tf.cast(self.X_test_filter_tf, tf.bool))
 
         # Triple rank over all triples
-        self.total_rank = tf.reduce_sum(tf.cast(scores >= self.score_positive, tf.int32))
+        self.total_rank = self.perform_comparision(scores, self.score_positive)
 
         # Triple rank over positive triples
-        self.filter_rank = tf.reduce_sum(tf.cast(self.scores_filtered >= self.score_positive, tf.int32))
+        self.filter_rank = self.perform_comparision(self.scores_filtered, self.score_positive)
 
         # Rank of triple, with other positives filtered out.
         self.rank = tf.subtract(self.total_rank, self.filter_rank, name='rank') + 1

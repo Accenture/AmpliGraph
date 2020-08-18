@@ -444,7 +444,7 @@ def to_idx(X, ent_to_idx, rel_to_idx):
 
 
 def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_unseen=True, entities_subset=None,
-                         corrupt_side='s,o', use_default_protocol=False):
+                         corrupt_side='s,o', ranking_strategy='worst', use_default_protocol=False):
     """Evaluate the performance of an embedding model.
 
     The evaluation protocol follows the procedure defined in :cite:`bordes2013translating` and can be summarised as:
@@ -531,6 +531,20 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
             The first column of the array represents the subject corruptions.
             The second column of the array represents the object corruptions.
             Otherwise, the function returns n ranks as [n] array.
+
+    ranking_strategy: string
+        Specifies the type of score comparision strategy to use while ranking:
+
+        -'worst': assigns the worst rank when scores are equal
+        -'best': assigns the best rank when scores are equal
+        -'middle': assigns the middle rank when scores are equal
+
+        Our recommendation is to use ``worst``.
+        Think of a model which assigns constant score to any triples. If you use the ``best`` strategy then 
+        the ranks will always be 1 (which is incorrect because the model has not learnt anything). If you choose 
+        this model and try to do knowledge discovery, you will not be able to deduce anything as all triples will 
+        get same scores. So to be on safer side while choosing the model, we would recommend either ``worst`` 
+        or ``middle`` strategy.
 
     use_default_protocol: bool
         Flag to indicate whether to use the standard protocol used in literature defined in
@@ -636,6 +650,10 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
 
         logger.debug('Evaluating the test set by corrupting side : {}'.format(corrupt_side))
         eval_dict['corrupt_side'] = corrupt_side
+
+        assert ranking_strategy in ['worst', 'best', 'middle'], 'Invalid ranking_strategy!'
+
+        eval_dict['ranking_strategy'] = ranking_strategy
 
         logger.debug('Configuring evaluation protocol.')
         model.configure_evaluation_protocol(eval_dict)

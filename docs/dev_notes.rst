@@ -50,7 +50,7 @@ In the context of this discussion, large graph means graphs whose embeddings do 
 with Complex model (k=200) for 10 million distinct entities,
 one would need 10 million * 200 * 2(for real/imaginary) * 4(float 32) bytes of GPU memory (approximately 15 GB of
 GPU just for holding the embeddings). Hence on a normal GPU, this would not fit. The user would be forced to move to
-GPU to do the computations which would slow down the training/evaluation.
+CPU to do the computations which would slow down the training/evaluation.
 
 To avoid this, and make use of GPU cores for faster computations, we have introduced a mode to deal with large graphs.
 As of now, you can specify whether a graph is large or not depending on the number of distinct entities.
