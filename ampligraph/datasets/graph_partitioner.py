@@ -92,12 +92,15 @@ class AbstractGraphPartitioner(ABC):
         self.partitions = []
         self._data = data
         self._k = k
-        self._split(seed=seed, **kwargs)
-        self.generator = self.partitions_generator()
+        self._split(seed=seed, batch_size=data.batch_size, **kwargs)
+        self.reload()
         
     def __iter__(self):
         """Function needed to be used as an itertor."""
         return self
+    
+    def reload(self):
+        self.generator = self.partitions_generator()
 
     def get_data(self):
         return self._data

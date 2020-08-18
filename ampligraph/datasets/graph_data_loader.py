@@ -32,7 +32,7 @@ class DummyBackend():
            Parameters
            ----------
            identifier: initialize data source identifier, provides loader. 
-           use_indexer: flag to tell whether data should be indexed.
+           use_indexer: flag or mapper object to tell whether data should be indexed.
            remap: flag for partitioner to indicate whether to remap previously 
                   indexed data to (0, <size_of_partition>).
            parent: parent data loader that persists data.
@@ -85,16 +85,21 @@ class DummyBackend():
         else:
             loader = self.identifier.fetch_loader()
             raw_data = loader(self.data_source)
-            if self.use_indexer:
+            if self.use_indexer == True:
                 self.mapper = DataIndexer(raw_data, in_memory=self.in_memory, root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(raw_data)
-            elif self.remap:
-                # create a special mapping for partitions, persistent mapping from main indexes to partition indexes
-                self.mapper = DataIndexer(raw_data, name=self.name, in_memory=False, root_directory=self.root_directory)
-                self.data = self.mapper.get_indexes(raw_data)
-            else:
-                self.data = raw_data
-
+            elif self.use_indexer == False:
+                if self.remap:
+                    # create a special mapping for partitions, persistent mapping from main indexes to partition indexes
+                    self.mapper = DataIndexer(raw_data, name=self.name, in_memory=False, root_directory=self.root_directory)
+                    self.data = self.mapper.get_indexes(raw_data)
+                else:
+                    self.data = raw_data
+                    logger.debug("Data won't be indexed")
+            elif isinstance(self.use_indexer, DataIndexer):
+                  self.mapper = self.use_indexer
+                  
+                    
     def _get_triples(self, subjects=None, objects=None, entities=None):
         """Get triples that objects belongs to objects and subjects to subjects,
            or if not provided either object or subjet belongs to entities.
@@ -293,7 +298,7 @@ class GraphDataLoader():
        >>>for elem in data:
        >>>    process(data)
     """    
-    def __init__(self, data_source, batch_size=1, dataset_type="train", backend=SQLiteAdapter, root_directory=tempfile.gettempdir(),
+    def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, root_directory=tempfile.gettempdir(),
                  use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=True, use_filter=False, initial_epoch=0, epochs=1):
         """Initialise persistent/in-memory data storage.
        
@@ -312,9 +317,9 @@ class GraphDataLoader():
            in_memory: persist indexes or not.
            name: identifying name/id of partition which data loader represents (default main).
         """   
-        self._initial_epoch = initial_epoch
-        self._epochs = epochs
-        self._inferred_steps = None
+        #self._initial_epoch = initial_epoch
+        #self._epochs = epochs
+        #self._inferred_steps = None
         self.dataset_type = dataset_type
         self.data_source = data_source
         self.batch_size = batch_size
@@ -340,7 +345,7 @@ class GraphDataLoader():
             self.backend = backend
 
         self.backend._load(self.data_source, dataset_type=self.dataset_type)  
-        self.batch_iterator = self.get_batch_generator(use_filter=self.use_filter)
+        self.reload()
         self.metadata = self.backend.mapper.metadata
       
     def __iter__(self):
@@ -352,18 +357,11 @@ class GraphDataLoader():
         return self.batch_iterator.__next__()
     
     def temperorily_set_emb_matrix(self, ent_emb, rel_emb):
-        with self.backend as backend:
-            backend.temperorily_set_emb_matrix(ent_emb, rel_emb)
+        self.backend.temperorily_set_emb_matrix(ent_emb, rel_emb)
       
     def reload(self, use_filter=False):
         """Reinstantiate batch iterator."""
         self.batch_iterator = self.get_batch_generator(use_filter=use_filter)
-        
-    def enumerate_epochs(self):
-        
-        for epoch in range(self._initial_epoch, self._epochs):
-            self.reload()   
-            yield epoch, self
   
     def get_batch_generator(self, use_filter=False):
         """Get batch generator from the backend.
@@ -373,26 +371,6 @@ class GraphDataLoader():
         """
         return self.backend._get_batch_generator(self.batch_size, dataset_type=self.dataset_type, use_filter=use_filter)
     
-    @contextlib.contextmanager
-    def catch_stop_iteration(self):
-        """Catches errors when an iterator runs out of data."""
-        try:
-            yield
-            #context.async_wait()
-        except StopIteration:
-            if self._inferred_steps is None:
-                self._inferred_steps = self._current_iter
-            
-    def steps(self):
-        self._current_iter = 0
-        while self._inferred_steps is None or self._current_iter<self._inferred_steps:
-            self._current_iter += 1
-            yield self._current_iter
-            
-    @property
-    def inferred_steps(self):
-        return self._inferred_steps
-  
     def get_data_size(self):
         """Returns number of triples."""
         return self.backend.get_data_size()

@@ -1,5 +1,5 @@
 import os
-import tensorflow as tf
+import tensorflow as tf 
 
 from tensorflow.python.keras import callbacks as callbacks_module
 from tensorflow.python.keras.engine import training_utils
@@ -10,7 +10,7 @@ tf.config.set_soft_device_placement(False)
 tf.debugging.set_log_device_placement(False)
 import numpy as np
 
-from ampligraph.datasets import GraphDataLoader
+from ampligraph.datasets import data_adapter
 from ampligraph.latent_features.layers.scoring import SCORING_LAYER_REGISTRY
 from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
 from ampligraph.latent_features.layers.corruption_generation import CorruptionGenerationLayerTrain
@@ -60,7 +60,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # assume that you have max_ent_size unique entities - if it is single partition
         # this would change if we use partitions - based on which partition is in memory
         # this is used by corruption_layer to sample eta corruptions
-        self.unique_entities = tf.range(self.max_ent_size)
+        self.num_ents = self.max_ent_size
         
         # Create the embedding lookup layer. 
         # size of entity emb is max_ent_size * k and relation emb is  max_rel_size * k
@@ -84,13 +84,13 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         return [(None, 1), (None, 1)]
     
     @tf.function
-    def partition_change_updates(self, unique_entities, ent_emb, rel_emb):
+    def partition_change_updates(self, num_ents, ent_emb, rel_emb):
         ''' perform the changes that are required when the partition is changed during training
         
         Parameters:
         -----------
-        unique_entities: 
-            unique entities of the partition
+        num_ents: 
+            number of unique entities in the partition
         ent_emb:
             entity embeddings that need to be trained for the partition 
             (all triples of the partition will have embeddings in this matrix)
@@ -100,7 +100,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         
         '''
         # save the unique entities of the partition : will be used for corruption generation
-        self.unique_entities = unique_entities
+        self.num_ents = num_ents
         # update the trainable variable in the encoding layer
         self.encoding_layer.partition_change_updates(ent_emb, rel_emb)
 
@@ -120,7 +120,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             list of input scores along with their corruptions
         '''
         # generate the corruptions for the input triples
-        corruptions = self.corruption_layer(inputs, len(self.unique_entities))
+        corruptions = self.corruption_layer(inputs, self.num_ents)
         # lookup embeddings of the inputs
         inp_emb = self.encoding_layer(inputs)
         # lookup embeddings of the inputs
@@ -169,7 +169,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         with tf.GradientTape() as tape:
             # get the model predictions
-            preds = self(data, training=0)
+            preds = self(tf.cast(data, tf.int32), training=0)
             # compute the loss
             loss = self.loss(preds, self.eta)
             # regularizer - will be in a separate class like ampligraph 1
@@ -217,17 +217,18 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         return self.train_function
     
     def fit(self,
-          x=None,
-          batch_size=None,
-          epochs=1,
-          verbose=True,
-          callbacks=None,
-          validation_split=0.,
-          validation_data=None,
-          shuffle=True,
-          initial_epoch=0,
-          validation_batch_size=None,
-          validation_freq=1):
+            x=None,
+            batch_size=None,
+            epochs=1,
+            verbose=True,
+            callbacks=None,
+            validation_split=0.,
+            validation_data=None,
+            shuffle=True,
+            initial_epoch=0,
+            validation_batch_size=None,
+            validation_freq=1,
+            use_partitioning=False):
         
         self.compiled_metric = tf.keras.metrics.Mean
         self._assert_compile_was_called()
@@ -237,7 +238,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
         with training_utils.RespectCompiledTrainableState(self):
             # create data handler
-            self.data_handler = GraphDataLoader(x, batch_size=batch_size, dataset_type="train", epochs=epochs)
+            self.data_handler = data_adapter.DataHandler(x, 
+                                                         model=self, 
+                                                         batch_size=batch_size, 
+                                                         dataset_type='train', 
+                                                         epochs=epochs,
+                                                         use_partitioning=use_partitioning)
         
         # Container that configures and calls `tf.keras.Callback`s.
         if not isinstance(callbacks, callbacks_module.CallbackList):
@@ -254,6 +260,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         
         total_loss = []
         for epoch, iterator in self.data_handler.enumerate_epochs():
+            # TODO: remove this later
+            self.global_epoch = epoch
             callbacks.on_epoch_begin(epoch)
             with self.data_handler.catch_stop_iteration():
                 for step in self.data_handler.steps():
@@ -336,8 +344,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             (corruptions defined by ent_embs matrix)
         '''
         #self._assert_compile_was_called()
-        
-        self.data_handler_test = GraphDataLoader(x, batch_size=batch_size, dataset_type="test", epochs=1, use_indexer = self.data_handler.backend.mapper)
+        self.data_handler_test = data_adapter.DataHandler(x, 
+                                                          batch_size=batch_size, 
+                                                          dataset_type='test', 
+                                                          epochs=1, 
+                                                          use_indexer = self.data_handler.get_mapper())
         self.data_handler_test.temperorily_set_emb_matrix(self.encoding_layer.ent_emb.numpy(), self.encoding_layer.rel_emb.numpy())
 
         # Container that configures and calls `tf.keras.Callback`s.

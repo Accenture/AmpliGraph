@@ -285,7 +285,7 @@ class SQLiteAdapter():
         if self.use_indexer != False:
             #logger.debug(chunk)
             triples = self.mapper.get_indexes(chunk)
-            return np.append(triples, np.array(len(chunk)*[dataset_type]).reshape(-1,1), axis=1)
+            return np.append(triples, np.array(len(triples)*[dataset_type]).reshape(-1,1), axis=1)
         else:
             return np.append(chunk, np.array(len(chunk)*[dataset_type]).reshape(-1,1), axis=1)
 
@@ -491,7 +491,7 @@ class SQLiteAdapter():
             out = self._execute_query(query)
             #logger.debug(out)
             if out:
-                out = np.array(out)[:,:3] 
+                out = np.array(out)[:,:3] .astype(np.int32)
                 
             if use_filter:
                 # get the filter values
