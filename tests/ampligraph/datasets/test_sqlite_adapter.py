@@ -5,7 +5,7 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-from ampligraph.datasets import SQLiteAdapter
+from ampligraph.datasets import SQLiteAdapter, DataSourceIdentifier
 import pytest
 import numpy as np
 import pandas as pd
@@ -20,7 +20,8 @@ df.to_csv('test.csv', index=False, header=False, sep='\t')
 @pytest.fixture(scope=SCOPE)
 def sqlite_adapter(request):
     '''Returns a SQLiteAdapter instance.'''
-    backend = SQLiteAdapter('database.db')
+    src = DataSourceIdentifier('test.csv')
+    backend = SQLiteAdapter('database.db', identifier=src)
     backend._load('test.csv')
     yield backend
     backend._clean()
