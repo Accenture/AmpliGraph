@@ -94,6 +94,7 @@ class DummyBackend():
                     logger.debug("Data won't be indexed")
             elif isinstance(self.use_indexer, DataIndexer):
                   self.mapper = self.use_indexer
+                  self.data = self.mapper.get_indexes(raw_data)
 
 
     def _get_triples(self, subjects=None, objects=None, entities=None):

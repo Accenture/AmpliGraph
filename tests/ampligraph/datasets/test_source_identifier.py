@@ -8,7 +8,7 @@
 import numpy as np
 import pytest
 import pandas as pd
-from ampligraph.datasets import DataSourceIdentifier, load_csv, in_memory_chunks
+from ampligraph.datasets import DataSourceIdentifier, load_csv, chunks
 import os
 
 SCOPE = "function"
@@ -50,7 +50,7 @@ def test_data_source_identifier(source_identifier):
     if isinstance(data_src, str):
         src = data_src.split('.')[-1]
     elif isinstance(data_src, np.ndarray):
-        src = "obj"
+        src = "iter"
     else:
         assert False, "Provided data source is not supported."
     assert src == src_identifier.get_src(), "Source identified not equal to the one provided."
@@ -60,5 +60,5 @@ def test_data_source_identifier_fetch_loader(source_identifier):
     src_identifier, data_src = source_identifier
     loader = src_identifier.fetch_loader()
     data = loader(data_src)
-    assert isinstance(data, np.ndarray) or isinstance(data, pd.DataFrame) or isinstance(data, type(in_memory_chunks([]))), "Returned data should be either in numpy array or pandas data frame, instead got {}".format(type(data))
+    assert isinstance(data, np.ndarray) or isinstance(data, pd.DataFrame) or isinstance(data, type(chunks([]))), "Returned data should be either in numpy array or pandas data frame, instead got {}".format(type(data))
 

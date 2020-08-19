@@ -648,6 +648,7 @@ class DataIndexer():
         #logger.debug(sample)
         i = self.get_starting_index_ents()
         j = self.get_starting_index_rels()
+
         for d in sample:
             if d[0] not in self.reversed_entities_dict:
                 self.reversed_entities_dict[d[0]] = i

@@ -54,7 +54,7 @@ class SQLiteAdapter():
         >>>with SQLiteAdapter("database.db", use_indexer=mapper) as backend:
         >>>    backend.populate("data.csv", dataset_type="train")
     """
-    def __init__(self, db_name, chunk_size=DEFAULT_CHUNKSIZE, root_directory=tempfile.gettempdir(),
+    def __init__(self, db_name, identifier=None, chunk_size=DEFAULT_CHUNKSIZE, root_directory=tempfile.gettempdir(),
                  use_indexer=True, verbose=False, remap=False, name='main_partition', parent=None, in_memory=False):
         """ Initialise SQLiteAdapter.
        
@@ -71,6 +71,13 @@ class SQLiteAdapter():
         """
         self.db_name = db_name
         self.verbose = verbose
+        if identifier is None:
+           msg = "You need to provide source identifier object"
+           logger.error(msg) 
+           raise Exception(msg)
+        else:
+            self.identifier = identifier
+
         self.flag_db_open = False
         self.root_directory = root_directory
         self.db_path = os.path.join(self.root_directory, self.db_name)
@@ -323,7 +330,6 @@ class SQLiteAdapter():
         self.data_source = data_source        
         self.loader = loader
         if loader is None:
-            self.identifier = DataSourceIdentifier(self.data_source)
             self.loader = self.identifier.fetch_loader()
         if not self.is_indexed() and self.use_indexer != False:
             if self.verbose:
