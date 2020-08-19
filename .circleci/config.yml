@@ -27,7 +27,7 @@ jobs:
   build:
     docker:
       - image: *docker-image
-    resource_class: medium+
+    resource_class: medium
     steps:
     - checkout
     - restore_cache: *restore-cache
