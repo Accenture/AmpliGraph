@@ -106,27 +106,32 @@ workflows:
               only:  
                 - master
                 - develop
+                - /release\/.*/
       - pip-check:
           filters:
             branches:
               only:  
                 - master
-                - develop      
+                - develop
+                - /release\/.*/
       - lint:
           filters:
             branches:
               only:  
                 - master
-                - develop      
+                - develop
+                - /release\/.*/
       - docs:
           filters:
             branches:
               only:  
                 - master
-                - develop      
+                - develop
+                - /release\/.*/
       - test:
           filters:
             branches:
               only:  
                 - master
-                - develop       
+                - develop
+                - /release\/.*/
