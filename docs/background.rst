@@ -1,6 +1,10 @@
 Background
 ==========
 
+For a comprehensive theoretical and hands-on overview of KGE models and hands-on AmpliGraph, check out our `ECAI-20 Tutorial (Slides + Recording + Colab Notebook)`_.
+
+.. _ECAI-20 Tutorial (Slides + Recording + Colab Notebook): https://kge-tutorial-ecai2020.github.io/
+
 Knowledge graphs are graph-based knowledge bases whose facts are modeled as relationships between entities. Knowledge graph research led to broad-scope graphs such as DBpedia :cite:`auer2007dbpedia`, WordNet :cite:`wordnet`, and YAGO :cite:`suchanek2007yago`. 
 Countless domain-specific knowledge graphs have also been published on the web, giving birth to the so-called Web of Data :cite:`bizer2011linked`.
 

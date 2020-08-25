@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.3.2 
-**20 Aug 2020**
+**25 Aug 2020**
 
 - Added constant initializer (#205)
 - Ranking strategies for breaking ties (#212)

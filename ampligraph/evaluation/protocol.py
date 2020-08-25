@@ -533,17 +533,17 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
             Otherwise, the function returns n ranks as [n] array.
 
     ranking_strategy: string
-        Specifies the type of score comparision strategy to use while ranking:
+        Specifies the type of score comparison strategy to use while ranking:
 
-        -'worst': assigns the worst rank when scores are equal
-        -'best': assigns the best rank when scores are equal
-        -'middle': assigns the middle rank when scores are equal
+        - 'worst': assigns the worst rank when scores are equal
+        - 'best': assigns the best rank when scores are equal
+        - 'middle': assigns the middle rank when scores are equal
 
         Our recommendation is to use ``worst``.
         Think of a model which assigns constant score to any triples. If you use the ``best`` strategy then 
         the ranks will always be 1 (which is incorrect because the model has not learnt anything). If you choose 
         this model and try to do knowledge discovery, you will not be able to deduce anything as all triples will 
-        get same scores. So to be on safer side while choosing the model, we would recommend either ``worst`` 
+        get the same scores. So to be on safer side while choosing the model, we would recommend either ``worst``
         or ``middle`` strategy.
 
     use_default_protocol: bool
