@@ -214,6 +214,7 @@ def test_evaluate_performance_so_side_corruptions_with_filter():
     assert(mrr is not np.Inf)
 
 
+@pytest.mark.skip(reason="CircleCI free tier upper bound investigation")
 def test_evaluate_performance_so_side_corruptions_without_filter():
     X = load_wn18()
     model = ComplEx(batches_count=10, seed=0, epochs=5, k=200, eta=10, loss='nll',
