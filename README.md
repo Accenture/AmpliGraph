@@ -53,7 +53,7 @@ AmpliGraph includes the following submodules:
 ### Prerequisites
 
 * Linux, macOS, Windows
-* Python ≥ 3.6
+* Python ≥ 3.7
 
 #### Provision a Virtual Environment
 
@@ -72,21 +72,21 @@ Install from pip or conda:
 **CPU-only**
 
 ```
-pip install "tensorflow>=1.14.0,<2.0"
+pip install "tensorflow>=1.15.2,<2.0"
 
 or
 
-conda install tensorflow'>=1.14.0,<2.0.0'
+conda install tensorflow'>=1.15.2,<2.0.0'
 ```
 
 **GPU support**
 
 ```
-pip install "tensorflow-gpu>=1.14.0,<2.0"
+pip install "tensorflow-gpu>=1.15.2,<2.0"
 
 or
 
-conda install tensorflow-gpu'>=1.14.0,<2.0.0'
+conda install tensorflow-gpu'>=1.15.2,<2.0.0'
 ```
 
 
@@ -116,7 +116,7 @@ pip install -e .
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'1.3.1'
+'1.3.2'
 ```
 
 
@@ -142,8 +142,14 @@ Their predictive power is reported below and compared against the state-of-the-a
 completion. In International Conference on Machine Learning, 2869–2878. 2018. <br/>
 **  Kadlec, Rudolf, Ondrej Bajgar, and Jan Kleindienst. "Knowledge base completion: Baselines strike back.
  " arXiv preprint arXiv:1705.10744 (2017).
-
 </sub>
+
+<sub>
+Results above are computed assigning the worst rank to a positive in case of ties. 
+Although this is the most conservative approach, some published literature may adopt an evaluation protocol that assigns
+ the best rank instead. 
+</sub>
+
 
 ## Documentation
 

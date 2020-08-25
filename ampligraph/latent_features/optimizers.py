@@ -173,7 +173,7 @@ class AdagradOptimizer(Optimizer):
 
 @register_optimizer("adam", ['lr'])
 class AdamOptimizer(Optimizer):
-    """Abstract class for loss function.
+    """Wrapper around Adam Optimizer
     """
 
     def __init__(self, optimizer_params, batches_count, verbose=False):
@@ -230,7 +230,7 @@ class AdamOptimizer(Optimizer):
 
 @register_optimizer("momentum", ['lr', 'momentum'])
 class MomentumOptimizer(Optimizer):
-    """Abstract class for loss function.
+    """Wrapper around Momentum Optimizer
     """
 
     def __init__(self, optimizer_params, batches_count, verbose=False):
@@ -304,7 +304,8 @@ class MomentumOptimizer(Optimizer):
 
 @register_optimizer("sgd", ['lr', 'decay_cycle', 'end_lr', 'sine_decay', 'expand_factor', 'decay_lr_rate'])
 class SGDOptimizer(Optimizer):
-
+    '''Wrapper around SGD Optimizer
+    '''
     def __init__(self, optimizer_params, batches_count, verbose=False):
         """Initialize the Optimizer
 
@@ -317,10 +318,12 @@ class SGDOptimizer(Optimizer):
             - **'decay_cycle'**: (int). Cycle of epoch over which to decay (default: 0)
             - **'end_lr'**: (float). Learning Rate lower bound (default: 1e-8)
             - **'cosine_decay'**: (bool). Use cosine decay or to fixed rate decay (default: False)
-            - **'expand_factor'**: (float). Expand the decay cycle length by this factor after each cycle (default: 1)
-            - **'decay_lr_rate'**: (float). Decay factor to decay the start lr after each cycle (default: 2)
+            - **'expand_factor'**: (float). Expand the decay cycle length by this factor after each cycle \
+                (default: 1)
+            - **'decay_lr_rate'**: (float). Decay factor to decay the start lr after each cycle \
+                (default: 2)
 
-            Example: ``optimizer_params={'lr': 0.001}``
+            Example: ``optimizer_params={'lr': 0.01, 'decay_cycle':30, 'end_lr':0.0001, 'sine_decay':True}``
         batches_count: int
             number of batches in an epoch
         verbose : bool

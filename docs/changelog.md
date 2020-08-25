@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.2 
+**25 Aug 2020**
+
+- Added constant initializer (#205)
+- Ranking strategies for breaking ties (#212)
+- ConvE Bug Fixes (#210, #194)
+- Efficient batch sampling (#202)
+- Added pointer to documentation for large graph mode and Docs for Optimizer (#216)
+
+
 ## 1.3.1 
 **18 Mar 2020**
 

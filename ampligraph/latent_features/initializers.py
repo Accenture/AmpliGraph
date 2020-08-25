@@ -82,8 +82,17 @@ class Initializer(abc.ABC):
         """
         raise NotImplementedError('Abstract Method not implemented!')
 
-    def get_tf_initializer(self):
+    def _get_tf_initializer(self, in_shape=None, out_shape=None, concept='e'):
         """Create a tensorflow node for initializer
+
+        Parameters
+        ----------
+        in_shape: int
+            number of inputs to the layer (fan in)
+        out_shape: int
+            number of outputs of the layer (fan out)
+        concept: char
+            concept type (e for entity, r for relation)
 
         Returns
         -------
@@ -91,7 +100,7 @@ class Initializer(abc.ABC):
         """
         raise NotImplementedError('Abstract Method not implemented!')
 
-    def get_np_initializer(self, in_shape, out_shape):
+    def _get_np_initializer(self, in_shape=None, out_shape=None, concept='e'):
         """Create an initialized numpy array
 
         Parameters
@@ -100,6 +109,8 @@ class Initializer(abc.ABC):
             number of inputs to the layer (fan in)
         out_shape: int
             number of outputs of the layer (fan out)
+        concept: char
+            concept type (e for entity, r for relation)
 
         Returns
         -------
@@ -107,6 +118,52 @@ class Initializer(abc.ABC):
             Initialized weights
         """
         raise NotImplementedError('Abstract Method not implemented!')
+
+    def get_entity_initializer(self, in_shape=None, out_shape=None, init_type='tf'):
+        """ Initializer for entity embeddings
+
+        Parameters
+        ----------
+        in_shape: int
+            number of inputs to the layer (fan in)
+        out_shape: int
+            number of outputs of the layer (fan out)
+        init_type: string
+            Type of initializer ('tf' for tensorflow, 'np' for numpy)
+
+        Returns
+        -------
+        initialized_values: tf.Op or n-d array
+            Weights initializer
+        """
+        assert init_type in ['tf', 'np'], 'Invalid initializer type!'
+        if init_type == 'tf':
+            return self._get_tf_initializer(in_shape, out_shape, 'e')
+        else:
+            return self._get_np_initializer(in_shape, out_shape, 'e')
+
+    def get_relation_initializer(self, in_shape=None, out_shape=None, init_type='tf'):
+        """ Initializer for relation embeddings
+
+        Parameters
+        ----------
+        in_shape: int
+            number of inputs to the layer (fan in)
+        out_shape: int
+            number of outputs of the layer (fan out)
+        init_type: string
+            Type of initializer ('tf' for tensorflow, 'np' for numpy)
+
+        Returns
+        -------
+        initialized_values: tf.Op or n-d array
+            Weights initializer
+        """
+        assert init_type in ['tf', 'np'], 'Invalid initializer type!'
+        if init_type == 'tf':
+            return self._get_tf_initializer(in_shape, out_shape, 'r')
+        else:
+            return self._get_np_initializer(in_shape, out_shape, 'r')
 
 
 @register_initializer("normal", ["mean", "std"])
@@ -157,18 +214,27 @@ class RandomNormal(Initializer):
         if self.verbose:
             self._display_params()
 
-    def get_tf_initializer(self):
+    def _get_tf_initializer(self, in_shape=None, out_shape=None, concept='e'):
         """Create a tensorflow node for initializer
+
+        Parameters
+        ----------
+        in_shape: int
+            number of inputs to the layer (fan in)
+        out_shape: int
+            number of outputs of the layer (fan out)
+        concept: char
+            concept type (e for entity, r for relation)
 
         Returns
         -------
-        out: An random normal initializer instance.
+        initializer_instance: An Initializer instance.
         """
         return tf.random_normal_initializer(mean=self._initializer_params['mean'],
                                             stddev=self._initializer_params['std'],
                                             dtype=tf.float32)
 
-    def get_np_initializer(self, in_shape, out_shape):
+    def _get_np_initializer(self, in_shape, out_shape, concept='e'):
         """Create an initialized numpy array
 
         Parameters
@@ -177,6 +243,8 @@ class RandomNormal(Initializer):
             number of inputs to the layer (fan in)
         out_shape: int
             number of outputs of the layer (fan out)
+        concept: char
+            concept type (e for entity, r for relation)
 
         Returns
         -------
@@ -236,18 +304,27 @@ class RandomUniform(Initializer):
         if self.verbose:
             self._display_params()
 
-    def get_tf_initializer(self):
+    def _get_tf_initializer(self, in_shape=None, out_shape=None, concept='e'):
         """Create a tensorflow node for initializer
+
+        Parameters
+        ----------
+        in_shape: int
+            number of inputs to the layer (fan in)
+        out_shape: int
+            number of outputs of the layer (fan out)
+        concept: char
+            concept type (e for entity, r for relation)
 
         Returns
         -------
-        out: An random uniform initializer instance.
+        initializer_instance: An Initializer instance.
         """
         return tf.random_uniform_initializer(minval=self._initializer_params['low'],
                                              maxval=self._initializer_params['high'],
                                              dtype=tf.float32)
 
-    def get_np_initializer(self, in_shape, out_shape):
+    def _get_np_initializer(self, in_shape, out_shape, concept='e'):
         """Create an initialized numpy array
 
         Parameters
@@ -256,6 +333,8 @@ class RandomUniform(Initializer):
             number of inputs to the layer (fan in)
         out_shape: int
             number of outputs of the layer (fan out)
+        concept: char
+            concept type (e for entity, r for relation)
 
         Returns
         -------
@@ -323,17 +402,26 @@ class Xavier(Initializer):
         if self.verbose:
             self._display_params()
 
-    def get_tf_initializer(self):
+    def _get_tf_initializer(self, in_shape=None, out_shape=None, concept='e'):
         """Create a tensorflow node for initializer
+
+        Parameters
+        ----------
+        in_shape: int
+            number of inputs to the layer (fan in)
+        out_shape: int
+            number of outputs of the layer (fan out)
+        concept: char
+            concept type (e for entity, r for relation)
 
         Returns
         -------
-        out: An xavier normal/uniform initializer instance.
+        initializer_instance: An Initializer instance.
         """
         return tf.contrib.layers.xavier_initializer(uniform=self._initializer_params['uniform'],
                                                     dtype=tf.float32)
 
-    def get_np_initializer(self, in_shape, out_shape):
+    def _get_np_initializer(self, in_shape, out_shape, concept='e'):
         """Create an initialized numpy array
 
         Parameters
@@ -342,6 +430,8 @@ class Xavier(Initializer):
             number of inputs to the layer (fan in)
         out_shape: int
             number of outputs of the layer (fan out)
+        concept: char
+            concept type (e for entity, r for relation)
 
         Returns
         -------
@@ -354,3 +444,111 @@ class Xavier(Initializer):
         else:
             std = np.sqrt(2 / (in_shape + out_shape))
             return self.random_generator.normal(0, std, size=(in_shape, out_shape)).astype(np.float32)
+
+
+@register_initializer("constant", ["entity", "relation"])
+class Constant(Initializer):
+    r"""Initializes with the constant values provided by the user
+
+    """
+
+    name = ""
+    external_params = []
+    class_params = {}
+
+    def __init__(self, initializer_params={}, verbose=True, seed=0):
+        """Initialize the the constant values provided by the user
+
+        Parameters
+        ----------
+        initializer_params : dict
+            Consists of key-value pairs. The initializer will check the keys to get the corresponding params:
+
+            - **entity**: (np.ndarray.float32). Initial values for entity embeddings
+            - **relation**: (np.ndarray.float32). Initial values for relation embeddings
+
+            Example: ``initializer_params={'entity': ent_init_value, 'relation': rel_init_value}``
+        verbose : bool
+            Enable/disable verbose mode
+        seed : int/np.random.RandomState
+            random state for random number generator
+        """
+
+        super(Constant, self).__init__(initializer_params, verbose, seed)
+
+    def _init_hyperparams(self, hyperparam_dict):
+        """ Initializes the hyperparameters.
+
+        Parameters
+        ----------
+        hyperparam_dict : dictionary
+            Consists of key value pairs. The initializer will check the keys to get the corresponding params
+        """
+        try:
+            self._initializer_params['entity'] = hyperparam_dict['entity']
+            self._initializer_params['relation'] = hyperparam_dict['relation']
+        except KeyError:
+            raise Exception('Initial values of both entity and relation embeddings need to '
+                            'be passed to the initializer!')
+        if self.verbose:
+            self._display_params()
+
+    def _get_tf_initializer(self, in_shape=None, out_shape=None, concept='e'):
+        """Create a tensorflow node for initializer
+
+        Parameters
+        ----------
+        in_shape: int
+            number of inputs to the layer (fan in)
+        out_shape: int
+            number of outputs of the layer (fan out)
+        concept: char
+            concept type (e for entity, r for relation)
+
+        Returns
+        -------
+        initializer_instance: An Initializer instance.
+        """
+
+        if concept == 'e':
+            assert self._initializer_params['entity'].shape[0] == in_shape and \
+                self._initializer_params['entity'].shape[1] == out_shape, \
+                "Invalid shape for entity initializer!"
+
+            return tf.compat.v1.constant_initializer(self._initializer_params['entity'], dtype=tf.float32)
+        else:
+            assert self._initializer_params['relation'].shape[0] == in_shape and \
+                self._initializer_params['relation'].shape[1] == out_shape, \
+                "Invalid shape for relation initializer!"
+
+            return tf.compat.v1.constant_initializer(self._initializer_params['relation'], dtype=tf.float32)
+
+    def _get_np_initializer(self, in_shape, out_shape, concept='e'):
+        """Create an initialized numpy array
+
+        Parameters
+        ----------
+        in_shape: int
+            number of inputs to the layer (fan in)
+        out_shape: int
+            number of outputs of the layer (fan out)
+        concept: char
+            concept type (e for entity, r for relation)
+
+        Returns
+        -------
+        out: n-d array
+            matrix initialized using constant values supplied by the user
+        """
+        if concept == 'e':
+            assert self._initializer_params['entity'].shape[0] == in_shape and \
+                self._initializer_params['entity'].shape[1] == out_shape, \
+                "Invalid shape for entity initializer!"
+
+            return self._initializer_params['entity']
+        else:
+            assert self._initializer_params['relation'].shape[0] == in_shape and \
+                self._initializer_params['relation'].shape[1] == out_shape, \
+                "Invalid shape for relation initializer!"
+
+            return self._initializer_params['relation']

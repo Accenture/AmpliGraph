@@ -1,4 +1,4 @@
-# Copyright 2019 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2020 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -22,11 +22,9 @@ setup_params = dict(name='ampligraph',
                         'numpy>=1.14.3',
                         'pytest>=3.5.1',
                         'scikit-learn>=0.19.1',
-                        'deap>=1.2.2',
-                        'joblib>=0.11',
                         'tqdm>=4.23.4',
                         'pandas>=0.23.1',
-                        'sphinx>=2.2',
+                        'sphinx>=2.2, < 3',
                         'recommonmark>=0.4.0',
                         'sphinx_rtd_theme>=0.4.0',
                         'sphinxcontrib-bibtex>=0.4.0',

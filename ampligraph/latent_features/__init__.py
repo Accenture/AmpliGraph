@@ -1,4 +1,4 @@
-# Copyright 2019 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2020 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -27,7 +27,7 @@ from .loss_functions import Loss, AbsoluteMarginLoss, SelfAdversarialLoss, NLLLo
     NLLMulticlass, BCELoss, LOSS_REGISTRY
 from .regularizers import Regularizer, LPRegularizer, REGULARIZER_REGISTRY
 from .optimizers import Optimizer, AdagradOptimizer, AdamOptimizer, MomentumOptimizer, SGDOptimizer, OPTIMIZER_REGISTRY
-from .initializers import Initializer, RandomNormal, RandomUniform, Xavier, INITIALIZER_REGISTRY
+from .initializers import Initializer, RandomNormal, RandomUniform, Xavier, Constant, INITIALIZER_REGISTRY
 from .misc import get_entity_triples
 from ..utils import save_model, restore_model
 
@@ -36,5 +36,6 @@ __all__ = ['LOSS_REGISTRY', 'REGULARIZER_REGISTRY', 'MODEL_REGISTRY', 'OPTIMIZER
            'EmbeddingModel', 'TransE', 'DistMult', 'ComplEx', 'HolE', 'ConvKB', 'ConvE', 'RandomBaseline',
            'Loss', 'AbsoluteMarginLoss', 'SelfAdversarialLoss', 'NLLLoss', 'PairwiseLoss', 'BCELoss', 'NLLMulticlass',
            'Regularizer', 'LPRegularizer', 'Optimizer', 'AdagradOptimizer', 'AdamOptimizer', 'MomentumOptimizer',
-           'SGDOptimizer', 'Initializer', 'RandomNormal', 'RandomUniform', 'Xavier', 'get_entity_triples',
+           'SGDOptimizer', 'Initializer', 'RandomNormal', 'RandomUniform', 'Xavier', 'Constant', 
+           'get_entity_triples',
            'save_model', 'restore_model']

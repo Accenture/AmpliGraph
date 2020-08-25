@@ -1,6 +1,6 @@
 .common-values:
 
-  docker-image: &docker-image circleci/python:3.6.4
+  docker-image: &docker-image circleci/python:3.7.9
 
   restore-cache: &restore-cache
     keys:
@@ -19,7 +19,7 @@
     name: Install package
     command: |
       . venv/bin/activate
-      venv/bin/python3 -m pip install tensorflow==1.13.1
+      venv/bin/python3 -m pip install tensorflow==1.15.3
       venv/bin/python3 -m pip install .
 
 version: 2
@@ -27,6 +27,7 @@ jobs:
   build:
     docker:
       - image: *docker-image
+    resource_class: medium
     steps:
     - checkout
     - restore_cache: *restore-cache
@@ -105,27 +106,32 @@ workflows:
               only:  
                 - master
                 - develop
+                - /release\/.*/
       - pip-check:
           filters:
             branches:
               only:  
                 - master
-                - develop      
+                - develop
+                - /release\/.*/
       - lint:
           filters:
             branches:
               only:  
                 - master
-                - develop      
+                - develop
+                - /release\/.*/
       - docs:
           filters:
             branches:
               only:  
                 - master
-                - develop      
+                - develop
+                - /release\/.*/
       - test:
           filters:
             branches:
               only:  
                 - master
-                - develop       
+                - develop
+                - /release\/.*/

@@ -1,4 +1,4 @@
-# Copyright 2019 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2020 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -497,15 +497,22 @@ class EmbeddingModel(abc.ABC):
         """
         if not self.dealing_with_large_graphs:
             self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.internal_k],
-                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
+                                           initializer=self.initializer.get_entity_initializer(
+                                               len(self.ent_to_idx), self.internal_k),
+                                           dtype=tf.float32)
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
-                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
+                                           initializer=self.initializer.get_relation_initializer(
+                                               len(self.rel_to_idx), self.internal_k),
+                                           dtype=tf.float32)
         else:
-
+            # initialize entity embeddings to zero (these are reinitialized every batch by batch embeddings)
             self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
-                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
+                                           initializer=tf.zeros_initializer(),
+                                           dtype=tf.float32)
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
-                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
+                                           initializer=self.initializer.get_relation_initializer(
+                                               len(self.rel_to_idx), self.internal_k),
+                                           dtype=tf.float32)
 
     def _get_model_loss(self, dataset_iterator):
         """Get the current loss including loss due to regularization.
@@ -893,13 +900,16 @@ class EmbeddingModel(abc.ABC):
                     raise Exception('Early stopping not supported for large graphs')
 
                 if not isinstance(self.optimizer, SGDOptimizer):
-                    raise Exception("This mode works well only with SGD optimizer with decay (read docs for details).\
- Kindly change the optimizer and restart the experiment")
+                    raise Exception("This mode works well only with SGD optimizer with decay.\
+ Kindly change the optimizer and restart the experiment. For details refer the following link: \n \
+ https://docs.ampligraph.org/en/latest/dev_notes.html#dealing-with-large-graphs")
 
             if self.dealing_with_large_graphs:
                 prefetch_batches = 0
                 # CPU matrix of embeddings
-                self.ent_emb_cpu = self.initializer.get_np_initializer(len(self.ent_to_idx), self.internal_k)
+                self.ent_emb_cpu = self.initializer.get_entity_initializer(len(self.ent_to_idx),
+                                                                           self.internal_k,
+                                                                           'np')
 
             self.train_dataset_handle.map_data()
 
@@ -1319,24 +1329,64 @@ class EmbeddingModel(abc.ABC):
             # compute the ranks of the positives present in the corruptions and
             # see how many are ranked higher than the test triple
             if 'o' in corrupt_side:
-                positives_among_obj_corruptions_ranked_higher = tf.reduce_sum(
-                    tf.cast(scores_pos_obj >= self.score_positive, tf.int32))
+                positives_among_obj_corruptions_ranked_higher = self.perform_comparision(scores_pos_obj,
+                                                                                         self.score_positive)
             if 's' in corrupt_side:
-                positives_among_sub_corruptions_ranked_higher = tf.reduce_sum(
-                    tf.cast(scores_pos_sub >= self.score_positive, tf.int32))
+                positives_among_sub_corruptions_ranked_higher = self.perform_comparision(scores_pos_sub,
+                                                                                         self.score_positive)
 
         # compute the rank of the test triple and subtract the positives(from corruptions) that are ranked higher
         if corrupt_side == 's,o':
-            self.rank = tf.stack([tf.reduce_sum(tf.cast(
-                subj_corruption_scores >= self.score_positive,
-                tf.int32)) + 1 - positives_among_sub_corruptions_ranked_higher,
-                tf.reduce_sum(tf.cast(obj_corruption_scores >= self.score_positive,
-                                      tf.int32)) + 1 - positives_among_obj_corruptions_ranked_higher], 0)
+            self.rank = tf.stack([
+                self.perform_comparision(subj_corruption_scores,
+                                         self.score_positive) + 1 - positives_among_sub_corruptions_ranked_higher,
+                self.perform_comparision(obj_corruption_scores, 
+                                         self.score_positive) + 1 - positives_among_obj_corruptions_ranked_higher], 0)
         else:
-            self.rank = tf.reduce_sum(tf.cast(
-                self.scores_predict >= self.score_positive,
-                tf.int32)) + 1 - positives_among_sub_corruptions_ranked_higher - \
+            self.rank = self.perform_comparision(self.scores_predict, 
+                                                 self.score_positive) + 1 - \
+                positives_among_sub_corruptions_ranked_higher - \
                 positives_among_obj_corruptions_ranked_higher
+
+    def perform_comparision(self, score_corr, score_pos):
+        ''' compares the scores of corruptions and positives using the specified strategy.
+
+        Parameters:
+        -----------
+        score_corr:
+            Tensor of scores of corruptions
+        score_pos:
+            Tensor of score of positive triple
+
+        Returns:
+        --------
+        out:
+            comparision output based on specified strategy
+        '''
+        comparision_type = self.eval_config.get('ranking_strategy',
+                                                constants.DEFAULT_RANK_COMPARE_STRATEGY)
+
+        assert comparision_type in ['worst', 'best', 'middle'], 'Invalid score comparision type!'
+
+        score_corr = tf.cast(score_corr * constants.SCORE_COMPARISION_PRECISION, tf.int32)
+
+        score_pos = tf.cast(score_pos * constants.SCORE_COMPARISION_PRECISION, tf.int32)
+
+        # if pos score: 0.5, corr_score: 0.5, 0.5, 0.3, 0.6, 0.5, 0.5
+        if comparision_type == 'best':
+            # returns: 1 i.e. only. 1 corruption is having score greater than positive (optimistic)
+            return tf.reduce_sum(tf.cast(score_corr > score_pos, tf.int32))
+        elif comparision_type == 'middle':
+
+            # returns: 3 i.e. 1 + (4/2) i.e. only 1  corruption is having score greater than positive
+            # and 4 corruptions are having same (middle rank is 4/2 = 1), so 1+2=3
+            return tf.reduce_sum(tf.cast(score_corr > score_pos, tf.int32)) + \
+                tf.cast(tf.math.ceil(tf.reduce_sum(tf.cast(score_corr == score_pos, tf.int32)) / 2),
+                        tf.int32)
+        else:
+            # returns: 5 i.e. 5 corruptions are having score >= positive
+            # as you can see this strategy returns the worst rank (pessimistic)
+            return tf.reduce_sum(tf.cast(score_corr >= score_pos, tf.int32))
 
     def end_evaluation(self):
         """End the evaluation and close the Tensorflow session.

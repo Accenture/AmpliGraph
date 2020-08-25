@@ -1,4 +1,4 @@
-# Copyright 2019 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2020 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -20,6 +20,7 @@ import tensorflow as tf
 from ampligraph.evaluation import train_test_split_no_unseen
 from ampligraph.evaluation.protocol import _next_hyperparam, _next_hyperparam_random, _remove_unused_params, \
     ParamHistory, _get_param_hash, _sample_parameters, _scalars_into_lists, _flatten_nested_keys, _unflatten_nested_keys
+
 
 # test for #186
 def test_evaluate_performance_too_many_entities_warning():
@@ -213,6 +214,7 @@ def test_evaluate_performance_so_side_corruptions_with_filter():
     assert(mrr is not np.Inf)
 
 
+@pytest.mark.skip(reason="CircleCI free tier upper bound investigation")
 def test_evaluate_performance_so_side_corruptions_without_filter():
     X = load_wn18()
     model = ComplEx(batches_count=10, seed=0, epochs=5, k=200, eta=10, loss='nll',

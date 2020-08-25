@@ -1,4 +1,4 @@
-# Copyright 2019 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2020 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -12,9 +12,7 @@ import os
 from ampligraph.latent_features import TransE, DistMult, ComplEx, HolE, RandomBaseline, ConvKB, ConvE
 from ampligraph.latent_features import set_entity_threshold, reset_entity_threshold
 from ampligraph.datasets import load_wn18, load_wn18rr
-from ampligraph.utils import save_model, restore_model
 from ampligraph.evaluation import evaluate_performance, hits_at_n_score
-from ampligraph.datasets import OneToNDatasetAdapter
 from ampligraph.utils import save_model, restore_model
 from ampligraph.evaluation.protocol import to_idx
 
@@ -281,7 +279,7 @@ def test_missing_entity_ComplEx():
 
 def test_fit_predict_wn18_ComplEx():
     X = load_wn18()
-    model = ComplEx(batches_count=1, seed=555, epochs=5, k=100,
+    model = ComplEx(batches_count=1, seed=555, epochs=5, k=10,
                     loss='pairwise', loss_params={'margin': 1}, regularizer='LP',
                     regularizer_params={'lambda': 0.1, 'p': 2},
                     optimizer='adagrad', optimizer_params={'lr': 0.1})
@@ -340,23 +338,36 @@ def test_is_fitted_on():
 
 def test_conve_fit_predict_save_restore():
 
-    X = load_wn18()
-    model = ConvE(batches_count=100, seed=22, epochs=1, k=10,
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'y', 'a'],
+                  ['a', 'y', 'd'],
+                  ['c', 'y', 'd'],
+                  ['b', 'y', 'c'],
+                  ['f', 'y', 'e']])
+
+    X_test = np.array([['f', 'y', 'a'],
+                       ['f', 'y', 'b']])
+
+    model = ConvE(batches_count=1, seed=22, epochs=1, k=10,
                   embedding_model_params={'conv_filters': 16, 'conv_kernel_size': 3},
                   optimizer='adam', optimizer_params={'lr': 0.01},
                   loss='bce', loss_params={},
                   regularizer=None, regularizer_params={'p': 2, 'lambda': 1e-5},
                   verbose=True, low_memory=True)
 
-    model.fit(X['train'])
 
-    y1 = model.predict(X['test'][:5])
+    model.fit(X)
+
+    y1 = model.predict(X_test)
+    print(y1)
 
     save_model(model, 'model.tmp')
     del model
     model = restore_model('model.tmp')
 
-    y2 = model.predict(X['test'][:5])
+    y2 = model.predict(X_test)
 
     assert np.all(y1 == y2)
     os.remove('model.tmp')
@@ -364,22 +375,25 @@ def test_conve_fit_predict_save_restore():
 
 def test_conve_evaluation_protocol():
     X = load_wn18()
-    model = ConvE(batches_count=200, seed=22, epochs=1, k=10,
+    model = ConvE(batches_count=10, seed=22, epochs=1, k=10,
                   embedding_model_params={'conv_filters': 16, 'conv_kernel_size': 3},
                   optimizer='adam', optimizer_params={'lr': 0.01},
                   loss='bce', loss_params={},
                   regularizer=None, regularizer_params={'p': 2, 'lambda': 1e-5},
                   verbose=True, low_memory=True)
 
-    model.fit(X['train'])
+    model.fit(X['train'][:100])
 
-    y1 = model.predict(X['test'][:5])
+    X_test = np.array([[X['train'][0][0], X['train'][0][1], X['train'][50][2]],
+                       [X['train'][0][0], X['train'][0][1], X['train'][49][2]]])
+
+    y1 = model.predict(X_test)
 
     save_model(model, 'model.tmp')
     del model
     model = restore_model('model.tmp')
 
-    y2 = model.predict(X['test'][:5])
+    y2 = model.predict(X_test)
 
     assert np.all(y1 == y2)
 
@@ -400,23 +414,38 @@ def test_convkb_train_predict():
                    verbose=True)
 
     X = load_wn18()
-    model.fit(X['train'])
+    model.fit(X['train'][:100])
 
-    y1 = model.predict(X['test'][:5])
+    X_test = np.array([[X['train'][0][0], X['train'][0][1], X['train'][50][2]],
+                       [X['train'][0][0], X['train'][0][1], X['train'][49][2]]])
+
+    y1 = model.predict(X_test)
 
     save_model(model, 'convkb.tmp')
     del model
 
     model = restore_model('convkb.tmp')
 
-    y2 = model.predict(X['test'][:5])
+    y2 = model.predict(X_test)
 
     assert np.all(y1 == y2)
 
 
 def test_convkb_save_restore():
 
-    model = ConvKB(batches_count=2, seed=22, epochs=1, k=10, eta=1,
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['a', 'y', 'c'],
+                  ['c', 'y', 'a'],
+                  ['a', 'y', 'd'],
+                  ['c', 'y', 'd'],
+                  ['b', 'y', 'c'],
+                  ['f', 'y', 'e']])
+
+    X_test = np.array([['f', 'y', 'a'],
+                       ['f', 'y', 'b']])
+
+    model = ConvKB(batches_count=1, seed=22, epochs=1, k=10, eta=1,
                    embedding_model_params={'num_filters': 16,
                                            'filter_sizes': [1],
                                            'dropout': 0.0,
@@ -427,15 +456,14 @@ def test_convkb_save_restore():
                    loss_params={},
                    verbose=True)
 
-    X = load_wn18()
-    model.fit(X['train'])
-    y1 = model.predict(X['test'][:10])
+    model.fit(X)
+    y1 = model.predict(X_test)
 
     save_model(model, 'convkb.tmp')
     del model
     model = restore_model('convkb.tmp')
 
-    y2 = model.predict(X['test'][:10])
+    y2 = model.predict(X_test)
 
     assert np.all(y1 == y2)
 

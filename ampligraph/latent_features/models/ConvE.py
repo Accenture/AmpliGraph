@@ -255,9 +255,13 @@ class ConvE(EmbeddingModel):
             dense_dim = self.embedding_model_params['dense_dim']
 
             self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k],
-                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
+                                           initializer=self.initializer.get_entity_initializer(
+                                           len(self.ent_to_idx), self.k),
+                                           dtype=tf.float32)
             self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
-                                           initializer=self.initializer.get_tf_initializer(), dtype=tf.float32)
+                                           initializer=self.initializer.get_relation_initializer(
+                                           len(self.rel_to_idx), self.k),
+                                           dtype=tf.float32)
 
             self.conv2d_W = tf.get_variable('conv2d_weights', shape=[ksize, ksize, ninput, nfilters],
                                             initializer=tf.initializers.he_normal(seed=self.seed),
@@ -580,8 +584,8 @@ class ConvE(EmbeddingModel):
                 - **'stop_interval'**: int : Stop if criteria is performing worse over n consecutive checks (default: 3)
                 - **'corruption_entities'**: List of entities to be used for corruptions. If 'all',
                   it uses all entities (default: 'all')
-                - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's,o' (default). Note: ConvE does not
-                    currently support 's+o' evaluation mode.
+                - **'corrupt_side'**: Specifies which side to corrupt. 'o' (default). Note: ConvE does not
+                    currently support subject corruptions in early stopping.
 
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
@@ -622,9 +626,6 @@ class ConvE(EmbeddingModel):
                                     "Kindly change the optimizer and restart the experiment")
 
                 raise NotImplementedError('ConvE not implemented when dealing with large graphs.')
-
-                # CPU matrix of embeddings
-                self.ent_emb_cpu = self.initializer.get_np_initializer(len(self.ent_to_idx), self.internal_k)
 
             self.train_dataset_handle.map_data()
 
@@ -767,33 +768,28 @@ class ConvE(EmbeddingModel):
 
         self.X_test_tf, self.X_test_filter_tf = dataset_iter.get_next()
 
-        if self.dealing_with_large_graphs:
-            raise NotImplementedError('ConvE not implemented with large graphs (yet)')
+        e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
 
-        else:
+        # Scores for all triples
+        scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)), name='sigmoid_scores')
 
-            e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
+        # Score of positive triple
+        self.score_positive = tf.gather(scores, indices=self.X_test_tf[:, 2], name='score_positive')
 
-            # Scores for all triples
-            scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)), name='sigmoid_scores')
+        # Scores for positive triples
+        self.scores_filtered = tf.boolean_mask(scores, tf.cast(self.X_test_filter_tf, tf.bool))
 
-            # Score of positive triple
-            self.score_positive = tf.gather(scores, indices=self.X_test_tf[:, 2], name='score_positive')
+        # Triple rank over all triples
+        self.total_rank = self.perform_comparision(scores, self.score_positive)
 
-            # Scores for positive triples
-            self.scores_filtered = tf.boolean_mask(scores, tf.cast(self.X_test_filter_tf, tf.bool))
+        # Triple rank over positive triples
+        self.filter_rank = self.perform_comparision(self.scores_filtered, self.score_positive)
 
-            # Triple rank over all triples
-            self.total_rank = tf.reduce_sum(tf.cast(scores >= self.score_positive, tf.int32))
+        # Rank of triple, with other positives filtered out.
+        self.rank = tf.subtract(self.total_rank, self.filter_rank, name='rank') + 1
 
-            # Triple rank over positive triples
-            self.filter_rank = tf.reduce_sum(tf.cast(self.scores_filtered >= self.score_positive, tf.int32))
-
-            # Rank of triple, with other positives filtered out.
-            self.rank = tf.subtract(self.total_rank, self.filter_rank, name='rank') + 1
-
-            # NOTE: if having trouble with the above rank calculation, consider when test triple
-            # has the highest score (total_rank=1, filter_rank=1)
+        # NOTE: if having trouble with the above rank calculation, consider when test triple
+        # has the highest score (total_rank=1, filter_rank=1)
 
     def _initialize_early_stopping(self):
         """Initializes and creates evaluation graph for early stopping.
@@ -814,16 +810,7 @@ class ConvE(EmbeddingModel):
                 logger.error(msg)
                 raise ValueError(msg)
 
-            if self.early_stopping_params['corrupt_side'] == 's+o':
-                msg = "ConvE does not support `s+o` corruption strategy. Please change to: 's', 'o', or 's, o'"
-                logger.error(msg)
-                raise ValueError(msg)
-
-            if self.early_stopping_params['corrupt_side'] in ['s,o', 's']:
-                logger.warning('ConvE with early stopping is significantly slower with subject corruptions.'
-                               'For best performance use ``corrupt_side="o"``.')
-
-                # store the validation data in the data handler
+            # store the validation data in the data handler
             self.train_dataset_handle.set_data(self.x_valid, 'valid')
             self.eval_dataset_handle = self.train_dataset_handle
             logger.debug('Initialized eval_dataset from train_dataset using.')
@@ -849,6 +836,14 @@ class ConvE(EmbeddingModel):
 
         if self.early_stopping_criteria not in ['hits10', 'hits1', 'hits3', 'mrr']:
             msg = 'Unsupported early stopping criteria.'
+            logger.error(msg)
+            raise ValueError(msg)
+
+        self.eval_config['corrupt_side'] = self.early_stopping_params.get('corrupt_side',
+                                                                          constants.DEFAULT_CORRUPT_SIDE_EVAL)
+
+        if 's' in self.eval_config['corrupt_side']:
+            msg = "ConvE does not support subject corruptions in early stopping. Please change to: 'o'"
             logger.error(msg)
             raise ValueError(msg)
 
@@ -994,6 +989,10 @@ class ConvE(EmbeddingModel):
         self.rnd = check_random_state(self.seed)
         tf.random.set_random_seed(self.seed)
         self._load_model_from_trained_params()
+
+        # Set the output mapping of the dataset handle - this is superceded if a filter has been set.
+        dataset_handle.set_output_mapping(self.output_mapping)
+
         self._initialize_eval_graph()
 
         with tf.Session(config=self.tf_config) as sess:
@@ -1074,6 +1073,10 @@ class ConvE(EmbeddingModel):
         self.rnd = check_random_state(self.seed)
         tf.random.set_random_seed(self.seed)
         self._load_model_from_trained_params()
+
+        # Set the output mapping of the dataset handle - this is superceded if a filter has been set.
+        dataset_handle.set_output_mapping(self.output_mapping)
+
         self._initialize_eval_graph_subject()
 
         if not corruption_batch_size:

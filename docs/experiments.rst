@@ -10,6 +10,11 @@ Predictive Performance
 We report the filtered MR, MRR, Hits@1,3,10 for the most common datasets used in literature.
 
 
+Results are computed assigning the worst rank to a positive test triple in case of tie with its synthetic negatives.
+Although this is the most conservative approach, some published literature may adopt an evaluation protocol that assigns
+the best rank instead. Check out the documentation of :meth:`ampligraph.evaluation.evaluate_performance` for details.
+
+
 .. note:: **On ConvE Evaluation**.
     Results reported in the literature for ConvE are based on the alternative *1-N* evaluation protocol which requires
     that reciprocal relations are added to the dataset :cite:`DettmersMS018`:

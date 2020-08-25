@@ -1,6 +1,6 @@
 # About
 
-AmpliGraph is maintained by [Accenture Labs Dublin](https://www.accenture.com/us-en/accenture-technology-labs-index).
+AmpliGraph is developed and maintained by [Accenture Labs Dublin](https://www.accenture.com/us-en/accenture-technology-labs-index).
 
 ## Contact us
 
@@ -43,6 +43,7 @@ If you instead use AmpliGraph in an academic publication, cite as:
 Active contributors (in alphabetical order)
 
 + [Luca Costabello](http://github.com/lukostaz)
++ [Adrianna Janik](https://github.com/adrijanik)
 + [Chan Le Van](http://github.com/chanlevan)
 + [Nicholas McCarthy](http://github.com/NicholasMcCarthy)
 + [Rory McGrath](http://github.com/rorymcgrath)

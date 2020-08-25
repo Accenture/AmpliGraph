@@ -1,4 +1,4 @@
-# Copyright 2019 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2020 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -26,7 +26,7 @@ logger.setLevel(logging.DEBUG)
 TOO_MANY_ENTITIES_TH = 50000
 
 
-def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False):
+def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False, filtered_test_predicates=None):
     """Split into train and test sets.
 
      This function carves out a test set that contains only entities
@@ -43,6 +43,10 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
         A random seed used to split the dataset.
     allow_duplication: boolean
         Flag to indicate if the test set can contain duplicated triples.
+    filtered_test_predicates: None, list
+        If None, all predicate types will be considered for the test set.
+        If list, only the predicate types in the list will be considered for
+        the test set.
 
     Returns
     -------
@@ -115,8 +119,14 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
 
     loop_count = 0
     tolerance = len(X) * 10
+    # Set the indices of test set triples. If filtered, reduce candidate triples to certain predicate types.
+    if filtered_test_predicates:
+        test_triples_idx = np.where(np.isin(X[:, 1], filtered_test_predicates))[0]
+    else:
+        test_triples_idx = np.arange(len(X))
+
     while idx_test.shape[0] < test_size:
-        i = rnd.randint(len(X))
+        i = rnd.choice(test_triples_idx)
         if dict_subs[X[i, 0]] > 1 and dict_objs[X[i, 2]] > 1 and dict_rels[X[i, 1]] > 1:
             dict_subs[X[i, 0]] -= 1
             dict_objs[X[i, 2]] -= 1
@@ -133,12 +143,14 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
             if allow_duplication:
                 raise Exception("Cannot create a test split of the desired size. "
                                 "Some entities will not occur in both training and test set. "
-                                "Change seed values, or set test_size to a smaller value.")
+                                "Change seed values, remove filter on test predicates or set "
+                                "test_size to a smaller value.")
             else:
                 raise Exception("Cannot create a test split of the desired size. "
                                 "Some entities will not occur in both training and test set. "
-                                "Set allow_duplication=True, or "
-                                "change seed values, or set test_size to a smaller value.")
+                                "Set allow_duplication=True,"
+                                "change seed values, remove filter on test predicates or "
+                                "set test_size to a smaller value.")
 
     logger.debug('Completed random search.')
 
@@ -360,10 +372,10 @@ def generate_corruptions_for_fit(X, entities_list=None, eta=1, corrupt_side='s,o
                            tf.slice(X, [0, 2], [tf.shape(X)[0], 1])],
                           0)))
 
-        random_indices = tf.squeeze(tf.multinomial(tf.expand_dims(tf.zeros(tf.shape(entities_list)[0]), 0),
-                                                   num_samples=tf.shape(dataset)[0],
-                                                   seed=rnd))
-
+        random_indices = tf.random.uniform(shape=(tf.shape(dataset)[0],),
+                                           maxval=tf.shape(entities_list)[0],
+                                           dtype=tf.int32,
+                                           seed=rnd)
         replacements = tf.gather(entities_list, random_indices)
 
     subjects = tf.math.add(tf.math.multiply(keep_subj_mask, dataset[:, 0]),
@@ -432,7 +444,7 @@ def to_idx(X, ent_to_idx, rel_to_idx):
 
 
 def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_unseen=True, entities_subset=None,
-                         corrupt_side='s,o', use_default_protocol=False):
+                         corrupt_side='s,o', ranking_strategy='worst', use_default_protocol=False):
     """Evaluate the performance of an embedding model.
 
     The evaluation protocol follows the procedure defined in :cite:`bordes2013translating` and can be summarised as:
@@ -492,7 +504,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
             * We compute the rank of the test triple by comparing against ALL the corruptions.
             * We then compute the number of False negatives that are ranked higher than the test triple; and then
               subtract this value from the above computed rank to yield the final filtered rank.
-              
+
             **Execution Time:** This method takes ~4 minutes on FB15K using ComplEx
             (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
 
@@ -519,6 +531,20 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
             The first column of the array represents the subject corruptions.
             The second column of the array represents the object corruptions.
             Otherwise, the function returns n ranks as [n] array.
+
+    ranking_strategy: string
+        Specifies the type of score comparison strategy to use while ranking:
+
+        - 'worst': assigns the worst rank when scores are equal
+        - 'best': assigns the best rank when scores are equal
+        - 'middle': assigns the middle rank when scores are equal
+
+        Our recommendation is to use ``worst``.
+        Think of a model which assigns constant score to any triples. If you use the ``best`` strategy then 
+        the ranks will always be 1 (which is incorrect because the model has not learnt anything). If you choose 
+        this model and try to do knowledge discovery, you will not be able to deduce anything as all triples will 
+        get the same scores. So to be on safer side while choosing the model, we would recommend either ``worst``
+        or ``middle`` strategy.
 
     use_default_protocol: bool
         Flag to indicate whether to use the standard protocol used in literature defined in
@@ -625,6 +651,10 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
         logger.debug('Evaluating the test set by corrupting side : {}'.format(corrupt_side))
         eval_dict['corrupt_side'] = corrupt_side
 
+        assert ranking_strategy in ['worst', 'best', 'middle'], 'Invalid ranking_strategy!'
+
+        eval_dict['ranking_strategy'] = ranking_strategy
+
         logger.debug('Configuring evaluation protocol.')
         model.configure_evaluation_protocol(eval_dict)
 
@@ -663,9 +693,9 @@ def check_filter_size(model, corruption_entities):
 
     """
 
-    warn_msg = """You are attempting to use %d distinct entities to generate synthetic negatives in the evaluation 
-    protocol. This may be unnecessary and will lead to a 'harder' task. Besides, it will lead to a much slower 
-    evaluation procedure. We recommended to set the 'corruption_entities' argument to a reasonably sized set 
+    warn_msg = """You are attempting to use %d distinct entities to generate synthetic negatives in the evaluation
+    protocol. This may be unnecessary and will lead to a 'harder' task. Besides, it will lead to a much slower
+    evaluation procedure. We recommended to set the 'corruption_entities' argument to a reasonably sized set
     of entities. The size of corruption_entities depends on your domain-specific task."""
 
     if corruption_entities is None:
@@ -1102,33 +1132,36 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     >>> import numpy as np
     >>>
     >>> X = load_wn18()
+    >>>
     >>> model_class = ComplEx
     >>> param_grid = {
-    >>>                     "batches_count": [50],
-    >>>                     "seed": 0,
-    >>>                     "epochs": [4000],
-    >>>                     "k": [100, 200],
-    >>>                     "eta": [5,10,15],
-    >>>                     "loss": ["pairwise", "nll"],
-    >>>                     "loss_params": {
-    >>>                         "margin": [2]
-    >>>                     },
-    >>>                     "embedding_model_params": {
-    >>>
-    >>>                     },
-    >>>                     "regularizer": ["LP", None],
-    >>>                     "regularizer_params": {
-    >>>                         "p": [1, 3],
-    >>>                         "lambda": [1e-4, 1e-5]
-    >>>                     },
-    >>>                     "optimizer": ["adagrad", "adam"],
-    >>>                     "optimizer_params":{
-    >>>                         "lr": lambda: np.random.uniform(0.0001, 0.01)
-    >>>                     },
-    >>>                     "verbose": False
-    >>>                 }
-    >>> select_best_model_ranking(model_class, X['train'], X['valid'], X['test'], param_grid,
-    >>>                           max_combinations=100, use_filter=True, verbose=True,
+    >>>     "batches_count": [50],
+    >>>     "seed": 0,
+    >>>     "epochs": [100],
+    >>>     "k": [100, 200],
+    >>>     "eta": [5, 10, 15],
+    >>>     "loss": ["pairwise", "nll"],
+    >>>     "loss_params": {
+    >>>         "margin": [2]
+    >>>     },
+    >>>     "embedding_model_params": {
+    >>>     },
+    >>>     "regularizer": ["LP", None],
+    >>>     "regularizer_params": {
+    >>>         "p": [1, 3],
+    >>>         "lambda": [1e-4, 1e-5]
+    >>>     },
+    >>>     "optimizer": ["adagrad", "adam"],
+    >>>     "optimizer_params": {
+    >>>         "lr": lambda: np.random.uniform(0.0001, 0.01)
+    >>>     },
+    >>>     "verbose": False
+    >>> }
+    >>> select_best_model_ranking(model_class, X['train'], X['valid'], X['test'],
+    >>>                           param_grid,
+    >>>                           max_combinations=100,
+    >>>                           use_filter=True,
+    >>>                           verbose=True,
     >>>                           early_stopping=True)
 
     """
