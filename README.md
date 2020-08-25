@@ -142,11 +142,14 @@ Their predictive power is reported below and compared against the state-of-the-a
 completion. In International Conference on Machine Learning, 2869–2878. 2018. <br/>
 **  Kadlec, Rudolf, Ondrej Bajgar, and Jan Kleindienst. "Knowledge base completion: Baselines strike back.
  " arXiv preprint arXiv:1705.10744 (2017).
+</sub>
+
+<sub>
 Results above are computed assigning the worst rank to a positive in case of ties. 
 Although this is the most conservative approach, some published literature may adopt an evaluation protocol that assigns
  the best rank instead. 
-
 </sub>
+
 
 ## Documentation
 
