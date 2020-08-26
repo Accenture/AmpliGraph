@@ -264,9 +264,19 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
             #logger.debug(bucket)
             
         partition_nb = 0
+        # ensure that the "same" bucket partitions are generated first
+        for i in range(self._k):
+            # condition that excludes duplicated partitions 
+            # from k x k possibilities, partition 0-1 and 1-0 is the same - not needed
+            status_not_ok = self.create_single_partition(i, i, timestamp, partition_nb, batch_size=batch_size)
+            if status_not_ok:
+                continue
+            partition_nb += 1 
+
+        # Now generate across bucket partitions
         for i in range(self._k):
             for j in range(self._k):
-                if j >= i:
+                if j > i:
                     # condition that excludes duplicated partitions 
                     # from k x k possibilities, partition 0-1 and 1-0 is the same - not needed
                     status_not_ok = self.create_single_partition(i, j, timestamp, partition_nb, batch_size=batch_size)

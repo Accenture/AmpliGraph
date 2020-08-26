@@ -245,42 +245,42 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                          epochs=epochs,
                                                          use_partitioning=use_partitioning)
         
-        # Container that configures and calls `tf.keras.Callback`s.
-        if not isinstance(callbacks, callbacks_module.CallbackList):
-            callbacks = callbacks_module.CallbackList(
-                                                        callbacks,
-                                                        add_history=True,
-                                                        add_progbar=verbose != 0,
-                                                        model=self,
-                                                        verbose=verbose,
-                                                        epochs=epochs)
-        self.stop_training = False
-        train_function = self.make_train_function()
-        callbacks.on_train_begin()
-        
-        total_loss = []
-        for epoch, iterator in self.data_handler.enumerate_epochs():
-            # TODO: remove this later
-            self.global_epoch = epoch
-            callbacks.on_epoch_begin(epoch)
-            with self.data_handler.catch_stop_iteration():
-                for step in self.data_handler.steps():
-                    callbacks.on_train_batch_begin(step)
-                    with tf.device('{}'.format('GPU:0')):
-                        logs = train_function(iterator)
-                    #total_loss.append(loss)
-                    callbacks.on_train_batch_end(step, logs)
-                    
-            epoch_logs = copy.copy(logs)
-                    
-            
-            callbacks.on_epoch_end(epoch, epoch_logs)
-            #print('\n\n\n\nloss------------------{}:{}'.format(epoch, np.mean(total_loss)))
-            if self.stop_training:
-                break
-        
-        callbacks.on_train_end()
-        return self.history
+            # Container that configures and calls `tf.keras.Callback`s.
+            if not isinstance(callbacks, callbacks_module.CallbackList):
+                callbacks = callbacks_module.CallbackList(
+                                                            callbacks,
+                                                            add_history=True,
+                                                            add_progbar=verbose != 0,
+                                                            model=self,
+                                                            verbose=verbose,
+                                                            epochs=epochs)
+            self.stop_training = False
+            train_function = self.make_train_function()
+            callbacks.on_train_begin()
+
+            total_loss = []
+            for epoch, iterator in self.data_handler.enumerate_epochs():
+                # TODO: remove this later
+                self.global_epoch = epoch
+                callbacks.on_epoch_begin(epoch)
+                with self.data_handler.catch_stop_iteration():
+                    for step in self.data_handler.steps():
+                        callbacks.on_train_batch_begin(step)
+                        with tf.device('{}'.format('GPU:0')):
+                            logs = train_function(iterator)
+                        #total_loss.append(loss)
+                        callbacks.on_train_batch_end(step, logs)
+
+                epoch_logs = copy.copy(logs)
+
+
+                callbacks.on_epoch_end(epoch, epoch_logs)
+                #print('\n\n\n\nloss------------------{}:{}'.format(epoch, np.mean(total_loss)))
+                if self.stop_training:
+                    break
+
+            callbacks.on_train_end()
+            return self.history
     
     def _get_optimizer(self, optimizer):
         return tf.optimizers.Adam(lr=0.001)
