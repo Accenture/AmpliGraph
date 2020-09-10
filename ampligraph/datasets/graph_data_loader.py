@@ -53,6 +53,29 @@ class DummyBackend():
         self.ent_emb = ent_emb
         self.rel_emb = rel_emb
         
+    def get_embeddings(self, triples): 
+        if isinstance(self.ent_emb, str):
+            sub_emb_out = []
+            obj_emb_out = []
+            rel_emb_out = []
+            with shelve.open(self.ent_emb) as ent_emb:
+                with shelve.open(self.rel_emb) as rel_emb:
+                    for triple in triples:
+                        sub_emb_out.append(ent_emb[str(triple[0])])
+                        rel_emb_out.append(rel_emb[str(triple[1])])
+                        obj_emb_out.append(ent_emb[str(triple[2])])
+                        
+            emb_out = [np.array(sub_emb_out),
+                       np.array(rel_emb_out),
+                       np.array(obj_emb_out)]
+                    
+                    
+        else:
+            emb_out = [self.ent_emb[triples[:, 0]], 
+                           self.rel_emb[triples[:, 1]], 
+                           self.ent_emb[triples[:, 2]]]
+        return emb_out
+        
     def __enter__ (self):
         """Context manager enter function. Required by GraphDataLoader."""
         return self
@@ -85,6 +108,7 @@ class DummyBackend():
         else:
             loader = self.identifier.fetch_loader()
             raw_data = loader(self.data_source)
+
             if self.use_indexer == True:
                 self.mapper = DataIndexer(raw_data, in_memory=self.in_memory, root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(raw_data)
@@ -97,9 +121,10 @@ class DummyBackend():
                     self.data = raw_data
                     logger.debug("Data won't be indexed")
             elif isinstance(self.use_indexer, DataIndexer):
-                  self.mapper = self.use_indexer
-                  
-                    
+                self.mapper = self.use_indexer
+                self.data = self.mapper.get_indexes(raw_data)
+
+
     def _get_triples(self, subjects=None, objects=None, entities=None):
         """Get triples that objects belongs to objects and subjects to subjects,
            or if not provided either object or subjet belongs to entities.
@@ -236,9 +261,11 @@ class DummyBackend():
             msg = "Intersection can only be calculated between same backends (DummyBackend), instead get {}".format(type(dataloader.backend))
             logger.error(msg)
             raise Exception(msg) 
-        av = self.data.view([('', self.data.dtype)] * self.data.shape[1]).ravel()
-        bv = dataloader.backend.data.view([('', dataloader.backend.data.dtype)] * dataloader.backend.data.shape[1]).ravel()
-        intersection = np.intersect1d(av, bv).view(self.data.dtype).reshape(-1, self.data.shape[1])
+        self.data = np.ascontiguousarray(self.data, dtype='int64')
+        dataloader.backend.data = np.ascontiguousarray(dataloader.backend.data, dtype='int64') 
+        av = self.data.view([('', self.data.dtype)] * self.data.shape[1])
+        bv = dataloader.backend.data.view([('', dataloader.backend.data.dtype)] * dataloader.backend.data.shape[1])
+        intersection = np.intersect1d(av, bv).view(self.data.dtype).reshape(-1, self.data.shape[0 if self.data.flags['F_CONTIGUOUS'] else 1])
         return intersection
         
     def _get_batch_generator(self, batch_size, dataset_type="train", random=False, index_by="", use_filter=False):
@@ -263,10 +290,7 @@ class DummyBackend():
             out = self.data[start_index:start_index + batch_size]
             
             if self.temp_workaround:
-                print(out)
-                out = [self.ent_emb[out[:, 0]], 
-                       self.rel_emb[out[:, 1]], 
-                       self.ent_emb[out[:, 2]]]
+                out = self.get_embeddings(out)
                 
             if use_filter:
                 # get the filter values
@@ -336,7 +360,7 @@ class GraphDataLoader():
             logger.error(msg)
             raise Exception(msg)
         if isinstance(backend, type) and backend != DummyBackend:
-            self.backend = backend("database_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")), 
+            self.backend = backend("database_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")), identifier=self.identifier, 
                                    root_directory=self.root_directory, use_indexer=self.use_indexer, remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory, verbose=verbose)
             logger.debug("Initialized Backend with database at: {}".format(self.backend.db_path))
         elif backend is None or backend == DummyBackend:
@@ -484,4 +508,11 @@ class GraphDataLoader():
 
     def clean(self):
         self.backend._clean()
+        
+        
+    def on_epoch_end(self):
+        pass
+    
+    def on_complete(self):
+        pass
 

@@ -473,9 +473,11 @@ class DataIndexer():
         if order == "raw2ind": 
             entities = self.reversed_entities_dict
             relations = self.reversed_relations_dict
+            dtype = int
         elif order == "ind2raw":
             entities = self.entities_dict
             relations = self.relations_dict
+            dtype = str
         else:
             msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(order)
             logger.error(msg)
@@ -486,7 +488,7 @@ class DataIndexer():
                 subjects = [ents[str(elem)] for elem in sample[:,0]]
                 objects = [ents[str(elem)] for elem in sample[:,2]]
                 predicates = [rels[str(elem)] for elem in sample[:,1]]
-                return np.array((subjects, predicates, objects), dtype=int).T
+                return np.array((subjects, predicates, objects), dtype=dtype).T
 
     def get_indexes_from_shelves_single(self, sample, type_of="e", order="raw2ind"):
         """Get indexed elements (entities or relations).
@@ -663,6 +665,7 @@ class DataIndexer():
         #logger.debug(sample)
         i = self.get_starting_index_ents()
         j = self.get_starting_index_rels()
+
         for d in sample:
             if d[0] not in self.reversed_entities_dict:
                 self.reversed_entities_dict[d[0]] = i

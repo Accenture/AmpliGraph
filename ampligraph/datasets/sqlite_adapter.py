@@ -54,7 +54,7 @@ class SQLiteAdapter():
         >>>with SQLiteAdapter("database.db", use_indexer=mapper) as backend:
         >>>    backend.populate("data.csv", dataset_type="train")
     """
-    def __init__(self, db_name, chunk_size=DEFAULT_CHUNKSIZE, root_directory=tempfile.gettempdir(),
+    def __init__(self, db_name, identifier=None, chunk_size=DEFAULT_CHUNKSIZE, root_directory=tempfile.gettempdir(),
                  use_indexer=True, verbose=False, remap=False, name='main_partition', parent=None, in_memory=False):
         """ Initialise SQLiteAdapter.
        
@@ -71,6 +71,13 @@ class SQLiteAdapter():
         """
         self.db_name = db_name
         self.verbose = verbose
+        if identifier is None:
+           msg = "You need to provide source identifier object"
+           logger.error(msg) 
+           raise Exception(msg)
+        else:
+            self.identifier = identifier
+
         self.flag_db_open = False
         self.root_directory = root_directory
         self.db_path = os.path.join(self.root_directory, self.db_name)
@@ -96,6 +103,30 @@ class SQLiteAdapter():
         self.temp_workaround = True
         self.ent_emb = ent_emb
         self.rel_emb = rel_emb
+        
+    def get_embeddings(self, triples): 
+        if isinstance(self.ent_emb, str):
+            sub_emb_out = []
+            obj_emb_out = []
+            rel_emb_out = []
+            with shelve.open(self.ent_emb) as ent_emb:
+                with shelve.open(self.rel_emb) as rel_emb:
+                    for triple in triples:
+                        sub_emb_out.append(ent_emb[str(triple[0])])
+                        rel_emb_out.append(rel_emb[str(triple[1])])
+                        obj_emb_out.append(ent_emb[str(triple[2])])
+                        
+            emb_out = [np.array(sub_emb_out),
+                       np.array(rel_emb_out),
+                       np.array(obj_emb_out)]
+                    
+                    
+        else:
+            emb_out = [self.ent_emb[triples[:, 0]], 
+                           self.rel_emb[triples[:, 1]], 
+                           self.ent_emb[triples[:, 2]]]
+            
+        return emb_out
     
     def should_recreate_iterator(self):
         return True
@@ -332,7 +363,6 @@ class SQLiteAdapter():
         self.data_source = data_source        
         self.loader = loader
         if loader is None:
-            self.identifier = DataSourceIdentifier(self.data_source)
             self.loader = self.identifier.fetch_loader()
         if not self.is_indexed() and self.use_indexer != False:
             if self.verbose:
@@ -500,9 +530,7 @@ class SQLiteAdapter():
             out = out.astype(np.int32)
             if self.temp_workaround:
                 #print(out)
-                out = [self.ent_emb[out[:, 0]], 
-                       self.rel_emb[out[:, 1]], 
-                       self.ent_emb[out[:, 2]]]
+                out = self.get_embeddings(out)
                 
             if use_filter:
                 yield out, participating_entities

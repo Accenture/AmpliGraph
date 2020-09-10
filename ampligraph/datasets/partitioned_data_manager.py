@@ -10,9 +10,6 @@ class PartitionedDataManager():
         self._model = model
         self.k = self._model.k
         self.eta = self._model.eta
-        self.num_ents = 14505
-        self.num_rels = 237
-        self.max_ent_size = 10000
         
         self._inferred_steps = None
         self._initial_epoch = 0
@@ -26,13 +23,24 @@ class PartitionedDataManager():
         else:
             print('Partitioning may take a while...')
             self.partitioner = PARTITION_ALGO_REGISTRY.get(strategy)(dataset_loader, k=num_buckets)
+            
+        self.num_ents = self.partitioner._data.backend.mapper.ents_length
+        self.num_rels = self.partitioner._data.backend.mapper.rels_length
+        self.max_ent_size = 0
+        for i in range(len(self.partitioner.partitions)):
+            self.max_ent_size = max(self.max_ent_size, 
+                                    self.partitioner.partitions[i].backend.mapper.ents_length)
+        
         self._generate_partition_params()
+        
+        
+    def get_test_embeddings(self, ids):
+        pass
         
         
     def _generate_partition_params(self):
         ''' Generates the metadata needed for persisting and loading partition embeddings and other params'''
         
-        chunk_size = 10000
         def xavier(in_shape, out_shape, part_in_shape=None):
             if part_in_shape is None:
                 part_in_shape = in_shape,
@@ -286,4 +294,26 @@ class PartitionedDataManager():
     def reload(self):
         self.partitioner.reload()
         self.batch_iterator = iter(self.data_generator())
+        
+    def on_epoch_end(self):
+        pass
+    
+    def on_complete(self):
+        for i in range(self.num_buckets - 1, -1, -1):
+            with shelve.open(self.partitioner.files[i]) as bucket:
+
+                with shelve.open('ent_partition', writeback=True) as ent_partition:
+                    # get the bucket embeddings
+                    # split and store separately
+                    for key, val in zip(bucket['indexes'], ent_partition[str(i)][1]):
+                        ent_partition[str(key)] = val
+                    if i!=0:
+                        del ent_partition[str(i)]
+        with shelve.open('rel_partition', writeback=True) as rel_partition:
+            # get the bucket embeddings
+            # split and store separately
+            for key in range(rel_partition['0'][1].shape[0] - 1, -1, -1):
+                rel_partition[str(key)] = rel_partition['0'][1][key]
+        
+        
  

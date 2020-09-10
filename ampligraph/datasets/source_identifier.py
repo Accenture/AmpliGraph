@@ -12,6 +12,9 @@ identification of data source (whether it is csv, tar.gz or numpy array)
 and provides adequate loader for the data source identified.
 """
 import pandas as pd
+from collections.abc import Iterable
+import numpy as np
+from itertools import chain, islice
 import logging
 
 
@@ -42,13 +45,11 @@ def load_csv(data_source, chunk_size=None, sep='\t', verbose=False, **kwargs):
     else:
         return data
 
-
-def in_memory_chunks(iterable, chunk_size=1, **kwargs):
-    """Chunks generator."""
-    arr_len = len(iterable)
-    for indx in range(0, arr_len, chunk_size):
-        yield iterable[indx:min(indx + chunk_size, arr_len)]
-
+def chunks(iterable, chunk_size=1):
+    """Chunkls genertaor"""
+    iterator = iter(iterable)
+    for first in iterator:
+        yield np.array(list(chain([first], islice(iterator, chunk_size - 1))))
 
 def load_gz(data_source, chunk_size=None, verbose=False):
     """Gz data loader. Reads compressed file."""
@@ -88,7 +89,8 @@ class DataSourceIdentifier():
                                 "txt": load_csv, 
                                 "gz": load_csv, 
                                 "tar": load_tar,
-                                "obj": in_memory_chunks }
+                                "iter": chunks
+                               }
         self._identify()
                 
     def fetch_loader(self):
@@ -109,4 +111,9 @@ class DataSourceIdentifier():
                 self.src = None
         else:
             logger.debug("data_source is an object")
-            self.src = "obj"   
+            if isinstance(self.data_source, Iterable):
+                self.src = "iter"
+                logger.debug("data_source is an iterable")
+            else:
+                logger.error("Object type not supported")
+

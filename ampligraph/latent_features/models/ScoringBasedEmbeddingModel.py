@@ -16,6 +16,7 @@ from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
 from ampligraph.latent_features.layers.corruption_generation import CorruptionGenerationLayerTrain
 from tensorflow.python.keras import metrics as metrics_mod
 import copy
+import shelve
 
 
 class ScoringBasedEmbeddingModel(tf.keras.Model):
@@ -65,6 +66,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # Create the embedding lookup layer. 
         # size of entity emb is max_ent_size * k and relation emb is  max_rel_size * k
         self.encoding_layer = EmbeddingLookupLayer(self.max_ent_size, self.max_rel_size, self.k)
+        
+        self.is_partitioned_training = False
         
         
     def compute_output_shape(self, inputShape):
@@ -255,6 +258,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                             verbose=verbose,
                                                             epochs=epochs)
             self.stop_training = False
+            self.is_partitioned_training = use_partitioning
             train_function = self.make_train_function()
             callbacks.on_train_begin()
 
@@ -299,6 +303,21 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.loss = def_function.function(loss, experimental_relax_shapes=True)
         self._loss_metric = metrics_mod.Mean(name='loss')  # Total loss.
         
+    def get_emb_matrix_test(self, part_number = 1, number_of_parts=1):
+        if number_of_parts==1:
+            return self.encoding_layer.ent_emb
+        else:
+            with shelve.open('ent_partition') as ent_partition:
+                batch_size = int(np.ceil(len(ent_partition.keys())/number_of_parts))
+                indices = np.arange(part_number * batch_size, (part_number + 1) * batch_size).astype(np.str)
+                emb_matrix = []
+                for idx in indices:
+                    try:
+                        emb_matrix.append(ent_partition[idx])
+                    except KeyError:
+                        break
+                return np.array(emb_matrix)
+            
         
     def make_test_function(self):
 
@@ -306,9 +325,22 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             return self.test_function
 
         def test_function(iterator):
+            number_of_parts = 1
+            
+            if self.is_partitioned_training:
+                number_of_parts = self.data_handler._adapter.num_buckets
+                
+            
+            
             inputs = next(iterator)
-            sub_rank, obj_rank = self._get_ranks(inputs, self.encoding_layer.ent_emb)
-            return [sub_rank, obj_rank]
+            overall_rank = np.zeros((inputs[0].shape[0], 2), dtype=np.int32)
+            for j in range(number_of_parts):
+                sub_rank, obj_rank = self._get_ranks(inputs, 
+                                                     self.get_emb_matrix_test(j, number_of_parts))
+                
+                overall_rank[:, 0] +=  sub_rank
+                overall_rank[:, 1] +=  obj_rank
+            return overall_rank
 
 
         #self.test_function = def_function.function(
@@ -321,6 +353,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def evaluate(self,
                x=None,
                batch_size=32,
+               using_partitioning=False,
                verbose=True,
                callbacks=None):
         '''
@@ -348,8 +381,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                           batch_size=batch_size, 
                                                           dataset_type='test', 
                                                           epochs=1, 
-                                                          use_indexer = self.data_handler.get_mapper())
-        self.data_handler_test.temperorily_set_emb_matrix(self.encoding_layer.ent_emb.numpy(), self.encoding_layer.rel_emb.numpy())
+                                                          #partitioner = partitioner,
+                                                          prev_data_handler = self.data_handler)
+        
+        if self.is_partitioned_training:
+            self.data_handler_test.temperorily_set_emb_matrix('ent_partition', 'rel_partition')
+
+        else:
+            self.data_handler_test.temperorily_set_emb_matrix(self.encoding_layer.ent_emb.numpy(), self.encoding_layer.rel_emb.numpy())
 
         # Container that configures and calls `tf.keras.Callback`s.
         if not isinstance(callbacks, callbacks_module.CallbackList):
@@ -372,12 +411,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             with self.data_handler_test.catch_stop_iteration():
                 for step in self.data_handler_test.steps():
                     callbacks.on_test_batch_begin(step)
-                    sub_rank, obj_rank = test_function(iterator)
-
-                    sub_rank = sub_rank.numpy() + 1
-                    obj_rank = obj_rank.numpy() + 1
-                    self.all_ranks.append(np.array([sub_rank, obj_rank]).T)
+                    overall_rank = test_function(iterator)
+                    overall_rank += 1
+                    self.all_ranks.append(overall_rank)
                     callbacks.on_test_batch_end(step)
         callbacks.on_test_end()
         return np.concatenate(self.all_ranks)
-
