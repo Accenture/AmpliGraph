@@ -168,14 +168,13 @@ class DummyBackend():
                                                         ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
             logger.debug("Query parent for data.")
             logger.debug("Original index: {}".format(triples_original_index))
-            subjects = self.parent.get_complementary_subjects(triples_original_index)
-            objects = self.parent.get_complementary_objects(triples_original_index)
-            logger.debug("What to do with this new indexes? Evaluation should happen in the \
-            original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
+            subjects = self.parent.get_complementary_subjects(triples_original_index, use_filter=use_filter)
+            objects = self.parent.get_complementary_objects(triples_original_index, use_filter=use_filter)
+            logger.debug("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
             return subjects, objects
         else:
-            subjects = self._get_complementary_subjects(triples)
-            objects = self._get_complementary_objects(triples)
+            subjects = self._get_complementary_subjects(triples, use_filter=use_filter)
+            objects = self._get_complementary_objects(triples, use_filter=use_filter)
         return subjects, objects
 
     def _get_complementary_subjects(self, triples, use_filter=False):
@@ -268,6 +267,8 @@ class DummyBackend():
         """
         logger.debug("Getting complementary objects")
        
+        if not use_filter:
+            use_filter = {}
         if self.parent is not None:
             logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
@@ -372,9 +373,8 @@ class GraphDataLoader():
        >>>for elem in data:
        >>>    process(data)
     """    
-    def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, 
-                 root_directory=tempfile.gettempdir(), use_indexer=True, verbose=False, 
-                 remap=False, name="main_partition", parent=None, in_memory=True, use_filter=False):
+    def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, root_directory=tempfile.gettempdir(),
+                 use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=True, use_filter=None):
         """Initialise persistent/in-memory data storage.
        
            Parameters
@@ -491,7 +491,7 @@ class GraphDataLoader():
 
         return self.backend._intersect(dataloader)
 
-    def get_participating_entities(self, triples, sides="s,o"):
+    def get_participating_entities(self, triples, sides="s,o", use_filter=False):
         """Get entities from triples with fixed subjects, objects or both.
            Parameters
            ----------
@@ -509,10 +509,10 @@ class GraphDataLoader():
             logger.error(msg)
             raise Exception(msg)
         if 's' in sides:
-            subjects = self.get_complementary_subjects(triples)
+            subjects = get_complementary_subjects(triples, use_filter=use_filter)
 
         if 'o' in sides:
-            objects = self.get_complementary_objects(triples)
+            objects = get_complementary_objects(triples, use_filter=use_filter)
 
         if sides == 's,o':
             return subjects, objects
@@ -523,7 +523,7 @@ class GraphDataLoader():
         if sides == 'o':
             return objects
 
-    def get_complementary_subjects(self, triples, use_filter=None):
+    def get_complementary_subjects(self, triples, use_filter=False):
         """Get subjects complementary to triples (?,p,o).
            For a given triple retrive all subjects coming from triples whith same objects and predicates.
 
@@ -537,7 +537,7 @@ class GraphDataLoader():
         """
         return self.backend._get_complementary_subjects(triples, use_filter=use_filter)
 
-    def get_complementary_objects(self, triples, use_filter=None):
+    def get_complementary_objects(self, triples, use_filter=False):
         """Get objects complementary to triples (s,p,?).
            For a given triple retrive all objects coming from triples whith same subjects and predicates.
 
@@ -551,7 +551,7 @@ class GraphDataLoader():
         """
         return self.backend._get_complementary_objects(triples, use_filter=use_filter)        
     
-    def get_complementary_entities(self, triples, use_filter=None):
+    def get_complementary_entities(self, triples, use_filter=False):
         """Get subjects and objects complementary to triples (?,p,?).
            Returns the participating entities in the relation ?-p-o and s-p-?.
 
