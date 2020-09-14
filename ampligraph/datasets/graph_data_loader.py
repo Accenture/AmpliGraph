@@ -25,7 +25,7 @@ logger.setLevel(logging.DEBUG)
 
 class DummyBackend():
     """Class providing artificial backend, that reads data into memory."""
-    def __init__(self, identifier, use_indexer=True, remap=False, name="main_partition", verbose=False, parent=None, in_memory=True, root_directory=tempfile.gettempdir()):
+    def __init__(self, identifier, use_indexer=True, remap=False, name="main_partition", verbose=False, parent=None, in_memory=True, root_directory=tempfile.gettempdir(), use_filter=False):
         """Initialise DummyBackend.
 
            Parameters
@@ -45,7 +45,9 @@ class DummyBackend():
         self.parent = parent
         self.in_memory = in_memory
         self.root_directory = root_directory
-        
+        self.use_filter = use_filter
+        self.sources = {}
+
     def __enter__ (self):
         """Context manager enter function. Required by GraphDataLoader."""
         return self
@@ -118,7 +120,7 @@ class DummyBackend():
         """Returns number of triples."""
         return np.shape(self.data)[0]
 
-    def _get_complementary_entities(self, triples):
+    def _get_complementary_entities(self, triples, use_filter=None):
         """Get subjects and objects complementary to a triple (?,p,?).
            Returns the participating entities in the relation ?-p-o and s-p-?.
            Function used duriing evaluation.
@@ -145,16 +147,16 @@ class DummyBackend():
                     triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
             logger.debug("Query parent for data.")
             logger.debug("Original index: {}".format(triples_original_index))
-            subjects = self.parent.get_complementary_subjects(triples_original_index)
-            objects = self.parent.get_complementary_objects(triples_original_index)
+            subjects = self.parent.get_complementary_subjects(triples_original_index, use_filter=use_filter)
+            objects = self.parent.get_complementary_objects(triples_original_index, use_filter=use_filter)
             logger.debug("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
             return subjects, objects
         else:
-            subjects = self._get_complementary_subjects(triples)
-            objects = self._get_complementary_objects(triples)
+            subjects = self._get_complementary_subjects(triples, use_filter=use_filter)
+            objects = self._get_complementary_objects(triples, use_filter=use_filter)
         return subjects, objects
 
-    def _get_complementary_subjects(self, triples):
+    def _get_complementary_subjects(self, triples, use_filter=False):
         """Get subjects complementary to triples (?,p,o).
            For a given triple retrive all triples whith same objects and predicates.
            Function used duriing evaluation.
@@ -169,25 +171,63 @@ class DummyBackend():
         """
 
         logger.debug("Getting complementary subjects")
-        subjects = []
-        if self.parent is not None:
-            logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
-            logger.debug("Recover original indexes.")
-            with shelve.open(self.mapper.reversed_entities_dict) as ents:
-                with shelve.open(self.mapper.reversed_relations_dict) as rels:
-                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
-            logger.debug("Query parent for data.")
-            subjects = self.parent.get_complementary_subjects(triples_original_index)
-            logger.debug("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
-            return subjects
-        else:
+        if self.parent is not None:
+             logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
+
+             logger.debug("Recover original indexes.")
+             with shelve.open(self.mapper.reversed_entities_dict) as ents:
+                 with shelve.open(self.mapper.reversed_relations_dict) as rels:
+                     triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
+             logger.debug("Query parent for data.")
+             subjects = self.parent.get_complementary_subjects(triples_original_index, use_filter=use_filter)
+             logger.debug("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
+             return subjects
+        elif use_filter == False:
+            use_filter = {'data': self.data}
+        filtered = []
+        for filter_name, filter_source in use_filter.items():
+            if filter_name != "data":
+                filter_source = self.get_source(filter_source, filter_name)
+
+            tmp_filter = []
             for triple in triples:
-                tmp = self.data[self.data[:,2] == triple[2]]
-                subjects.append(list(set(tmp[tmp[:,1] == triple[1]][:,0])))
+                tmp = filter_source[filter_source[:,2] == triple[2]]
+                tmp_filter.append(list(set(tmp[tmp[:,1] == triple[1]][:,0])))
+            filtered.append(tmp_filter)
+        # Unpack data into one  list per triple no matter what filter it comes from
+        unpacked = list(zip(*filtered))
+        subjects = []
+        for k in unpacked:
+            lst = [j for i in k for j in i]
+            subjects.append(lst)
+
         return subjects
 
-    def _get_complementary_objects(self, triples):
+    def get_source(self, source, name):
+        """Loads specified by name data and keep it in the loaded dictionary.
+           Used to load filter datasets.
+
+           Parameters
+           ----------
+           source: data source
+           name: name of the dataset to be loaded
+ 
+           Returns
+           -------
+           loaded data as a numpy array indexed according to mapper.
+        """
+        if name not in self.sources:
+            if isinstance(source, np.ndarray):
+                raw_data = source
+            else:
+                identifier = DataSourceIdentifier(source)
+                loader = identifier.fetch_loader()
+                raw_data = loader(source) 
+            self.sources[name] = self.mapper.get_indexes(raw_data)
+        return self.sources[name]
+
+    def _get_complementary_objects(self, triples, use_filter=False):
         """Get objects complementary to  triples (s,p,?).
            For a given triple retrive all triples whith same subjects and predicates.
            Function used duriing evaluation.
@@ -201,7 +241,9 @@ class DummyBackend():
            result of a query, list of objects, per triple
         """
         logger.debug("Getting complementary objects")
-        objects = []
+       
+        if not use_filter:
+            use_filter = {}
         if self.parent is not None:
             logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
@@ -210,13 +252,31 @@ class DummyBackend():
                 with shelve.open(self.mapper.reversed_relations_dict) as rels:
                     triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
             logger.debug("Query parent for data.")
-            objects = self.parent.get_complementary_objects(triples_original_index)
+            objects = self.parent.get_complementary_objects(triples_original_index, use_filter=use_filter)
             logger.debug("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
             return objects
-        else:
+        elif use_filter == False:
+            use_filter = {'data': self.data}
+        filtered = []
+        for filter_name, filter_source in use_filter.items():
+            if filter_name != "data":
+                filter_source = self.get_source(filter_source, filter_name)
+            # load source if not loaded
+            #filter
+ 
+            tmp_filter = []
             for triple in triples:
-                tmp = self.data[self.data[:,0] == triple[0]]
-                objects.append(list(set(tmp[tmp[:,1] == triple[1]][:,2])))
+                tmp = filter_source[filter_source[:,0] == triple[0]]
+                tmp_filter.append(list(set(tmp[tmp[:,1] == triple[1]][:,2])))
+            filtered.append(tmp_filter)
+    
+        # Unpack data into one  list per triple no matter what filter it comes from
+        unpacked = list(zip(*filtered))
+        objects = []
+        for k in unpacked:
+            lst = [j for i in k for j in i]
+            objects.append(lst)
+
         return objects
 
 
@@ -258,7 +318,7 @@ class DummyBackend():
             out = self.data[start_index:start_index + batch_size]
             if use_filter:
                 # get the filter values
-                participating_entities = self.get_complementary_entities(out)
+                participating_entities = self._get_complementary_entities(out, use_filter=use_filter)
                 yield out, participating_entities
 
             yield out 
@@ -284,7 +344,7 @@ class GraphDataLoader():
        >>>    process(data)
     """    
     def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, root_directory=tempfile.gettempdir(),
-                 use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=True, use_filter=False):
+                 use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=True, use_filter=None):
         """Initialise persistent/in-memory data storage.
        
            Parameters
@@ -312,17 +372,26 @@ class GraphDataLoader():
         self.in_memory = in_memory
         self.name = name
         self.parent = parent
-        self.use_filter = use_filter
+        if use_filter is None or use_filter == True:
+            self.use_filter = {'train': data_source}
+        else:
+            if isinstance(use_filter, dict) or use_filter == False:
+                self.use_filter = use_filter 
+            else:
+                msg = "use_filter should be a dictionary with keys as names of filters and values as data sources, instead got {}".format(use_filter)
+                logger.error(msg)
+                raise Exception(msg)
         if bool(use_indexer) != (not remap):
             msg = "Either remap or Indexer should be speciferd at the same time."
             logger.error(msg)
             raise Exception(msg)
         if isinstance(backend, type) and backend != DummyBackend:
-            self.backend = backend("database_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")), 
-                                   root_directory=self.root_directory, use_indexer=self.use_indexer, remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory, verbose=verbose)
+            self.backend = backend("database_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")), identifier=self.identifier, 
+                                   root_directory=self.root_directory, use_indexer=self.use_indexer, remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory, verbose=verbose, use_filter=self.use_filter)
+
             logger.debug("Initialized Backend with database at: {}".format(self.backend.db_path))
         elif backend is None or backend == DummyBackend:
-            self.backend = DummyBackend(self.identifier, use_indexer=self.use_indexer, remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory)
+            self.backend = DummyBackend(self.identifier, use_indexer=self.use_indexer, remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory, use_filter=self.use_filter)
         else:
             self.backend = backend
         
@@ -368,7 +437,7 @@ class GraphDataLoader():
 
         return self.backend._intersect(dataloader)
 
-    def get_participating_entities(self, triples, sides="s,o"):
+    def get_participating_entities(self, triples, sides="s,o", use_filter=False):
         """Get entities from triples with fixed subjects, objects or both.
            Parameters
            ----------
@@ -384,10 +453,10 @@ class GraphDataLoader():
             logger.error(msg)
             raise Exception(msg)
         if 's' in sides:
-            subjects = get_complementary_subjects(triples)
+            subjects = get_complementary_subjects(triples, use_filter=use_filter)
 
         if 'o' in sides:
-            objects = get_complementary_objects(triples)
+            objects = get_complementary_objects(triples, use_filter=use_filter)
 
         if sides == 's,o':
             return subjects, objects
@@ -399,7 +468,7 @@ class GraphDataLoader():
             return objects
         
 
-    def get_complementary_subjects(self, triples):
+    def get_complementary_subjects(self, triples, use_filter=False):
         """Get subjects complementary to triples (?,p,o).
            For a given triple retrive all subjects coming from triples whith same objects and predicates.
 
@@ -411,9 +480,9 @@ class GraphDataLoader():
            -------
            result of a query, list of subjects per triple.
         """
-        return self.backend._get_complementary_subjects(triples)
+        return self.backend._get_complementary_subjects(triples, use_filter=use_filter)
 
-    def get_complementary_objects(self, triples):
+    def get_complementary_objects(self, triples, use_filter=False):
         """Get objects complementary to triples (s,p,?).
            For a given triple retrive all objects coming from triples whith same subjects and predicates.
 
@@ -425,9 +494,9 @@ class GraphDataLoader():
            -------
            result of a query, list of objects per triple.
         """
-        return self.backend._get_complementary_objects(triples)        
+        return self.backend._get_complementary_objects(triples, use_filter=use_filter)        
     
-    def get_complementary_entities(self, triples):
+    def get_complementary_entities(self, triples, use_filter=False):
         """Get subjects and objects complementary to triples (?,p,?).
            Returns the participating entities in the relation ?-p-o and s-p-?.
 
@@ -442,7 +511,7 @@ class GraphDataLoader():
            TODO: What exactly it should return?
        """
 
-        return self.backend._get_complementary_entities(triples)
+        return self.backend._get_complementary_entities(triples, use_filter=use_filter)
 
 
     def get_triples(self, subjects=None, objects=None, entities=None):
