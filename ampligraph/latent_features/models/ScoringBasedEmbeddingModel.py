@@ -15,6 +15,7 @@ from ampligraph.latent_features.layers.scoring import SCORING_LAYER_REGISTRY
 from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
 from ampligraph.latent_features.layers.corruption_generation import CorruptionGenerationLayerTrain
 from tensorflow.python.keras import metrics as metrics_mod
+from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
 import copy
 import shelve
 
@@ -137,7 +138,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         return [inp_score, corr_score]
     
     @tf.function(experimental_relax_shapes=True)
-    def _get_ranks(self, inputs, ent_embs):
+    def _get_ranks(self, inputs,  filters, ent_embs, start_id, end_id):
         '''
         Evaluate the inputs against corruptions and return ranks
         
@@ -154,7 +155,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             ranks by corrupting against subject corruptions and object corruptions 
             (corruptions defined by ent_embs matrix)
         '''
-        return self.scoring_layer.get_ranks(inputs, ent_embs)
+        return self.scoring_layer.get_ranks(inputs, filters, ent_embs, start_id, end_id)
     
     def train_step(self, data):
         '''
@@ -229,8 +230,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             validation_data=None,
             shuffle=True,
             initial_epoch=0,
-            validation_batch_size=None,
-            validation_freq=1,
+            validation_batch_size=100,
+            validation_freq=2,
             use_partitioning=False):
         
         self.compiled_metric = tf.keras.metrics.Mean
@@ -276,7 +277,16 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         callbacks.on_train_batch_end(step, logs)
 
                 epoch_logs = copy.copy(logs)
-
+                
+                if validation_data and self._should_eval(epoch, validation_freq):
+                    ranks = self.evaluate(validation_data,
+                                          batch_size=validation_batch_size or batch_size)
+                    val_logs = {'val_mrr': mrr_score(ranks), 
+                                'val_mr': mr_score(ranks),
+                                'val_hits@1': hits_at_n_score(ranks, 1),
+                                'val_hits@10': hits_at_n_score(ranks, 10)
+                               }
+                    epoch_logs.update(val_logs)
 
                 callbacks.on_epoch_end(epoch, epoch_logs)
                 #print('\n\n\n\nloss------------------{}:{}'.format(epoch, np.mean(total_loss)))
@@ -305,7 +315,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         
     def get_emb_matrix_test(self, part_number = 1, number_of_parts=1):
         if number_of_parts==1:
-            return self.encoding_layer.ent_emb
+            return self.encoding_layer.ent_emb, 0, self.encoding_layer.ent_emb.shape[0] - 1
         else:
             with shelve.open('ent_partition') as ent_partition:
                 batch_size = int(np.ceil(len(ent_partition.keys())/number_of_parts))
@@ -316,7 +326,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         emb_matrix.append(ent_partition[idx])
                     except KeyError:
                         break
-                return np.array(emb_matrix)
+                return np.array(emb_matrix), int(indices[0]), int(indices[-1])
             
         
     def make_test_function(self):
@@ -332,11 +342,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 
             
             
-            inputs = next(iterator)
+            inputs, filters = next(iterator)
             overall_rank = np.zeros((inputs[0].shape[0], 2), dtype=np.int32)
             for j in range(number_of_parts):
-                sub_rank, obj_rank = self._get_ranks(inputs, 
-                                                     self.get_emb_matrix_test(j, number_of_parts))
+                emb_mat, start_ent_id, end_ent_id = self.get_emb_matrix_test(j, number_of_parts)
+                sub_rank, obj_rank = self._get_ranks(inputs, filters, emb_mat, 
+                                                     start_ent_id, end_ent_id )
                 
                 overall_rank[:, 0] +=  sub_rank
                 overall_rank[:, 1] +=  obj_rank
@@ -353,7 +364,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def evaluate(self,
                x=None,
                batch_size=32,
-               using_partitioning=False,
                verbose=True,
                callbacks=None):
         '''
@@ -384,6 +394,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                           #partitioner = partitioner,
                                                           prev_data_handler = self.data_handler)
         
+
         if self.is_partitioned_training:
             self.data_handler_test.temperorily_set_emb_matrix('ent_partition', 'rel_partition')
 
@@ -417,3 +428,4 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     callbacks.on_test_batch_end(step)
         callbacks.on_test_end()
         return np.concatenate(self.all_ranks)
+

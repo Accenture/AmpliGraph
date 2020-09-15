@@ -383,17 +383,17 @@ class GraphDataLoader():
     def temperorily_set_emb_matrix(self, ent_emb, rel_emb):
         self.backend.temperorily_set_emb_matrix(ent_emb, rel_emb)
       
-    def reload(self, use_filter=False):
+    def reload(self):
         """Reinstantiate batch iterator."""
-        self.batch_iterator = self.get_batch_generator(use_filter=use_filter)
+        self.batch_iterator = self.get_batch_generator()
   
-    def get_batch_generator(self, use_filter=False):
+    def get_batch_generator(self):
         """Get batch generator from the backend.
            Parameters
            ----------
            use_filter: filter out true positives
         """
-        return self.backend._get_batch_generator(self.batch_size, dataset_type=self.dataset_type, use_filter=use_filter)
+        return self.backend._get_batch_generator(self.batch_size, dataset_type=self.dataset_type, use_filter=self.use_filter)
     
     def get_data_size(self):
         """Returns number of triples."""

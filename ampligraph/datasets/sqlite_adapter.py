@@ -525,7 +525,7 @@ class SQLiteAdapter():
                 
             if use_filter:
                 # get the filter values
-                participating_entities = self.get_complementary_entities(out)
+                participating_entities = self._get_complementary_entities(out)
                
             out = out.astype(np.int32)
             if self.temp_workaround:

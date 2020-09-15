@@ -562,6 +562,7 @@ class DataIndexer():
         subjects = []
         objects = []
         predicates = []
+        invalid_keys = 0
         for row in sample:
             try:
                 s = entities[row[0]]
@@ -571,7 +572,10 @@ class DataIndexer():
                 predicates.append(p)
                 objects.append(o)
             except KeyError:
-                print('Invalid Key encountered in ', row)
+                invalid_keys += 1
+        
+        if invalid_keys > 0:
+            print('\n{} triples containing invalid keys skipped!'.format(invalid_keys))
                 
         subjects = np.array(subjects, dtype=np.int32)
         objects = np.array(objects, dtype=np.int32)

@@ -3,7 +3,6 @@ import tensorflow as tf
 from ampligraph.datasets import GraphDataLoader, PartitionedDataManager, SQLiteAdapter
 from ampligraph.datasets.graph_partitioner import AbstractGraphPartitioner
 
-ENTITIES_THRESHOLD = 10000
 
 class DataHandler():
     def __init__(self, x, 
@@ -20,6 +19,11 @@ class DataHandler():
         self._epochs = epochs
         self._model = model
         self._inferred_steps = None
+        
+        self.use_filter=False
+        if dataset_type=='test':
+            self.use_filter=True
+            
         self.train_partitioner = train_partitioner
 
         if prev_data_handler is None:
@@ -40,7 +44,8 @@ class DataHandler():
                                             batch_size=batch_size, 
                                             dataset_type=dataset_type, 
                                             epochs=epochs,
-                                            use_indexer=use_indexer)
+                                            use_indexer=use_indexer,
+                                            use_filter=self.use_filter)
             self._parent_adapter = self._adapter 
             
         

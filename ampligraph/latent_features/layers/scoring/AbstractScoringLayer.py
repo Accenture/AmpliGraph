@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import numpy as np
 # Precision for floating point comparision
 COMPARISION_PRECISION = 1e3
 
@@ -129,7 +129,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         raise NotImplementedError('Abstract method not implemented!')
 
     @tf.function(experimental_relax_shapes=True)
-    def get_ranks(self, triples, ent_matrix):
+    def get_ranks(self, triples, filters, ent_matrix, start_ent_id, end_ent_id, corrupt_side='s,o'):
         ''' Computes the ranks of triples against their corruptions. 
         Ranks are computed by corruptiong triple s and o side by embeddings in ent_matrix.
         
@@ -159,8 +159,31 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         triple_score = tf.cast(triple_score * COMPARISION_PRECISION, tf.int32)
         
         # compare True positive score against their respective corruptions and get rank.
+        
+        #if tf.strings.regex_full_match(corrupt_side, '.*s.*'):
+            
         sub_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) <= sub_corr_score, tf.int32), 1)
+        for i in range(len(triples)):
+            # TODO change the hard coded filter index
+            filter_ids = np.array(filters[0][i])
+            filter_ids = filter_ids[filter_ids>=start_ent_id]
+            filter_ids = filter_ids[filter_ids<=end_ent_id]
+            filter_ids = filter_ids - start_ent_id
+            score_filter = tf.gather(tf.squeeze(tf.gather_nd(sub_corr_score, [[i]])), filter_ids)
+            num_filters_ranked_higher = tf.reduce_sum(tf.cast(tf.gather(triple_score, [i]) <= score_filter, tf.int32))
+            sub_rank = tf.tensor_scatter_nd_sub(sub_rank, [[i]], [num_filters_ranked_higher])
+        
+        #if tf.strings.regex_full_match(corrupt_side, '.*o.*'):
         obj_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) <= obj_corr_score, tf.int32), 1)
+        for i in range(len(triples)):
+            # TODO change the hard coded filter index
+            filter_ids = np.array(filters[1][i])
+            filter_ids = filter_ids[filter_ids>=start_ent_id]
+            filter_ids = filter_ids[filter_ids<=end_ent_id]
+            filter_ids = filter_ids - start_ent_id
+            score_filter = tf.gather(tf.squeeze(tf.gather_nd(obj_corr_score, [[i]])), filter_ids)
+            num_filters_ranked_higher = tf.reduce_sum(tf.cast(tf.gather(triple_score, [i]) <= score_filter, tf.int32))
+            obj_rank = tf.tensor_scatter_nd_sub(obj_rank, [[i]], [num_filters_ranked_higher])
         
         return sub_rank, obj_rank
         
