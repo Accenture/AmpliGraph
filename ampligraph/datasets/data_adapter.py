@@ -1,6 +1,6 @@
 import contextlib
 import tensorflow as tf
-from ampligraph.datasets import GraphDataLoader, PartitionedDataManager, SQLiteAdapter
+from ampligraph.datasets import GraphDataLoader, PartitionedDataManager, DummyBackend
 from ampligraph.datasets.graph_partitioner import AbstractGraphPartitioner
 
 
@@ -13,16 +13,13 @@ class DataHandler():
                  initial_epoch=0, 
                  prev_data_handler = None,
                  train_partitioner=None,
+                 use_filter=True,
                  use_partitioning=False):
         
         self._initial_epoch = initial_epoch
         self._epochs = epochs
         self._model = model
         self._inferred_steps = None
-        
-        self.use_filter=False
-        if dataset_type=='test':
-            self.use_filter=True
             
         self.train_partitioner = train_partitioner
 
@@ -40,12 +37,12 @@ class DataHandler():
         else:
             # use graph data loader by default
             self._adapter = GraphDataLoader(x, 
-                                            backend=SQLiteAdapter,
+                                            backend=DummyBackend,
                                             batch_size=batch_size, 
                                             dataset_type=dataset_type, 
                                             epochs=epochs,
                                             use_indexer=use_indexer,
-                                            use_filter=self.use_filter)
+                                            use_filter=use_filter)
             self._parent_adapter = self._adapter 
             
         
@@ -90,4 +87,4 @@ class DataHandler():
         
     
     def get_mapper(self):
-        return self._parent_adapter.backend.mapper  
+        return self._parent_adapter.backend.mapper

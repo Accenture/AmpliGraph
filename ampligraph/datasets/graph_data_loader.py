@@ -221,7 +221,6 @@ class DummyBackend():
         for filter_name, filter_source in use_filter.items():
             if filter_name != "data":
                 filter_source = self.get_source(filter_source, filter_name)
-
             tmp_filter = []
             for triple in triples:
                 tmp = filter_source[filter_source[:,2] == triple[2]]
@@ -232,7 +231,7 @@ class DummyBackend():
         subjects = []
         for k in unpacked:
             lst = [j for i in k for j in i]
-            subjects.append(lst)
+            subjects.append(np.array(lst, dtype=np.int32))
 
         return subjects
 
@@ -293,9 +292,9 @@ class DummyBackend():
         for filter_name, filter_source in use_filter.items():
             if filter_name != "data":
                 filter_source = self.get_source(filter_source, filter_name)
+            
             # load source if not loaded
             #filter
- 
             tmp_filter = []
             for triple in triples:
                 tmp = filter_source[filter_source[:,0] == triple[0]]
@@ -307,7 +306,7 @@ class DummyBackend():
         objects = []
         for k in unpacked:
             lst = [j for i in k for j in i]
-            objects.append(lst)
+            objects.append(np.array(lst, dtype=np.int32))
 
         return objects
 
@@ -349,15 +348,17 @@ class DummyBackend():
                 batch_size = length - start_index
             out = self.data[start_index:start_index + batch_size]
             
+            if use_filter:
+                # get the filter values
+                participating_entities = self._get_complementary_entities(out, use_filter=use_filter)
+            
             if self.temp_workaround:
                 out = self.get_embeddings(out)
                 
             if use_filter:
-                # get the filter values
-                participating_entities = self._get_complementary_entities(out, use_filter=use_filter)
                 yield out, participating_entities
-
-            yield out
+            else:
+                yield out
 
     def _clean(self):
         del self.data

@@ -55,7 +55,8 @@ class SQLiteAdapter():
         >>>    backend.populate("data.csv", dataset_type="train")
     """
     def __init__(self, db_name, identifier=None, chunk_size=DEFAULT_CHUNKSIZE, root_directory=tempfile.gettempdir(),
-                 use_indexer=True, verbose=False, remap=False, name='main_partition', parent=None, in_memory=False):
+                 use_indexer=True, verbose=False, remap=False, name='main_partition', parent=None, in_memory=False,
+                 use_filter=None):
         """ Initialise SQLiteAdapter.
        
             Parameters
@@ -410,7 +411,7 @@ class SQLiteAdapter():
         os.remove(self.db_path)        
         logger.debug("Database removed.")
 
-    def _get_complementary_objects(self, triples):
+    def _get_complementary_objects(self, triples, use_filter=None):
         """For a given triple retrive all triples whith same subjects and predicates.
 
            Parameters
@@ -428,7 +429,7 @@ class SQLiteAdapter():
             results.append([y for x in self._execute_query(query) for y in x ])
         return results
 
-    def _get_complementary_subjects(self, triples):
+    def _get_complementary_subjects(self, triples, use_filter=None):
         """For a given triple retrive all triples whith same objects and predicates.
 
            Parameters
@@ -447,7 +448,7 @@ class SQLiteAdapter():
             results.append([y for x in self._execute_query(query) for y in x ])
         return results
 
-    def _get_complementary_entities(self, triples):
+    def _get_complementary_entities(self, triples, use_filter=None):
         """Returns the participating entities in the relation ?-p-o and s-p-?.
 
         Parameters
@@ -529,7 +530,6 @@ class SQLiteAdapter():
                
             out = out.astype(np.int32)
             if self.temp_workaround:
-                #print(out)
                 out = self.get_embeddings(out)
                 
             if use_filter:
