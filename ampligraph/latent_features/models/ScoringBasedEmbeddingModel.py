@@ -9,16 +9,17 @@ import pandas as pd
 tf.config.set_soft_device_placement(False)
 tf.debugging.set_log_device_placement(False)
 import numpy as np
-
+from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
 from ampligraph.datasets import data_adapter
 from ampligraph.latent_features.layers.scoring import SCORING_LAYER_REGISTRY
 from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
 from ampligraph.latent_features.layers.corruption_generation import CorruptionGenerationLayerTrain
 from tensorflow.python.keras import metrics as metrics_mod
-from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
 import copy
 import shelve
 
+from ampligraph.latent_features import optimizers
+from ampligraph.latent_features import loss_functions
 
 class ScoringBasedEmbeddingModel(tf.keras.Model):
     def __init__(self, eta, k, max_ent_size, max_rel_size, scoring_type='DistMult', seed=0):
@@ -173,9 +174,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         with tf.GradientTape() as tape:
             # get the model predictions
-            preds = self(tf.cast(data, tf.int32), training=0)
+            score_pos, score_neg = self(tf.cast(data, tf.int32), training=0)
             # compute the loss
-            loss = self.loss(preds, self.eta)
+            loss = self.loss(score_pos, score_neg, self.eta)
             # regularizer - will be in a separate class like ampligraph 1
             loss += (0.0001 * (tf.reduce_sum(tf.pow(tf.abs(self.encoding_layer.ent_emb), 3)) + \
                               tf.reduce_sum(tf.pow(tf.abs(self.encoding_layer.rel_emb), 3))))
@@ -300,7 +301,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             return self.history
     
     def _get_optimizer(self, optimizer):
-        return tf.optimizers.Adam(lr=0.001)
+        return optimizers.get(optimizer)
     
     def compile(self,
           optimizer='adam',
@@ -313,7 +314,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.optimizer = self._get_optimizer(optimizer)
         self._reset_compile_cache()
         self._is_compiled = True
-        self.loss = def_function.function(loss, experimental_relax_shapes=True)
+        self.loss = loss_functions.get(loss)
         self._loss_metric = metrics_mod.Mean(name='loss')  # Total loss.
         
     def get_emb_matrix_test(self, part_number = 1, number_of_parts=1):
@@ -464,6 +465,4 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     callbacks.on_test_batch_end(step)
         callbacks.on_test_end()
         return np.concatenate(self.all_ranks)
-
-
 
