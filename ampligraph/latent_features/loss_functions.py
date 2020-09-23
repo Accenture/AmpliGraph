@@ -125,6 +125,24 @@ class Loss(abc.ABC):
         logger.error(msg)
         raise NotImplementedError(msg)
         
+    def _broadcast_score_pos(self, scores_pos, eta):
+        """Broadcast the score_pos to be as same size as the number of corruptions
+        
+        Parameters
+        ----------
+        scores_pos : tf.Tensor
+            A tensor of scores assigned to positive statements.
+        eta : tf.Tensor
+            Number of corruptions
+        Returns
+        -------
+        scores_pos : tf.Tensor
+            Broadcasted score_pos
+        """
+        scores_pos = tf.reshape(tf.tile(scores_pos, [eta]), [tf.shape(scores_pos)[0] * eta])
+        return scores_pos
+
+        
     def __call__(self, scores_pos, scores_neg, eta):
         """Interface to external world.
         This function does the input checks, preprocesses input and finally applies loss function.
@@ -204,6 +222,7 @@ class PairwiseLoss(Loss):
             The loss value that must be minimized.
 
         """
+        scores_pos = self._broadcast_score_pos(scores_pos, eta)
         margin = tf.constant(self._loss_parameters['margin'], dtype=tf.float32, name='margin')
         loss = tf.reduce_sum(tf.maximum(margin - scores_pos + scores_neg, 0))
         return loss
@@ -263,6 +282,9 @@ class NLLLoss(Loss):
         """
         scores_neg = clip_before_exp(scores_neg)
         scores_pos = clip_before_exp(scores_pos)
+        
+        scores_pos = self._broadcast_score_pos(scores_pos, eta)
+        
         scores = tf.concat([-scores_pos, scores_neg], 0)
         return tf.reduce_sum(tf.math.log(1 + tf.exp(scores)))
 
@@ -330,6 +352,7 @@ class AbsoluteMarginLoss(Loss):
 
         """
         margin = tf.constant(self._loss_parameters['margin'], dtype=tf.float32, name='margin')
+        scores_pos = self._broadcast_score_pos(scores_pos, eta)
         loss = tf.reduce_sum(tf.maximum(margin + scores_neg, 0) - scores_pos)
         return loss
 
