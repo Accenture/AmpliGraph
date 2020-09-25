@@ -54,17 +54,19 @@ class PartitionedDataManager():
     
                     out_dict_keys = str(i)
                     num_ents_bucket = bucket['indexes'].shape[0]
-                    opt_param = np.zeros(shape=(num_ents_bucket, 2, self.k), dtype=np.float32)
+                    # TODO change the hardcoding from 3 to actual hyperparam of optim
+                    opt_param = np.zeros(shape=(num_ents_bucket, 3, self.k), dtype=np.float32)
                     ent_emb = xavier(self.num_ents, self.k, num_ents_bucket)
                     ent_partition.update({out_dict_keys: [opt_param, ent_emb]})
          
         # create relation embeddings and optimizer hyperparams for all relations
-        for i in range(1):
-            with shelve.open('rel_partition', writeback=True) as rel_partition:
-                out_dict_keys = str(i)
-                opt_param = np.zeros(shape=(self.num_rels, 2, self.k), dtype=np.float32)
-                rel_emb = xavier(self.num_rels, self.k, self.num_rels)
-                rel_partition.update({out_dict_keys: [opt_param, rel_emb]})
+        # relations are not partitioned
+        with shelve.open('rel_partition', writeback=True) as rel_partition:
+            out_dict_keys = str(0)
+            # TODO change the hardcoding from 3 to actual hyperparam of optim
+            opt_param = np.zeros(shape=(self.num_rels, 3, self.k), dtype=np.float32)
+            rel_emb = xavier(self.num_rels, self.k, self.num_rels)
+            rel_partition.update({out_dict_keys: [opt_param, rel_emb]})
                 
         # for every partition
         for i in range(len(self.partitioner.partitions)):
@@ -73,7 +75,7 @@ class PartitionedDataManager():
             source_bucket = splits[0][-1]
             dest_bucket = splits[1]
             all_keys_merged_buckets = []
-            # get all the unique entities present in the partition
+            # get all the unique entities present in the buckets
             with shelve.open(self.partitioner.files[int(source_bucket)]) as bucket:
                 all_keys_merged_buckets.extend(bucket['indexes'])
             if source_bucket != dest_bucket: 
@@ -127,16 +129,20 @@ class PartitionedDataManager():
         self.all_rel_embs[self.rel_original_ids] = \
             self._model.encoding_layer.rel_emb.numpy()[:len(self.rel_original_ids), :]
 
-        opt_weights = self._model.optimizer.get_weights()
+        ent_opt_hyperparams, rel_opt_hyperparams = self._model.optimizer.get_entity_relation_hyperparams()
 
-        if len(opt_weights)>0:
-
-            self.all_rel_opt_params[self.rel_original_ids, :, :] = \
-                np.concatenate([opt_weights[2][:len(self.rel_original_ids)][:, np.newaxis, :], 
-                                opt_weights[4][:len(self.rel_original_ids)][:, np.newaxis, :]], 1)
-            self.all_ent_opt_params[self.ent_original_ids, :, :] = \
-                np.concatenate([opt_weights[1][:len(self.ent_original_ids)][:, np.newaxis, :], 
-                                opt_weights[3][:len(self.ent_original_ids)][:, np.newaxis, :]], 1)
+        num_opt_hyperparams = self._model.optimizer.get_hyperparam_count()
+        if num_opt_hyperparams > 0:
+            original_ent_hyperparams = []
+            original_rel_hyperparams = []
+            
+            for i in range(num_opt_hyperparams):
+                original_ent_hyperparams.append(ent_opt_hyperparams[i][:len(self.ent_original_ids)])
+                original_rel_hyperparams.append(rel_opt_hyperparams[i][:len(self.rel_original_ids)])
+                
+            
+            self.all_rel_opt_params[self.rel_original_ids, :, :] = np.stack(original_rel_hyperparams, 1)
+            self.all_ent_opt_params[self.ent_original_ids, :, :] = np.stack(original_ent_hyperparams, 1)
             
         # Open the buckets related to the partition and concat
         splits = graph_data_loader.backend.mapper.metadata['name'].split('-')
@@ -231,44 +237,29 @@ class PartitionedDataManager():
 
         self._model.partition_change_updates(len(self.ent_original_ids), ent_embs, rel_embs)
         if self._model.global_epoch >1:
-            # needs to be better handled
-            #optimizer_rel_weights_updates_beta1 = self.optimizer_hyperparams_rel[self.rel_original_ids, 0, :]
-            #optimizer_rel_weights_updates_beta2 = self.optimizer_hyperparams_rel[self.rel_original_ids, 1, :]
-            #optimizer_ent_weights_updates_beta1 = self.optimizer_hyperparams_ent[self.ent_original_ids, 0, :]
-            #optimizer_ent_weights_updates_beta2 = self.optimizer_hyperparams_ent[self.ent_original_ids, 1, :]
+            # TODO: needs to be better handled
             
-            optimizer_rel_weights_updates_beta1 = rel_opt_params[:, 0, :]
-            optimizer_rel_weights_updates_beta2 = rel_opt_params[:, 1, :]
-            optimizer_ent_weights_updates_beta1 = ent_opt_params[: , 0, :]
-            optimizer_ent_weights_updates_beta2 = ent_opt_params[: , 1, :]
-
-            optimizer_rel_weights_updates_beta1 = np.pad(optimizer_rel_weights_updates_beta1, 
-                                                         ((0, self.num_rels - optimizer_rel_weights_updates_beta1.shape[0]), 
-                                                          (0,0)), 
-                                                         'constant',
-                                                         constant_values=(0))
-            optimizer_rel_weights_updates_beta2 = np.pad(optimizer_rel_weights_updates_beta2, 
-                                                         ((0, self.num_rels - optimizer_rel_weights_updates_beta2.shape[0]), 
-                                                          (0,0)), 
-                                                         'constant', 
-                                                         constant_values=(0))
-            optimizer_ent_weights_updates_beta1 = np.pad(optimizer_ent_weights_updates_beta1, 
-                                                         ((0, self.max_ent_size - optimizer_ent_weights_updates_beta1.shape[0]), 
-                                                          (0,0)), 
-                                                         'constant', 
-                                                         constant_values=(0))
-            optimizer_ent_weights_updates_beta2 = np.pad(optimizer_ent_weights_updates_beta2, 
-                                                         ((0, self.max_ent_size - optimizer_ent_weights_updates_beta2.shape[0]), 
-                                                          (0,0)), 
-                                                         'constant', 
-                                                         constant_values=(0))
-
-            self._model.optimizer.set_weights([self._model.optimizer.iterations.numpy(), 
-                                         optimizer_ent_weights_updates_beta1,
-                                         optimizer_rel_weights_updates_beta1,
-                                         optimizer_ent_weights_updates_beta2,
-                                         optimizer_rel_weights_updates_beta2
-                                        ])
+            rel_optim_hyperparams = []
+            ent_optim_hyperparams = []
+            
+            num_opt_hyperparams = self._model.optimizer.get_hyperparam_count()
+            for i in range(num_opt_hyperparams):
+                rel_hyperparam_i = rel_opt_params[:, i, :]
+                rel_hyperparam_i = np.pad(rel_hyperparam_i, 
+                                          ((0, self.num_rels - rel_hyperparam_i.shape[0]), (0,0)), 
+                                           'constant',
+                                           constant_values=(0))
+                rel_optim_hyperparams.append(rel_hyperparam_i)
+                
+                ent_hyperparam_i = ent_opt_params[:, i, :]
+                ent_hyperparam_i = np.pad(ent_hyperparam_i, 
+                                          ((0, self.max_ent_size - ent_hyperparam_i.shape[0]), (0,0)),
+                                          'constant',
+                                          constant_values=(0))
+                ent_optim_hyperparams.append(ent_hyperparam_i)
+                
+            self._model.optimizer.set_entity_relation_hyperparams(ent_optim_hyperparams, 
+                                                                  rel_optim_hyperparams)
 
     def data_generator(self):
         for i, partition_data in enumerate(self.partitioner):
@@ -314,6 +305,4 @@ class PartitionedDataManager():
             # split and store separately
             for key in range(rel_partition['0'][1].shape[0] - 1, -1, -1):
                 rel_partition[str(key)] = rel_partition['0'][1][key]
-        
-        
- 
+

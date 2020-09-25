@@ -181,10 +181,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             loss += (0.0001 * (tf.reduce_sum(tf.pow(tf.abs(self.encoding_layer.ent_emb), 3)) + \
                               tf.reduce_sum(tf.pow(tf.abs(self.encoding_layer.rel_emb), 3))))
 
-        # compute the grads
-        gradients = tape.gradient(loss, [self.encoding_layer.ent_emb, self.encoding_layer.rel_emb])
-        # update the trainable params
-        self.optimizer.apply_gradients(zip(gradients, [self.encoding_layer.ent_emb, self.encoding_layer.rel_emb]))
+        # call minimize function of ampligraph optimizer
+        self.optimizer.minimize(loss, 
+                                self.encoding_layer.ent_emb, 
+                                self.encoding_layer.rel_emb,
+                                tape)
+
         self._loss_metric.update_state(loss)
         return {self._loss_metric.name: self._loss_metric.result()}
     
