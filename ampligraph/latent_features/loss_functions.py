@@ -10,6 +10,7 @@ import abc
 import logging
 import six
 from tensorflow.python.eager import def_function
+from tensorflow.python.keras import metrics as metrics_mod
 
 LOSS_REGISTRY = {}
 
@@ -78,6 +79,9 @@ class Loss(abc.ABC):
         """
         self._loss_parameters = {}
         self._dependencies = []
+        self._user_losses = self.name
+        
+        self._loss_metric = metrics_mod.Mean(name='loss')  # Total loss.
 
         # perform check to see if all the required external hyperparams are passed
         try:
@@ -91,6 +95,11 @@ class Loss(abc.ABC):
             msg = 'Some of the hyperparams for loss were not passed to the loss function.\n{}'.format(e)
             logger.error(msg)
             raise Exception(msg)
+
+    @property
+    def metrics(self):
+        """Per-output loss metrics."""
+        return [self._loss_metric] 
 
     def _init_hyperparams(self, hyperparam_dict):
         """Initializes the hyperparameters needed by the algorithm.
@@ -159,7 +168,10 @@ class Loss(abc.ABC):
         loss : tf.Tensor
             The loss value that must be minimized.
         """
-        return self._apply_loss(scores_pos, scores_neg, eta)
+        
+        loss = self._apply_loss(scores_pos, scores_neg, eta)
+        self._loss_metric.update_state(loss)
+        return loss
         
 
 
@@ -526,7 +538,8 @@ class LossFunctionWrapper(Loss):
     def __init__(self,
                  user_defined_loss,
                  name=None):
-        self.user_defined_loss = user_defined_loss
+        super(LossFunctionWrapper, self).__init__()
+        self._user_losses = user_defined_loss
         self.name = name
         
     def _init_hyperparams(self, hyperparam_dict={}):
@@ -541,7 +554,7 @@ class LossFunctionWrapper(Loss):
     
     @tf.function(experimental_relax_shapes=True)
     def _apply_loss(self, scores_pos, scores_neg, eta):
-        return self.user_defined_loss(scores_pos, scores_neg, eta)
+        return self._user_losses(scores_pos, scores_neg, eta)
 
     
 def get(identifier):

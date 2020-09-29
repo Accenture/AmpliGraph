@@ -17,6 +17,8 @@ from ampligraph.latent_features.layers.corruption_generation import CorruptionGe
 from tensorflow.python.keras import metrics as metrics_mod
 import copy
 import shelve
+import pickle
+from ampligraph.datasets import DataIndexer
 
 from ampligraph.latent_features import optimizers
 from ampligraph.latent_features import loss_functions
@@ -109,7 +111,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # update the trainable variable in the encoding layer
         self.encoding_layer.partition_change_updates(ent_emb, rel_emb)
 
-    @tf.function
+    @tf.function(experimental_relax_shapes=True)
     def call(self, inputs):
         '''
         Computes the scores of the triples and returns the corruption scores as well
@@ -176,19 +178,18 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # get the model predictions
             score_pos, score_neg = self(tf.cast(data, tf.int32), training=0)
             # compute the loss
-            loss = self.loss(score_pos, score_neg, self.eta)
+            loss = self.compiled_loss(score_pos, score_neg, self.eta)
             # regularizer - will be in a separate class like ampligraph 1
             loss += (0.0001 * (tf.reduce_sum(tf.pow(tf.abs(self.encoding_layer.ent_emb), 3)) + \
                               tf.reduce_sum(tf.pow(tf.abs(self.encoding_layer.rel_emb), 3))))
 
-        # call minimize function of ampligraph optimizer
         self.optimizer.minimize(loss, 
                                 self.encoding_layer.ent_emb, 
                                 self.encoding_layer.rel_emb,
                                 tape)
-
-        self._loss_metric.update_state(loss)
-        return {self._loss_metric.name: self._loss_metric.result()}
+        
+        #self.compiled_metrics.update_state(loss)
+        return {m.name: m.result() for m in self.metrics}
     
     def make_train_function(self):
         ''' Returns the handle to training step function. The handle takes one batch by iterating over the
@@ -253,6 +254,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                          epochs=epochs,
                                                          use_filter=False,
                                                          use_partitioning=use_partitioning)
+            self.data_indexer = self.data_handler.get_mapper()
         
             # Container that configures and calls `tf.keras.Callback`s.
             if not isinstance(callbacks, callbacks_module.CallbackList):
@@ -300,24 +302,74 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     break
 
             callbacks.on_train_end()
+            
             return self.history
     
     def _get_optimizer(self, optimizer):
         return optimizers.get(optimizer)
+        
+    def save_weights(self,
+               filepath,
+               overwrite=True,
+               save_format=None,
+               options=None):
+        super(ScoringBasedEmbeddingModel, self).save_weights(filepath, 
+                                                     overwrite, 
+                                                     save_format, 
+                                                     options)
+        with open(filepath+'.ampkl', "wb") as f:
+            indexer = self.data_handler.get_mapper()
+            metadata = {'inmemory': indexer.in_memory,
+                        'entities_dict': indexer.entities_dict,
+                        'reversed_entities_dict': indexer.reversed_entities_dict,
+                        'relations_dict': indexer.relations_dict,
+                        'reversed_relations_dict': indexer.reversed_relations_dict
+                       }
+            pickle.dump(metadata, f)
+                
+        
+        
+
+        
+    def load_weights(self,
+                     filepath,
+                     by_name=False,
+                     skip_mismatch=False,
+                     options=None):
+        super(ScoringBasedEmbeddingModel, self).load_weights(filepath, 
+                                                     by_name, 
+                                                     skip_mismatch, 
+                                                     options)  
+        with open(filepath+'.ampkl', "rb") as f:
+            metadata = pickle.load(f)
+            self.data_indexer = DataIndexer([], 
+                                            metadata['inmemory'],
+                                            metadata['entities_dict'],
+                                            metadata['reversed_entities_dict'],
+                                            metadata['relations_dict'],
+                                            metadata['reversed_relations_dict'])
     
     def compile(self,
           optimizer='adam',
           loss=None,
-          metrics=None,
           **kwargs):
-        
         
         # self._validate_compile(optimizer, metrics, **kwargs)
         self.optimizer = self._get_optimizer(optimizer)
         self._reset_compile_cache()
         self._is_compiled = True
-        self.loss = loss_functions.get(loss)
-        self._loss_metric = metrics_mod.Mean(name='loss')  # Total loss.
+        self.compiled_loss = loss_functions.get(loss)
+        self.compiled_metrics = metrics_mod.Mean(name='loss')  # Total loss.
+        
+    @property
+    def metrics(self):
+        metrics = []
+        if self._is_compiled:
+            if self.compiled_loss is not None:
+                metrics += self.compiled_loss.metrics
+                
+        return metrics
+        
         
     def get_emb_matrix_test(self, part_number = 1, number_of_parts=1):
         if number_of_parts==1:
@@ -425,8 +477,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                           dataset_type='test', 
                                                           epochs=1, 
                                                           use_filter=use_filter,
-                                                          #partitioner = partitioner,
-                                                          prev_data_handler = self.data_handler)
+                                                          use_indexer = self.data_indexer)
         
         assert corrupt_side in ['s', 'o', 's,o', 's+o'], 'Invalid value for corrupt_side'
         
@@ -467,4 +518,3 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     callbacks.on_test_batch_end(step)
         callbacks.on_test_end()
         return np.concatenate(self.all_ranks)
-

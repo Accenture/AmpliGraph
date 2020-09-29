@@ -11,9 +11,13 @@ logger.setLevel(logging.DEBUG)
 class OptimizerWrapper(abc.ABC):
     """Wrapper around tensorflow optimizer
     """
-    def __init__(self, optimizer):
+    def __init__(self, name=None, optimizer=None, **kwargs):
         """Initialize the Optimizer
         """
+        if name is not None:
+            config = {'class_name': name, 'config': kwargs}
+            optimizer = tf.keras.optimizers.deserialize(config)
+            
         self._optimizer = optimizer
         self.__num_optimized_vars = 0
         self.__number_hyperparams = -1
@@ -72,12 +76,18 @@ class OptimizerWrapper(abc.ABC):
 
     def get_iterations(self):
         return self._optimizer.iterations.numpy()
+    
+    def get_config(self):
+        return self._optimizer.get_config()
         
+
 def get(identifier):
     if isinstance(identifier, tf.optimizers.Optimizer):
-        return OptimizerWrapper(identifier)
+        return OptimizerWrapper(optimizer=identifier)
+    elif isinstance(identifier, OptimizerWrapper):
+        return identifier
     elif isinstance(identifier, six.string_types):
-        optim = tf.optimizers.get(identifier)
-        return OptimizerWrapper(optim)
+        return OptimizerWrapper(name=identifier)
     else:
         raise ValueError('Could not interpret optimizer identifier:', identifier)
+

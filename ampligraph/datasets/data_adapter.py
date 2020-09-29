@@ -11,7 +11,7 @@ class DataHandler():
                  dataset_type="train", 
                  epochs=1, 
                  initial_epoch=0, 
-                 prev_data_handler = None,
+                 use_indexer = True,
                  train_partitioner=None,
                  use_filter=True,
                  use_partitioning=False):
@@ -22,11 +22,6 @@ class DataHandler():
         self._inferred_steps = None
             
         self.train_partitioner = train_partitioner
-
-        if prev_data_handler is None:
-            use_indexer = True
-        else:
-            use_indexer = prev_data_handler.get_mapper()
         
         if isinstance(x, GraphDataLoader):
             self._adapter = x

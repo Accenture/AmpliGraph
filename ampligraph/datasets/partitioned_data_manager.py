@@ -4,6 +4,7 @@ from ampligraph.datasets.graph_partitioner import PARTITION_ALGO_REGISTRY, Abstr
 import numpy as np
 import shelve   
 
+
 class PartitionedDataManager():
     def __init__(self, dataset_loader, model, epochs=1):
         
@@ -32,10 +33,6 @@ class PartitionedDataManager():
                                     self.partitioner.partitions[i].backend.mapper.ents_length)
         
         self._generate_partition_params()
-        
-        
-    def get_test_embeddings(self, ids):
-        pass
         
         
     def _generate_partition_params(self):
@@ -305,4 +302,3 @@ class PartitionedDataManager():
             # split and store separately
             for key in range(rel_partition['0'][1].shape[0] - 1, -1, -1):
                 rel_partition[str(key)] = rel_partition['0'][1][key]
-
