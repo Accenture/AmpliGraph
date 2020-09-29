@@ -267,6 +267,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                             epochs=epochs)
             self.stop_training = False
             self.is_partitioned_training = use_partitioning
+            
+            if self.is_partitioned_training:
+                self.num_buckets = self.data_handler._adapter.num_buckets
+                
             train_function = self.make_train_function()
             callbacks.on_train_begin()
 
@@ -323,12 +327,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         'entities_dict': indexer.entities_dict,
                         'reversed_entities_dict': indexer.reversed_entities_dict,
                         'relations_dict': indexer.relations_dict,
-                        'reversed_relations_dict': indexer.reversed_relations_dict
+                        'reversed_relations_dict': indexer.reversed_relations_dict,
+                        'is_partitioned_training': self.is_partitioned_training
                        }
-            pickle.dump(metadata, f)
+            
+            if self.is_partitioned_training:
+                metadata['num_buckets'] = self.num_buckets
                 
-        
-        
+            pickle.dump(metadata, f)
 
         
     def load_weights(self,
@@ -348,6 +354,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                             metadata['reversed_entities_dict'],
                                             metadata['relations_dict'],
                                             metadata['reversed_relations_dict'])
+            self.is_partitioned_training = metadata['is_partitioned_training']
+            
+            if self.is_partitioned_training:
+                self.num_buckets = metadata['num_buckets']
+            
     
     def compile(self,
           optimizer='adam',
@@ -396,7 +407,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             number_of_parts = 1
             
             if self.is_partitioned_training:
-                number_of_parts = self.data_handler._adapter.num_buckets
+                number_of_parts = self.num_buckets
             
             if self.use_filter:
                 inputs, filters = next(iterator)
