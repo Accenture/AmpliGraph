@@ -7,8 +7,23 @@ import tensorflow as tf
 
 
 class PartitionedDataManager():
+    ''' Manages the partitioning related controls. 
+    Handles data generation and informs model about changes in partition.
+    '''
     def __init__(self, dataset_loader, model, epochs=1):
+        """Initializes the Partitioning Data Manager. 
+        Uses/Creates partitioner and generates partition related params.
         
+        Parameters
+        ----------
+        dataset_loader : 
+            Either an instance of AbstractGraphPartitioner or GraphDataLoader.
+        model: tf.keras.Model
+            The model that is being trained
+        epochs: int
+            Starting epoch number
+        
+        """
         self._model = model
         self.k = self._model.k
         self.eta = self._model.eta
@@ -37,14 +52,19 @@ class PartitionedDataManager():
 
     @property
     def max_entities(self):
+        '''Returns the maximum entity size that can occur in a partition
+        '''
         return self.max_ent_size
 
     @property
     def max_relations(self):
+        '''Returns the maximum relation size that can occur in a partition
+        '''
         return self.num_rels
         
     def _generate_partition_params(self):
-        ''' Generates the metadata needed for persisting and loading partition embeddings and other params'''
+        ''' Generates the metadata needed for persisting and loading partition embeddings and other params
+        '''
 
         # create entity embeddings and optimizer hyperparams for all entities
         for i in range(self.num_buckets):
@@ -128,24 +148,40 @@ class PartitionedDataManager():
 
 
     def update_partion_embeddings(self, graph_data_loader, partition_number):
-        '''Persists the embeddings and other params after the partition is trained'''
+        '''Persists the embeddings and other params after a partition is trained
+        
+        Parameters
+        ----------
+        graph_data_loader : GraphDataLoader
+            Data loader of the current partition that was trained
+        partition_number: int
+            Partition number of the current partition that was trained
+        '''
+        # set the trained params back for persisting (exclude paddings)
         self.all_ent_embs[self.ent_original_ids] = \
             self._model.encoding_layer.ent_emb.numpy()[:len(self.ent_original_ids), :]
         self.all_rel_embs[self.rel_original_ids] = \
             self._model.encoding_layer.rel_emb.numpy()[:len(self.rel_original_ids), :]
 
+        # get the optimizer params related to the embeddings
         ent_opt_hyperparams, rel_opt_hyperparams = self._model.optimizer.get_entity_relation_hyperparams()
 
+        # get the number of params that are created by the optimizer
         num_opt_hyperparams = self._model.optimizer.get_hyperparam_count()
+        
+        # depending on optimizer, you can have 0 or more params
         if num_opt_hyperparams > 0:
+            # store the params
             original_ent_hyperparams = []
             original_rel_hyperparams = []
             
+            # get all the different params related to entities and relations
+            # eg: beta1, beta2 related to embeddings (when using adam)
             for i in range(num_opt_hyperparams):
                 original_ent_hyperparams.append(ent_opt_hyperparams[i][:len(self.ent_original_ids)])
                 original_rel_hyperparams.append(rel_opt_hyperparams[i][:len(self.rel_original_ids)])
                 
-            
+            # store for persistance
             self.all_rel_opt_params[self.rel_original_ids, :, :] = np.stack(original_rel_hyperparams, 1)
             self.all_ent_opt_params[self.ent_original_ids, :, :] = np.stack(original_ent_hyperparams, 1)
             
@@ -155,6 +191,7 @@ class PartitionedDataManager():
         dest_bucket = splits[1]
         
         try:
+            # persist entity related embs and optim params
             s = shelve.open('ent_partition', writeback=True)
             source_bucket_params = s[source_bucket]
             dest_source_bucket_params = s[dest_bucket]
@@ -173,7 +210,7 @@ class PartitionedDataManager():
             s.close()
             
         try:
-            
+            # persist relation related embs and optim params
             s = shelve.open('rel_partition', writeback=True)
             s['0'] = [self.all_rel_opt_params, self.all_rel_embs]
             
@@ -183,11 +220,17 @@ class PartitionedDataManager():
 
 
     def change_partition(self, graph_data_loader, partition_number):
-        '''Gets a new partition to train and loads all the params of the partition'''
+        '''Gets a new partition to train and loads all the params of the partition
+        
+        Parameters
+        ----------
+        graph_data_loader : GraphDataLoader
+            Data loader of the next partition that will be trained
+        partition_number: int
+            Partition number of the next partition will be trained
+        '''
         try:
-            #s = shelve.open(graph_data_loader.backend.mapper.metadata['entities_shelf'])
-            #self.ent_original_ids = np.array(list(s.values())).astype(np.int32)
-            
+            # open the meta data related to the partition
             s = shelve.open('ent_partition_metadata')
             # entities mapping ids
             self.ent_original_ids = s[str(partition_number)]
@@ -195,8 +238,6 @@ class PartitionedDataManager():
             s.close()
 
         try:
-            #s = shelve.open(graph_data_loader.backend.mapper.metadata['relations'])
-            #self.rel_original_ids = np.array(list(s.values())).astype(np.int32)
             s = shelve.open('rel_partition_metadata')
             # entities mapping ids
             self.rel_original_ids = s[str(partition_number)]
@@ -228,22 +269,23 @@ class PartitionedDataManager():
             
         try:
             s = shelve.open('rel_partition')
+            # full rel embs
             self.all_rel_embs = s['0'][1]
             self.all_rel_opt_params =s['0'][0]
+            # now select only partition embeddings
             rel_embs = self.all_rel_embs[self.rel_original_ids]
             rel_opt_params = self.all_rel_opt_params[self.rel_original_ids]
         finally:
             s.close()
-        
-            
-        
-        #ent_embs = self.entity_embeddings[self.ent_original_ids, :]
-        #rel_embs = self.entity_embeddings[self.rel_original_ids, :]
 
+        # notify the model about the partition change 
         self._model.partition_change_updates(len(self.ent_original_ids), ent_embs, rel_embs)
-        if self._model.global_epoch >1:
+        
+        # Optimizer params will exist only after it has been persisted once
+        if self._model.global_epoch > 1 or (self._model.global_epoch == 1 and 
+                                            partition_number > self.num_buckets):
             # TODO: needs to be better handled
-            
+            # get the optimizer params of the embs that will be trained
             rel_optim_hyperparams = []
             ent_optim_hyperparams = []
             
@@ -262,22 +304,35 @@ class PartitionedDataManager():
                                           'constant',
                                           constant_values=(0))
                 ent_optim_hyperparams.append(ent_hyperparam_i)
-                
+            
+            # notify the optimizer and update the optimizer hyperparams
             self._model.optimizer.set_entity_relation_hyperparams(ent_optim_hyperparams, 
                                                                   rel_optim_hyperparams)
 
     def data_generator(self):
+        '''Generates the data to be trained from the current partition. 
+        Once the partition data is exhausted, the current params are persisted; the partition is changed 
+        and model is notified.
+        
+        Returns:
+        --------
+        batch_data_from_current_partition: (n,3)
+            A batch of triples from current partition being trained
+        '''
         for i, partition_data in enumerate(self.partitioner):
             # partition_data is an object of graph data loader
+            # Perform tasks related to change of partition
             self.change_partition(partition_data, i)
             try:
                 while True:
+                    # generate data from the current partition
                     batch_data_from_current_partition = next(partition_data)
                     yield batch_data_from_current_partition
+            
             except StopIteration:
+                # No more data in current partition (parsed fully once), so the partition is trained
+                # Hence persist the params related to the current partition.
                 self.update_partion_embeddings(partition_data, i)
-            finally:
-                pass
                 
     def __iter__(self):
         """Function needed to be used as an itertor."""
@@ -288,13 +343,20 @@ class PartitionedDataManager():
         return next(self.batch_iterator)
     
     def reload(self):
+        ''' reload the data for next epoch
+        '''
         self.partitioner.reload()
         self.batch_iterator = iter(self.data_generator())
         
     def on_epoch_end(self):
+        ''' Activities to be performed on epoch end
+        '''
         pass
     
     def on_complete(self):
+        ''' Activities to be performed on end of training.
+            The manager persists the data (splits the entity partitions into individual embeddings)
+        '''
         for i in range(self.num_buckets - 1, -1, -1):
             with shelve.open(self.partitioner.files[i]) as bucket:
 
