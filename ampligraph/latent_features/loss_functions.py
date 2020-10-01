@@ -11,6 +11,8 @@ import logging
 import six
 from tensorflow.python.eager import def_function
 from tensorflow.python.keras import metrics as metrics_mod
+from tensorflow.python.keras.utils import losses_utils
+from tensorflow.python.ops import math_ops
 
 LOSS_REGISTRY = {}
 
@@ -152,7 +154,7 @@ class Loss(abc.ABC):
         return scores_pos
 
         
-    def __call__(self, scores_pos, scores_neg, eta):
+    def __call__(self, scores_pos, scores_neg, eta, regularization_losses=None):
         """Interface to external world.
         This function does the input checks, preprocesses input and finally applies loss function.
 
@@ -169,9 +171,19 @@ class Loss(abc.ABC):
             The loss value that must be minimized.
         """
         
+        loss_values = []
         loss = self._apply_loss(scores_pos, scores_neg, eta)
-        self._loss_metric.update_state(loss)
-        return loss
+        loss_values.append(loss)
+        
+        if regularization_losses:
+            regularization_losses = losses_utils.cast_losses_to_common_dtype(regularization_losses)
+            reg_loss = math_ops.add_n(regularization_losses)
+            loss_values.append(reg_loss)
+            
+        loss_values = losses_utils.cast_losses_to_common_dtype(loss_values)
+        total_loss = math_ops.add_n(loss_values)
+        self._loss_metric.update_state(total_loss)
+        return total_loss
         
 
 

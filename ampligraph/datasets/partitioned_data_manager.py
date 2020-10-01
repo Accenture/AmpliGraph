@@ -3,6 +3,7 @@ from ampligraph.datasets import GraphDataLoader
 from ampligraph.datasets.graph_partitioner import PARTITION_ALGO_REGISTRY, AbstractGraphPartitioner
 import numpy as np
 import shelve   
+import tensorflow as tf
 
 
 class PartitionedDataManager():
@@ -33,17 +34,18 @@ class PartitionedDataManager():
                                     self.partitioner.partitions[i].backend.mapper.ents_length)
         
         self._generate_partition_params()
-        
+
+    @property
+    def max_entities(self):
+        return self.max_ent_size
+
+    @property
+    def max_relations(self):
+        return self.num_rels
         
     def _generate_partition_params(self):
         ''' Generates the metadata needed for persisting and loading partition embeddings and other params'''
-        
-        def xavier(in_shape, out_shape, part_in_shape=None):
-            if part_in_shape is None:
-                part_in_shape = in_shape,
-            std = np.sqrt(2 / (in_shape + out_shape))
-            return np.random.normal(0, std, size=(part_in_shape, out_shape)).astype(np.float32)
-        
+
         # create entity embeddings and optimizer hyperparams for all entities
         for i in range(self.num_buckets):
             with shelve.open('ent_partition', writeback=True) as ent_partition:
@@ -53,7 +55,10 @@ class PartitionedDataManager():
                     num_ents_bucket = bucket['indexes'].shape[0]
                     # TODO change the hardcoding from 3 to actual hyperparam of optim
                     opt_param = np.zeros(shape=(num_ents_bucket, 3, self.k), dtype=np.float32)
-                    ent_emb = xavier(self.num_ents, self.k, num_ents_bucket)
+                    # ent_emb = xavier(self.num_ents, self.k, num_ents_bucket)
+                    ent_emb = self._model.encoding_layer.ent_init(
+                        shape=(num_ents_bucket, self.k),
+                        dtype=tf.float32).numpy()
                     ent_partition.update({out_dict_keys: [opt_param, ent_emb]})
          
         # create relation embeddings and optimizer hyperparams for all relations
@@ -62,7 +67,10 @@ class PartitionedDataManager():
             out_dict_keys = str(0)
             # TODO change the hardcoding from 3 to actual hyperparam of optim
             opt_param = np.zeros(shape=(self.num_rels, 3, self.k), dtype=np.float32)
-            rel_emb = xavier(self.num_rels, self.k, self.num_rels)
+            # rel_emb = xavier(self.num_rels, self.k, self.num_rels)
+            rel_emb = self._model.encoding_layer.rel_init(
+                shape=(self.num_rels, self.k), 
+                dtype=tf.float32).numpy()
             rel_partition.update({out_dict_keys: [opt_param, rel_emb]})
                 
         # for every partition
@@ -302,3 +310,4 @@ class PartitionedDataManager():
             # split and store separately
             for key in range(rel_partition['0'][1].shape[0] - 1, -1, -1):
                 rel_partition[str(key)] = rel_partition['0'][1][key]
+        

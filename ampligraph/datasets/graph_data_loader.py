@@ -445,7 +445,15 @@ class GraphDataLoader():
     def __iter__(self):
         """Function needed to be used as an itertor."""
         return self
+    
+    @property
+    def max_entities(self):
+        return self.backend.mapper.get_max_ents_index() + 1
 
+    @property
+    def max_relations(self):
+        return self.backend.mapper.get_max_rels_index() + 1
+    
     def __next__(self):
         """Function needed to be used as an itertor."""
         return self.batch_iterator.__next__()
