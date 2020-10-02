@@ -282,7 +282,7 @@ class PartitionedDataManager():
         self._model.partition_change_updates(len(self.ent_original_ids), ent_embs, rel_embs)
         
         # Optimizer params will exist only after it has been persisted once
-        if self._model.global_epoch > 1 or (self._model.global_epoch == 1 and 
+        if self._model.current_epoch > 1 or (self._model.current_epoch == 1 and 
                                             partition_number > self.num_buckets):
             # TODO: needs to be better handled
             # get the optimizer params of the embs that will be trained

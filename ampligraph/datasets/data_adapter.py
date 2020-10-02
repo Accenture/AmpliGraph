@@ -22,6 +22,7 @@ class DataHandler():
         self._inferred_steps = None
             
         self.train_partitioner = train_partitioner
+        self.using_partitioning = False
         
         if isinstance(x, GraphDataLoader):
             self._adapter = x
@@ -29,6 +30,7 @@ class DataHandler():
         elif isinstance(x, AbstractGraphPartitioner):
             self._parent_adapter = x._data
             self._adapter = x
+            self.using_partitioning = True
         else:
             # use graph data loader by default
             self._adapter = GraphDataLoader(x, 
@@ -47,6 +49,7 @@ class DataHandler():
             # partitioned data manager
             assert model is not None, "Please pass the model to datahandler for partitioning!"
             self._adapter = PartitionedDataManager(self._adapter, self._model, epochs)
+            self.using_partitioning = True
         
     def temperorily_set_emb_matrix(self, ent_emb, rel_emb):
         self._parent_adapter.temperorily_set_emb_matrix(ent_emb, rel_emb)
