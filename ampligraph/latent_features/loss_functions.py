@@ -126,7 +126,9 @@ class Loss(abc.ABC):
             A tensor of scores assigned to positive statements.
         scores_neg : tf.Tensor
             A tensor of scores assigned to negative statements.
-
+        eta: tf.Tensor
+           number of synthetic corruptions per positive
+           
         Returns
         -------
         loss : tf.Tensor
@@ -145,6 +147,7 @@ class Loss(abc.ABC):
             A tensor of scores assigned to positive statements.
         eta : tf.Tensor
             Number of corruptions
+
         Returns
         -------
         scores_pos : tf.Tensor
@@ -164,6 +167,10 @@ class Loss(abc.ABC):
             A tensor of scores assigned to positive statements.
         scores_neg : tf.Tensor
             A tensor of scores assigned to negative statements.
+        eta: tf.Tensor
+           number of synthetic corruptions per positive
+        regularization_losses: list   
+           List of all regularization related losses defined in the layers
 
         Returns
         -------
@@ -239,6 +246,8 @@ class PairwiseLoss(Loss):
             A tensor of scores assigned to positive statements.
         scores_neg : tf.Tensor, shape [n, 1]
             A tensor of scores assigned to negative statements.
+        eta: tf.Tensor
+           number of synthetic corruptions per positive
 
         Returns
         -------
@@ -297,6 +306,8 @@ class NLLLoss(Loss):
             A tensor of scores assigned to positive statements.
         scores_neg : tf.Tensor, shape [n, 1]
             A tensor of scores assigned to negative statements.
+        eta: tf.Tensor
+           number of synthetic corruptions per positive
 
         Returns
         -------
@@ -368,6 +379,8 @@ class AbsoluteMarginLoss(Loss):
            A tensor of scores assigned to positive statements.
         scores_neg : tf.Tensor, shape [n, 1]
            A tensor of scores assigned to negative statements.
+        eta: tf.Tensor
+           number of synthetic corruptions per positive
 
         Returns
         -------
@@ -449,6 +462,8 @@ class SelfAdversarialLoss(Loss):
            A tensor of scores assigned to positive statements.
        scores_neg : tf.Tensor, shape [n*negative_count, 1]
            A tensor of scores assigned to negative statements.
+       eta: tf.Tensor
+           number of synthetic corruptions per positive
 
        Returns
        -------
@@ -524,6 +539,8 @@ class NLLMulticlass(Loss):
            A tensor of scores assigned to positive statements.
        scores_neg : tf.Tensor, shape [n*negative_count, 1]
            A tensor of scores assigned to negative statements.
+       eta: tf.Tensor
+           number of synthetic corruptions per positive
 
        Returns
        -------
@@ -566,6 +583,23 @@ class LossFunctionWrapper(Loss):
     
     @tf.function(experimental_relax_shapes=True)
     def _apply_loss(self, scores_pos, scores_neg, eta):
+        """Apply the loss function.
+
+       Parameters
+       ----------
+       scores_pos : tf.Tensor, shape [n, 1]
+           A tensor of scores assigned to positive statements.
+       scores_neg : tf.Tensor, shape [n*negative_count, 1]
+           A tensor of scores assigned to negative statements.
+       eta: tf.Tensor
+           number of synthetic corruptions per positive
+
+       Returns
+       -------
+       loss : float
+           The loss value that must be minimized.
+
+       """
         return self._user_losses(scores_pos, scores_neg, eta)
 
     

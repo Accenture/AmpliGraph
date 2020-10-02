@@ -12,12 +12,26 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         
         Parameters:
         -----------
-        max_ent_size: int
-            max entities that can occur in any partition
-        max_rel_size: int
-            max relations that can occur in any partition
         k: int
             embedding size
+        max_ent_size: int
+            max entities that can occur in any partition (default: None)
+        max_rel_size: int
+            max relations that can occur in any partition (default: None)
+        entity_kernel_initializer: String (name of objective function), objective function or 
+            `tf.keras.initializers.Initializer` instance
+            An objective function is any callable with the signature `init = fn(shape)`
+            Initializer of the entity embeddings.
+        entity_kernel_regularizer: String (name of objective function), objective function or 
+            `tf.keras.initializers.Initializer` instance
+            An objective function is any callable with the signature `init = fn(shape)`
+            Initializer of the relation embeddings.
+        relation_kernel_initializer: String (name of objective function), objective function or 
+            `tf.keras.regularizers.Regularizer` instance
+            Regularizer of entity embeddings.
+        relation_kernel_regularizer: String (name of objective function), objective function or 
+            `tf.keras.regularizers.Regularizer` instance
+            Regularizer of relations embeddings.
         seed: int 
             random seed
         '''
@@ -40,11 +54,27 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         self.ent_regularizer = entity_kernel_regularizer
         self.rel_regularizer = relation_kernel_regularizer
         
-    def set_ent_rel_initializer(self, ent_init, rel_init):
+    def set_ent_rel_initial_value(self, ent_init, rel_init):
+        ''' Sets the initial value of entity and relation embedding matrix.
+        This function is mainly used during the partitioned training where the full embedding matrix is 
+        initialized outside the model.
+        '''
         self.ent_partition=ent_init
         self.rel_partition=rel_init
         
     def set_initializer(self, initializer):
+        ''' Set the initializer of the weights of this layer
+        
+        Parameters:
+        -----------
+        initializer: String (name of objective function), objective function or 
+            `tf.keras.initializers.Initializer` instance
+            An objective function is any callable with the signature `init = fn(shape)`
+            Initializer of the entity and relation embeddings. This is either a single value or a list of size 2.
+            If it is a single value, then both the entities and relations will be initialized based on 
+            the same initializer. if it is a list, the first initializer will be used for entities and second 
+            for relations.
+        '''
         if isinstance(initializer, list):
             assert len(initializer) == 2, \
                 'Incorrect length for initializer. Assumed 2 got {}'.format(len(initializer))
@@ -55,6 +85,18 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
             self.rel_init = tf.keras.initializers.get(initializer)
             
     def set_regularizer(self, regularizer):
+        ''' Set the regularizer of the weights of this layer
+        
+        Parameters:
+        -----------
+        regularizer: String (name of objective function), objective function or 
+            `tf.keras.regularizers.Regularizer` instance
+            Regularizer of entities and relations.
+            If it is a single value, then both the entities and relations will be regularized based on 
+            the same regularizer. if it is a list, the first regularizer will be used for entities and second 
+            for relations.
+        '''
+            
         if isinstance(regularizer, list):
             assert len(regularizer) == 2, \
                 'Incorrect length for regularizer. Assumed 2 got {}'.format(len(regularizer))
@@ -66,25 +108,37 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         
     @property 
     def max_ent_size(self):
+        ''' returns the value of size of entity embedding matrix
+        '''
         return self._max_ent_size_internal
     
     @max_ent_size.setter 
     def max_ent_size(self, value):
+        ''' Setter for the max entity size property.
+        The layer is buildable only if this property is set
+        '''
         if value is not None and value > 0:
             self._max_ent_size_internal = value
             self._has_enough_args_to_build_ent_emb = True
     
     @property 
     def max_rel_size(self):
+        ''' returns the value of size of relation embedding matrix
+        '''
         return self._max_rel_size_internal
     
     @max_rel_size.setter 
     def max_rel_size(self, value):
+        ''' Setter for the max relation size property.
+        The layer is buildable only if this property is set
+        '''
         if value is not None and value > 0:
             self._max_rel_size_internal = value
             self._has_enough_args_to_build_rel_emb = True
     
     def build(self, input_shape):
+        '''Builds the embedding lookup error. The trainable weights are created based on the hyperparams.
+        '''
         # create the trainable variables for entity embeddings
         if self._has_enough_args_to_build_ent_emb: 
             self.ent_emb = self.add_weight('ent_emb',

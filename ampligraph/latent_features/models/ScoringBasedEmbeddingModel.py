@@ -115,7 +115,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         else:
             # if the encoding layer has not been built then store it as an initializer
             # this would be the case of during partitioned training (first batch)
-            self.encoding_layer.set_ent_rel_initializer(ent_emb, rel_emb)
+            self.encoding_layer.set_ent_rel_initial_value(ent_emb, rel_emb)
 
     @tf.function(experimental_relax_shapes=True)
     def call(self, inputs):
@@ -208,11 +208,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             score_pos, score_neg = self(tf.cast(data, tf.int32), training=0)
             # compute the loss
             loss = self.compiled_loss(score_pos, score_neg, self.eta, regularization_losses=self.losses)
-            # TODO: accidental workaround - need to verify why and fix
-            # https://github.com/tensorflow/tensorflow/issues/28090 - related?
-            loss += (0.0000 * (tf.reduce_sum(self.encoding_layer.ent_emb) + \
-                              tf.reduce_sum(self.encoding_layer.rel_emb)))
-            
 
         # minimize the loss and update the trainable variables
         self.optimizer.minimize(loss, 
