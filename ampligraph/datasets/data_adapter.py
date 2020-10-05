@@ -1,8 +1,8 @@
 import contextlib
 import tensorflow as tf
-from ampligraph.datasets import GraphDataLoader, PartitionedDataManager, DummyBackend
+from ampligraph.datasets import GraphDataLoader, DummyBackend
 from ampligraph.datasets.graph_partitioner import AbstractGraphPartitioner
-
+import ampligraph.datasets.partitioned_data_manager as partition_manager
 
 class DataHandler():
     def __init__(self, x, 
@@ -48,7 +48,11 @@ class DataHandler():
             # if use partitioning then pass the graph data loader to partitioner and use
             # partitioned data manager
             assert model is not None, "Please pass the model to datahandler for partitioning!"
-            self._adapter = PartitionedDataManager(self._adapter, self._model, epochs)
+            
+            self._adapter = partition_manager.get_partition_adapter(self._adapter, 
+                                                                    self._model,
+                                                                    'Bucket')
+
             self.using_partitioning = True
         
     def temperorily_set_emb_matrix(self, ent_emb, rel_emb):

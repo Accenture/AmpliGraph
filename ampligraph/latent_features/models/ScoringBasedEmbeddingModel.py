@@ -345,7 +345,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
             # set some partition related params if it is partitioned training
             if self.is_partitioned_training:
-                self.num_buckets = self.data_handler._adapter.num_buckets
+                self.partitioner_k = self.data_handler._adapter.partitioner_k
                 self.encoding_layer.max_ent_size = self.max_ent_size
                 self.encoding_layer.max_rel_size = self.max_rel_size
                 
@@ -435,7 +435,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                        }
             
             if self.is_partitioned_training:
-                metadata['num_buckets'] = self.num_buckets
+                metadata['partitioner_k'] = self.partitioner_k
                 
             pickle.dump(metadata, f)
                 
@@ -467,7 +467,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             self.max_ent_size = metadata['max_ent_size']
             self.max_rel_size = metadata['max_rel_size']
             if self.is_partitioned_training:
-                self.num_buckets = metadata['num_buckets']
+                self.partitioner_k = metadata['partitioner_k']
         self.build_full_model()
         if not self.is_partitioned_training:
             super(ScoringBasedEmbeddingModel, self).load_weights(filepath, 
@@ -588,7 +588,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # if it is partitioned training 
             if self.is_partitioned_training:
                 # split the emb matrix based on number of buckets
-                number_of_parts = self.num_buckets
+                number_of_parts = self.partitioner_k
             
             # if we are using filters then the iterator return 2 outputs
             if self.use_filter:
