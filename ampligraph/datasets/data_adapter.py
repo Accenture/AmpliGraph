@@ -55,9 +55,6 @@ class DataHandler():
 
             self.using_partitioning = True
         
-    def temperorily_set_emb_matrix(self, ent_emb, rel_emb):
-        self._parent_adapter.temperorily_set_emb_matrix(ent_emb, rel_emb)
-        
     @contextlib.contextmanager
     def catch_stop_iteration(self):
         """Catches errors when an iterator runs out of data."""

@@ -48,35 +48,6 @@ class DummyBackend():
         self.root_directory = root_directory
         self.use_filter = use_filter
         self.sources = {}
-        self.temp_workaround = False
-
-    def temperorily_set_emb_matrix(self, ent_emb, rel_emb):
-        self.temp_workaround = True
-        self.ent_emb = ent_emb
-        self.rel_emb = rel_emb
-        
-    def get_embeddings(self, triples): 
-        if isinstance(self.ent_emb, str):
-            sub_emb_out = []
-            obj_emb_out = []
-            rel_emb_out = []
-            with shelve.open(self.ent_emb) as ent_emb:
-                with shelve.open(self.rel_emb) as rel_emb:
-                    for triple in triples:
-                        sub_emb_out.append(ent_emb[str(triple[0])])
-                        rel_emb_out.append(rel_emb[str(triple[1])])
-                        obj_emb_out.append(ent_emb[str(triple[2])])
-                        
-            emb_out = [np.array(sub_emb_out),
-                       np.array(rel_emb_out),
-                       np.array(obj_emb_out)]
-                    
-                    
-        else:
-            emb_out = [self.ent_emb[triples[:, 0]], 
-                           self.rel_emb[triples[:, 1]], 
-                           self.ent_emb[triples[:, 2]]]
-        return emb_out
 
     def __enter__ (self):
         """Context manager enter function. Required by GraphDataLoader."""
@@ -352,9 +323,6 @@ class DummyBackend():
                 # get the filter values
                 participating_entities = self._get_complementary_entities(out, use_filter=use_filter)
             
-            if self.temp_workaround:
-                out = self.get_embeddings(out)
-                
             if use_filter:
                 yield out, participating_entities
             else:
@@ -458,9 +426,6 @@ class GraphDataLoader():
         """Function needed to be used as an itertor."""
         return self.batch_iterator.__next__()
     
-    def temperorily_set_emb_matrix(self, ent_emb, rel_emb):
-        self.backend.temperorily_set_emb_matrix(ent_emb, rel_emb)
-      
     def reload(self):
         """Reinstantiate batch iterator."""
         self.batch_iterator = self.get_batch_generator()

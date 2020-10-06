@@ -84,7 +84,6 @@ class SQLiteAdapter():
         self.db_path = os.path.join(self.root_directory, self.db_name)
         self.use_indexer = use_indexer
         self.remap = remap
-        self.temp_workaround = False
         if self.remap != False:
             msg = "Remapping is not supported for DataLoaders with SQLite Adapter as backend"
             logger.error(msg)
@@ -99,35 +98,6 @@ class SQLiteAdapter():
             Setting chunksize to {}.".format(self.__name__(), DEFAULT_CHUNKSIZE))
         else:
             self.chunk_size = chunk_size
-
-    def temperorily_set_emb_matrix(self, ent_emb, rel_emb):
-        self.temp_workaround = True
-        self.ent_emb = ent_emb
-        self.rel_emb = rel_emb
-        
-    def get_embeddings(self, triples): 
-        if isinstance(self.ent_emb, str):
-            sub_emb_out = []
-            obj_emb_out = []
-            rel_emb_out = []
-            with shelve.open(self.ent_emb) as ent_emb:
-                with shelve.open(self.rel_emb) as rel_emb:
-                    for triple in triples:
-                        sub_emb_out.append(ent_emb[str(triple[0])])
-                        rel_emb_out.append(rel_emb[str(triple[1])])
-                        obj_emb_out.append(ent_emb[str(triple[2])])
-                        
-            emb_out = [np.array(sub_emb_out),
-                       np.array(rel_emb_out),
-                       np.array(obj_emb_out)]
-                    
-                    
-        else:
-            emb_out = [self.ent_emb[triples[:, 0]], 
-                           self.rel_emb[triples[:, 1]], 
-                           self.ent_emb[triples[:, 2]]]
-            
-        return emb_out
     
     def should_recreate_iterator(self):
         return True
@@ -529,9 +499,7 @@ class SQLiteAdapter():
                 participating_entities = self._get_complementary_entities(out)
                
             out = out.astype(np.int32)
-            if self.temp_workaround:
-                out = self.get_embeddings(out)
-                
+
             if use_filter:
                 yield out, participating_entities
             else:

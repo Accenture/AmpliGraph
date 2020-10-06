@@ -174,6 +174,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             ranks by corrupting against subject corruptions and object corruptions 
             (corruptions defined by ent_embs matrix)
         '''
+        if not self.is_partitioned_training:
+            inputs = [tf.nn.embedding_lookup(self.encoding_layer.ent_emb, inputs[:, 0]),
+                      tf.nn.embedding_lookup(self.encoding_layer.rel_emb, inputs[:, 1]),
+                      tf.nn.embedding_lookup(self.encoding_layer.ent_emb, inputs[:, 2])]
+            
         return self.scoring_layer.get_ranks(inputs, ent_embs, start_id, end_id, filters, corrupt_side)
     
     def build(self, input_shape):
@@ -589,7 +594,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             if self.is_partitioned_training:
                 # split the emb matrix based on number of buckets
                 number_of_parts = self.partitioner_k
-            
+                
             # if we are using filters then the iterator return 2 outputs
             if self.use_filter:
                 # Filters used - batch of test set data and corresponding True positives (filters)
@@ -607,16 +612,19 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
             if 'o' in self.corrupt_side:
                 output_shape += 1
-            
+
             # create an array to store the ranks based on output shape
-            overall_rank = np.zeros((inputs[0].shape[0], output_shape), dtype=np.int32)
-            overall_rank_unf = np.zeros((inputs[0].shape[0], output_shape), dtype=np.int32)
+            overall_rank = np.zeros((inputs.shape[0], output_shape), dtype=np.int32)
+            overall_rank_unf = np.zeros((inputs.shape[0], output_shape), dtype=np.int32)
+            
+            inputs = self.process_model_inputs_for_test(inputs)
             
             # run the loop based on number of parts in which the original emb matrix was generated
             for j in range(number_of_parts):
                 # get the embedding matrix along with entity ids of first and last row of emb matrix
                 emb_mat, start_ent_id, end_ent_id = self.get_emb_matrix_test(j, number_of_parts)
                 # compute the rank
+                
                 ranks = self._get_ranks(inputs, emb_mat, 
                                         start_ent_id, end_ent_id, filters, self.corrupt_side )
                 # store it in the output
@@ -636,6 +644,31 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         return self.test_function
     
+    def process_model_inputs_for_test(self, triples):
+        ''' Return the processed triples. 
+        Returns:
+        --------
+        In regular (non partitioned) mode, the triples are returned as it is.
+        In case of partitioning, it returns the triple embeddings as a list of size 3 - sub, pred and obj embeddings.
+        '''
+        if self.is_partitioned_training:
+            sub_emb_out = []
+            obj_emb_out = []
+            rel_emb_out = []
+            with shelve.open('ent_partition') as ent_emb:
+                with shelve.open('rel_partition') as rel_emb:
+                    for triple in triples:
+                        sub_emb_out.append(ent_emb[str(triple[0])])
+                        rel_emb_out.append(rel_emb[str(triple[1])])
+                        obj_emb_out.append(ent_emb[str(triple[2])])
+                        
+            emb_out = [np.array(sub_emb_out),
+                       np.array(rel_emb_out),
+                       np.array(obj_emb_out)]
+            return emb_out    
+        else:
+            return triples
+
     def evaluate(self,
                    x=None,
                    batch_size=32,
@@ -679,14 +712,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # flag to indicate if we are using filter or not
         self.use_filter = use_filter or type(use_filter)==dict
         
-        # TODO: see if this can be handled better
-        if self.is_partitioned_training:
-            self.data_handler_test.temperorily_set_emb_matrix('ent_partition', 'rel_partition')
-
-        else:
-            self.data_handler_test.temperorily_set_emb_matrix(self.encoding_layer.ent_emb.numpy(),
-                                                              self.encoding_layer.rel_emb.numpy())
-
         # Container that configures and calls `tf.keras.Callback`s.
         if not isinstance(callbacks, callbacks_module.CallbackList):
             callbacks = callbacks_module.CallbackList(
