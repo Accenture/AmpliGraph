@@ -92,7 +92,6 @@ class SQLiteAdapter():
         self.name = name
         self.parent = parent
         self.in_memory = in_memory
-        
         self.use_filter = use_filter
         self.sources = {}
 
@@ -394,7 +393,7 @@ class SQLiteAdapter():
         os.remove(self.db_path)        
         logger.debug("Database removed.")
 
-    def _get_complementary_objects(self, triples):
+    def _get_complementary_objects(self, triples, use_filter=None):
         """For a given triple retrive all triples whith same subjects and predicates.
 
            Parameters
@@ -411,6 +410,7 @@ class SQLiteAdapter():
         filtered = []
         valid_filters = [x[0] for x in self._execute_query("SELECT DISTINCT dataset_type FROM triples_table")]
         for filter_name, filter_source in self.use_filter.items():
+
             if filter_name in valid_filters:                
                 tmp_filter = []
                 for triple in triples:
@@ -419,7 +419,7 @@ class SQLiteAdapter():
 
                     query = query.format(triple[0], triple[1], filter_name)
                     q = self._execute_query(query)
-                    tmp = list(set([y for x in q for y in x]))
+                    tmp = list(set([y for x in q for y in x ]))
                     tmp_filter.append(tmp)
                 filtered.append(tmp_filter)
         # Unpack data into one  list per triple no matter what filter it comes from
@@ -430,7 +430,7 @@ class SQLiteAdapter():
 
         return results
 
-    def _get_complementary_subjects(self, triples):
+    def _get_complementary_subjects(self, triples, use_filter=None):
         """For a given triple retrive all triples whith same objects and predicates.
 
            Parameters
@@ -465,7 +465,7 @@ class SQLiteAdapter():
             results.append(lst)
         return results
 
-    def _get_complementary_entities(self, triples):
+    def _get_complementary_entities(self, triples, use_filter=None):
         """Returns the participating entities in the relation ?-p-o and s-p-?.
 
         Parameters
@@ -477,8 +477,8 @@ class SQLiteAdapter():
         -------
         entities: list of entities participating in the relations s-p-? and ?-p-o.
         """
-        objects = self._get_complementary_objects(triples)
-        subjects = self._get_complementary_subjects(triples)
+        objects = self._get_complementary_objects(triples, use_filter=use_filter)
+        subjects = self._get_complementary_subjects(triples, use_filter=use_filter)
         return subjects, objects
     
     def _get_batch_generator(self, batch_size=1, dataset_type="train", random=False, index_by=""):

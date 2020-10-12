@@ -906,7 +906,7 @@ class SQLite():
             self.create_persistent_mappings_from_nparray()
         else:
             self.create_persistent_mappings_in_chunks()      
-        self.metadata.update({"db": self.file_db, 
+        self.metadata.update({"db": self.db_file, 
                          "name": self.name})
         self.mapped = True
         

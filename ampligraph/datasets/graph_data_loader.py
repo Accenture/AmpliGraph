@@ -267,8 +267,6 @@ class DummyBackend():
         """
         logger.debug("Getting complementary objects")
        
-        if not use_filter:
-            use_filter = {}
         if self.parent is not None:
             logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
@@ -432,7 +430,7 @@ class GraphDataLoader():
             self.backend = backend
 
         self.backend._load(self.data_source, dataset_type=self.dataset_type)  
-        self.reload()
+        self.batch_iterator = self.get_batch_generator(use_filter=self.use_filter, dataset_type=self.dataset_type)
         self.metadata = self.backend.mapper.metadata
       
     def __iter__(self):
@@ -450,12 +448,12 @@ class GraphDataLoader():
     def __next__(self):
         """Function needed to be used as an itertor."""
         return self.batch_iterator.__next__()
-    
-    def reload(self):
+      
+    def reload(self, use_filter=False, dataset_type='train'):
         """Reinstantiate batch iterator."""
-        self.batch_iterator = self.get_batch_generator(self.dataset_type)
-  
-    def get_batch_generator(self, dataset_type='train'):
+        self.batch_iterator = self.get_batch_generator(use_filter=use_filter, dataset_type=dataset_type)
+ 
+    def get_batch_generator(self, use_filter=False, dataset_type='train'):
         """Get batch generator from the backend.
            Parameters
            ----------
