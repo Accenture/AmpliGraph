@@ -48,6 +48,10 @@ class DummyBackend():
         self.use_filter = use_filter
         self.sources = {}
 
+    def _add_dataset(self, data_source, dataset_type):
+        msg = "Adding datasets to DummyBackend not possible."
+        raise NotImplementedError(msg)
+
     def __enter__ (self):
         """Context manager enter function. Required by GraphDataLoader."""
         return self
@@ -184,16 +188,15 @@ class DummyBackend():
              subjects = self.parent.get_complementary_subjects(triples_original_index, use_filter=use_filter)
              logger.debug("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
              return subjects
-        elif use_filter == False:
-            use_filter = {'data': self.data}
+        elif use_filter == False or use_filter is None:
+            use_filter = {'train': self.data}
         filtered = []
         for filter_name, filter_source in use_filter.items():
-            if filter_name != "data":
-                filter_source = self.get_source(filter_source, filter_name)
+            source = self.data if filter_name == 'train' else self.get_source(filter_source, filter_name)
 
             tmp_filter = []
             for triple in triples:
-                tmp = filter_source[filter_source[:,2] == triple[2]]
+                tmp = source[source[:,2] == triple[2]]
                 tmp_filter.append(list(set(tmp[tmp[:,1] == triple[1]][:,0])))
             filtered.append(tmp_filter)
         # Unpack data into one  list per triple no matter what filter it comes from
@@ -243,8 +246,6 @@ class DummyBackend():
         """
         logger.debug("Getting complementary objects")
        
-        if not use_filter:
-            use_filter = {}
         if self.parent is not None:
             logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
@@ -256,18 +257,18 @@ class DummyBackend():
             objects = self.parent.get_complementary_objects(triples_original_index, use_filter=use_filter)
             logger.debug("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
             return objects
-        elif use_filter == False:
-            use_filter = {'data': self.data}
+        elif use_filter == False or use_filter is None:
+            use_filter = {'train': self.data}
         filtered = []
         for filter_name, filter_source in use_filter.items():
-            if filter_name != "data":
-                filter_source = self.get_source(filter_source, filter_name)
+            source = self.data if filter_name == 'train' else self.get_source(filter_source, filter_name)
+
             # load source if not loaded
             #filter
  
             tmp_filter = []
             for triple in triples:
-                tmp = filter_source[filter_source[:,0] == triple[0]]
+                tmp = source[source[:,0] == triple[0]]
                 tmp_filter.append(list(set(tmp[tmp[:,1] == triple[1]][:,2])))
             filtered.append(tmp_filter)
     
@@ -397,7 +398,7 @@ class GraphDataLoader():
             self.backend = backend
         
         self.backend._load(self.data_source, dataset_type=self.dataset_type)  
-        self.batch_iterator = self.get_batch_generator(use_filter=self.use_filter)
+        self.batch_iterator = self.get_batch_generator(use_filter=self.use_filter, dataset_type=self.dataset_type)
         self.metadata = self.backend.mapper.metadata
       
     def __iter__(self):
@@ -408,17 +409,20 @@ class GraphDataLoader():
         """Function needed to be used as an itertor."""
         return self.batch_iterator.__next__()
       
-    def reload(self, use_filter=False):
+    def reload(self, use_filter=False, dataset_type='train'):
         """Reinstantiate batch iterator."""
-        self.batch_iterator = self.get_batch_generator(use_filter=use_filter)
-  
-    def get_batch_generator(self, use_filter=False):
+        self.batch_iterator = self.get_batch_generator(use_filter=use_filter, dataset_type=dataset_type)
+ 
+    def add_dataset(self, data_source, dataset_type):
+        self.backend._add_dataset(data_source, dataset_type=dataset_type)  
+ 
+    def get_batch_generator(self, use_filter=False, dataset_type='train'):
         """Get batch generator from the backend.
            Parameters
            ----------
            use_filter: filter out true positives
         """
-        return self.backend._get_batch_generator(self.batch_size, dataset_type=self.dataset_type, use_filter=use_filter)
+        return self.backend._get_batch_generator(self.batch_size, dataset_type=dataset_type, use_filter=use_filter)
   
     def get_data_size(self):
         """Returns number of triples."""

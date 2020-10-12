@@ -71,3 +71,22 @@ def test_graph_data_loader_get_triples(graph_data_loader):
     entities_inds = graph_data_loader.backend.mapper.get_indexes(entities, type_of="e")
     triples = graph_data_loader.get_triples(entities=entities_inds)
     assert np.array_equal(triples, np.array([[0, 0, 1, 'train']])), "Returned indexes should be , instead got {} for the following indexes: {}.".format(triples, entities_inds)
+
+def test_backends_with_filters():
+    train = np.array([[1,1,2], [1,1,3],[1,1,4],[5,1,3],[5,1,4],[6,1,3],[6,1,2],[6,1,4],[6,1,7]])
+    test = np.array([[3,1,2], [4,1,3],[5,1,4], [5,1,2], [1,1,5]])
+    val = np.array([[3,1,6], [2,1,2],[1,1,6]])
+    use_filter = {'train':train,'test':test, 'val':val}
+
+    # complementary objects to 1,1,?: train: 2, 3, 4, test: 5, val: 6 
+    # complementary subjects to ?,1,2: train: 1, 6, test: 3, 5, val: 2
+
+    data_dummy = GraphDataLoader(train, batch_size=1, dataset_type="train", use_filter=use_filter)   
+    triple = np.array([[0,0,1]])
+    data_db = GraphDataLoader(train, batch_size=1, dataset_type="train", backend=SQLiteAdapter, use_filter=use_filter)
+    data_db.add_dataset(test, dataset_type='test')
+    data_db.add_dataset(val, dataset_type='val')    
+    
+    dummy = data_dummy.backend.mapper.get_indexes(data_dummy.get_complementary_objects(triple, use_filter=use_filter)[0], type_of='e', order='ind2raw')
+    db = data_db.backend.mapper.get_indexes(data_db.get_complementary_objects(triple, use_filter=use_filter)[0], type_of='e', order='ind2raw')
+    assert np.array_equal(dummy, db), "Backends differ: dummy: {}, db: {}".format(dummy, db) 
