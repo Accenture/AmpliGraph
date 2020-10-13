@@ -27,6 +27,7 @@ from ampligraph.utils.profiling import get_human_readable_size
 import pandas as pd
 import logging
 import tempfile
+import tensorflow as tf
 
 
 logger = logging.getLogger(__name__)
@@ -72,6 +73,7 @@ class SQLiteAdapter():
         """
         self.db_name = db_name
         self.verbose = verbose
+        self.use_filter = use_filter
         if identifier is None:
            msg = "You need to provide source identifier object"
            logger.error(msg) 
@@ -98,6 +100,12 @@ class SQLiteAdapter():
             Setting chunksize to {}.".format(self.__name__(), DEFAULT_CHUNKSIZE))
         else:
             self.chunk_size = chunk_size
+            
+    def get_output_signature(self):
+        if self.use_filter:
+            return (tf.TensorSpec(shape=(None, 3), dtype=tf.int32), tf.RaggedTensorSpec(shape=(2, None, None), dtype=tf.int32))
+        else:
+            return (tf.TensorSpec(shape=(None, 3), dtype=tf.int32))
     
     def should_recreate_iterator(self):
         return True
@@ -498,10 +506,10 @@ class SQLiteAdapter():
                 # get the filter values
                 participating_entities = self._get_complementary_entities(out)
                
-            out = out.astype(np.int32)
+            # out = out.astype(np.int32)
 
             if use_filter:
-                yield out, participating_entities
+                yield out, tf.ragged.constant(participating_entities)
             else:
                 yield out                    
                     

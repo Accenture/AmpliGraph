@@ -3,6 +3,8 @@ import tensorflow as tf
 from ampligraph.datasets import GraphDataLoader, DummyBackend
 from ampligraph.datasets.graph_partitioner import AbstractGraphPartitioner
 import ampligraph.datasets.partitioned_data_manager as partition_manager
+from tensorflow.python.framework import errors
+
 
 class DataHandler():
     def __init__(self, x, 
@@ -60,7 +62,7 @@ class DataHandler():
         """Catches errors when an iterator runs out of data."""
         try:
             yield
-        except StopIteration:
+        except (StopIteration, errors.OutOfRangeError):
             if self._inferred_steps is None:
                 self._inferred_steps = self._current_iter
             
@@ -79,7 +81,7 @@ class DataHandler():
         '''Manages the (reloading) data adapter before epoch starts'''
         for epoch in range(self._initial_epoch, self._epochs):
             self._adapter.reload()   
-            yield epoch, self._adapter
+            yield epoch, iter(self._adapter.get_tf_generator())
             self._adapter.on_epoch_end()
             
         self._adapter.on_complete()
@@ -87,3 +89,4 @@ class DataHandler():
     
     def get_mapper(self):
         return self._parent_adapter.backend.mapper
+

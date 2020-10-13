@@ -57,7 +57,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         # store the embedding size. (concrete models may overwrite this)
         self.internal_k = k
 
-    @tf.function
+    @tf.function(experimental_relax_shapes=True)
     def call(self, triples):
         '''
         Computes the scores of the triples
@@ -163,8 +163,10 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
             
             # compare True positive score against their respective corruptions and get rank.
             sub_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) <= sub_corr_score, tf.int32), 1)
-            if len(filters)>0:
-                for i in range(triple_score.shape[0]):
+
+            if filters.shape[0]>0:
+                # tf.print(tf.shape(triple_score)[0])
+                for i in tf.range(tf.shape(triple_score)[0]):
                     # TODO change the hard coded filter index
                     # get the ids of True positives that needs to be filtered
                     filter_ids = filters[0][i]
@@ -186,8 +188,8 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         
         if tf.strings.regex_full_match(corrupt_side, '.*o.*'):
             obj_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) <= obj_corr_score, tf.int32), 1)
-            if len(filters)>0:
-                for i in range(triple_score.shape[0]):
+            if filters.shape[0]>0:
+                for i in tf.range(tf.shape(triple_score)[0]):
                     # TODO change the hard coded filter index
                     # get the ids of True positives that needs to be filtered
                     filter_ids = filters[1][i]

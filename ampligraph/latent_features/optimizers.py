@@ -19,22 +19,22 @@ class OptimizerWrapper(abc.ABC):
         optimizer: String (name of optimizer) or optimizer instance. 
             See `tf.keras.optimizers`.
         """ 
-        self._optimizer = optimizer
-        self.__num_optimized_vars = 0
-        self.__number_hyperparams = -1
+        self.optimizer = optimizer
+        self.num_optimized_vars = 0
+        self.number_hyperparams = -1
         
         # workaround for Adagrad/Adadelta/Ftrl optimizers to work on gpu
-        self._gpu_workaround = False
-        if isinstance(self._optimizer, tf.keras.optimizers.Adadelta) or \
-            isinstance(self._optimizer, tf.keras.optimizers.Adagrad) or \
-            isinstance(self._optimizer, tf.keras.optimizers.Ftrl):
-            self._gpu_workaround = True
+        self.gpu_workaround = False
+        if isinstance(self.optimizer, tf.keras.optimizers.Adadelta) or \
+            isinstance(self.optimizer, tf.keras.optimizers.Adagrad) or \
+            isinstance(self.optimizer, tf.keras.optimizers.Ftrl):
+            self.gpu_workaround = True
 
     def apply_gradients(self, grads_and_vars):
         """Wrapper around apply_gradients. 
         See https://www.tensorflow.org/api_docs/python/tf/keras/optimizers for more details.
         """
-        self._optimizer.apply_gradients(grads_and_vars)
+        self.optimizer.apply_gradients(grads_and_vars)
         
     def minimize(self, loss, ent_emb, rel_emb, gradient_tape, other_vars=[]):
         '''Minimizes the loss with respect to entity, relation embeddings and other trainable vars
@@ -55,9 +55,9 @@ class OptimizerWrapper(abc.ABC):
         all_trainable_vars = [ent_emb, rel_emb]
         all_trainable_vars.extend(other_vars)
         # Total number of trainable variables in the graph
-        self.__num_optimized_vars = len(all_trainable_vars)
+        self.num_optimized_vars = len(all_trainable_vars)
         
-        if self._gpu_workaround:
+        if self.gpu_workaround:
             # workaround - see the issue:
             # https://github.com/tensorflow/tensorflow/issues/28090 
             with gradient_tape:
@@ -66,20 +66,20 @@ class OptimizerWrapper(abc.ABC):
         # Compute gradient of loss wrt trainable vars
         gradients = gradient_tape.gradient(loss, all_trainable_vars)
         # update the trainable params
-        self._optimizer.apply_gradients(zip(gradients, all_trainable_vars))
+        self.optimizer.apply_gradients(zip(gradients, all_trainable_vars))
         
         # Compute the number of hyperparameters related to the optimizer
-        if self.__number_hyperparams == -1:
-            optim_weights = self._optimizer.get_weights()
-            self.__number_hyperparams = 0
-            for i in range(1, len(optim_weights), self.__num_optimized_vars):
-                self.__number_hyperparams += 1
+        #if self.__number_hyperparams == -1:
+        #    optim_weights = self._optimizer.get_weights()
+        #    self.__number_hyperparams = 0
+        #    for i in range(1, len(optim_weights), self.__num_optimized_vars):
+        #        self.__number_hyperparams += 1
 
     def get_hyperparam_count(self):
         ''' Number of hyperparams of the optimizer being used
         Eg: adam has beta1 and beta2. if we use amsgrad argument then it has 3
         '''
-        return self.__number_hyperparams
+        return self.number_hyperparams
     
     def get_entity_relation_hyperparams(self):
         ''' Get optimizer hyperparams related to entity and relation embeddings (for partitioned training)
@@ -91,10 +91,10 @@ class OptimizerWrapper(abc.ABC):
         rel_hyperparams: np.array
             relation embedding related optimizer hyperparameters
         '''    
-        optim_weights = self._optimizer.get_weights()
+        optim_weights = self.optimizer.get_weights()
         ent_hyperparams = []
         rel_hyperparams = []
-        for i in range(1, len(optim_weights), self.__num_optimized_vars):
+        for i in range(1, len(optim_weights), self.num_optimized_vars):
             ent_hyperparams.append(optim_weights[i])
             rel_hyperparams.append(optim_weights[i + 1])
             
@@ -110,26 +110,26 @@ class OptimizerWrapper(abc.ABC):
         rel_hyperparams: np.array
             relation embedding related optimizer hyperparameters
         '''
-        optim_weights = self._optimizer.get_weights()
-        for i, j in zip(range(1, len(optim_weights), self.__num_optimized_vars), range(len(ent_hyperparams))):
+        optim_weights = self.optimizer.get_weights()
+        for i, j in zip(range(1, len(optim_weights), self.num_optimized_vars), range(len(ent_hyperparams))):
             optim_weights[i] = ent_hyperparams[j]
             optim_weights[i + 1] = rel_hyperparams[j]
-        self._optimizer.set_weights(optim_weights)
+        self.optimizer.set_weights(optim_weights)
         
     def get_weights(self):
         """Wrapper around get weights.
         See https://www.tensorflow.org/api_docs/python/tf/keras/optimizers for more details.
         """
-        return self._optimizer.get_weights()
+        return self.optimizer.get_weights()
         
     def set_weights(self, weights):
         """Wrapper around set weights.
         See https://www.tensorflow.org/api_docs/python/tf/keras/optimizers for more details.
         """
-        self._optimizer.set_weights(weights)
+        self.optimizer.set_weights(weights)
 
     def get_iterations(self):
-        return self._optimizer.iterations.numpy()
+        return self.optimizer.iterations.numpy()
         
 
 def get(identifier):

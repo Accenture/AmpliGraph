@@ -138,6 +138,13 @@ class PartitionedDataManager(abc.ABC):
                 # Hence persist the params related to the current partition.
                 self._update_partion_embeddings(partition_data, i)
                 
+    def get_tf_generator(self):
+        return tf.data.Dataset.from_generator(
+            self.data_generator,
+            output_types=tf.dtypes.int32,
+            output_shapes=(None,3)
+        ).prefetch(0)
+                
     def __iter__(self):
         """Function needed to be used as an itertor."""
         return self
@@ -655,7 +662,7 @@ def get_partition_adapter(dataset_loader, model, strategy='Bucket'):
             dataset_loader, model, dataset_loader.name)
 
     else:
-        partitioner = PARTITION_ALGO_REGISTRY.get(strategy)(dataset_loader, k=5)
+        partitioner = PARTITION_ALGO_REGISTRY.get(strategy)(dataset_loader, k=3)
         partitioner_manager = PARTITION_MANAGER_REGISTRY.get(partitioner.manager)(
             partitioner, model, strategy)
         
