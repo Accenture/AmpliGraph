@@ -40,6 +40,9 @@ DEFAULT_LABEL_SMOOTHING = None
 # Default label weighting for ConvE
 DEFAULT_LABEL_WEIGHTING = False
 
+# default reduction of corruption loss per sample
+DEFAULT_REDUCTION = 'sum'
+
 
 def register_loss(name, external_params=None):
     if external_params is None:
@@ -77,9 +80,15 @@ class Loss(abc.ABC):
         ----------
         hyperparam_dict : dict
             dictionary of hyperparams.
-            (Keys are described in the hyperparameters section)
+            
+            - **'reduction'** : (string). 
+            Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
+            
+            (Other Keys are described in the hyperparameters section)
         """
         self._loss_parameters = {}
+        self._loss_parameters['reduction'] = hyperparam_dict.get('reduction', DEFAULT_REDUCTION)
+        assert self._loss_parameters['reduction'] in ['sum', 'mean'], 'Invalid value for reduction!'
         self._dependencies = []
         self._user_losses = self.name
         
@@ -101,7 +110,15 @@ class Loss(abc.ABC):
     @property
     def metrics(self):
         """Per-output loss metrics."""
-        return [self._loss_metric] 
+        return [self._loss_metric]
+    
+    def _reduce_sample_loss(self, loss):
+        ''' aggregates the per sample loss either by adding or taking mean wrt number of corruptions'''
+        if self._loss_parameters['reduction'] == 'sum':
+            return tf.reduce_sum(loss, 0)
+        else:
+            return tf.reduce_mean(loss, 0)
+        
 
     def _init_hyperparams(self, hyperparam_dict):
         """Initializes the hyperparameters needed by the algorithm.
@@ -116,7 +133,7 @@ class Loss(abc.ABC):
         raise NotImplementedError(msg)
 
     @tf.function(experimental_relax_shapes=True)
-    def _apply_loss(self, scores_pos, scores_neg, eta):
+    def _apply_loss(self, scores_pos, scores_neg):
         """Interface to external world.
         This function does the input checks, preprocesses input and finally applies loss function.
 
@@ -126,8 +143,6 @@ class Loss(abc.ABC):
             A tensor of scores assigned to positive statements.
         scores_neg : tf.Tensor
             A tensor of scores assigned to negative statements.
-        eta: tf.Tensor
-           number of synthetic corruptions per positive
            
         Returns
         -------
@@ -153,7 +168,7 @@ class Loss(abc.ABC):
         scores_pos : tf.Tensor
             Broadcasted score_pos
         """
-        scores_pos = tf.reshape(tf.tile(scores_pos, [eta]), [tf.shape(scores_pos)[0] * eta])
+        scores_pos = tf.reshape(tf.tile(scores_pos, [eta]), [eta, tf.shape(scores_pos)[0]])
         return scores_pos
 
         
@@ -179,8 +194,12 @@ class Loss(abc.ABC):
         """
         
         loss_values = []
-        loss = self._apply_loss(scores_pos, scores_neg, eta)
+        
+        scores_neg = tf.reshape(scores_neg, [eta, -1])
+        
+        loss = self._apply_loss(scores_pos, scores_neg)
         loss_values.append(loss)
+        
         
         if regularization_losses:
             regularization_losses = losses_utils.cast_losses_to_common_dtype(regularization_losses)
@@ -219,6 +238,8 @@ class PairwiseLoss(Loss):
             Dictionary of loss-specific hyperparams:
 
             - **'margin'**: (float). Margin to be used in pairwise loss computation (default: 1)
+            - **'reduction'** : (string). 
+            Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
 
             Example: ``loss_params={'margin': 1}``
         """
@@ -237,7 +258,7 @@ class PairwiseLoss(Loss):
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
 
     @tf.function(experimental_relax_shapes=True)
-    def _apply_loss(self, scores_pos, scores_neg, eta):
+    def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
 
         Parameters
@@ -246,8 +267,6 @@ class PairwiseLoss(Loss):
             A tensor of scores assigned to positive statements.
         scores_neg : tf.Tensor, shape [n, 1]
             A tensor of scores assigned to negative statements.
-        eta: tf.Tensor
-           number of synthetic corruptions per positive
 
         Returns
         -------
@@ -255,9 +274,8 @@ class PairwiseLoss(Loss):
             The loss value that must be minimized.
 
         """
-        scores_pos = self._broadcast_score_pos(scores_pos, eta)
         margin = tf.constant(self._loss_parameters['margin'], dtype=tf.float32, name='margin')
-        loss = tf.reduce_sum(tf.maximum(margin - scores_pos + scores_neg, 0))
+        loss = self._reduce_sample_loss(tf.maximum(margin - scores_pos + scores_neg, 0))
         return loss
 
 
@@ -283,6 +301,9 @@ class NLLLoss(Loss):
         ----------
         loss_params : dict
             Dictionary of hyperparams. No hyperparameters are required for this loss.
+            
+            - **'reduction'** : (string). 
+            Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
         """
         super().__init__(loss_params, verbose)
 
@@ -297,7 +318,7 @@ class NLLLoss(Loss):
         return
 
     @tf.function(experimental_relax_shapes=True)
-    def _apply_loss(self, scores_pos, scores_neg, eta):
+    def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
 
         Parameters
@@ -306,8 +327,6 @@ class NLLLoss(Loss):
             A tensor of scores assigned to positive statements.
         scores_neg : tf.Tensor, shape [n, 1]
             A tensor of scores assigned to negative statements.
-        eta: tf.Tensor
-           number of synthetic corruptions per positive
 
         Returns
         -------
@@ -318,10 +337,10 @@ class NLLLoss(Loss):
         scores_neg = clip_before_exp(scores_neg)
         scores_pos = clip_before_exp(scores_pos)
         
-        scores_pos = self._broadcast_score_pos(scores_pos, eta)
+        scores_pos = self._broadcast_score_pos(scores_pos, scores_neg.shape[0])
         
         scores = tf.concat([-scores_pos, scores_neg], 0)
-        return tf.reduce_sum(tf.math.log(1 + tf.exp(scores)))
+        return self._reduce_sample_loss(tf.math.log(1 + tf.exp(scores)))
 
 
 @register_loss("absolute_margin", ['margin'])
@@ -349,6 +368,8 @@ class AbsoluteMarginLoss(Loss):
             Dictionary of loss-specific hyperparams:
 
             - **'margin'**: float. Margin to be used in pairwise loss computation (default:1)
+            - **'reduction'** : (string). 
+            Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
 
             Example: ``loss_params={'margin': 1}``
         """
@@ -370,7 +391,7 @@ class AbsoluteMarginLoss(Loss):
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
 
     @tf.function(experimental_relax_shapes=True)
-    def _apply_loss(self, scores_pos, scores_neg, eta):
+    def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
 
         Parameters
@@ -379,8 +400,6 @@ class AbsoluteMarginLoss(Loss):
            A tensor of scores assigned to positive statements.
         scores_neg : tf.Tensor, shape [n, 1]
            A tensor of scores assigned to negative statements.
-        eta: tf.Tensor
-           number of synthetic corruptions per positive
 
         Returns
         -------
@@ -389,8 +408,7 @@ class AbsoluteMarginLoss(Loss):
 
         """
         margin = tf.constant(self._loss_parameters['margin'], dtype=tf.float32, name='margin')
-        scores_pos = self._broadcast_score_pos(scores_pos, eta)
-        loss = tf.reduce_sum(tf.maximum(margin + scores_neg, 0) - scores_pos)
+        loss = self._reduce_sample_loss(tf.maximum(margin + scores_neg, 0) - scores_pos)
         return loss
 
 
@@ -431,6 +449,8 @@ class SelfAdversarialLoss(Loss):
 
             - **'margin'**: (float). Margin to be used for loss computation (default: 1)
             - **'alpha'** : (float). Temperature of sampling (default:0.5)
+            - **'reduction'** : (string). 
+            Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
 
             Example: ``loss_params={'margin': 1, 'alpha': 0.5}``
 
@@ -453,7 +473,7 @@ class SelfAdversarialLoss(Loss):
         self._loss_parameters['alpha'] = hyperparam_dict.get('alpha', DEFAULT_ALPHA_ADVERSARIAL)
 
     @tf.function(experimental_relax_shapes=True)
-    def _apply_loss(self, scores_pos, scores_neg, eta):
+    def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
 
        Parameters
@@ -462,8 +482,6 @@ class SelfAdversarialLoss(Loss):
            A tensor of scores assigned to positive statements.
        scores_neg : tf.Tensor, shape [n*negative_count, 1]
            A tensor of scores assigned to negative statements.
-       eta: tf.Tensor
-           number of synthetic corruptions per positive
 
        Returns
        -------
@@ -474,13 +492,11 @@ class SelfAdversarialLoss(Loss):
         margin = tf.constant(self._loss_parameters['margin'], dtype=tf.float32, name='margin')
         alpha = tf.constant(self._loss_parameters['alpha'], dtype=tf.float32, name='alpha')
 
-        # Compute p(neg_samples) based on eq 4
-        scores_neg_reshaped = tf.reshape(scores_neg, [eta, tf.shape(scores_pos)[0]])
-        p_neg = tf.nn.softmax(alpha * scores_neg_reshaped, axis=0)
+        p_neg = tf.nn.softmax(alpha * scores_neg, axis=0)
 
         # Compute Loss based on eg 5
-        loss = tf.reduce_sum(-tf.math.log_sigmoid(margin - tf.negative(scores_pos))) - tf.reduce_sum(
-            tf.multiply(p_neg, tf.math.log_sigmoid(tf.negative(scores_neg_reshaped) - margin)))
+        loss = -tf.math.log_sigmoid(margin - tf.negative(scores_pos)) - self._reduce_sample_loss(
+            tf.multiply(p_neg, tf.math.log_sigmoid(tf.negative(scores_neg) - margin)))
 
         return loss
 
@@ -515,6 +531,9 @@ class NLLMulticlass(Loss):
         ----------
         loss_params : dict
             Dictionary of loss-specific hyperparams:
+            
+            - **'reduction'** : (string). 
+            Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
 
         """
         super().__init__(loss_params, verbose)
@@ -530,7 +549,7 @@ class NLLMulticlass(Loss):
         pass
 
     @tf.function(experimental_relax_shapes=True)
-    def _apply_loss(self, scores_pos, scores_neg, eta):
+    def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
 
        Parameters
@@ -539,8 +558,6 @@ class NLLMulticlass(Loss):
            A tensor of scores assigned to positive statements.
        scores_neg : tf.Tensor, shape [n*negative_count, 1]
            A tensor of scores assigned to negative statements.
-       eta: tf.Tensor
-           number of synthetic corruptions per positive
 
        Returns
        -------
@@ -552,12 +569,11 @@ class NLLMulticlass(Loss):
         scores_pos = clip_before_exp(scores_pos)
         scores_neg = clip_before_exp(scores_neg)
 
-        scores_neg_reshaped = tf.reshape(scores_neg, [eta, tf.shape(scores_pos)[0]])
-        neg_exp = tf.exp(scores_neg_reshaped)
+        neg_exp = tf.exp(scores_neg)
         pos_exp = tf.exp(scores_pos)
-        softmax_score = pos_exp / (tf.reduce_sum(neg_exp, axis=0) + pos_exp)
+        softmax_score = pos_exp / (self._reduce_sample_loss(neg_exp) + pos_exp)
 
-        loss = -tf.reduce_sum(tf.math.log(softmax_score))
+        loss = -tf.math.log(softmax_score)
         return loss
     
 
@@ -582,7 +598,7 @@ class LossFunctionWrapper(Loss):
         pass
     
     @tf.function(experimental_relax_shapes=True)
-    def _apply_loss(self, scores_pos, scores_neg, eta):
+    def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
 
        Parameters
@@ -591,8 +607,6 @@ class LossFunctionWrapper(Loss):
            A tensor of scores assigned to positive statements.
        scores_neg : tf.Tensor, shape [n*negative_count, 1]
            A tensor of scores assigned to negative statements.
-       eta: tf.Tensor
-           number of synthetic corruptions per positive
 
        Returns
        -------
@@ -600,7 +614,7 @@ class LossFunctionWrapper(Loss):
            The loss value that must be minimized.
 
        """
-        return self._user_losses(scores_pos, scores_neg, eta)
+        return self._user_losses(scores_pos, scores_neg)
 
     
 def get(identifier):
