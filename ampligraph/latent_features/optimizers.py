@@ -2,7 +2,6 @@ import tensorflow as tf
 import abc
 import logging
 import six
-import math
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -27,7 +26,7 @@ class OptimizerWrapper(abc.ABC):
         self.gpu_workaround = False
         if isinstance(self.optimizer, tf.keras.optimizers.Adadelta) or \
             isinstance(self.optimizer, tf.keras.optimizers.Adagrad) or \
-            isinstance(self.optimizer, tf.keras.optimizers.Ftrl):
+                isinstance(self.optimizer, tf.keras.optimizers.Ftrl):
             self.gpu_workaround = True
 
     def apply_gradients(self, grads_and_vars):
@@ -69,7 +68,7 @@ class OptimizerWrapper(abc.ABC):
         self.optimizer.apply_gradients(zip(gradients, all_trainable_vars))
         
         # Compute the number of hyperparameters related to the optimizer
-        #if self.__number_hyperparams == -1:
+        # if self.__number_hyperparams == -1:
         #    optim_weights = self._optimizer.get_weights()
         #    self.__number_hyperparams = 0
         #    for i in range(1, len(optim_weights), self.__num_optimized_vars):
@@ -142,4 +141,3 @@ def get(identifier):
         return OptimizerWrapper(optimizer)
     else:
         raise ValueError('Could not interpret optimizer identifier:', identifier)
-

@@ -1,5 +1,4 @@
 import contextlib
-import tensorflow as tf
 from ampligraph.datasets import GraphDataLoader, DummyBackend
 from ampligraph.datasets.graph_partitioner import AbstractGraphPartitioner
 import ampligraph.datasets.partitioned_data_manager as partition_manager
@@ -22,40 +21,37 @@ class DataHandler():
         self._epochs = epochs
         self._model = model
         self._inferred_steps = None
-            
         self.train_partitioner = train_partitioner
         self.using_partitioning = False
-        
+
         if isinstance(x, GraphDataLoader):
             self._adapter = x
-            self._parent_adapter = self._adapter 
+            self._parent_adapter = self._adapter
         elif isinstance(x, AbstractGraphPartitioner):
             self._parent_adapter = x._data
             self._adapter = x
             self.using_partitioning = True
         else:
             # use graph data loader by default
-            self._adapter = GraphDataLoader(x, 
+            self._adapter = GraphDataLoader(x,
                                             backend=DummyBackend,
-                                            batch_size=batch_size, 
-                                            dataset_type=dataset_type, 
+                                            batch_size=batch_size,
+                                            dataset_type=dataset_type,
                                             use_indexer=use_indexer,
                                             use_filter=use_filter)
-            self._parent_adapter = self._adapter 
-            
-        
-        
+            self._parent_adapter = self._adapter
+
         if use_partitioning:
             # if use partitioning then pass the graph data loader to partitioner and use
             # partitioned data manager
             assert model is not None, "Please pass the model to datahandler for partitioning!"
-            
-            self._adapter = partition_manager.get_partition_adapter(self._adapter, 
+
+            self._adapter = partition_manager.get_partition_adapter(self._adapter,
                                                                     self._model,
                                                                     'Bucket')
 
             self.using_partitioning = True
-        
+
     @contextlib.contextmanager
     def catch_stop_iteration(self):
         """Catches errors when an iterator runs out of data."""

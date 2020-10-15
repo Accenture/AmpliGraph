@@ -1,6 +1,7 @@
 import tensorflow as tf
 from ampligraph.latent_features.layers.scoring import register_layer, AbstractScoringLayer
 
+
 @register_layer('TransE')
 class TransE(AbstractScoringLayer):
     ''' TransE scoring Layer class
@@ -44,10 +45,10 @@ class TransE(AbstractScoringLayer):
             scores of subject corruptions (corruptions defined by ent_embs matrix)
         '''
         # get the subject, predicate and object embeddings of True positives
-        sub_emb, rel_emb, obj_emb = triples[0], triples[1], triples[2]
+        rel_emb, obj_emb = triples[1], triples[2]
         # compute the score by broadcasting the corruption embeddings(ent_matrix) and using the scoring function
         # compute scores as -|| s_corr + p - o|| 
-        sub_corr_score = tf.negative(tf.norm(ent_matrix + tf.expand_dims( rel_emb - obj_emb, 1) , axis=2))
+        sub_corr_score = tf.negative(tf.norm(ent_matrix + tf.expand_dims(rel_emb - obj_emb, 1), axis=2))
         return sub_corr_score
     
     @tf.function(experimental_relax_shapes=True)
@@ -68,7 +69,7 @@ class TransE(AbstractScoringLayer):
             scores of object corruptions (corruptions defined by ent_embs matrix)
         '''
         # get the subject, predicate and object embeddings of True positives:
-        sub_emb, rel_emb, obj_emb = triples[0], triples[1], triples[2]
+        sub_emb, rel_emb = triples[0], triples[1]
         # compute the score by broadcasting the corruption embeddings(ent_matrix) and using the scoring function
         # compute scores as -|| s + p - o_corr|| 
         obj_corr_score = tf.negative(tf.norm(tf.expand_dims(sub_emb + rel_emb, 1) - ent_matrix, axis=2))

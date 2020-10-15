@@ -14,27 +14,25 @@ Attributes
 DEFAULT_CHUNKSIZE: [default 30000] size of data that can be at once loaded to the memory,
                    number of rows, should be set according to available hardware capabilities.
 """
-from ampligraph.datasets.source_identifier import DataSourceIdentifier
 from ampligraph.datasets import DataIndexer
+from ampligraph.utils.profiling import get_human_readable_size
 import sqlite3
 from sqlite3 import Error
 import numpy as np
 from urllib.request import pathname2url
 import os
-import shelve
-from datetime import datetime
-from ampligraph.utils.profiling import get_human_readable_size
 import pandas as pd
 import logging
 import tempfile
 import tensorflow as tf
-import numpy as np
 
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 DEFAULT_CHUNKSIZE = 30000
+
+
 class SQLiteAdapter():
     """ Class implementing database connection.
     
@@ -67,7 +65,8 @@ class SQLiteAdapter():
             chunk_size: size of a chunk to read data from while feeding the database,
                         if not provided will be default (DEFAULT_CHUNKSIZE).
             root_directory: directory where data will be stored - database created and mappings.
-            use_indexer: object of type DataIndexer with predifined mapping or bool flag to tell whether data should be indexed.
+            use_indexer: object of type DataIndexer with predifined mapping or bool flag to tell whether data 
+            should be indexed.
             remap: wether to remap or not (shouldn't be used here) - NotImplemented here.
             parent: Not Implemented.
             verbose: print status messages.
@@ -75,9 +74,9 @@ class SQLiteAdapter():
         self.db_name = db_name
         self.verbose = verbose
         if identifier is None:
-           msg = "You need to provide source identifier object"
-           logger.error(msg) 
-           raise Exception(msg)
+            msg = "You need to provide source identifier object"
+            logger.error(msg)
+            raise Exception(msg)
         else:
             self.identifier = identifier
 
@@ -86,7 +85,7 @@ class SQLiteAdapter():
         self.db_path = os.path.join(self.root_directory, self.db_name)
         self.use_indexer = use_indexer
         self.remap = remap
-        if self.remap != False:
+        if self.remap:
             msg = "Remapping is not supported for DataLoaders with SQLite Adapter as backend"
             logger.error(msg)
             raise Exception(msg)
@@ -106,12 +105,10 @@ class SQLiteAdapter():
             
     def get_output_signature(self):
         if self.use_filter:
-            return (tf.TensorSpec(shape=(None, 3), dtype=tf.int32), tf.RaggedTensorSpec(shape=(2, None, None), dtype=tf.int32))
+            return (tf.TensorSpec(shape=(None, 3), dtype=tf.int32), 
+                    tf.RaggedTensorSpec(shape=(2, None, None), dtype=tf.int32))
         else:
             return (tf.TensorSpec(shape=(None, 3), dtype=tf.int32))
-    
-    def should_recreate_iterator(self):
-        return True
         
     def open_db(self):
         db_uri = 'file:{}?mode=rw'.format(pathname2url(self.db_path))
@@ -121,7 +118,7 @@ class SQLiteAdapter():
 
     def open_connection(self):
         """Context manager function to open or create if not exists database connection."""
-        if self.flag_db_open == False:
+        if not self.flag_db_open:
             try:
                 self.open_db()
             except sqlite3.OperationalError:
@@ -137,7 +134,7 @@ class SQLiteAdapter():
         self.open_connection()
         return self
     
-    def __exit__ (self, type, value, tb):
+    def __exit__(self, type, value, tb):
         """Context manager exit function, required to used with "with statement", closes
            the connection and do the rollback if required"""
         if self.flag_db_open:
@@ -162,17 +159,17 @@ class SQLiteAdapter():
            db_schema: list of SQL commands to create tables and indexes.
         """
         db_schema = [
-        """CREATE TABLE triples_table (subject integer,
+            """CREATE TABLE triples_table (subject integer,
                                     predicate integer,
                                     object integer,
                                     dataset_type text(50)
                                     );""",
-        "CREATE INDEX triples_table_sp_idx ON triples_table (subject, predicate);",
-        "CREATE INDEX triples_table_po_idx ON triples_table (predicate, object);",
-        "CREATE INDEX triples_table_type_idx ON triples_table (dataset_type);",
-        "CREATE INDEX triples_table_sub_obj_idx ON triples_table (subject, object);",
-        "CREATE INDEX triples_table_subject_idx ON triples_table (subject);",
-        "CREATE INDEX triples_table_object_idx ON triples_table (object);"
+            "CREATE INDEX triples_table_sp_idx ON triples_table (subject, predicate);",
+            "CREATE INDEX triples_table_po_idx ON triples_table (predicate, object);",
+            "CREATE INDEX triples_table_type_idx ON triples_table (dataset_type);",
+            "CREATE INDEX triples_table_sub_obj_idx ON triples_table (subject, object);",
+            "CREATE INDEX triples_table_subject_idx ON triples_table (subject);",
+            "CREATE INDEX triples_table_object_idx ON triples_table (object);"
         ]
         return db_schema
 
@@ -246,7 +243,7 @@ class SQLiteAdapter():
                 size = np.shape(values)[1]
             cursor = self.connection.cursor()
             try:
-                values_placeholder = "({})".format(", ".join(["?"]*size))
+                values_placeholder = "({})".format(", ".join(["?"] * size))
                 query = 'INSERT INTO {} VALUES {}'.format(table, values_placeholder)
                 cursor.executemany(query, [(v,) if isinstance(v, int) or isinstance(v, str) else v for v in values])
                 self.connection.commit()
@@ -254,7 +251,7 @@ class SQLiteAdapter():
                     logger.debug("commited to table: {}".format(table))
             except Error as e:
                 logger.debug("Error: {}".format(e))
-                #self.connection.rollback()
+                # self.connection.rollback()
             logger.debug("Values were inserted!")
 
     def _create_database(self):
@@ -274,9 +271,11 @@ class SQLiteAdapter():
             subjects = entities
             objects = entities
 
-        query = "select * from triples_table where (subject in ({0}) and object in ({1})) or (subject in ({1}) and object in ({0}));".format(",".join(str(v) for v in  subjects), ",".join(str(v) for v in  objects))
+        query = "select * from triples_table where (subject in ({0}) and object in \
+        ({1})) or (subject in ({1}) and object in ({0}));".format(
+            ",".join(str(v) for v in subjects), ",".join(str(v) for v in objects))
         triples = np.array(self._execute_query(query))
-        triples = np.append(triples[:,:3].astype('int'), triples[:,3].reshape(-1,1), axis=1)
+        triples = np.append(triples[:, :3].astype('int'), triples[:, 3].reshape(-1, 1), axis=1)
         return triples 
 
     def get_indexed_triples(self, chunk, dataset_type="train"): 
@@ -297,13 +296,12 @@ class SQLiteAdapter():
             logger.debug("getting triples...")
         if isinstance(chunk, pd.DataFrame):
             chunk = chunk.values
-        if self.use_indexer != False:
-            #logger.debug(chunk)
+        if self.use_indexer:
+            # logger.debug(chunk)
             triples = self.mapper.get_indexes(chunk)
-            return np.append(triples, np.array(len(triples)*[dataset_type]).reshape(-1,1), axis=1)
+            return np.append(triples, np.array(len(triples) * [dataset_type]).reshape(-1, 1), axis=1)
         else:
-            return np.append(chunk, np.array(len(chunk)*[dataset_type]).reshape(-1,1), axis=1)
-
+            return np.append(chunk, np.array(len(chunk) * [dataset_type]).reshape(-1, 1), axis=1)
 
     def index_entities(self):
         """Index data. It reloads data before as it is an iterator."""
@@ -384,12 +382,12 @@ class SQLiteAdapter():
             return count
         elif not isinstance(count, list) or not isinstance(count[0], tuple):
             raise ValueError("Cannot get count for the table with provided condition.")        
-        #logger.debug(count)
+        # logger.debug(count)
         return count[0][0]
 
     def clean_up(self):
         """Clean the database."""
-        status = self._execute_queries(self._get_clean_up())
+        _ = self._execute_queries(self._get_clean_up())
         
     def remove_db(self):
         """Remove the database file."""
@@ -421,7 +419,7 @@ class SQLiteAdapter():
 
                     query = query.format(triple[0], triple[1], filter_name)
                     q = self._execute_query(query)
-                    tmp = list(set([y for x in q for y in x ]))
+                    tmp = list(set([y for x in q for y in x]))
                     tmp_filter.append(tmp)
                 filtered.append(tmp_filter)
         # Unpack data into one  list per triple no matter what filter it comes from
@@ -450,16 +448,16 @@ class SQLiteAdapter():
         filtered = []
         valid_filters = [x[0] for x in self._execute_query("SELECT DISTINCT dataset_type FROM triples_table")]
         for filter_name, filter_source in self.use_filter.items():
-                if filter_name in valid_filters:
-                    tmp_filter = []
-                    for triple in triples:
-                        query = 'select distinct subject from triples_table INDEXED BY \
-                                 triples_table_po_idx where predicate in ({})  and object in ({})  and dataset_type ="{}"'
-                        query = query.format(triple[1], triple[2], filter_name)
-                        q = self._execute_query(query)
-                        tmp = list(set([y for x in q for y in x ]))
-                        tmp_filter.append(tmp)
-                    filtered.append(tmp_filter)
+            if filter_name in valid_filters:
+                tmp_filter = []
+                for triple in triples:
+                    query = 'select distinct subject from triples_table INDEXED BY \
+                             triples_table_po_idx where predicate in ({})  and object in ({})  and dataset_type ="{}"'
+                    query = query.format(triple[1], triple[2], filter_name)
+                    q = self._execute_query(query)
+                    tmp = list(set([y for x in q for y in x]))
+                    tmp_filter.append(tmp)
+                filtered.append(tmp_filter)
         # Unpack data into one  list per triple no matter what filter it comes from
         unpacked = list(zip(*filtered))
         for k in unpacked:
@@ -514,12 +512,12 @@ class SQLiteAdapter():
             dataset_type = dataset_type.decode("utf-8") 
         size = self.get_data_size(condition="where dataset_type ='{}'".format(dataset_type))
 
-        self.batches_count = int(np.ceil(size/batch_size))
+        self.batches_count = int(np.ceil(size / batch_size))
         logger.debug("batches count: {}".format(self.batches_count))
         logger.debug("size of data: {}".format(size))
         index = ""
         if index_by != "":
-            if (index_by == "s" or index_by == "o" or index_by == "so" or index_by == "os") and random != False:       
+            if (index_by == "s" or index_by == "o" or index_by == "so" or index_by == "os") and random:       
                 msg = "Field index_by can only be used with random set to False and can only take values \
                        from this set: {{s,o,so,os,''}}, instead got: {}".format(index_by)
                 logger.error(msg)
@@ -537,14 +535,14 @@ class SQLiteAdapter():
                  triples_table_type_idx where dataset_type ='{}' {} LIMIT {}, {};"
 
         for i in range(self.batches_count):
-            #logger.debug("BATCH NUMBER: {}".format(i))
-            #logger.debug(i * batch_size)
+            # logger.debug("BATCH NUMBER: {}".format(i))
+            # logger.debug(i * batch_size)
             query = query_template.format(dataset_type, index, i * batch_size, batch_size)
-            #logger.debug(query)
+            # logger.debug(query)
             out = self._execute_query(query)
-            #logger.debug(out)
+            # logger.debug(out)
             if out:
-                out = np.array(out)[:,:3] .astype(np.int32)
+                out = np.array(out)[:, :3] .astype(np.int32)
                 
             if self.use_filter:
                 # get the filter values
@@ -589,20 +587,20 @@ class SQLiteAdapter():
             tables = self._execute_query("SELECT name FROM sqlite_master WHERE type='table';")
             tables_names = ", ".join(table[0] for table in tables)
             print(summary.format(*get_human_readable_size(file_size), tables_names))            
-            types = {"integer":"int", "string":"str"}
+            types = {"integer": "int", "string": "str"}
             for table_name in tables:
                 result = self._execute_query("PRAGMA table_info('%s')" % table_name)
-                cols_name_type = ["{} ({}):".format(x[1],types[x[2]] if x[2] in types else x[2]) for x in result]
+                cols_name_type = ["{} ({}):".format(x[1], types[x[2]] if x[2] in types else x[2]) for x in result]
                 length = len(cols_name_type)
                 print("-------------\n|" + table_name[0].upper() + "|\n-------------\n")
-                formatted_record = "{:7s}{}\n{:7s}{}".format(" ", "{:25s}"*length,"e.g.","{:<25s}"*length)
+                formatted_record = "{:7s}{}\n{:7s}{}".format(" ", "{:25s}" * length, "e.g.", "{:<25s}" * length)
                 msg = ""
-                example = ["-"]*length
+                example = ["-"] * length
                 if count:
                     nb_records = self.get_data_size(table_name[0])
                     msg = "\n\nRecords: {}".format(nb_records)                    
                     if nb_records != 0:
-                        record = self._execute_query("SELECT * FROM {} LIMIT {};".format(table_name[0],1))[0]
+                        record = self._execute_query("SELECT * FROM {} LIMIT {};".format(table_name[0], 1))[0]
                         example = [str(rec) for rec in record]                        
                 else:
                     print("Count is set to False hence no data displayed")
@@ -625,7 +623,8 @@ class SQLiteAdapter():
 
     def _intersect(self, dataloader):
         if not isinstance(dataloader.backend, SQLiteAdapter):
-            msg = "Provided dataloader should be of type SQLiteAdapter backend, instead got {}.".format(type(dataloader.backend)) 
+            msg = "Provided dataloader should be of type SQLiteAdapter backend, instead got {}.".format(
+                type(dataloader.backend)) 
             logger.error(msg)
             raise Exception(msg)
         raise NotImplementedError

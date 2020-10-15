@@ -32,8 +32,6 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         corruptions: (n * eta, 3)
             corruptions of the triples
         '''
-        # get the number of positives
-        batch_size = tf.shape(pos)[0]
         # size and reshape the dataset to sample corruptions
         dataset = tf.reshape(tf.tile(tf.reshape(pos, [-1]), [self.eta]), [tf.shape(input=pos)[0] * self.eta, 3])
         # generate a mask which will tell which subject needs to be corrupted (random uniform sampling)
@@ -59,7 +57,6 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         # stack the generated subject, reln and object entities and create the corruptions
         corruptions = tf.transpose(a=tf.stack([subjects, relationships, objects]))
         return corruptions
-        
 
     def compute_output_shape(self, input_shape):
         ''' returns the output shape of outputs of call function

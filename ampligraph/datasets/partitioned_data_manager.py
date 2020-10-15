@@ -1,13 +1,15 @@
-from ampligraph.datasets import SQLiteAdapter
-from ampligraph.datasets import GraphDataLoader
 from ampligraph.datasets.graph_partitioner import PARTITION_ALGO_REGISTRY, AbstractGraphPartitioner
 import numpy as np
 import shelve   
 import tensorflow as tf
 import abc
-
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 PARTITION_MANAGER_REGISTRY = {}
+
+
 def register_partitioning_manager(name):
     """Decorator responsible for registering partition manager in the partition manager registry.
        
@@ -35,6 +37,7 @@ def register_partitioning_manager(name):
 
     return insert_in_registry
 
+
 class PartitionedDataManager(abc.ABC):
     def __init__(self, dataset_loader, model, strategy='Bucket'):
         """Initializes the Partitioning Data Manager. 
@@ -61,8 +64,7 @@ class PartitionedDataManager(abc.ABC):
         else:
             print('Partitioning may take a while...')
             self.partitioner = PARTITION_ALGO_REGISTRY.get(strategy)(dataset_loader, k=self.partitioner_k)
-            
-            
+
         self.num_ents = self.partitioner._data.backend.mapper.ents_length
         self.num_rels = self.partitioner._data.backend.mapper.rels_length
         self.max_ent_size = 0
@@ -142,7 +144,7 @@ class PartitionedDataManager(abc.ABC):
         return tf.data.Dataset.from_generator(
             self.data_generator,
             output_types=tf.dtypes.int32,
-            output_shapes=(None,3)
+            output_shapes=(None, 3)
         ).prefetch(0)
                 
     def __iter__(self):
@@ -197,7 +199,7 @@ class GeneralPartitionedDataManager(PartitionedDataManager):
         '''
 
         # create entity embeddings and optimizer hyperparams for all entities
-        update_part_size = int(np.ceil(self.num_ents/self.partitioner_k))
+        update_part_size = int(np.ceil(self.num_ents / self.partitioner_k))
         for part_num in range(self.partitioner_k):
             with shelve.open('ent_partition', writeback=True) as ent_partition:
                 for i in range(update_part_size * part_num, 
@@ -222,7 +224,6 @@ class GeneralPartitionedDataManager(PartitionedDataManager):
                     shape=(1, self.k), 
                     dtype=tf.float32).numpy()
                 rel_partition.update({out_dict_key: [opt_param, rel_emb]})
-                
 
     def _update_partion_embeddings(self, graph_data_loader, partition_number):
         '''Persists the embeddings and other params after a partition is trained
@@ -266,7 +267,7 @@ class GeneralPartitionedDataManager(PartitionedDataManager):
             # persist entity related embs and optim params
             ent_partition = shelve.open('ent_partition', writeback=True)
             for i, key in enumerate(self.ent_original_ids):
-                ent_partition[str(key)] = [self.all_ent_opt_params[i : i + 1], self.all_ent_embs[i : i + 1]]
+                ent_partition[str(key)] = [self.all_ent_opt_params[i:i + 1], self.all_ent_embs[i:i + 1]]
             
         finally:
             ent_partition.close()
@@ -275,12 +276,10 @@ class GeneralPartitionedDataManager(PartitionedDataManager):
             # persist relation related embs and optim params
             rel_partition = shelve.open('rel_partition', writeback=True)
             for i, key in enumerate(self.rel_original_ids):
-                rel_partition[str(key)] = [self.all_rel_opt_params[i : i + 1], self.all_rel_embs[i : i + 1]]
+                rel_partition[str(key)] = [self.all_rel_opt_params[i:i + 1], self.all_rel_embs[i:i + 1]]
             
         finally:
             rel_partition.close()
-            
-
 
     def _change_partition(self, graph_data_loader, partition_number):
         '''Gets a new partition to train and loads all the params of the partition
@@ -304,8 +303,7 @@ class GeneralPartitionedDataManager(PartitionedDataManager):
                 self.all_ent_embs.append(partition[key][1])
             self.all_ent_embs = np.concatenate(self.all_ent_embs, 0)
             self.all_ent_opt_params = np.concatenate(self.all_ent_opt_params, 0)
-            
-            
+
         with shelve.open(graph_data_loader.backend.mapper.relations_dict) as partition:
             partition_keys = sorted([int(key) for key in partition.keys()])
             self.rel_original_ids = [partition[str(key)] for key in partition_keys]
@@ -335,14 +333,14 @@ class GeneralPartitionedDataManager(PartitionedDataManager):
             for i in range(num_opt_hyperparams):
                 rel_hyperparam_i = self.all_rel_opt_params[:, i, :]
                 rel_hyperparam_i = np.pad(rel_hyperparam_i, 
-                                          ((0, self.num_rels - rel_hyperparam_i.shape[0]), (0,0)), 
-                                           'constant',
-                                           constant_values=(0))
+                                          ((0, self.num_rels - rel_hyperparam_i.shape[0]), (0, 0)), 
+                                          'constant',
+                                          constant_values=(0))
                 rel_optim_hyperparams.append(rel_hyperparam_i)
                 
                 ent_hyperparam_i = self.all_ent_opt_params[:, i, :]
                 ent_hyperparam_i = np.pad(ent_hyperparam_i, 
-                                          ((0, self.max_ent_size - ent_hyperparam_i.shape[0]), (0,0)),
+                                          ((0, self.max_ent_size - ent_hyperparam_i.shape[0]), (0, 0)),
                                           'constant',
                                           constant_values=(0))
                 ent_optim_hyperparams.append(ent_hyperparam_i)
@@ -355,7 +353,7 @@ class GeneralPartitionedDataManager(PartitionedDataManager):
         ''' Activities to be performed on end of training.
             The manager persists the data (splits the entity partitions into individual embeddings)
         '''
-        update_part_size = int(np.ceil(self.num_ents/self.partitioner_k))
+        update_part_size = int(np.ceil(self.num_ents / self.partitioner_k))
         for part_num in range(self.partitioner_k):
             with shelve.open('ent_partition', writeback=True) as ent_partition:
                 for i in range(update_part_size * part_num, 
@@ -435,14 +433,12 @@ class BucketPartitionedDataManager(PartitionedDataManager):
                 with shelve.open(self.partitioner.files[int(dest_bucket)]) as bucket:
                     all_keys_merged_buckets.extend(bucket['indexes'])
 
-
             # since we would be concatenating the bucket embeddings, let's find what 0, 1, 2 etc indices of 
             # embedding matrix means.
             # bucket entity value to ent_emb matrix index mappings eg: 2001 -> 0, 2002->1, 2003->2, ...
             merged_bucket_to_ent_mat_mappings = {}
             for key, val in zip(all_keys_merged_buckets, np.arange(0, len(all_keys_merged_buckets))):
                 merged_bucket_to_ent_mat_mappings[key] = val
-            #print(merged_bucket_to_ent_mat_mappings)
             emb_mat_order = []
 
             # partitions do not contain all entities of the bucket they belong to.
@@ -473,7 +469,6 @@ class BucketPartitionedDataManager(PartitionedDataManager):
 
             with shelve.open('rel_partition_metadata', writeback=True) as metadata:
                 metadata[str(i)] = rel_mat_order      
-
 
     def _update_partion_embeddings(self, graph_data_loader, partition_number):
         '''Persists the embeddings and other params after a partition is trained
@@ -521,11 +516,8 @@ class BucketPartitionedDataManager(PartitionedDataManager):
         try:
             # persist entity related embs and optim params
             s = shelve.open('ent_partition', writeback=True)
-            source_bucket_params = s[source_bucket]
-            dest_source_bucket_params = s[dest_bucket]
 
             # split and save self.all_ent_opt_params and self.all_ent_embs into respective buckets
-
             opt_params = [self.all_ent_opt_params[:self.split_opt_idx],
                           self.all_ent_opt_params[self.split_opt_idx:]]
             emb_params = [self.all_ent_embs[:self.split_emb_idx],
@@ -597,7 +589,7 @@ class BucketPartitionedDataManager(PartitionedDataManager):
             s = shelve.open('rel_partition')
             # full rel embs
             self.all_rel_embs = s['0'][1]
-            self.all_rel_opt_params =s['0'][0]
+            self.all_rel_opt_params = s['0'][0]
             # now select only partition embeddings
             rel_embs = self.all_rel_embs[self.rel_original_ids]
             rel_opt_params = self.all_rel_opt_params[self.rel_original_ids]
@@ -608,8 +600,8 @@ class BucketPartitionedDataManager(PartitionedDataManager):
         self._model.partition_change_updates(len(self.ent_original_ids), ent_embs, rel_embs)
         
         # Optimizer params will exist only after it has been persisted once
-        if self._model.current_epoch > 1 or (self._model.current_epoch == 1 and 
-                                            partition_number > self.partitioner_k):
+        if self._model.current_epoch > 1 or (
+                self._model.current_epoch == 1 and partition_number > self.partitioner_k):
             # TODO: needs to be better handled
             # get the optimizer params of the embs that will be trained
             rel_optim_hyperparams = []
@@ -619,14 +611,14 @@ class BucketPartitionedDataManager(PartitionedDataManager):
             for i in range(num_opt_hyperparams):
                 rel_hyperparam_i = rel_opt_params[:, i, :]
                 rel_hyperparam_i = np.pad(rel_hyperparam_i, 
-                                          ((0, self.num_rels - rel_hyperparam_i.shape[0]), (0,0)), 
-                                           'constant',
-                                           constant_values=(0))
+                                          ((0, self.num_rels - rel_hyperparam_i.shape[0]), (0, 0)),
+                                          'constant',
+                                          constant_values=(0))
                 rel_optim_hyperparams.append(rel_hyperparam_i)
                 
                 ent_hyperparam_i = ent_opt_params[:, i, :]
                 ent_hyperparam_i = np.pad(ent_hyperparam_i, 
-                                          ((0, self.max_ent_size - ent_hyperparam_i.shape[0]), (0,0)),
+                                          ((0, self.max_ent_size - ent_hyperparam_i.shape[0]), (0, 0)),
                                           'constant',
                                           constant_values=(0))
                 ent_optim_hyperparams.append(ent_hyperparam_i)
@@ -647,7 +639,7 @@ class BucketPartitionedDataManager(PartitionedDataManager):
                     # split and store separately
                     for key, val in zip(bucket['indexes'], ent_partition[str(i)][1]):
                         ent_partition[str(key)] = val
-                    if i!=0:
+                    if i != 0:
                         del ent_partition[str(i)]
         with shelve.open('rel_partition', writeback=True) as rel_partition:
             # get the bucket embeddings

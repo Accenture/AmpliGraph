@@ -9,7 +9,6 @@ import tensorflow as tf
 import abc
 import logging
 import six
-from tensorflow.python.eager import def_function
 from tensorflow.python.keras import metrics as metrics_mod
 from tensorflow.python.keras.utils import losses_utils
 from tensorflow.python.ops import math_ops
@@ -118,7 +117,6 @@ class Loss(abc.ABC):
             return tf.reduce_sum(loss, 0)
         else:
             return tf.reduce_mean(loss, 0)
-        
 
     def _init_hyperparams(self, hyperparam_dict):
         """Initializes the hyperparameters needed by the algorithm.
@@ -171,7 +169,6 @@ class Loss(abc.ABC):
         scores_pos = tf.reshape(tf.tile(scores_pos, [eta]), [eta, tf.shape(scores_pos)[0]])
         return scores_pos
 
-        
     def __call__(self, scores_pos, scores_neg, eta, regularization_losses=None):
         """Interface to external world.
         This function does the input checks, preprocesses input and finally applies loss function.
@@ -199,8 +196,7 @@ class Loss(abc.ABC):
         
         loss = self._apply_loss(scores_pos, scores_neg)
         loss_values.append(loss)
-        
-        
+
         if regularization_losses:
             regularization_losses = losses_utils.cast_losses_to_common_dtype(regularization_losses)
             reg_loss = math_ops.add_n(regularization_losses)
@@ -210,7 +206,6 @@ class Loss(abc.ABC):
         total_loss = math_ops.add_n(loss_values)
         self._loss_metric.update_state(total_loss)
         return total_loss
-        
 
 
 @register_loss("pairwise", ['margin'])
@@ -412,7 +407,7 @@ class AbsoluteMarginLoss(Loss):
         return loss
 
 
-@register_loss("self_adversarial", ['margin', 'alpha'])#, {'require_same_size_pos_neg': False})
+@register_loss("self_adversarial", ['margin', 'alpha'])
 class SelfAdversarialLoss(Loss):
     r"""Self adversarial sampling loss.
 
@@ -501,7 +496,7 @@ class SelfAdversarialLoss(Loss):
         return loss
 
 
-@register_loss("multiclass_nll", [])#, {'require_same_size_pos_neg': False})
+@register_loss("multiclass_nll", [])
 class NLLMulticlass(Loss):
     r"""Multiclass NLL Loss.
 

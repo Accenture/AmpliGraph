@@ -1,5 +1,4 @@
 import tensorflow as tf
-import numpy as np
 # Precision for floating point comparision
 COMPARISION_PRECISION = 1e3
 
@@ -164,7 +163,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
             # compare True positive score against their respective corruptions and get rank.
             sub_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) <= sub_corr_score, tf.int32), 1)
 
-            if filters.shape[0]>0:
+            if filters.shape[0] > 0:
                 # tf.print(tf.shape(triple_score)[0])
                 for i in tf.range(tf.shape(triple_score)[0]):
                     # TODO change the hard coded filter index
@@ -172,7 +171,8 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                     filter_ids = filters[0][i]
                     # This is done for patritioning (where the full emb matrix is not used)
                     # this gets only the filter ids of the current partition being used for generating corruption
-                    filter_ids_selector = tf.logical_and(filter_ids>=start_ent_id, filter_ids<=end_ent_id)
+                    filter_ids_selector = tf.logical_and(filter_ids >= start_ent_id, 
+                                                         filter_ids <= end_ent_id)
                     filter_ids = tf.boolean_mask(filter_ids, filter_ids_selector)
                     # from entity id convert to index in the current partition
                     filter_ids = filter_ids - start_ent_id
@@ -180,7 +180,8 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                     # get the score of the corruptions which are actually True positives
                     score_filter = tf.gather(tf.squeeze(tf.gather_nd(sub_corr_score, [[i]])), filter_ids)
                     # check how many of those were ranked higher than the test triple
-                    num_filters_ranked_higher = tf.reduce_sum(tf.cast(tf.gather(triple_score, [i]) <= score_filter, tf.int32))
+                    num_filters_ranked_higher = tf.reduce_sum(
+                        tf.cast(tf.gather(triple_score, [i]) <= score_filter, tf.int32))
                     # ajust the rank of the test triple accordingly
                     sub_rank = tf.tensor_scatter_nd_sub(sub_rank, [[i]], [num_filters_ranked_higher])
                 
@@ -188,14 +189,15 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         
         if tf.strings.regex_full_match(corrupt_side, '.*o.*'):
             obj_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) <= obj_corr_score, tf.int32), 1)
-            if filters.shape[0]>0:
+            if filters.shape[0] > 0:
                 for i in tf.range(tf.shape(triple_score)[0]):
                     # TODO change the hard coded filter index
                     # get the ids of True positives that needs to be filtered
                     filter_ids = filters[1][i]
                     # This is done for patritioning (where the full emb matrix is not used)
                     # this gets only the filter ids of the current partition being used for generating corruption
-                    filter_ids_selector = tf.logical_and(filter_ids>=start_ent_id, filter_ids<=end_ent_id)
+                    filter_ids_selector = tf.logical_and(filter_ids >= start_ent_id, 
+                                                         filter_ids <= end_ent_id)
                     filter_ids = tf.boolean_mask(filter_ids, filter_ids_selector)
                     # from entity id convert to index in the current partition
                     filter_ids = filter_ids - start_ent_id
@@ -203,7 +205,8 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                     # get the score of the corruptions which are actually True positives
                     score_filter = tf.gather(tf.squeeze(tf.gather_nd(obj_corr_score, [[i]])), filter_ids)
                     # check how many of those were ranked higher than the test triple
-                    num_filters_ranked_higher = tf.reduce_sum(tf.cast(tf.gather(triple_score, [i]) <= score_filter, tf.int32))
+                    num_filters_ranked_higher = tf.reduce_sum(
+                        tf.cast(tf.gather(triple_score, [i]) <= score_filter, tf.int32))
                     # ajust the rank of the test triple accordingly
                     obj_rank = tf.tensor_scatter_nd_sub(obj_rank, [[i]], [num_filters_ranked_higher])
                 

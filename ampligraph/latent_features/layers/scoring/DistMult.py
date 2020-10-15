@@ -44,10 +44,10 @@ class DistMult(AbstractScoringLayer):
         scores: (n, 1)
             scores of subject corruptions (corruptions defined by ent_embs matrix)
         '''
-        sub_emb, rel_emb, obj_emb = triples[0], triples[1], triples[2]
+        rel_emb, obj_emb = triples[1], triples[2]
         # compute the score by broadcasting the corruption embeddings(ent_matrix) and using the scoring function
         # compute scores as sum(s_corr * p * o)
-        sub_corr_score = tf.reduce_sum(ent_matrix * tf.expand_dims( rel_emb * obj_emb, 1) , 2)
+        sub_corr_score = tf.reduce_sum(ent_matrix * tf.expand_dims(rel_emb * obj_emb, 1), 2)
         return sub_corr_score
     
     @tf.function(experimental_relax_shapes=True)
@@ -67,9 +67,8 @@ class DistMult(AbstractScoringLayer):
         scores: (n, 1)
             scores of object corruptions (corruptions defined by ent_embs matrix)
         '''
-        sub_emb, rel_emb, obj_emb = triples[0], triples[1], triples[2]
+        sub_emb, rel_emb = triples[0], triples[1]
         # compute the score by broadcasting the corruption embeddings(ent_matrix) and using the scoring function
         # compute scores as sum(s * p * o_corr)
         obj_corr_score = tf.reduce_sum(tf.expand_dims(sub_emb * rel_emb, 1) * ent_matrix, 2)
         return obj_corr_score
-

@@ -1,1 +1,3 @@
-from .EmbeddingLookupLayer import EmbeddingLookupLayer 
+from .EmbeddingLookupLayer import EmbeddingLookupLayer
+
+__all__ = ['EmbeddingLookupLayer']

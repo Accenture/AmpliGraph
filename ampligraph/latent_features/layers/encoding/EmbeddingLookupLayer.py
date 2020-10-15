@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
+
 class EmbeddingLookupLayer(tf.keras.layers.Layer):
 
     def __init__(self, k, max_ent_size=None, max_rel_size=None, 
@@ -42,8 +43,8 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         self._max_rel_size_internal = None
         self.k = k
 
-        self.ent_partition=None
-        self.rel_partition=None
+        self.ent_partition = None
+        self.rel_partition = None
 
         self.max_ent_size = max_ent_size
         self.max_rel_size = max_rel_size
@@ -59,8 +60,8 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         This function is mainly used during the partitioned training where the full embedding matrix is 
         initialized outside the model.
         '''
-        self.ent_partition=ent_init
-        self.rel_partition=rel_init
+        self.ent_partition = ent_init
+        self.rel_partition = rel_init
         
     def set_initializer(self, initializer):
         ''' Set the initializer of the weights of this layer
@@ -141,12 +142,14 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         '''
         # create the trainable variables for entity embeddings
         if self._has_enough_args_to_build_ent_emb: 
-            self.ent_emb = self.add_weight('ent_emb',
-                                    shape=[self._max_ent_size_internal, self.k],
-                                    initializer=self.ent_init,
-                                    regularizer=self.ent_regularizer,
-                                    dtype=tf.float32,
-                                    trainable=True)
+            self.ent_emb = self.add_weight(
+                'ent_emb',
+                shape=[self._max_ent_size_internal, self.k],
+                initializer=self.ent_init,
+                regularizer=self.ent_regularizer,
+                dtype=tf.float32,
+                trainable=True)
+
             if self.ent_partition is not None:
                 paddings_ent = [[0, self._max_ent_size_internal - self.ent_partition.shape[0]], [0, 0]]
                 self.ent_emb.assign(np.pad(self.ent_partition, paddings_ent, 'constant', constant_values=0))
@@ -158,12 +161,14 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
             
         # create the trainable variables for relation embeddings
         if self._has_enough_args_to_build_rel_emb: 
-            self.rel_emb = self.add_weight('rel_emb',
-                                    shape=[self._max_rel_size_internal, self.k],
-                                    initializer=self.rel_init,
-                                    regularizer=self.rel_regularizer,
-                                    dtype=tf.float32,
-                                    trainable=True)
+            self.rel_emb = self.add_weight(
+                'rel_emb',
+                shape=[self._max_rel_size_internal, self.k],
+                initializer=self.rel_init,
+                regularizer=self.rel_regularizer,
+                dtype=tf.float32,
+                trainable=True)
+            
             if self.rel_partition is not None:
                 paddings_rel = [[0, self._max_rel_size_internal - self.rel_partition.shape[0]], [0, 0]]
                 self.rel_emb.assign(np.pad(self.rel_partition, paddings_rel, 'constant', constant_values=0))

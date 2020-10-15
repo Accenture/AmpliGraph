@@ -1,6 +1,7 @@
 import tensorflow as tf
-from ampligraph.latent_features.layers.scoring import register_layer, AbstractScoringLayer
+from ampligraph.latent_features.layers.scoring import register_layer
 from .ComplEx import ComplEx
+
 
 @register_layer('HolE')
 class HolE(ComplEx):
@@ -67,4 +68,3 @@ class HolE(ComplEx):
         # HolE scoring is 2/k * complex_score
         return (2 / (self.internal_k / 2)) * (super()._get_object_corruption_scores(triples,  
                                                                                     ent_matrix))
-
