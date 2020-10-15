@@ -1,5 +1,6 @@
 import tensorflow as tf
-from .AbstractScoringLayer import AbstractScoringLayer, register_layer
+from ampligraph.latent_features.layers.scoring import register_layer, AbstractScoringLayer
+
 
 @register_layer('ComplEx')
 class ComplEx(AbstractScoringLayer):
@@ -32,10 +33,8 @@ class ComplEx(AbstractScoringLayer):
         e_o_real, e_o_img = tf.split(triples[2], 2, axis=1)
 
         # apply the complex scoring function
-        scores = tf.reduce_sum(e_s_real * (e_p_real * e_o_real + 
-                                           e_p_img * e_o_img) + \
-                                e_s_img * (e_p_real * e_o_img - 
-                                           e_p_img * e_o_real), axis=1)
+        scores = tf.reduce_sum((e_s_real * (e_p_real * e_o_real + e_p_img * e_o_img)) + (
+            e_s_img * (e_p_real * e_o_img - e_p_img * e_o_real)), axis=1)
         return scores
     
     @tf.function(experimental_relax_shapes=True)
@@ -65,10 +64,9 @@ class ComplEx(AbstractScoringLayer):
         
         # compute the subject corruption score using ent_real, ent_img (corruption embeddings) as subject embeddings
         sub_corr_score = tf.reduce_sum(
-                            ent_real * (tf.expand_dims(e_p_real * e_o_real, 1) + 
-                                        tf.expand_dims(e_p_img * e_o_img, 1)) + \
-                            ent_img * (tf.expand_dims(e_p_real * e_o_img, 1) - \
-                                       tf.expand_dims(e_p_img * e_o_real, 1)), axis=2)
+            ent_real * (tf.expand_dims(e_p_real * e_o_real, 1) + tf.expand_dims(e_p_img * e_o_img, 1)) + (
+                ent_img * (tf.expand_dims(e_p_real * e_o_img, 1) - tf.expand_dims(e_p_img * e_o_real, 1))), 
+            axis=2)
                                           
         return sub_corr_score
     
@@ -99,9 +97,8 @@ class ComplEx(AbstractScoringLayer):
         
         # compute the object corruption score using ent_real, ent_img (corruption embeddings) as object embeddings
         obj_corr_score = tf.reduce_sum(
-                            (tf.expand_dims(e_s_real * e_p_real, 1) - \
-                             tf.expand_dims(e_s_img * e_p_img, 1) ) * ent_real + \
-                            (tf.expand_dims(e_s_img * e_p_real, 1) + \
-                             tf.expand_dims(e_s_real * e_p_img, 1)) * ent_img , axis=2) 
+            (tf.expand_dims(e_s_real * e_p_real, 1) - tf.expand_dims(e_s_img * e_p_img, 1)) * ent_real + (
+                tf.expand_dims(e_s_img * e_p_real, 1) + tf.expand_dims(e_s_real * e_p_img, 1) * ent_img),
+            axis=2) 
                                           
         return obj_corr_score

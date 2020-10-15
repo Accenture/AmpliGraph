@@ -559,9 +559,30 @@ class DataIndexer():
             logger.error(msg)
             raise Exception(msg)
 
-        subjects   = np.array([entities[x] for x in sample[:,0]],  dtype=np.int32)
-        objects    = np.array([entities[x] for x in sample[:,2]],  dtype=np.int32)
-        predicates = np.array([relations[x] for x in sample[:,1]],  dtype=np.int32)
+        subjects = []
+        objects = []
+        predicates = []
+        invalid_keys = 0
+        for row in sample:
+            try:
+                s = entities[row[0]]
+                p = relations[row[1]]
+                o = entities[row[2]]
+                subjects.append(s)
+                predicates.append(p)
+                objects.append(o)
+            except KeyError:
+                invalid_keys += 1
+        
+        if invalid_keys > 0:
+            print('\n{} triples containing invalid keys skipped!'.format(invalid_keys))
+                
+        subjects = np.array(subjects, dtype=np.int32)
+        objects = np.array(objects, dtype=np.int32)
+        predicates = np.array(predicates, dtype=np.int32)
+        #subjects   = np.array([entities[x] for x in sample[:,0]],  dtype=np.int32)
+        #objects    = np.array([entities[x] for x in sample[:,2]],  dtype=np.int32)
+        #predicates = np.array([relations[x] for x in sample[:,1]],  dtype=np.int32)
         merged = np.stack([subjects, predicates, objects], axis=1)
         return merged
 

@@ -33,12 +33,13 @@ logger.setLevel(logging.DEBUG)
 PARTITION_ALGO_REGISTRY = {}
 
 
-def register_partitioning_strategy(name):
+def register_partitioning_strategy(name, manager):
     """Decorator responsible for registering partition in the partition registry.
        
        Parameters
        ----------
        name: name of the new partition strategy.
+       manager: name of the partitioning manager that will handle this partitioning strategy during training.
  
        Example
        -------
@@ -56,6 +57,8 @@ def register_partitioning_strategy(name):
         
         PARTITION_ALGO_REGISTRY[name] = class_handle
         class_handle.name = name
+        class_handle.manager = manager
+        
         return class_handle
 
     return insert_in_registry
@@ -92,12 +95,15 @@ class AbstractGraphPartitioner(ABC):
         self.partitions = []
         self._data = data
         self._k = k
-        self._split(seed=seed, **kwargs)
-        self.generator = self.partitions_generator()
+        self._split(seed=seed, batch_size=data.batch_size, **kwargs)
+        self.reload()
         
     def __iter__(self):
         """Function needed to be used as an itertor."""
         return self
+    
+    def reload(self):
+        self.generator = self.partitions_generator()
 
     def get_data(self):
         return self._data
@@ -156,7 +162,7 @@ class AbstractGraphPartitioner(ABC):
                 os.remove(f + ".dir")
                 os.remove(f + ".dat")
     
-@register_partitioning_strategy("Bucket")
+@register_partitioning_strategy("Bucket", "BucketPartitionedDataManager")
 class BucketGraphPartitioner(AbstractGraphPartitioner):
     """Bucket-based partition strategy.
 
@@ -261,9 +267,19 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
             #logger.debug(bucket)
             
         partition_nb = 0
+        # ensure that the "same" bucket partitions are generated first
+        for i in range(self._k):
+            # condition that excludes duplicated partitions 
+            # from k x k possibilities, partition 0-1 and 1-0 is the same - not needed
+            status_not_ok = self.create_single_partition(i, i, timestamp, partition_nb, batch_size=batch_size)
+            if status_not_ok:
+                continue
+            partition_nb += 1 
+
+        # Now generate across bucket partitions
         for i in range(self._k):
             for j in range(self._k):
-                if j >= i:
+                if j > i:
                     # condition that excludes duplicated partitions 
                     # from k x k possibilities, partition 0-1 and 1-0 is the same - not needed
                     status_not_ok = self.create_single_partition(i, j, timestamp, partition_nb, batch_size=batch_size)
@@ -272,7 +288,7 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
                     partition_nb += 1 
 
     
-@register_partitioning_strategy("RandomVertices")
+@register_partitioning_strategy("RandomVertices", "GeneralPartitionedDataManager")
 class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
     """Partitioning strategy that splits vertices into equal
        sized buckets of random entities from the graph.
@@ -331,7 +347,7 @@ class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
     """Template for edge-based partitioning strategy that splits edges
        into partitions, should be inherited to create different edge-based strategy.
     """
-    def __init__(self, data, k=2, batch_size=1, random=False, index_by="", **kwargs):
+    def __init__(self, data, k=2, random=False, index_by="", **kwargs):
         """Initialiser for EdgeBasedGraphPartitioner.
 
            data: input data as a GraphDataLoader.
@@ -344,7 +360,7 @@ class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
         self.partitions = []
         self._data = data
         self._k = k
-        super().__init__(data, k=k, batch_size=batch_size, random=random, index_by=index_by, **kwargs)
+        super().__init__(data, k=k, random=random, index_by=index_by, **kwargs)
 
     def get_data(self):
         return self._data
@@ -379,13 +395,13 @@ class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
                                                name="partition_{}".format(partition_nb))
             self.partitions.append(partition_loader)
 
-@register_partitioning_strategy("RandomEdges")
+@register_partitioning_strategy("RandomEdges", "GeneralPartitionedDataManager")
 class RandomEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
     """Partitioning strategy that splits edges into equal size
        partitions randomly drawing triples from the data.
     """
 
-    def __init__(self, data, k=2, batch_size=1, **kwargs):
+    def __init__(self, data, k=2, **kwargs):
         """Initialiser for RandomEdgesGraphPartitioner.
 
            data: input data as a GraphDataLoader.
@@ -395,14 +411,14 @@ class RandomEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
         self.partitions = []
         self._data = data
         self._k = k
-        super().__init__(data, k, batch_size=batch_size, random=True, index_by="", **kwargs)
+        super().__init__(data, k, random=True, index_by="", **kwargs)
 
-@register_partitioning_strategy("Naive")
+@register_partitioning_strategy("Naive", "GeneralPartitionedDataManager")
 class NaiveGraphPartitioner(EdgeBasedGraphPartitioner):
     """Partitioning strategy that splits edges into equal size
        partitions drawing triples from the data sequentially.
     """
-    def __init__(self, data, k=2, batch_size=1, **kwargs):
+    def __init__(self, data, k=2, **kwargs):
         """Initialiser for NaiveGraphPartitioner.
 
            data: input data as a GraphDataLoader.
@@ -410,14 +426,14 @@ class NaiveGraphPartitioner(EdgeBasedGraphPartitioner):
            batch_size: size of a batch.
         """
         self.partitions = []
-        super().__init__(data, k, batch_size=batch_size, random=False, index_by="", **kwargs)
+        super().__init__(data, k, random=False, index_by="", **kwargs)
 
-@register_partitioning_strategy("SortedEdges")
+@register_partitioning_strategy("SortedEdges", "GeneralPartitionedDataManager")
 class SortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
     """Partitioning strategy that splits edges into equal size
        partitions retriving triples from the data ordered by subject.
     """
-    def __init__(self, data, k=2, batch_size=1, **kwargs):
+    def __init__(self, data, k=2, **kwargs):
         """Initialiser for SortedEdgesGraphPartitioner.
 
            data: input data as a GraphDataLoader.
@@ -426,14 +442,14 @@ class SortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
         """
 
         self.partitions = []
-        super().__init__(data, k, batch_size=batch_size, random=False, index_by="s", **kwargs)
+        super().__init__(data, k, random=False, index_by="s", **kwargs)
 
-@register_partitioning_strategy("DoubleSortedEdges")
+@register_partitioning_strategy("DoubleSortedEdges", "GeneralPartitionedDataManager")
 class DoubleSortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
     """Partitioning strategy that splits edges into equal size
        partitions retriving triples from the data ordered by subject and object.
     """
-    def __init__(self, data, k=2, batch_size=1, **kwargs):
+    def __init__(self, data, k=2, **kwargs):
         """Initialiser for DoubleSortedEdgesGraphPartitioner.
 
            data: input data as a GraphDataLoader.
@@ -441,7 +457,7 @@ class DoubleSortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
            batch_size: size of a batch.
         """
         self.partitions = []
-        super().__init__(data, k, batch_size=batch_size, random=False, index_by="so", **kwargs)
+        super().__init__(data, k, random=False, index_by="so", **kwargs)
 
 
 def main():

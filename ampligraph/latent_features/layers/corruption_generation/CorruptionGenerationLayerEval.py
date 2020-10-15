@@ -14,7 +14,7 @@ class CorruptionGenerationLayerEval(tf.keras.layers.Layer):
     def call(self, X):
         print('creating eval--------------------------------')
         corrupt_side = 's+o'
-        entities_for_corruption =  tf.range(self.ent_size)
+        entities_for_corruption = tf.range(self.ent_size)
         if corrupt_side in ['s+o', 'o']:  # object is corrupted - so we need subjects as it is
             repeated_subjs = tf.keras.backend.repeat(
                 tf.slice(X,

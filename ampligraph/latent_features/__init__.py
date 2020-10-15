@@ -13,7 +13,5 @@ Knowledge graph embedding models are neural architectures that encode concepts f
 entity resolution, and link-based clustering, just to cite a few :cite:`nickel2016review`.
 
 """
-
-from .models.ScoringBasedEmbeddingModel import ScoringBasedEmbeddingModel
-
-__all__ = ['layers', 'models']
+from .models import ScoringBasedEmbeddingModel
+__all__ = ['layers', 'models', 'ScoringBasedEmbeddingModel']
