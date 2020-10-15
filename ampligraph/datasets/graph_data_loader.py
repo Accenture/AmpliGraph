@@ -27,7 +27,7 @@ logger.setLevel(logging.DEBUG)
 
 class DummyBackend():
     """Class providing artificial backend, that reads data into memory."""
-    def __init__(self, identifier, use_indexer=True, remap=False, name="main_partition", verbose=False, parent=None, in_memory=True, root_directory=tempfile.gettempdir(), use_filter=None):
+    def __init__(self, identifier, use_indexer=True, remap=False, name="main_partition", verbose=False, parent=None, in_memory=True, root_directory=tempfile.gettempdir(), use_filter=False):
         """Initialise DummyBackend.
 
            Parameters
@@ -49,6 +49,10 @@ class DummyBackend():
         self.root_directory = root_directory
         self.use_filter = use_filter
         self.sources = {}
+
+    def _add_dataset(self, data_source, dataset_type):
+        msg = "Adding datasets to DummyBackend not possible."
+        raise NotImplementedError(msg)
 
     def __enter__ (self):
         """Context manager enter function. Required by GraphDataLoader."""
@@ -130,7 +134,7 @@ class DummyBackend():
         """Returns number of triples."""
         return np.shape(self.data)[0]
 
-    def _get_complementary_entities(self, triples):
+    def _get_complementary_entities(self, triples, use_filter=None):
         """Get subjects and objects complementary to a triple (?,p,?).
            Returns the participating entities in the relation ?-p-o and s-p-?.
            Function used duriing evaluation.
@@ -166,7 +170,7 @@ class DummyBackend():
             objects = self._get_complementary_objects(triples)
         return subjects, objects
 
-    def _get_complementary_subjects(self, triples):
+    def _get_complementary_subjects(self, triples, use_filter=False):
         """Get subjects complementary to triples (?,p,o).
            For a given triple retrive all triples whith same objects and predicates.
            Function used duriing evaluation.
@@ -193,15 +197,15 @@ class DummyBackend():
              subjects = self.parent.get_complementary_subjects(triples_original_index)
              logger.debug("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
              return subjects
-        elif self.use_filter == False:
-            self.use_filter = {'data': self.data}
+        elif self.use_filter == False or self.use_filter is None:
+            self.use_filter = {'train': self.data}
         filtered = []
         for filter_name, filter_source in self.use_filter.items():
-            if filter_name != "data":
-                filter_source = self.get_source(filter_source, filter_name)
+            source = self.get_source(filter_source, filter_name)
+
             tmp_filter = []
             for triple in triples:
-                tmp = filter_source[filter_source[:,2] == triple[2]]
+                tmp = source[source[:,2] == triple[2]]
                 tmp_filter.append(list(set(tmp[tmp[:,1] == triple[1]][:,0])))
             filtered.append(tmp_filter)
         # Unpack data into one  list per triple no matter what filter it comes from
@@ -236,7 +240,7 @@ class DummyBackend():
             self.sources[name] = self.mapper.get_indexes(raw_data)
         return self.sources[name]
 
-    def _get_complementary_objects(self, triples):
+    def _get_complementary_objects(self, triples, use_filter=False):
         """Get objects complementary to  triples (s,p,?).
            For a given triple retrive all triples whith same subjects and predicates.
            Function used duriing evaluation.
@@ -251,8 +255,6 @@ class DummyBackend():
         """
         logger.debug("Getting complementary objects")
        
-        if not self.use_filter:
-            self.use_filter = {}
         if self.parent is not None:
             logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
@@ -264,18 +266,18 @@ class DummyBackend():
             objects = self.parent.get_complementary_objects(triples_original_index)
             logger.debug("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
             return objects
-        elif self.use_filter == False:
-            self.use_filter = {'data': self.data}
+        elif self.use_filter == False or self.use_filter is None:
+            self.use_filter = {'train': self.data}
         filtered = []
         for filter_name, filter_source in self.use_filter.items():
-            if filter_name != "data":
-                filter_source = self.get_source(filter_source, filter_name)
-            
+            source = self.get_source(filter_source, filter_name)
+
             # load source if not loaded
             #filter
+ 
             tmp_filter = []
             for triple in triples:
-                tmp = filter_source[filter_source[:,0] == triple[0]]
+                tmp = source[source[:,0] == triple[0]]
                 tmp_filter.append(list(set(tmp[tmp[:,1] == triple[1]][:,2])))
             filtered.append(tmp_filter)
     
@@ -329,8 +331,6 @@ class DummyBackend():
             if self.use_filter:
                 # get the filter values
                 participating_entities = self._get_complementary_entities(out)
-
-            if self.use_filter:
                 yield out, tf.ragged.constant(participating_entities, dtype=tf.int32)
             else:
                 yield out
@@ -359,8 +359,7 @@ class GraphDataLoader():
        >>>    process(data)
     """    
     def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, root_directory=tempfile.gettempdir(),
-                 use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=True, use_filter=False, initial_epoch=0, epochs=1):
-
+                 use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=True, use_filter=False):
         """Initialise persistent/in-memory data storage.
        
            Parameters
@@ -378,9 +377,6 @@ class GraphDataLoader():
            in_memory: persist indexes or not.
            name: identifying name/id of partition which data loader represents (default main).
         """   
-        #self._initial_epoch = initial_epoch
-        #self._epochs = epochs
-        #self._inferred_steps = None
         self.dataset_type = dataset_type
         self.data_source = data_source
         self.batch_size = batch_size
@@ -407,6 +403,7 @@ class GraphDataLoader():
         if isinstance(backend, type) and backend != DummyBackend:
             self.backend = backend("database_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")), identifier=self.identifier, 
                                    root_directory=self.root_directory, use_indexer=self.use_indexer, remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory, verbose=verbose, use_filter=self.use_filter)
+
             logger.debug("Initialized Backend with database at: {}".format(self.backend.db_path))
         elif backend is None or backend == DummyBackend:
             self.backend = DummyBackend(self.identifier, use_indexer=self.use_indexer, remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory, use_filter=self.use_filter)
@@ -435,15 +432,15 @@ class GraphDataLoader():
     
     def reload(self):
         """Reinstantiate batch iterator."""
-        self.batch_iterator = self.get_batch_generator()
+        self.batch_iterator = self.get_batch_generator(self.dataset_type)
   
-    def get_batch_generator(self):
+    def get_batch_generator(self, dataset_type='train'):
         """Get batch generator from the backend.
            Parameters
            ----------
            use_filter: filter out true positives
         """
-        return self.backend._get_batch_generator(self.batch_size, dataset_type=self.dataset_type)
+        return self.backend._get_batch_generator(self.batch_size, dataset_type=dataset_type)
     
     def get_tf_generator(self):
         return tf.data.Dataset.from_generator(
@@ -451,6 +448,9 @@ class GraphDataLoader():
             output_signature=self.backend.get_output_signature(),
             args=(self.batch_size, self.dataset_type, False, "")
         ).prefetch(2)
+
+    def add_dataset(self, data_source, dataset_type):
+        self.backend._add_dataset(data_source, dataset_type=dataset_type)  
     
     def get_data_size(self):
         """Returns number of triples."""

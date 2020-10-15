@@ -28,6 +28,7 @@ import pandas as pd
 import logging
 import tempfile
 import tensorflow as tf
+import numpy as np
 
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ class SQLiteAdapter():
     """
     def __init__(self, db_name, identifier=None, chunk_size=DEFAULT_CHUNKSIZE, root_directory=tempfile.gettempdir(),
                  use_indexer=True, verbose=False, remap=False, name='main_partition', parent=None, in_memory=False,
-                 use_filter=None):
+                 use_filter=False):
         """ Initialise SQLiteAdapter.
        
             Parameters
@@ -73,7 +74,6 @@ class SQLiteAdapter():
         """
         self.db_name = db_name
         self.verbose = verbose
-        self.use_filter = use_filter
         if identifier is None:
            msg = "You need to provide source identifier object"
            logger.error(msg) 
@@ -93,6 +93,9 @@ class SQLiteAdapter():
         self.name = name
         self.parent = parent
         self.in_memory = in_memory
+        
+        self.use_filter = use_filter
+        self.sources = {}
 
         if chunk_size is None:
             chunk_size = DEFAULT_CHUNKSIZE
@@ -147,6 +150,8 @@ class SQLiteAdapter():
             self.flag_db_open = False
             logger.debug("!!!!!!!!----------------DB CLOSED -----------------------")
 
+    def _add_dataset(self, data_source, dataset_type):
+        self._load(data_source, dataset_type)
         
     def _get_db_schema(self):
         """Defines SQL queries to create a table with triples and indexes to 
@@ -351,8 +356,10 @@ class SQLiteAdapter():
             logger.debug("Data is already indexed or no indexing is required.")
         if get_indexed_triples is None:
             get_indexed_triples = self.get_indexed_triples
+        data = self.loader(data_source, chunk_size=self.chunk_size)
+
         self.reload_data()
-        for chunk in self.data:
+        for chunk in data:
             values_triples = get_indexed_triples(chunk, dataset_type=dataset_type)
             self._insert_values_to_a_table("triples_table", values_triples)  
         if self.verbose:
@@ -389,7 +396,7 @@ class SQLiteAdapter():
         os.remove(self.db_path)        
         logger.debug("Database removed.")
 
-    def _get_complementary_objects(self, triples, use_filter=None):
+    def _get_complementary_objects(self, triples):
         """For a given triple retrive all triples whith same subjects and predicates.
 
            Parameters
@@ -401,13 +408,31 @@ class SQLiteAdapter():
            result of a query, list of objects.
         """
         results = []
-        for triple in triples:
-            query = "select distinct object from triples_table INDEXED BY triples_table_sp_idx where subject in ({}) and predicate in ({});"
-            query = query.format(triple[0], triple[1])
-            results.append([y for x in self._execute_query(query) for y in x ])
+        if self.use_filter == False or self.use_filter is None:
+            self.use_filter = {'train': self.data}
+        filtered = []
+        valid_filters = [x[0] for x in self._execute_query("SELECT DISTINCT dataset_type FROM triples_table")]
+        for filter_name, filter_source in self.use_filter.items():
+            if filter_name in valid_filters:                
+                tmp_filter = []
+                for triple in triples:
+                    query = 'select distinct object from triples_table INDEXED BY\
+                             triples_table_sp_idx where subject in ({}) and predicate in ({})  and dataset_type ="{}"'
+
+                    query = query.format(triple[0], triple[1], filter_name)
+                    q = self._execute_query(query)
+                    tmp = list(set([y for x in q for y in x ]))
+                    tmp_filter.append(tmp)
+                filtered.append(tmp_filter)
+        # Unpack data into one  list per triple no matter what filter it comes from
+        unpacked = list(zip(*filtered))
+        for k in unpacked:
+            lst = [j for i in k for j in i]
+            results.append(lst)
+
         return results
 
-    def _get_complementary_subjects(self, triples, use_filter=None):
+    def _get_complementary_subjects(self, triples):
         """For a given triple retrive all triples whith same objects and predicates.
 
            Parameters
@@ -419,14 +444,30 @@ class SQLiteAdapter():
            result of a query, list of subjects.
         """
         results = []
-        for triple in triples:
-            query = "select distinct subject from triples_table INDEXED BY \
-                     triples_table_po_idx where predicate in ({})  and object in ({})"
-            query = query.format(triple[1], triple[2])
-            results.append([y for x in self._execute_query(query) for y in x ])
+        if self.use_filter == False or self.use_filter is None:
+            self.use_filter = {'train': self.data}
+
+        filtered = []
+        valid_filters = [x[0] for x in self._execute_query("SELECT DISTINCT dataset_type FROM triples_table")]
+        for filter_name, filter_source in self.use_filter.items():
+                if filter_name in valid_filters:
+                    tmp_filter = []
+                    for triple in triples:
+                        query = 'select distinct subject from triples_table INDEXED BY \
+                                 triples_table_po_idx where predicate in ({})  and object in ({})  and dataset_type ="{}"'
+                        query = query.format(triple[1], triple[2], filter_name)
+                        q = self._execute_query(query)
+                        tmp = list(set([y for x in q for y in x ]))
+                        tmp_filter.append(tmp)
+                    filtered.append(tmp_filter)
+        # Unpack data into one  list per triple no matter what filter it comes from
+        unpacked = list(zip(*filtered))
+        for k in unpacked:
+            lst = [j for i in k for j in i]
+            results.append(lst)
         return results
 
-    def _get_complementary_entities(self, triples, use_filter=None):
+    def _get_complementary_entities(self, triples):
         """Returns the participating entities in the relation ?-p-o and s-p-?.
 
         Parameters
@@ -442,7 +483,7 @@ class SQLiteAdapter():
         subjects = self._get_complementary_subjects(triples)
         return subjects, objects
     
-    def _get_batch_generator(self, batch_size=1, dataset_type="train", random=False, use_filter=False, index_by=""):
+    def _get_batch_generator(self, batch_size=1, dataset_type="train", random=False, index_by=""):
         """Generator that returns the next batch of data.
 
         Parameters
@@ -468,9 +509,12 @@ class SQLiteAdapter():
             yields a batch of triples from the dataset type specified
         participating_entities : list of all entities that were involved in the s-p-? and ?-p-o relations. 
                                  This is returned only if use_filter is set to true.
-        """              
+        """
+        if not isinstance(dataset_type, str):
+            dataset_type = dataset_type.decode("utf-8") 
         size = self.get_data_size(condition="where dataset_type ='{}'".format(dataset_type))
-        self.batches_count = int(size/batch_size)
+
+        self.batches_count = int(np.ceil(size/batch_size))
         logger.debug("batches count: {}".format(self.batches_count))
         logger.debug("size of data: {}".format(size))
         index = ""
@@ -502,14 +546,11 @@ class SQLiteAdapter():
             if out:
                 out = np.array(out)[:,:3] .astype(np.int32)
                 
-            if use_filter:
+            if self.use_filter:
                 # get the filter values
                 participating_entities = self._get_complementary_entities(out)
-               
-            # out = out.astype(np.int32)
-
-            if use_filter:
                 yield out, tf.ragged.constant(participating_entities)
+
             else:
                 yield out                    
                     

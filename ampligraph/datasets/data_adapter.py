@@ -39,7 +39,6 @@ class DataHandler():
                                             backend=DummyBackend,
                                             batch_size=batch_size, 
                                             dataset_type=dataset_type, 
-                                            epochs=epochs,
                                             use_indexer=use_indexer,
                                             use_filter=use_filter)
             self._parent_adapter = self._adapter 
