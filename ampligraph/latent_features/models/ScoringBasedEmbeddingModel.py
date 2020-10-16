@@ -12,10 +12,12 @@ from ampligraph.latent_features.layers.corruption_generation import CorruptionGe
 from ampligraph.datasets import DataIndexer
 from ampligraph.latent_features import optimizers
 from ampligraph.latent_features import loss_functions
+from ampligraph.evaluation import train_test_split_no_unseen
 from tensorflow.python.keras import callbacks as callbacks_module
 from tensorflow.python.keras.engine import training_utils
 from tensorflow.python.eager import def_function
 from tensorflow.python.keras import metrics as metrics_mod
+
 
 tf.config.set_soft_device_placement(False)
 tf.debugging.set_log_device_placement(False)
@@ -310,10 +312,13 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # verifies if compile has been called before calling fit
         self._assert_compile_was_called()
         
-        # TODO: handle validation split
+        # use train test unseen to split training set
         if validation_split:
-            pass
-            # use train test unseen to split training set
+            assert isinstance(x, np.ndarray), 'Validation split supported for numpy arrays only!'
+            x, validation_data = train_test_split_no_unseen(x, 
+                                                            test_size=validation_split, 
+                                                            seed=self.seed, 
+                                                            allow_duplication=False)
             
         with training_utils.RespectCompiledTrainableState(self):
             # create data handler for the data
@@ -380,7 +385,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 epoch_logs = copy.copy(logs)
 
                 # if validation is enabled
-                if validation_data and self._should_eval(epoch, validation_freq):
+                if validation_data is not None and self._should_eval(epoch, validation_freq):
                     # evaluate on the validation
                     ranks = self.evaluate(validation_data,
                                           batch_size=validation_batch_size or batch_size,
