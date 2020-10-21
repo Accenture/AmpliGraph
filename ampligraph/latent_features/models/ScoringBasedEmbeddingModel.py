@@ -116,7 +116,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             self.encoding_layer.set_ent_rel_initial_value(ent_emb, rel_emb)
 
     @tf.function(experimental_relax_shapes=True)
-    def call(self, inputs):
+    def call(self, inputs, training=False):
         '''
         Computes the scores of the triples and returns the corruption scores as well
         
@@ -130,20 +130,24 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         out: list
             list of input scores along with their corruptions
         '''
-        # generate the corruptions for the input triples
-        corruptions = self.corruption_layer(inputs, self.num_ents)
         # lookup embeddings of the inputs
         inp_emb = self.encoding_layer(inputs)
-        # lookup embeddings of the inputs
-        corr_emb = self.encoding_layer(corruptions)
-        
         # score the inputs
         inp_score = self.scoring_layer(inp_emb)
         # score the corruptions
-        corr_score = self.scoring_layer(corr_emb)
 
-        return inp_score, corr_score
-    
+        if training:
+            # generate the corruptions for the input triples
+            corruptions = self.corruption_layer(inputs, self.num_ents)
+            # lookup embeddings of the inputs
+            corr_emb = self.encoding_layer(corruptions)
+            corr_score = self.scoring_layer(corr_emb)
+
+            return inp_score, corr_score
+
+        else:
+            return inp_score
+
     @tf.function(experimental_relax_shapes=True)
     def _get_ranks(self, inputs, ent_embs, start_id, end_id, filters, corrupt_side='s,o'):
         '''
@@ -207,7 +211,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         with tf.GradientTape() as tape:
             # get the model predictions
-            score_pos, score_neg = self(tf.cast(data, tf.int32), training=0)
+            score_pos, score_neg = self(tf.cast(data, tf.int32), training=1)
             # compute the loss
             loss = self.compiled_loss(score_pos, score_neg, self.eta, regularization_losses=self.losses)
 
@@ -264,7 +268,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             validation_split=0.,
             validation_data=None,
             shuffle=True,
-            initial_epoch=1,
+            initial_epoch=0,
             validation_batch_size=100,
             validation_freq=50,
             validation_filter=False,
@@ -322,11 +326,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
         with training_utils.RespectCompiledTrainableState(self):
             # create data handler for the data
-            self.data_handler = data_adapter.DataHandler(x, 
+            self.data_handler = data_adapter.DataHandler(x,
                                                          model=self, 
                                                          batch_size=batch_size, 
                                                          dataset_type='train', 
                                                          epochs=epochs,
+                                                         initial_epoch=initial_epoch,
                                                          use_filter=False,
                                                          # if model is already trained use the old indexer
                                                          use_indexer=self.data_indexer,
@@ -571,7 +576,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         Returns:
         --------
         out: Function handle.
-              Handle to the training step function  
+              Handle to the test step function  
         '''
         if self.test_function is not None:
             return self.test_function
@@ -686,6 +691,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             May be overridden if x is GraphDataLoader or AbstractGraphPartitioner instance
         verbose: bool
             Verbosity mode.
+        use_filter: bool or dict
+            whether to use filter of not. If a dictionary is specified, the data in the dict is concatenated 
+            and used as filter
+        corrupt_side: string
+            which side to corrupt (can take values: ``s``, ``o``, ``s+o`` or ``s,o``) (default:``s,o``)
         callbacks: keras.callbacks.Callback
             List of `keras.callbacks.Callback` instances. List of callbacks to apply during evaluation.
 
@@ -696,20 +706,20 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             (corruptions defined by ent_embs matrix)
         '''
         # get teh test set handler
-        self.data_handler_test = data_adapter.DataHandler(x, 
-                                                          batch_size=batch_size, 
-                                                          dataset_type='test', 
-                                                          epochs=1, 
+        self.data_handler_test = data_adapter.DataHandler(x,
+                                                          batch_size=batch_size,
+                                                          dataset_type='test',
+                                                          epochs=1,
                                                           use_filter=use_filter,
                                                           use_indexer=self.data_indexer)
         
         assert corrupt_side in ['s', 'o', 's,o', 's+o'], 'Invalid value for corrupt_side'
-        
+
         self.corrupt_side = corrupt_side
         # flag to indicate if we are using filter or not
         self.use_filter = self.data_handler_test._parent_adapter.backend.use_filter or \
             type(self.data_handler_test._parent_adapter.backend.use_filter) == dict
-        
+
         # Container that configures and calls `tf.keras.Callback`s.
         if not isinstance(callbacks, callbacks_module.CallbackList):
             callbacks = callbacks_module.CallbackList(
@@ -720,14 +730,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 verbose=verbose,
                 epochs=1,
                 steps=self.data_handler_test.inferred_steps)
-        
+
         test_function = self.make_test_function()
-        
+
         # before test begins call this callback function
         callbacks.on_test_begin()
-        
+
         self.all_ranks = []
-        
+
         # enumerate over the data
         for _, iterator in self.data_handler_test.enumerate_epochs(): 
             # handle the stop iteration of data iterator in this scope
@@ -736,7 +746,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 for step in self.data_handler_test.steps():
                     # before a batch is processed call this callback function
                     callbacks.on_test_batch_begin(step)
-                    
+
                     # process this batch
                     overall_rank = test_function(iterator)
                     # increment the rank by 1 (ranks returned are from (0 - n-1) so increment by 1
@@ -749,3 +759,88 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         callbacks.on_test_end()
         # return ranks
         return np.concatenate(self.all_ranks)
+
+    def predict_step(self, inputs):
+        ''' Returns the output of predict step on a batch of data'''
+        score_pos = self(inputs, False)
+        return score_pos
+
+    def make_predict_function(self):
+        ''' Similar to keras lib, this function returns the handle to predict step function. 
+        It processes one batch of data by iterating over the dataset iterator and computes the predict outputs.
+
+        Returns:
+        --------
+        out: Function handle.
+              Handle to the predict step function
+        '''
+        if self.predict_function is not None:
+            return self.predict_function
+
+        def predict_function(iterator):
+            inputs = next(iterator)
+            outputs = self.predict_step(inputs)
+            return outputs
+
+        if not self.run_eagerly:
+            predict_function = def_function.function(predict_function,
+                                                     experimental_relax_shapes=True)
+
+        self.predict_function = predict_function
+        return self.predict_function
+
+    def predict(self,
+                x,
+                batch_size=None,
+                verbose=0,
+                callbacks=None):
+        '''
+        Compute scores of the input triples
+
+        Parameters:
+        -----------
+        x: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
+            Data OR Filename of the data file OR Data Handle - that would be used for training
+        batch_size: int
+            batch size to use during training.
+            May be overridden if x is GraphDataLoader or AbstractGraphPartitioner instance
+        verbose: bool
+            Verbosity mode.
+        callbacks: keras.callbacks.Callback
+            List of `keras.callbacks.Callback` instances. List of callbacks to apply during evaluation.
+
+        Returns:
+        --------
+        scores: (n, )
+            score of the input triples
+        '''
+        self.data_handler_test = data_adapter.DataHandler(x,
+                                                          batch_size=batch_size,
+                                                          dataset_type='test',
+                                                          epochs=1,
+                                                          use_filter=False,
+                                                          use_indexer=self.data_indexer)
+
+        if not isinstance(callbacks, callbacks_module.CallbackList):
+            callbacks = callbacks_module.CallbackList(
+                callbacks,
+                add_history=True,
+                add_progbar=verbose != 0,
+                model=self,
+                verbose=verbose,
+                epochs=1,
+                steps=self.data_handler_test.inferred_steps)
+
+        predict_function = self.make_predict_function()
+        callbacks.on_predict_begin()
+        outputs = []
+        for _, iterator in self.data_handler_test.enumerate_epochs():
+            with self.data_handler_test.catch_stop_iteration():
+                for step in self.data_handler_test.steps():
+                    callbacks.on_predict_batch_begin(step)
+                    batch_outputs = predict_function(iterator)
+                    outputs.append(batch_outputs)
+
+                    callbacks.on_predict_batch_end(step, {'outputs': batch_outputs})
+        callbacks.on_predict_end()
+        return np.concatenate(outputs)
