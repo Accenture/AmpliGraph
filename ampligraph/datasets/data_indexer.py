@@ -18,10 +18,8 @@ Example
                      ['/m/01',
                       '/relation2',
                       '/m/07']])
-    >>>mapper = DataIndexer(data, in_memory=True)
+    >>>mapper = DataIndexer(data)
     >>>mapper.get_indexes(data)        
-    >>>mapper.entities_dict[1]
-    '/m/02'
 
 .. It extends functionality of to_idx(...) from  AmpliGraph 1:
    https://docs.ampligraph.org/en/1.3.1/generated/ampligraph.evaluation.to_idx.html?highlight=to_idx
@@ -35,40 +33,38 @@ import tensorflow as tf
 import pandas as pd
 import logging
 import tempfile
-
+import sqlite3
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+INDEXER_BACKEND_REGISTRY = {}
 
 
 class DataIndexer():
     """Index graph unique entities and relations.
 
+       Abstract class with unified API for different 
+       indexers implementations (in-memory, shelves, sqlite).
+
        Can support large datasets by two modes one using dictionary for
-       in-memory storage (in_memory=True) and the other using persistent 
-       dictionary storage - python shelves, for dumping huge indexes.
+       in-memory storage and the other using persistent 
+       dictionary storage - python shelves, sqlite, for dumping huge indexes.
        
        Methods:
-        - create_mappings - core function that create dictionaries or shelves.
-        - get_indexes - given array of triples returns it in an indexed form.
+        - create_mappings - core function that create mappings.
+        - get_indexes - given array of triples returns it in an indexed form, 
+          or given indexes returns original triples (subject to parameters).
         - update_mappings [NotYetImplemented] - update mappings from a new data.
         
        Properties:
         - data - data to be indexed, either a numpy array or a generator.
-        - rels, ents, rev_rels, rev_ents - dictionaries (persistent or in-memory).
-        - max_ents_index - maximum index in entities, which is also the number 
-          of unique entities - 1.
-        - max_rels_index - maximum index in relations dictionary, which is also 
-          the number of unique relations - 1.
-        - [rev_]ents_length - the length of [reversed] entities.
-        - [rev_]rels_length - the length of [reversed] relations.
             
         Example
         -------
         
         >>># In-memory mapping
         >>>data = np.array([['a','b','c'],['c','b','d'],['d','e','f']])
-        >>>mapper = DataIndexer(data, in_memory=True)
+        >>>mapper = DataIndexer(data, backend='in_memory')
         >>>mapper.get_indexes(data)
         
         Mappings created with: 4 ents, 4 rev_ents, 2 rels and 2 rev_rels
@@ -80,35 +76,87 @@ class DataIndexer():
                
         >>># Persistent mapping
         >>>data = np.array([['a','b','c'],['c','b','d'],['d','e','f']])
-        >>>mapper = DataIndexer(data, in_memory=False)
+	>>>mapper = DataIndexerShelves(data, backend='sqlite')
         >>>mapper.get_indexes(data)        
        """
-    def __init__(self):
-        pass
-    def create_mappings(self):
-        pass
-    def update_mappings(self):
-        pass
-    def get_indexes(self, X):
-        pass
+    def __init__(self, X, backend="in_memory", **kwargs):
+        self.data = X
+#        if len(kwargs) == 0:
+#            self.backend = INDEXER_BACKEND_REGISTRY.get(backend)(X)
+#        else:
+        self.backend = INDEXER_BACKEND_REGISTRY.get(backend)(X, **kwargs)
+        if not self.backend.mapped:
+            print(self.backend.mapped, "Not mapped doing mapping")
+            self.backend.create_mappings()
+        print("Should be mapped")
+
+    def update_mappings(self, X):
+        """Update existing mappings with new data."""
+        self.backend.update_mappings(X)
+
+    def get_indexes(self, X, type_of='t', order="raw2ind"):
+        """Converts given data to indexes or to raw data (according to order), works for 
+           both triples (type_of='t'), entities (type_of='e'), and relations (type_of='r').
+           Parameters:
+           X: data to be indexed.
+           type_of: one of ['e', 't', 'r']
+           order: one of ['raw2ind', 'ind2raw']
+
+           Returns:
+           Y: indexed data
+        """
+        return self.backend.get_indexes(X, type_of=type_of, order=order)
+
     def get_relations_count(self):
-        pass
+        """Get number of unique relations"""
+        return self.backend.get_relations_count()
+
     def get_entities_count(self):
-        pass
+        """Get number of unique entities"""
+        return self.backend.get_entities_count()
+       
     def clean(self):
-        pass
+        """Remove persisted and in-memor objects."""
+        return self.backend.clean()
+       
 
+def register_indexer_backend(name):
+    """Decorator responsible for registering partition in the partition registry.
+       
+       Parameters
+       ----------
+       name: name of the new backend.
+ 
+       Example
+       -------
+       >>>@register_indexer_backend("NewBackendName")
+       >>>class NewBackend():
+       >>>... pass
+    """
+    def insert_in_registry(class_handle):
+        """Checks if backend already exists and if not registers it."""
+        if name in INDEXER_BACKEND_REGISTRY.keys():
+            msg = "Indexer backend with name {} "
+            logger.error(msg)
+            raise Exception(msg)
+        "already exists!".format(name)
+        
+        INDEXER_BACKEND_REGISTRY[name] = class_handle
+        class_handle.name = name
+        
+        return class_handle
 
-class DataIndexerInMemory(DataIndexer):
+    return insert_in_registry
+
+@register_indexer_backend("in_memory")
+class InMemory():
     def __init__(self, data, entities_dict=None, reversed_entities_dict=None,
-                 relations_dict=None, reversed_relations_dict=None, root_directory=tempfile.gettempdir(), name="main_partition"):
-        """Initialise DataIndexer by creating mappings.
+                 relations_dict=None, reversed_relations_dict=None, root_directory=tempfile.gettempdir(), name="main_partition", **kwargs):
+        """Initialise backend by creating mappings.
 
            Parameters
            ----------
            data: data to be indexed.
-           in_memory: flag indicating whether to create a persistent
-                      or in-memory dictionary of mappings.
            entities_dict: dictionary or shelve path, storing entities mappings,
                           if not provided will be created from data.
            reversed_entities_dict: dictionary or shelve path, storing reversed entities mappings,
@@ -117,9 +165,11 @@ class DataIndexerInMemory(DataIndexer):
                           if not provided will be created from data.
            reversed_relations_dict: dictionary or shelve path, storing reversed relations mappings,
                           if not provided will be created from data.
-           root_directory: directory where to store persistent mappings, not used when in_memory set to True.
+           root_directory: directory where to store persistent mappings.
         """
         self.data = data
+        self.mapped = False
+        print("init:",self.mapped)
         self.metadata = {}
         self.entities_dict = entities_dict
         self.reversed_entities_dict = reversed_entities_dict
@@ -135,7 +185,6 @@ class DataIndexerInMemory(DataIndexer):
         self.rev_ents_length = 0
         self.rels_length = 0
         self.rev_rels_length = 0
-        self.create_mappings()
 
     def create_mappings(self):
         """Create mappings of data into indexes. It creates four dictionaries with
@@ -162,6 +211,8 @@ class DataIndexerInMemory(DataIndexer):
                 self.update_dictionary_mappings_in_chunks()
         else:
             logger.debug("Provided initialization objects are not supported. Can't Initialise mappings.")
+        self.mapped = True
+        print("finished mapping", self.mapped)
    
     def _update_properties(self):
         """Initialise properties from the in-memory dictionary."""
@@ -257,8 +308,7 @@ class DataIndexerInMemory(DataIndexer):
                 
     def get_indexes(self, sample=None, type_of="t", order="raw2ind"):
         """Converts raw data sample to an indexed form according to
-           previously created mappings. Dispatches to the adequate functions
-           for persistent or in-memory mappings.
+           previously created mappings.
 
            Parameters
            ----------
@@ -302,9 +352,11 @@ class DataIndexerInMemory(DataIndexer):
         if order == "raw2ind":
             entities = self.reversed_entities_dict
             relations = self.reversed_relations_dict
+            dtype = np.int32
         elif order == "ind2raw":
             entities = self.entities_dict
             relations = self.relations_dict
+            dtype = str
         else:
             msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(order)
             logger.error(msg)
@@ -314,9 +366,9 @@ class DataIndexerInMemory(DataIndexer):
             logger.error(msg)
             raise Exception(msg)
 
-        subjects   = np.array([entities[x] for x in sample[:,0]],  dtype=np.int32)
-        objects    = np.array([entities[x] for x in sample[:,2]],  dtype=np.int32)
-        predicates = np.array([relations[x] for x in sample[:,1]],  dtype=np.int32)
+        subjects   = np.array([entities[x] for x in sample[:,0]],  dtype=dtype)
+        objects    = np.array([entities[x] for x in sample[:,2]],  dtype=dtype)
+        predicates = np.array([relations[x] for x in sample[:,1]],  dtype=dtype)
         merged = np.stack([subjects, predicates, objects], axis=1)
         return merged            
 
@@ -365,28 +417,29 @@ class DataIndexerInMemory(DataIndexer):
                 raise Exception(msg)    
     
     def get_relations_count(self):
+        """Get number of unique relations"""
         return len(self.relations_dict)
     
     def get_entities_count(self):
+        """Get number of unique entities"""
         return len(self.entities_dict)
     
     def clean(self):
+        """Remove objects."""
         del self.entities_dict
         del self.reversed_entities_dict
         del self.relations_dict
         del self.reversed_relations_dict  
 
-
-class DataIndexerShelves(DataIndexer):
+@register_indexer_backend("shelves")
+class Shelves():
     def __init__(self, data, entities_dict=None, reversed_entities_dict=None,
                  relations_dict=None, reversed_relations_dict=None, root_directory=tempfile.gettempdir(), name="main_partition"):
-        """Initialise DataIndexer by creating mappings.
+        """Initialise backend by creating mappings.
 
            Parameters
            ----------
            data: data to be indexed.
-           in_memory: flag indicating whether to create a persistent
-                      or in-memory dictionary of mappings.
            entities_dict: dictionary or shelve path, storing entities mappings,
                           if not provided will be created from data.
            reversed_entities_dict: dictionary or shelve path, storing reversed entities mappings,
@@ -395,9 +448,10 @@ class DataIndexerShelves(DataIndexer):
                           if not provided will be created from data.
            reversed_relations_dict: dictionary or shelve path, storing reversed relations mappings,
                           if not provided will be created from data.
-           root_directory: directory where to store persistent mappings, not used when in_memory set to True.
+           root_directory: directory where to store persistent mappings.
         """
         self.data = data
+        self.mapped = False
         self.metadata = {}
         self.entities_dict = entities_dict
         self.reversed_entities_dict = reversed_entities_dict
@@ -413,7 +467,6 @@ class DataIndexerShelves(DataIndexer):
         self.rev_ents_length = 0
         self.rels_length = 0
         self.rev_rels_length = 0
-        self.create_mappings()
         
     def create_mappings(self):
         """Create mappings of data into indexes. It creates four dictionaries with
@@ -440,6 +493,7 @@ class DataIndexerShelves(DataIndexer):
                 self.create_persistent_mappings_in_chunks()
         else:
             logger.debug("Provided initialization objects are not supported. Can't Initialise mappings.")
+        self.mapped = True
 
     def create_persistent_mappings_in_chunks(self):
         """Index entities and relations. Creates shelves for mappings between
@@ -623,15 +677,21 @@ class DataIndexerShelves(DataIndexer):
 
     def remove_shelve(self, name):
         """Remove shelve with a given name."""
-        os.remove(name + ".bak")
-        os.remove(name + ".dat")
-        os.remove(name + ".dir")        
+        try:
+            os.remove(name + ".bak")
+            os.remove(name + ".dat")
+            os.remove(name + ".dir")        
+        except:
+            os.remove(name + ".db")
 
     def move_shelve(self, source, destination):
         """Move shelve to a different files."""
-        os.rename(source + ".dir", destination + ".dir")
-        os.rename(source + ".dat", destination + ".dat")
-        os.rename(source + ".bak", destination + ".bak")        
+        try:
+            os.rename(source + ".dir", destination + ".dir")
+            os.rename(source + ".dat", destination + ".dat")
+            os.rename(source + ".bak", destination + ".bak")        
+        except:
+            os.rename(source + ".db", destination + ".db")
         
     def _get_starting_index_ents(self):
         """Returns next index to continue adding elements to entities dictionary."""
@@ -656,8 +716,7 @@ class DataIndexerShelves(DataIndexer):
     
     def get_indexes(self, sample=None, type_of="t", order="raw2ind"):
         """Converts raw data sample to an indexed form according to
-           previously created mappings. Dispatches to the adequate functions
-           for persistent or in-memory mappings.
+           previously created mappings. 
 
            Parameters
            ----------
@@ -759,20 +818,24 @@ class DataIndexerShelves(DataIndexer):
                 raise Exception(msg)            
             
     def get_relations_count(self):
+        """Get number of unique relations"""
         return self.rels_length
+
     def get_entities_count(self):
+        """Get number of unique entities"""
         return self.ents_length
     
     def clean(self):
+        """Remove persisted objects."""
         self.remove_shelve(self.entities_dict)
         self.remove_shelve(self.reversed_entities_dict)
         self.remove_shelve(self.relations_dict)
         self.remove_shelve(self.reversed_relations_dict)
 
-
-class DataIndexerSQLite(DataIndexer):
-    def __init__(self, data, in_memory=True, db_file='entities_relations.db', root_directory=tempfile.gettempdir(), name="main_partition"):
-        """Initialise DataIndexer by creating mappings.
+@register_indexer_backend("sqlite")
+class SQLite():
+    def __init__(self, data, db_file=None, root_directory=tempfile.gettempdir(), name="main_partition"):
+        """Initialise backend by creating mappings.
 
            Parameters
            ----------
@@ -781,7 +844,12 @@ class DataIndexerSQLite(DataIndexer):
         """
         self.data = data
         self.metadata = {}
-        self.db_file = os.path.join(root_directory, db_file)
+        if db_file is not None:
+            self.db_file = db_file
+            self.mapped = True
+        else:
+            self.db_file = os.path.join(root_directory, name + ".db")
+            self.mapped = False
         print(self.db_file)
         self.root_directory = root_directory
         self.name = name
@@ -790,7 +858,6 @@ class DataIndexerSQLite(DataIndexer):
         self.max_rels_index = -1
         self.ents_length = 0
         self.rels_length = 0
-        self.create_mappings()
         
     def create_mappings(self):
         """Creates mappings."""
@@ -798,6 +865,7 @@ class DataIndexerSQLite(DataIndexer):
             self.create_persistent_mappings_from_nparray()
         else:
             self.create_persistent_mappings_in_chunks()      
+        self.mapped = True
         
     def update_db(self, sample=None):
         """Update db with sample or full data when sample not provided."""
@@ -831,9 +899,9 @@ class DataIndexerSQLite(DataIndexer):
     def create_persistent_mappings_from_nparray(self):
         """Index entities and relations. Creates sqlite db for mappings between
            entities and relations to indexes."""
-            self.update_db()
-            self.index_data('entities')
-            self.index_data('relations')
+        self.update_db()
+        self.index_data('entities')
+        self.index_data('relations')
 
     def index_data(self, table):    
         """Create new table with persisted id of elements."""
@@ -862,7 +930,7 @@ class DataIndexerSQLite(DataIndexer):
         self.index_data('relations')
                     
     def update_mappings(self):
-        raise NotImplementedError("Use internal function: update_db to do the update.")
+        raise NotImplementedError("Updating existing mappings not supported, try creating new mappings in chunks instead.")
 
     def get_indexes(self, sample=None, type_of="t", order="raw2ind"):
         """Converts raw data sample to an indexed form according to

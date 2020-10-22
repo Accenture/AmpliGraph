@@ -307,7 +307,7 @@ class SQLiteAdapter():
         """Index data. It reloads data before as it is an iterator."""
         self.reload_data()
         if self.use_indexer == True:
-            self.mapper = DataIndexer(self.data, in_memory=self.in_memory, root_directory=self.root_directory)
+            self.mapper = DataIndexer(self.data, backend='in_memory' if self.in_memory else 'sqlite', root_directory=self.root_directory)
         elif self.use_indexer == False:
             logger.debug("Data won't be indexed")
         elif isinstance(self.use_indexer, DataIndexer):

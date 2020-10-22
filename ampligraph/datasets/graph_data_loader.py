@@ -82,13 +82,13 @@ class DummyBackend():
         self.dataset_type = dataset_type
         if isinstance(self.data_source, np.ndarray):
             if self.use_indexer:
-                self.mapper = DataIndexer(self.data_source, in_memory=self.in_memory, 
+                self.mapper = DataIndexer(self.data_source, backend="in_memory", 
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(self.data_source)
             elif self.remap:
                 # create a special mapping for partitions, persistent mapping from main indexes 
                 # to partition indexes
-                self.mapper = DataIndexer(self.data_source, name=self.name, in_memory=False, 
+                self.mapper = DataIndexer(self.data_source, backend="sqlite", name=self.name, 
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(self.data_source)
             else:
@@ -98,14 +98,14 @@ class DummyBackend():
             raw_data = loader(self.data_source)
 
             if self.use_indexer == True:
-                self.mapper = DataIndexer(raw_data, in_memory=self.in_memory, 
+                self.mapper = DataIndexer(raw_data, backend="in_memory", 
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(raw_data)
             elif self.use_indexer == False:
                 if self.remap:
                     # create a special mapping for partitions, persistent mapping from 
                     # main indexes to partition indexes
-                    self.mapper = DataIndexer(raw_data, name=self.name, in_memory=False, 
+                    self.mapper = DataIndexer(raw_data, backend="sqlite", name=self.name, 
                                               root_directory=self.root_directory)
                     self.data = self.mapper.get_indexes(raw_data)
                 else:

@@ -24,10 +24,10 @@ def data_type(request):
     return request.param
 
 
-@pytest.fixture(params=[True, False])
+@pytest.fixture(params=['in_memory', 'sqlite', 'shelves'])
 def data_indexer(request, data_type):
     '''Returns an in-memory DataIndexer instance with example data.'''
-    data_indexer = DataIndexer(data_type, in_memory=request.param)
+    data_indexer = DataIndexer(data_type, backend=request.param)
     yield data_indexer
     data_indexer.clean()
 
@@ -65,10 +65,10 @@ def test_update_existing_mappings(data_indexer):
 
 
 def test_get_starting_index_ents(data_indexer):
-    ind = data_indexer.get_starting_index_ents()
+    ind = data_indexer._get_starting_index_ents()
     assert ind == data_indexer.ents_length, "index doesn't match etities length"
 
 
 def test_get_starting_index_rels(data_indexer):
-    ind = data_indexer.get_starting_index_rels()
+    ind = data_indexer._get_starting_index_rels()
     assert ind == data_indexer.rels_length, "index doesn't match relations length"
