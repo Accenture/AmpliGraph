@@ -523,7 +523,7 @@ class GraphDataLoader():
         if sides == 'o':
             return objects
 
-    def get_complementary_subjects(self, triples):
+    def get_complementary_subjects(self, triples, use_filter=None):
         """Get subjects complementary to triples (?,p,o).
            For a given triple retrive all subjects coming from triples whith same objects and predicates.
 
@@ -535,9 +535,9 @@ class GraphDataLoader():
            -------
            result of a query, list of subjects per triple.
         """
-        return self.backend._get_complementary_subjects(triples)
+        return self.backend._get_complementary_subjects(triples, use_filter=use_filter)
 
-    def get_complementary_objects(self, triples):
+    def get_complementary_objects(self, triples, use_filter=None):
         """Get objects complementary to triples (s,p,?).
            For a given triple retrive all objects coming from triples whith same subjects and predicates.
 
@@ -549,9 +549,9 @@ class GraphDataLoader():
            -------
            result of a query, list of objects per triple.
         """
-        return self.backend._get_complementary_objects(triples)        
+        return self.backend._get_complementary_objects(triples, use_filter=use_filter)        
     
-    def get_complementary_entities(self, triples):
+    def get_complementary_entities(self, triples, use_filter=None):
         """Get subjects and objects complementary to triples (?,p,?).
            Returns the participating entities in the relation ?-p-o and s-p-?.
 
@@ -565,7 +565,7 @@ class GraphDataLoader():
            entities: list of entities participating in the relations s-p-? and ?-p-o per triple.
            TODO: What exactly it should return?
        """
-        return self.backend._get_complementary_entities(triples)
+        return self.backend._get_complementary_entities(triples, use_filter=use_filter)
 
     def get_triples(self, subjects=None, objects=None, entities=None):
         """Get triples that subject is in subjects and object is in objects, or

@@ -32,13 +32,13 @@ def data_indexer(request, data_type):
     data_indexer.clean()
 
 def test_get_max_ents_index(data_indexer):
-    max_ents = data_indexer.get_max_ents_index()
+    max_ents = data_indexer.backend._get_max_ents_index()
     assert max_ents == 3, "Max index should be 3 for 4 unique entities, instead got {}.".format(max_ents)
 
 
 def test_get_max_rels_index(data_indexer):
     print(data_indexer)
-    max_rels = data_indexer.get_max_rels_index()
+    max_rels = data_indexer.backend._get_max_rels_index()
     assert max_rels == 1, "Max index should be 1 for 2 unique relations, instead got {}.".format(max_rels)
 
 
@@ -47,7 +47,7 @@ def test_get_entities_in_batches(data_indexer):
         assert len(batch) == 3
         break
     for batch in data_indexer.get_entities_in_batches():
-        assert len(batch) == data_indexer.ents_length
+        assert len(batch) == data_indexer.get_entities_count()
 
 
 def test_get_indexes(data_indexer):
@@ -56,19 +56,19 @@ def test_get_indexes(data_indexer):
     assert np.shape(indexes) == np.shape(tmp), "returnd indexes are not the same shape"
     assert np.issubdtype(indexes.dtype,  np.integer), "indexes are not integers"
 
-
-def test_update_existing_mappings(data_indexer):
+@pytest.mark.skip(reason="update not implemented for sqlite backend")
+def test_update_mappings(data_indexer):
     new_data = np.array([['g','i','h'],['g','i','a']])
-    data_indexer.update_existing_mappings(new_data)
-    assert data_indexer.ents_length == 6, "entities size should be 6, two new added"
-    assert data_indexer.rels_length == 3, "relations size should be 3, one new added"
+    data_indexer.update_mappings(new_data)
+    assert data_indexer.backend.ents_length == 6, "entities size should be 6, two new added"
+    assert data_indexer.backend.rels_length == 3, "relations size should be 3, one new added"
 
 
 def test_get_starting_index_ents(data_indexer):
-    ind = data_indexer._get_starting_index_ents()
-    assert ind == data_indexer.ents_length, "index doesn't match etities length"
+    ind = data_indexer.backend._get_starting_index_ents()
+    assert ind == data_indexer.backend.ents_length, "index doesn't match etities length"
 
 
 def test_get_starting_index_rels(data_indexer):
-    ind = data_indexer._get_starting_index_rels()
-    assert ind == data_indexer.rels_length, "index doesn't match relations length"
+    ind = data_indexer.backend._get_starting_index_rels()
+    assert ind == data_indexer.backend.rels_length, "index doesn't match relations length"

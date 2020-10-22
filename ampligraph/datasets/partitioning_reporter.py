@@ -112,7 +112,8 @@ class PartitioningReporter:
         """
         lengths = []
         for partition in partitions:
-            lengths.append(partition.backend.mapper.ents_length)
+            ents_len = partition.backend.mapper.get_entities_count()
+            lengths.append(ents_len)
 
         vertex_imb = np.max(lengths) / np.mean(lengths) - 1
         if vertex_count:
@@ -136,8 +137,9 @@ class PartitioningReporter:
         k = len(partitions)
         sizes = []
         for partition in partitions:
-            sizes.append(partition.backend.mapper.ents_length)
-        data_size = partition.parent.backend.mapper.ents_length
+            ents_len = partition.backend.mapper.get_entities_count()
+            sizes.append(ents_len)
+        data_size = ents_len
         ideal_size = data_size/k
         percentage_dev = ((np.sum([np.abs(ideal_size - size) for size in sizes])/k)/ideal_size)*100
         return percentage_dev

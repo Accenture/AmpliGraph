@@ -76,7 +76,7 @@ class DataIndexer():
                
         >>># Persistent mapping
         >>>data = np.array([['a','b','c'],['c','b','d'],['d','e','f']])
-	>>>mapper = DataIndexerShelves(data, backend='sqlite')
+        >>>mapper = DataIndexerShelves(data, backend='sqlite')
         >>>mapper.get_indexes(data)        
        """
     def __init__(self, X, backend="in_memory", **kwargs):
@@ -88,6 +88,7 @@ class DataIndexer():
         if not self.backend.mapped:
             print(self.backend.mapped, "Not mapped doing mapping")
             self.backend.create_mappings()
+        self.metadata = self.backend.metadata
         print("Should be mapped")
 
     def update_mappings(self, X):
@@ -119,6 +120,34 @@ class DataIndexer():
         """Remove persisted and in-memor objects."""
         return self.backend.clean()
        
+    def get_entities_in_batches(self, batch_size=-1, random=False, seed=None):
+        """Generator that retrives entities and return them in batches.
+           
+           Parameters
+           ----------
+           batch_size: size of array that the batch should have, 
+                       -1 when the whole dataset is required.
+           random: whether to return elements of batch in a random order [defalt False].
+           seed: used with random=True, seed for repeatability of experiments.
+           Yields
+           ------
+           numppy array: (batch_size, 3) the batch of entities.
+          
+        """
+        ents_len = self.get_entities_count()
+        print(ents_len)
+        if batch_size == -1:
+            batch_size = ents_len
+        entities = list(range(0, ents_len, batch_size))
+        for start_index in entities:
+            if start_index + batch_size >= ents_len:
+                batch_size = ents_len - start_index
+            ents = list(range(start_index, start_index + batch_size))
+            if random:
+                np.random.seed(seed) 
+                np.random.shuffle(ents)
+            yield np.array(ents)
+
 
 def register_indexer_backend(name):
     """Decorator responsible for registering partition in the partition registry.
@@ -250,6 +279,10 @@ class InMemory():
         else:
             return self.max_rels_index + 1    
     
+    def update_mappings(self, new_data):
+        """Update existing mappings with new data."""
+        self.update_dictionary_mappings(new_data)
+
     def update_dictionary_mappings(self, sample=None):
         """Index entities and relations. Creates shelves for mappings between
            entities and relations to indexes and reverse mapping.
@@ -696,8 +729,6 @@ class Shelves():
     def _get_starting_index_ents(self):
         """Returns next index to continue adding elements to entities dictionary."""
         if not self.entities_dict:
-            self.entities_dict = {}
-            self.reversed_entities_dict = {}
             return 0
         else:
             return self.max_ents_index + 1
@@ -705,14 +736,23 @@ class Shelves():
     def _get_starting_index_rels(self):
         """Returns next index to continue adding elements to relations dictionary."""
         if not self.relations_dict:
-            self.relations_dict = {}
-            self.reversed_relations_dict = {}
             return 0
         else:
             return self.max_rels_index + 1        
-        
-    def update_mappings(self):
-        raise NotImplementedError("Use internal function: update_shelves to do the update.")
+
+    def _get_max_ents_index(self):
+        """Get maximum index from entities dictionary."""        
+        with shelve.open(self.entities_dict) as ents:
+            return int(max(ents.keys(), key=lambda x: int(x)))      
+
+    def _get_max_rels_index(self):
+        """Get maximum index from relations dictionary."""
+        with shelve.open(self.relations_dict) as rels:            
+            return int(max(rels.keys(), key=lambda x: int(x)))
+  
+    def update_mappings(self, new_data):
+        self.update_shelves(new_data, rough=True)
+        self.reindex()
     
     def get_indexes(self, sample=None, type_of="t", order="raw2ind"):
         """Converts raw data sample to an indexed form according to
@@ -848,7 +888,8 @@ class SQLite():
             self.db_file = db_file
             self.mapped = True
         else:
-            self.db_file = os.path.join(root_directory, name + ".db")
+            date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
+            self.db_file = os.path.join(root_directory, name + date + ".db")
             self.mapped = False
         print(self.db_file)
         self.root_directory = root_directory
@@ -865,6 +906,8 @@ class SQLite():
             self.create_persistent_mappings_from_nparray()
         else:
             self.create_persistent_mappings_in_chunks()      
+        self.metadata.update({"db": self.file_db, 
+                         "name": self.name})
         self.mapped = True
         
     def update_db(self, sample=None):
@@ -896,6 +939,39 @@ class SQLite():
                 c.executemany(query, [(v,) if isinstance(v, int) or isinstance(v, str) else v for v in elems])
                 conn.commit()        
 
+    def _get_max(self, table):
+        query = "SELECT max(id) from {};".format(table)
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor() 
+            maxi = None
+            try:
+                cursor.execute(query)
+                maxi = cursor.fetchall()
+                conn.commit()
+            except Exception as e:
+                logger.debug("Query failed. The error '{}' occurred".format(e))             
+
+        if maxi is None:
+            logger.debug("Table is empty or not such table exists.")
+            return maxi
+        elif not isinstance(maxi, list) or not isinstance(maxi[0], tuple):
+            raise ValueError("Cannot get max for the table with provided condition.")        
+        return maxi[0][0]   
+
+    def _get_max_ents_index(self):
+        return self._get_max("entities")
+
+    def _get_max_rels_index(self):
+        return self._get_max("relations")
+
+    def _update_properties(self):
+        """Initialise properties from the database."""
+        self.max_ents_index = self._get_max_ents_index()
+        self.max_rels_index = self._get_max_rels_index()
+
+        self.ents_length = self.get_entities_count()
+        self.rels_length = self.get_relations_count()
+
     def create_persistent_mappings_from_nparray(self):
         """Index entities and relations. Creates sqlite db for mappings between
            entities and relations to indexes."""
@@ -906,13 +982,14 @@ class SQLite():
     def index_data(self, table):    
         """Create new table with persisted id of elements."""
         query = ["CREATE TABLE IF NOT EXISTS {0}(id INTEGER PRIMARY KEY, name TEXT NOT NULL);".format(table),
-        "INSERT INTO {0}(id, name) SELECT rowid, name FROM tmp_{0};".format(table),
+        "INSERT INTO {0}(id, name) SELECT rowid - 1, name FROM tmp_{0};".format(table),
         "DROP TABLE tmp_{0};".format(table)]
         with sqlite3.connect(self.db_file) as conn:
             c = conn.cursor()
             for q in query:
                 c.execute(q)
                 conn.commit()
+        self._update_properties()
 
     def create_persistent_mappings_in_chunks(self):
         """Index entities and relations. Creates sqlite db for mappings between
@@ -929,7 +1006,7 @@ class SQLite():
         self.index_data('entities')
         self.index_data('relations')
                     
-    def update_mappings(self):
+    def update_mappings(self, new_data):
         raise NotImplementedError("Updating existing mappings not supported, try creating new mappings in chunks instead.")
 
     def get_indexes(self, sample=None, type_of="t", order="raw2ind"):
@@ -1062,14 +1139,29 @@ class SQLite():
             raise ValueError("Cannot get count for the table with provided condition.")        
         return count[0][0]   
     
-    def get_relations_count(self):
+    def get_relations_count(self, condition=""):
         """Return number of unique relations."""
         return self.get_count('relations', condition)
     
     def get_entities_count(self, condition=""):
         """Return number of unique entities."""
         return self.get_count('entities', condition)
-    
+   
+    def _get_starting_index_ents(self):
+        """Returns next index to continue adding elements to entities dictionary."""
+        if not self.db_file:
+            return 0
+        else:
+            return self.max_ents_index + 1
+
+    def _get_starting_index_rels(self):
+        """Returns next index to continue adding elements to relations dictionary."""
+        if not self.db_file:
+            return 0
+        else:
+            return self.max_rels_index + 1        
+
+ 
     def clean(self):
         """Remove the database file."""
         os.remove(self.db_file)        
