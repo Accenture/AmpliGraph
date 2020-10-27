@@ -15,7 +15,6 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         self.eta = eta
         super(CorruptionGenerationLayerTrain, self).__init__(**kwargs)
 
-    @tf.function
     def call(self, pos, ent_size):
         '''
         Generates corruption for the positives supplied 

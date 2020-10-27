@@ -13,7 +13,6 @@ class ComplEx(AbstractScoringLayer):
         # hence internally it uses 2 * k embeddings
         self.internal_k = 2 * k
 
-    @tf.function
     def _compute_scores(self, triples):
         ''' compute scores using ComplEx scoring function.
         
@@ -36,8 +35,7 @@ class ComplEx(AbstractScoringLayer):
         scores = tf.reduce_sum((e_s_real * (e_p_real * e_o_real + e_p_img * e_o_img)) + (
             e_s_img * (e_p_real * e_o_img - e_p_img * e_o_real)), axis=1)
         return scores
-    
-    @tf.function(experimental_relax_shapes=True)
+
     def _get_subject_corruption_scores(self, triples, ent_matrix):
         ''' Compute subject corruption scores.
         Evaluate the inputs against subject corruptions and scores of the corruptions.
@@ -69,8 +67,7 @@ class ComplEx(AbstractScoringLayer):
             axis=2)
                                           
         return sub_corr_score
-    
-    @tf.function(experimental_relax_shapes=True)
+
     def _get_object_corruption_scores(self, triples, ent_matrix):
         ''' Compute object corruption scores.
         Evaluate the inputs against object corruptions and scores of the corruptions.

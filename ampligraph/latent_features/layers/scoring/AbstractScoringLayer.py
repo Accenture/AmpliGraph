@@ -56,7 +56,6 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         # store the embedding size. (concrete models may overwrite this)
         self.internal_k = k
 
-    @tf.function(experimental_relax_shapes=True)
     def call(self, triples):
         '''
         Computes the scores of the triples
@@ -73,7 +72,6 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         '''
         return self._compute_scores(triples)
     
-    @tf.function
     def _compute_scores(self, triples):
         ''' Abstract function to compute scores. Override this method in concrete classes.
         
@@ -89,7 +87,6 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         '''
         raise NotImplementedError('Abstract method not implemented!')
         
-    @tf.function(experimental_relax_shapes=True)
     def _get_object_corruption_scores(self, triples, ent_matrix):
         ''' Abstract function to compute object corruption scores.
         Evaluate the inputs against object corruptions and scores of the corruptions.
@@ -108,7 +105,6 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         '''
         raise NotImplementedError('Abstract method not implemented!')
         
-    @tf.function(experimental_relax_shapes=True)
     def _get_subject_corruption_scores(self, triples, ent_matrix):
         ''' Abstract function to compute subject corruption scores.
         Evaluate the inputs against subject corruptions and scores of the corruptions.
@@ -127,7 +123,6 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         '''
         raise NotImplementedError('Abstract method not implemented!')
 
-    @tf.function(experimental_relax_shapes=True)
     def get_ranks(self, triples, ent_matrix, start_ent_id, end_ent_id, filters, corrupt_side='s,o'):
         ''' Computes the ranks of triples against their corruptions. 
         Ranks are computed by corruptiong triple s and o side by embeddings in ent_matrix.

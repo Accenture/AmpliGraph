@@ -10,7 +10,6 @@ class CorruptionGenerationLayerEval(tf.keras.layers.Layer):
     def build(self, input_shapes):
         super(CorruptionGenerationLayerEval, self).build(input_shapes)  # Be sure to call this at the end
 
-    @tf.function
     def call(self, X):
         print('creating eval--------------------------------')
         corrupt_side = 's+o'

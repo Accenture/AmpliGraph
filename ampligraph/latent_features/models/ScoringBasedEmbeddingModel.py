@@ -115,7 +115,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # this would be the case of during partitioned training (first batch)
             self.encoding_layer.set_ent_rel_initial_value(ent_emb, rel_emb)
 
-    @tf.function(experimental_relax_shapes=True)
     def call(self, inputs, training=False):
         '''
         Computes the scores of the triples and returns the corruption scores as well
@@ -764,6 +763,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         ''' Returns the output of predict step on a batch of data'''
         score_pos = self(inputs, False)
         return score_pos
+    
+    def predict_step_partitioning(self, inputs):
+        ''' Returns the output of predict step on a batch of data'''
+        score_pos = self.scoring_layer(inputs)
+        return score_pos
 
     def make_predict_function(self):
         ''' Similar to keras lib, this function returns the handle to predict step function. 
@@ -779,10 +783,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         def predict_function(iterator):
             inputs = next(iterator)
-            outputs = self.predict_step(inputs)
+            if self.is_partitioned_training:
+                inputs = self.process_model_inputs_for_test(inputs)
+                outputs = self.predict_step_partitioning(inputs)
+            else:
+                outputs = self.predict_step(inputs)
             return outputs
 
-        if not self.run_eagerly:
+        if not self.run_eagerly and not self.is_partitioned_training:
             predict_function = def_function.function(predict_function,
                                                      experimental_relax_shapes=True)
 
