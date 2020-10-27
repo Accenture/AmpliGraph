@@ -56,7 +56,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.k = self.scoring_layer.internal_k
         
         # create the corruption generation layer - generates eta corruptions during training
-        self.corruption_layer = CorruptionGenerationLayerTrain(eta)
+        self.corruption_layer = CorruptionGenerationLayerTrain()
         
         # assume that you have max_ent_size unique entities - if it is single partition
         # this would change if we use partitions - based on which partition is in memory
@@ -71,6 +71,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.is_partitioned_training = False
         # Variable related to data indexing (entity to idx mapping)
         self.data_indexer = True
+        
+        self.is_calibrated = False
         
         self.seed = seed
   
@@ -137,7 +139,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         if training:
             # generate the corruptions for the input triples
-            corruptions = self.corruption_layer(inputs, self.num_ents)
+            corruptions = self.corruption_layer(inputs, self.num_ents, self.eta)
             # lookup embeddings of the inputs
             corr_emb = self.encoding_layer(corruptions)
             corr_score = self.scoring_layer(corr_emb)
@@ -325,7 +327,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
         with training_utils.RespectCompiledTrainableState(self):
             # create data handler for the data
-            self.data_handler = data_adapter.DataHandler(x,
+            self.data_handler = DataHandler(x,
                                                          model=self, 
                                                          batch_size=batch_size, 
                                                          dataset_type='train', 
@@ -705,7 +707,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             (corruptions defined by ent_embs matrix)
         '''
         # get teh test set handler
-        self.data_handler_test = data_adapter.DataHandler(x,
+        self.data_handler_test = DataHandler(x,
                                                           batch_size=batch_size,
                                                           dataset_type='test',
                                                           epochs=1,
@@ -799,7 +801,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
     def predict(self,
                 x,
-                batch_size=None,
+                batch_size=32,
                 verbose=0,
                 callbacks=None):
         '''
@@ -822,7 +824,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         scores: (n, )
             score of the input triples
         '''
-        self.data_handler_test = data_adapter.DataHandler(x,
+        self.data_handler_test = DataHandler(x,
                                                           batch_size=batch_size,
                                                           dataset_type='test',
                                                           epochs=1,
@@ -848,6 +850,195 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     callbacks.on_predict_batch_begin(step)
                     batch_outputs = predict_function(iterator)
                     outputs.append(batch_outputs)
+
+                    callbacks.on_predict_batch_end(step, {'outputs': batch_outputs})
+        callbacks.on_predict_end()
+        return np.concatenate(outputs)
+    
+    def make_calibrate_function(self):
+        ''' Similar to keras lib, this function returns the handle to predict step function. 
+        It processes one batch of data by iterating over the dataset iterator and computes the predict outputs.
+
+        Returns:
+        --------
+        out: Function handle.
+              Handle to the predict step function
+        '''
+
+        def calibrate_with_corruption(iterator):
+            inputs = next(iterator)
+            if self.is_partitioned_training:
+                inp_emb = self.process_model_inputs_for_test(inputs)
+                inp_score = self.scoring_layer(inp_emb)
+                
+                corruptions = self.corruption_layer(inputs, self.num_ents, 1)
+                corr_emb = self.encoding_layer(corruptions)
+                corr_score = self.scoring_layer(corr_emb)
+            else:
+                inp_emb = self.encoding_layer(inputs)
+                inp_score = self.scoring_layer(inp_emb)
+                
+                corruptions = self.corruption_layer(inputs, self.num_ents, 1)
+                corr_emb = self.encoding_layer(corruptions)
+                corr_score = self.scoring_layer(corr_emb)
+            return inp_score, corr_score
+        
+        def calibrate_with_negatives(iterator):
+            inputs = next(iterator)
+            if self.is_partitioned_training:
+                inp_emb = self.process_model_inputs_for_test(inputs)
+                inp_score = self.scoring_layer(inp_emb)
+            else:
+                inp_emb = self.encoding_layer(inputs)
+                inp_score = self.scoring_layer(inp_emb)
+            return inp_score
+
+        if self.is_calibrate_with_corruption:
+            calibrate_fn = calibrate_with_corruption
+        else:
+            calibrate_fn = calibrate_with_negatives
+            
+        if not self.run_eagerly and not self.is_partitioned_training:
+            calibrate_fn = def_function.function(calibrate_fn,
+                                                 experimental_relax_shapes=True)
+
+        return calibrate_fn
+    
+    def calibrate(self, X_pos, X_neg=None, positive_base_rate=None, batch_size=32, epochs=50, verbose=0):
+        self.is_calibrated = False
+        data_handler_calibrate_pos = DataHandler(X_pos,
+                                                  batch_size=batch_size,
+                                                  dataset_type='test',
+                                                  epochs=epochs,
+                                                  use_filter=False,
+                                                  use_indexer=self.data_indexer)
+        
+        pos_size = data_handler_calibrate_pos._parent_adapter.get_data_size()
+        neg_size = pos_size
+        
+        if X_neg is None:
+            assert positive_base_rate is not None, 'Please provide the negatives or positive base rate!'
+            self.is_calibrate_with_corruption = True
+        else:
+            self.is_calibrate_with_corruption = False
+            
+            pos_batch_count = int(np.ceil(pos_size/batch_size))
+            
+            data_handler_calibrate_neg = DataHandler(X_neg,
+                                                  batch_size=batch_size,
+                                                  dataset_type='test',
+                                                  epochs=epochs,
+                                                  use_filter=False,
+                                                  use_indexer=self.data_indexer)
+            
+            neg_size = data_handler_calibrate_neg._parent_adapter.get_data_size()
+            neg_batch_count = int(np.ceil(neg_size/batch_size))
+            
+            if pos_batch_count != neg_batch_count:
+                batch_size_neg = int(np.ceil(neg_size/pos_batch_count))
+                data_handler_calibrate_neg = DataHandler(X_neg,
+                                                  batch_size=batch_size_neg,
+                                                  dataset_type='test',
+                                                  epochs=epochs,
+                                                  use_filter=False,
+                                                  use_indexer=self.data_indexer)
+            
+            
+            if positive_base_rate is None:
+                positive_base_rate = pos_size / (pos_size + neg_size)
+
+        if positive_base_rate is not None and (positive_base_rate <= 0 or positive_base_rate >= 1):
+            raise ValueError("positive_base_rate must be a value between 0 and 1.")
+        
+        calibrate_function = self.make_calibrate_function()
+        
+        self.calib_w = tf.Variable(initial_value=0.0, dtype=tf.float32, trainable=True)
+        self.calib_b = tf.Variable(initial_value=np.log((neg_size + 1.0) / (pos_size + 1.0)).astype(np.float32),
+                                dtype=tf.float32, trainable=True)
+        
+        optimizer = tf.keras.optimizers.Adam()
+        
+        pos_outputs = []
+        neg_outputs = []
+        
+        if not self.is_calibrate_with_corruption:
+             negative_iterator = iter(data_handler_calibrate_neg.enumerate_epochs())
+                
+        for _, iterator in data_handler_calibrate_pos.enumerate_epochs():
+            if not self.is_calibrate_with_corruption:
+                _, neg_handle = next(negative_iterator)
+            
+            with data_handler_calibrate_pos.catch_stop_iteration():
+                for step in data_handler_calibrate_pos.steps():
+                    if self.is_calibrate_with_corruption:
+                        scores_pos, scores_neg = calibrate_function(iterator)
+
+                    else:
+                        scores_pos = calibrate_function(iterator)
+                        with data_handler_calibrate_neg.catch_stop_iteration():
+                            scores_neg = calibrate_function(neg_handle)
+                            
+                    scores_all = tf.concat([scores_pos, scores_neg], axis=0)
+                    labels = tf.concat([tf.cast(tf.fill(scores_pos.shape[0], 
+                                                        (pos_size + 1.0) / (pos_size + 2.0)), tf.float32),
+                                tf.cast(tf.fill(scores_neg.shape[0], 1 / (neg_size + 2.0)), tf.float32)],
+                               axis=0)
+                    
+                    weigths_pos = scores_neg.shape[0] / scores_pos.shape[0]
+                    weights_neg = (1.0 - positive_base_rate) / positive_base_rate
+                    weights = tf.concat([tf.cast(tf.fill(scores_pos.shape[0], weigths_pos), tf.float32),
+                                         tf.cast(tf.fill(scores_neg.shape[0], weights_neg), tf.float32)], axis=0)
+
+                    
+                    with tf.GradientTape() as tape:
+                        logits = -(self.calib_w * scores_all + self.calib_b)
+                        loss = weights * tf.nn.sigmoid_cross_entropy_with_logits(labels, logits)
+
+                    all_trainable_vars = [self.calib_w, self.calib_b]
+                    gradients = tape.gradient(loss, all_trainable_vars)
+                    # update the trainable params
+                    optimizer.apply_gradients(zip(gradients, all_trainable_vars))
+        self.is_calibrated = True
+        
+        
+    def predict_proba(self,
+                        x,
+                        batch_size=32,
+                        verbose=0,
+                        callbacks=None):
+        if not self.is_calibrated:
+            msg = "Model has not been calibrated. \
+            Please call `model.calibrate(...)` before predicting probabilities."
+            raise RuntimeError(msg)
+            
+        self.data_handler_test = DataHandler(x,
+                                                          batch_size=batch_size,
+                                                          dataset_type='test',
+                                                          epochs=1,
+                                                          use_filter=False,
+                                                          use_indexer=self.data_indexer)
+
+        if not isinstance(callbacks, callbacks_module.CallbackList):
+            callbacks = callbacks_module.CallbackList(
+                callbacks,
+                add_history=True,
+                add_progbar=verbose != 0,
+                model=self,
+                verbose=verbose,
+                epochs=1,
+                steps=self.data_handler_test.inferred_steps)
+
+        predict_function = self.make_predict_function()
+        callbacks.on_predict_begin()
+        outputs = []
+        for _, iterator in self.data_handler_test.enumerate_epochs():
+            with self.data_handler_test.catch_stop_iteration():
+                for step in self.data_handler_test.steps():
+                    callbacks.on_predict_batch_begin(step)
+                    batch_outputs = predict_function(iterator)
+                    logits = -(self.calib_w * batch_outputs + self.calib_b)
+                    probas = tf.math.sigmoid(logits)
+                    outputs.append(probas)
 
                     callbacks.on_predict_batch_end(step, {'outputs': batch_outputs})
         callbacks.on_predict_end()
