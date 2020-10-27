@@ -88,6 +88,8 @@ class DummyBackend():
             elif self.remap:
                 # create a special mapping for partitions, persistent mapping from main indexes 
                 # to partition indexes
+                print(self.data_source)
+                print(self.name)
                 self.mapper = DataIndexer(self.data_source, backend="sqlite", name=self.name, 
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(self.data_source)
@@ -162,10 +164,11 @@ class DummyBackend():
             logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
             logger.debug("Recover original indexes.")
-            with shelve.open(self.mapper.entities_dict) as ents:
-                with shelve.open(self.mapper.relations_dict) as rels:
-                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], 
-                                                        ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
+            triples_original_index = self.mapper.get_indexes(xx, order="ind2raw")
+#            with shelve.open(self.mapper.entities_dict) as ents:
+#                with shelve.open(self.mapper.relations_dict) as rels:
+#                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], 
+#                                                        ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
             logger.debug("Query parent for data.")
             logger.debug("Original index: {}".format(triples_original_index))
             subjects = self.parent.get_complementary_subjects(triples_original_index, use_filter=use_filter)
@@ -197,19 +200,21 @@ class DummyBackend():
             logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
             logger.debug("Recover original indexes.")
-            with shelve.open(self.mapper.reversed_entities_dict) as ents:
-                with shelve.open(self.mapper.reversed_relations_dict) as rels:
-                    triples_original_index = np.array([(ents[str(xx[0])], 
-                                                        rels[str(xx[1])], 
-                                                        ents[str(xx[2])]) for xx in triples], 
-                                                      dtype=np.int32)    
+            triples_original_index = self.mapper.get_indexes(xx, order="ind2raw")
+
+#            with shelve.open(self.mapper.reversed_entities_dict) as ents:
+#                with shelve.open(self.mapper.reversed_relations_dict) as rels:
+#                    triples_original_index = np.array([(ents[str(xx[0])], 
+#                                                        rels[str(xx[1])], 
+#                                                        ents[str(xx[2])]) for xx in triples], 
+#                                                      dtype=np.int32)    
             logger.debug("Query parent for data.")
             subjects = self.parent.get_complementary_subjects(triples_original_index)
             logger.debug("What to do with this new indexes? Evaluation should happen in the \
             original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
             return subjects
         elif self.use_filter == False or self.use_filter is None:
-            self.use_filter = {'train': self.data}
+            self.use_filter = {'train-org': self.data}
 
         filtered = []
         for filter_name, filter_source in self.use_filter.items():
@@ -249,7 +254,10 @@ class DummyBackend():
                 identifier = DataSourceIdentifier(source)
                 loader = identifier.fetch_loader()
                 raw_data = loader(source) 
-            self.sources[name] = self.mapper.get_indexes(raw_data)
+            if name != 'train-org':
+                self.sources[name] = self.mapper.get_indexes(raw_data)
+            else:
+                self.sources[name] = raw_data
         return self.sources[name]
 
     def _get_complementary_objects(self, triples, use_filter=False):
@@ -271,17 +279,18 @@ class DummyBackend():
             logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
             logger.debug("Recover original indexes.")
-            with shelve.open(self.mapper.reversed_entities_dict) as ents:
-                with shelve.open(self.mapper.reversed_relations_dict) as rels:
-                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], 
-                                                        ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
+            triples_original_index = self.mapper.get_indexes(xx, order="ind2raw")
+#            with shelve.open(self.mapper.reversed_entities_dict) as ents:
+#                with shelve.open(self.mapper.reversed_relations_dict) as rels:
+#                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], 
+#                                                        ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
             logger.debug("Query parent for data.")
             objects = self.parent.get_complementary_objects(triples_original_index)
             logger.debug("What to do with this new indexes? Evaluation should happen in \
             the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
             return objects
         elif self.use_filter == False or self.use_filter is None:
-            self.use_filter = {'train': self.data}
+            self.use_filter = {'train-org': self.data}
         filtered = []
         for filter_name, filter_source in self.use_filter.items():
             source = self.get_source(filter_source, filter_name)
@@ -372,7 +381,7 @@ class GraphDataLoader():
        >>>    process(data)
     """    
     def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, root_directory=tempfile.gettempdir(),
-                 use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=True, use_filter=None):
+                 use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=True, use_filter=False):
         """Initialise persistent/in-memory data storage.
        
            Parameters

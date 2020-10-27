@@ -197,9 +197,9 @@ def test_number_of_partitions_after_graph_partitioning(graph_partitioner):
 
 def test_random_vertices_graph_partitioner(data, k):
     partitioner = RandomVerticesGraphPartitioner(data, k)
-    n_nodes = data.backend.mapper.ents_length//k
+    n_nodes = data.backend.mapper.get_entities_count()//k
     for partition in partitioner:
-        actual = partition.backend.mapper.ents_length
+        actual = partition.backend.mapper.get_entities_count()
         accept_range = [x for y in [(n_nodes - i, n_nodes + i) for i in range(k)] for x in y]
         assert actual in accept_range, "Nodes in a bucket not equal to expected, got {}, expected {} +- (0, {}).".format(actual, k, n_nodes)
     partitioner.clean()

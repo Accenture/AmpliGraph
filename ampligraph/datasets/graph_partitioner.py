@@ -252,8 +252,7 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
            accordingly triples to k partitions and intermediate partitions.
         """
         timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
-        logger.debug(self._data.backend.mapper.entities_dict)
-        self.ents_size = self._data.backend.mapper.ents_length
+        self.ents_size = self._data.backend.mapper.get_entities_count()
         logger.debug(self.ents_size)
         self.bucket_size = int(np.ceil(self.ents_size / self._k))
         self.buckets_generator = self._data.backend.mapper.get_entities_in_batches(batch_size=self.bucket_size)
@@ -314,7 +313,7 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
             partitions: parts of equal size with triples
         """
         timestamp =  datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
-        self.ents_size = self._data.backend.mapper.ents_length
+        self.ents_size = self._data.backend.mapper.get_entities_count()
        # logger.debug(self.ents_size)
        # logger.debug(backend.mapper.max_ents_index)
         self.partition_size = int(np.ceil(self.ents_size / self._k))

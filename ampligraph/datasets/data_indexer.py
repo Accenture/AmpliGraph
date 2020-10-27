@@ -80,16 +80,15 @@ class DataIndexer():
         >>>mapper.get_indexes(data)        
        """
     def __init__(self, X, backend="in_memory", **kwargs):
+        logger.debug("Initialisation of DataIndexer.")
         self.data = X
 #        if len(kwargs) == 0:
 #            self.backend = INDEXER_BACKEND_REGISTRY.get(backend)(X)
 #        else:
         self.backend = INDEXER_BACKEND_REGISTRY.get(backend)(X, **kwargs)
         if not self.backend.mapped:
-            print(self.backend.mapped, "Not mapped doing mapping")
             self.backend.create_mappings()
         self.metadata = self.backend.metadata
-        print("Should be mapped")
 
     def update_mappings(self, X):
         """Update existing mappings with new data."""
@@ -135,7 +134,6 @@ class DataIndexer():
           
         """
         ents_len = self.get_entities_count()
-        print(ents_len)
         if batch_size == -1:
             batch_size = ents_len
         entities = list(range(0, ents_len, batch_size))
@@ -198,7 +196,6 @@ class InMemory():
         """
         self.data = data
         self.mapped = False
-        print("init:",self.mapped)
         self.metadata = {}
         self.entities_dict = entities_dict
         self.reversed_entities_dict = reversed_entities_dict
@@ -241,7 +238,6 @@ class InMemory():
         else:
             logger.debug("Provided initialization objects are not supported. Can't Initialise mappings.")
         self.mapped = True
-        print("finished mapping", self.mapped)
    
     def _update_properties(self):
         """Initialise properties from the in-memory dictionary."""
@@ -882,6 +878,7 @@ class SQLite():
            data: data to be indexed.
            root_directory: directory where to store persistent mappings.
         """
+        logger.debug("Initialisation of SQLite indexer.")
         self.data = data
         self.metadata = {}
         if db_file is not None:
@@ -891,7 +888,6 @@ class SQLite():
             date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
             self.db_file = os.path.join(root_directory, name + date + ".db")
             self.mapped = False
-        print(self.db_file)
         self.root_directory = root_directory
         self.name = name
 
@@ -902,19 +898,21 @@ class SQLite():
         
     def create_mappings(self):
         """Creates mappings."""
+        logger.debug("Creating SQLite mappings.")
         if isinstance(self.data, np.ndarray):
             self.create_persistent_mappings_from_nparray()
         else:
             self.create_persistent_mappings_in_chunks()      
+        logger.debug("Database: {}.".format(self.db_file))
         self.metadata.update({"db": self.db_file, 
                          "name": self.name})
         self.mapped = True
         
     def update_db(self, sample=None):
         """Update db with sample or full data when sample not provided."""
+        logger.debug("Update db with data.")
         if sample is None:
             sample = self.data
-        
         subjects = sample[:,0]
         objects = sample[:,2]
         relations = sample[:,1]
@@ -936,10 +934,12 @@ class SQLite():
             query = 'INSERT OR IGNORE INTO {} VALUES {};'.format(tab.format(table), values_placeholder)
             with sqlite3.connect(self.db_file) as conn:
                 c = conn.cursor()
-                c.executemany(query, [(v,) if isinstance(v, int) or isinstance(v, str) else v for v in elems])
+                tmp = [(str(v),) for v in elems]
+                c.executemany(query, tmp)
                 conn.commit()        
 
     def _get_max(self, table):
+        logger.debug("Get max.")
         query = "SELECT max(id) from {};".format(table)
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor() 
@@ -956,6 +956,7 @@ class SQLite():
             return maxi
         elif not isinstance(maxi, list) or not isinstance(maxi[0], tuple):
             raise ValueError("Cannot get max for the table with provided condition.")        
+        logger.debug("Maximal value: {}.".format(maxi[0][0]))
         return maxi[0][0]   
 
     def _get_max_ents_index(self):
@@ -966,6 +967,7 @@ class SQLite():
 
     def _update_properties(self):
         """Initialise properties from the database."""
+        logger.debug("Update properties")
         self.max_ents_index = self._get_max_ents_index()
         self.max_rels_index = self._get_max_rels_index()
 
@@ -981,6 +983,7 @@ class SQLite():
 
     def index_data(self, table):    
         """Create new table with persisted id of elements."""
+        logger.debug("Index data in SQLite.")
         query = ["CREATE TABLE IF NOT EXISTS {0}(id INTEGER PRIMARY KEY, name TEXT NOT NULL);".format(table),
         "INSERT INTO {0}(id, name) SELECT rowid - 1, name FROM tmp_{0};".format(table),
         "DROP TABLE tmp_{0};".format(table)]
@@ -1097,9 +1100,11 @@ class SQLite():
                     cursor.execute(query)
                     output = dict(cursor.fetchall())
                     conn.commit()
-                    return [output[x] for x in sample]
+                    return [output[str(x)] for x in sample]
                 except Exception as e:
                     logger.debug("Query failed. The error '{}' occurred".format(e))  
+                    logger.debug(query)
+                    logger.debug(output)
                     return []
         elif order == 'ind2raw':
             query = "select * from {0} where id in ({1});".format(table, ','.join('"{}"'.format(v) for v in sample))
@@ -1121,6 +1126,7 @@ class SQLite():
       
     def get_count(self, table, condition):
         """Return number of unique elements in a table according to condition."""
+        logger.debug("Get count.")
         query = "SELECT count(*) from {} {};".format(table, condition)
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor() 
@@ -1137,6 +1143,7 @@ class SQLite():
             return count
         elif not isinstance(count, list) or not isinstance(count[0], tuple):
             raise ValueError("Cannot get count for the table with provided condition.")        
+        logger.debug("Count is {}.".format(count[0][0]))
         return count[0][0]   
     
     def get_relations_count(self, condition=""):
