@@ -9,7 +9,6 @@ class DistMult(AbstractScoringLayer):
     def __init__(self, k):
         super(DistMult, self).__init__(k)
 
-    @tf.function
     def _compute_scores(self, triples):
         ''' compute scores using distmult scoring function.
         
@@ -26,8 +25,7 @@ class DistMult(AbstractScoringLayer):
         # compute scores as sum(s * p * o)
         scores = tf.reduce_sum(triples[0] * triples[1] * triples[2], 1)
         return scores
-    
-    @tf.function(experimental_relax_shapes=True)
+
     def _get_subject_corruption_scores(self, triples, ent_matrix):
         ''' Compute subject corruption scores.
         Evaluate the inputs against subject corruptions and scores of the corruptions.
@@ -49,8 +47,7 @@ class DistMult(AbstractScoringLayer):
         # compute scores as sum(s_corr * p * o)
         sub_corr_score = tf.reduce_sum(ent_matrix * tf.expand_dims(rel_emb * obj_emb, 1), 2)
         return sub_corr_score
-    
-    @tf.function(experimental_relax_shapes=True)
+
     def _get_object_corruption_scores(self, triples, ent_matrix):
         ''' Compute object corruption scores.
         Evaluate the inputs against object corruptions and scores of the corruptions.

@@ -13,15 +13,37 @@ class DataHandler():
                  epochs=1, 
                  initial_epoch=0, 
                  use_indexer = True,
-                 train_partitioner=None,
                  use_filter=True,
                  use_partitioning=False):
+        '''Initializes the DataHandler
         
+        Parameters:
+        -----------
+        model: tf.keras.Model
+            Model instance
+        batch_size: int
+            batch size to use during training. 
+            May be overridden if x is GraphDataLoader or AbstractGraphPartitioner instance
+        dataset_type: string
+            dataset type that is being passed
+        epochs: int
+            Number of epochs to train (default: 1)
+        initial epoch: int
+            initial epoch number (default: 1)
+        use_indexer: bool or Mapper
+            whether the data needs to be indexed or whether we need to use pre-defined indexer to map 
+            the data to index
+        use_filter: bool or dict
+            whether to use filter of not. If a dictionary is specified, the data in the dict is concatenated 
+            and used as filter 
+        use_partitioning: bool
+            flag to indicate whether to use partitioning or not.
+            May be overridden if x is an AbstractGraphPartitioner instance
+        '''
         self._initial_epoch = initial_epoch
         self._epochs = epochs
         self._model = model
         self._inferred_steps = None
-        self.train_partitioner = train_partitioner
         self.using_partitioning = False
 
         if isinstance(x, GraphDataLoader):
@@ -70,6 +92,7 @@ class DataHandler():
             
     @property
     def inferred_steps(self):
+        '''Returns the number of steps in the batch'''
         return self._inferred_steps
     
     def enumerate_epochs(self):
@@ -81,7 +104,6 @@ class DataHandler():
             
         self._adapter.on_complete()
         
-    
     def get_mapper(self):
+        '''returns the mapper of the main data loader class'''
         return self._parent_adapter.backend.mapper
-

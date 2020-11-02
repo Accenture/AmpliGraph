@@ -176,8 +176,9 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
                 self.rel_partition = None
         else:
             raise TypeError('Not enough arguments to build Encoding Layer. Please set max_rel_size property.')
-        
-    @tf.function
+ 
+        self.built = True
+
     def partition_change_updates(self, partition_ent_emb, partition_rel_emb):
         ''' perform the changes that are required when the partition is changed during training
         
@@ -201,8 +202,7 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         # once padded, assign it to the trainable variable
         self.ent_emb.assign(tf.pad(partition_ent_emb, paddings_ent, 'CONSTANT', constant_values=0))
         self.rel_emb.assign(tf.pad(partition_rel_emb, paddings_rel, 'CONSTANT', constant_values=0))
-        
-    @tf.function(experimental_relax_shapes=True)
+
     def call(self, triples):
         '''
         Looks up the embeddings of entities and relations of the triples

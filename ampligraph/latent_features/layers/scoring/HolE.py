@@ -10,7 +10,6 @@ class HolE(ComplEx):
     def __init__(self, k):
         super(HolE, self).__init__(k)
 
-    @tf.function
     def _compute_scores(self, triples):
         ''' compute scores using HolE scoring function.
         
@@ -26,8 +25,7 @@ class HolE(ComplEx):
         '''
         # HolE scoring is 2/k * complex_score
         return (2 / (self.internal_k / 2)) * (super().compute_scores(triples))
-    
-    @tf.function(experimental_relax_shapes=True)
+
     def _get_subject_corruption_scores(self, triples, ent_matrix):
         ''' Compute subject corruption scores.
         Evaluate the inputs against subject corruptions and scores of the corruptions.
@@ -47,8 +45,7 @@ class HolE(ComplEx):
         # HolE scoring is 2/k * complex_score
         return (2 / (self.internal_k / 2)) * (super()._get_subject_corruption_scores(triples, 
                                                                                      ent_matrix))
-    
-    @tf.function(experimental_relax_shapes=True)
+
     def _get_object_corruption_scores(self, triples, ent_matrix):
         ''' Compute object corruption scores.
         Evaluate the inputs against object corruptions and scores of the corruptions.

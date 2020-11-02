@@ -3,7 +3,7 @@ import tensorflow as tf
 
 class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
 
-    def __init__(self, eta, **kwargs):
+    def __init__(self, **kwargs):
         '''
         Initializes the corruption generation layer
         
@@ -12,11 +12,9 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         eta: int
             number of corruptions to generate
         '''
-        self.eta = eta
         super(CorruptionGenerationLayerTrain, self).__init__(**kwargs)
 
-    @tf.function
-    def call(self, pos, ent_size):
+    def call(self, pos, ent_size, eta):
         '''
         Generates corruption for the positives supplied 
         
@@ -33,7 +31,7 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
             corruptions of the triples
         '''
         # size and reshape the dataset to sample corruptions
-        dataset = tf.reshape(tf.tile(tf.reshape(pos, [-1]), [self.eta]), [tf.shape(input=pos)[0] * self.eta, 3])
+        dataset = tf.reshape(tf.tile(tf.reshape(pos, [-1]), [eta]), [tf.shape(input=pos)[0] * eta, 3])
         # generate a mask which will tell which subject needs to be corrupted (random uniform sampling)
         keep_subj_mask = tf.cast(tf.random.uniform([tf.shape(input=dataset)[0]], 0, 2, dtype=tf.int32, seed=0), tf.bool)
         # If we are not corrupting the subject then corrupt the object
@@ -57,20 +55,3 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         # stack the generated subject, reln and object entities and create the corruptions
         corruptions = tf.transpose(a=tf.stack([subjects, relationships, objects]))
         return corruptions
-
-    def compute_output_shape(self, input_shape):
-        ''' returns the output shape of outputs of call function
-        
-        Parameters:
-        -----------
-        input_shape: 
-            shape of inputs of call function
-        
-        Returns:
-        --------
-        output_shape:
-            shape of outputs of call function
-        '''
-        assert isinstance(input_shape, list)
-        batch_size, _ = input_shape
-        return [batch_size * self.eta, 3]
