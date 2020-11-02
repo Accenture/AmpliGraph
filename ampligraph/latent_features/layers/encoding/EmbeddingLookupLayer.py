@@ -176,6 +176,8 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
                 self.rel_partition = None
         else:
             raise TypeError('Not enough arguments to build Encoding Layer. Please set max_rel_size property.')
+ 
+        self.built = True
 
     def partition_change_updates(self, partition_ent_emb, partition_rel_emb):
         ''' perform the changes that are required when the partition is changed during training

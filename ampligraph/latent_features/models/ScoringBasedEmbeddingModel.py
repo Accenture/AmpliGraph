@@ -8,6 +8,7 @@ from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
 from ampligraph.datasets import data_adapter
 from ampligraph.latent_features.layers.scoring import SCORING_LAYER_REGISTRY
 from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
+from ampligraph.latent_features.layers.calibration import CalibrationLayer
 from ampligraph.latent_features.layers.corruption_generation import CorruptionGenerationLayerTrain
 from ampligraph.datasets import DataIndexer
 from ampligraph.latent_features import optimizers
@@ -195,6 +196,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # set the max number of relations being trained just like above
         self.encoding_layer.max_rel_size = self.max_rel_size
         self.num_ents = self.max_ent_size
+        self.built = True
         
     def train_step(self, data):
         '''
@@ -327,7 +329,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
         with training_utils.RespectCompiledTrainableState(self):
             # create data handler for the data
-            self.data_handler = DataHandler(x,
+            self.data_handler = data_adapter.DataHandler(x,
                                                          model=self, 
                                                          batch_size=batch_size, 
                                                          dataset_type='train', 
@@ -440,11 +442,17 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         'max_ent_size': self.max_ent_size,
                         'max_rel_size': self.max_rel_size,
                         'eta': self.eta,
-                        'k': self.k}
+                        'k': self.k,
+                        'is_calibrated': self.is_calibrated
+                        }
             
             if self.is_partitioned_training:
                 metadata['partitioner_k'] = self.partitioner_k
                 
+            if self.is_calibrated:
+                metadata['calib_w'] = self.calibration_layer.calib_w.numpy()
+                metadata['calib_b'] = self.calibration_layer.calib_b.numpy()
+
             pickle.dump(metadata, f)
 
     def build_full_model(self, batch_size=100):
@@ -453,6 +461,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.build((batch_size, 3))
         for i in range(len(self.layers)):
             self.layers[i].build((batch_size, 3))
+            self.layers[i].built = True
 
     def load_weights(self,
                      filepath,
@@ -474,12 +483,16 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             self.max_rel_size = metadata['max_rel_size']
             if self.is_partitioned_training:
                 self.partitioner_k = metadata['partitioner_k']
+            self.is_calibrated = metadata['is_calibrated']
+            if self.is_calibrated:
+                self.calibration_layer = CalibrationLayer(calib_w=metadata['calib_w'],
+                                                          calib_b=metadata['calib_b'])
         self.build_full_model()
         if not self.is_partitioned_training:
             super(ScoringBasedEmbeddingModel, self).load_weights(filepath, 
                                                                  by_name, 
                                                                  skip_mismatch, 
-                                                                 options)  
+                                                                 options)
 
     def compile(self,
                 optimizer='adam',
@@ -707,7 +720,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             (corruptions defined by ent_embs matrix)
         '''
         # get teh test set handler
-        self.data_handler_test = DataHandler(x,
+        self.data_handler_test = data_adapter.DataHandler(x,
                                                           batch_size=batch_size,
                                                           dataset_type='test',
                                                           epochs=1,
@@ -824,7 +837,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         scores: (n, )
             score of the input triples
         '''
-        self.data_handler_test = DataHandler(x,
+
+        self.data_handler_test = data_adapter.DataHandler(x,
                                                           batch_size=batch_size,
                                                           dataset_type='test',
                                                           epochs=1,
@@ -856,7 +870,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         return np.concatenate(outputs)
     
     def make_calibrate_function(self):
-        ''' Similar to keras lib, this function returns the handle to predict step function. 
+        ''' Similar to keras lib, this function returns the handle to calibrate step function. 
         It processes one batch of data by iterating over the dataset iterator and computes the predict outputs.
 
         Returns:
@@ -905,13 +919,82 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         return calibrate_fn
     
     def calibrate(self, X_pos, X_neg=None, positive_base_rate=None, batch_size=32, epochs=50, verbose=0):
+        """Calibrate predictions
+
+        The method implements the heuristics described in :cite:`calibration`,
+        using Platt scaling :cite:`platt1999probabilistic`.
+
+        The calibrated predictions can be obtained with :meth:`predict_proba`
+        after calibration is done.
+
+        Ideally, calibration should be performed on a validation set that was not used to train the embeddings.
+
+        There are two modes of operation, depending on the availability of negative triples:
+
+        #. Both positive and negative triples are provided via ``X_pos`` and ``X_neg`` respectively. \
+        The optimization is done using a second-order method (limited-memory BFGS), \
+        therefore no hyperparameter needs to be specified.
+
+        #. Only positive triples are provided, and the negative triples are generated by corruptions \
+        just like it is done in training or evaluation. The optimization is done using a first-order method (ADAM), \
+        therefore ``batches_count`` and ``epochs`` must be specified.
+
+
+        Calibration is highly dependent on the base rate of positive triples.
+        Therefore, for mode (2) of operation, the user is required to provide the ``positive_base_rate`` argument.
+        For mode (1), that can be inferred automatically by the relative sizes of the positive and negative sets,
+        but the user can override that by providing a value to ``positive_base_rate``.
+
+        Defining the positive base rate is the biggest challenge when calibrating without negatives. That depends on
+        the user choice of which triples will be evaluated during test time.
+        Let's take WN11 as an example: it has around 50% positives triples on both the validation set and test set,
+        so naturally the positive base rate is 50%. However, should the user resample it to have 75% positives
+        and 25% negatives, its previous calibration will be degraded. The user must recalibrate the model now with a
+        75% positive base rate. Therefore, this parameter depends on how the user handles the dataset and
+        cannot be determined automatically or a priori.
+
+        .. Note ::
+            Incompatible with large graph mode (i.e. if ``self.dealing_with_large_graphs=True``).
+
+        .. Note ::
+            :cite:`calibration` `calibration experiments available here
+            <https://github.com/Accenture/AmpliGraph/tree/paper/ICLR-20/experiments/ICLR-20>`_.
+
+
+        Parameters
+        ----------
+        X_pos : np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
+            Data OR Filename of the data file OR Data Handle - that would be used as positive triples.
+        X_neg : np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
+            Data OR Filename of the data file OR Data Handle - that would be used as negative triples.
+
+            If `None`, the negative triples are generated via corruptions
+            and the user must provide a positive base rate instead.
+        positive_base_rate: float
+            Base rate of positive statements.
+
+            For example, if we assume there is a fifty-fifty chance of any query to be true, the base rate would be 50%.
+
+            If ``X_neg`` is provided and this is `None`, the relative sizes of ``X_pos`` and ``X_neg`` will be used to
+            determine the base rate. For example, if we have 50 positive triples and 200 negative triples,
+            the positive base rate will be assumed to be 50/(50+200) = 1/5 = 0.2.
+
+            This must be a value between 0 and 1.
+        batches_size: int
+            Batch size for positives
+        epochs: int
+            Number of epochs used to train the Platt scaling model.
+            Only applies when ``X_neg`` is  `None`.
+        verbose: bool
+            Verbosity
+        """
         self.is_calibrated = False
-        data_handler_calibrate_pos = DataHandler(X_pos,
-                                                  batch_size=batch_size,
-                                                  dataset_type='test',
-                                                  epochs=epochs,
-                                                  use_filter=False,
-                                                  use_indexer=self.data_indexer)
+        data_handler_calibrate_pos = data_adapter.DataHandler(X_pos,
+                                                              batch_size=batch_size,
+                                                              dataset_type='test',
+                                                              epochs=epochs,
+                                                              use_filter=False,
+                                                              use_indexer=self.data_indexer)
         
         pos_size = data_handler_calibrate_pos._parent_adapter.get_data_size()
         neg_size = pos_size
@@ -924,24 +1007,24 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
             pos_batch_count = int(np.ceil(pos_size/batch_size))
             
-            data_handler_calibrate_neg = DataHandler(X_neg,
-                                                  batch_size=batch_size,
-                                                  dataset_type='test',
-                                                  epochs=epochs,
-                                                  use_filter=False,
-                                                  use_indexer=self.data_indexer)
-            
+            data_handler_calibrate_neg = data_adapter.DataHandler(X_neg,
+                                                                  batch_size=batch_size,
+                                                                  dataset_type='test',
+                                                                  epochs=epochs,
+                                                                  use_filter=False,
+                                                                  use_indexer=self.data_indexer)
+
             neg_size = data_handler_calibrate_neg._parent_adapter.get_data_size()
             neg_batch_count = int(np.ceil(neg_size/batch_size))
             
             if pos_batch_count != neg_batch_count:
                 batch_size_neg = int(np.ceil(neg_size/pos_batch_count))
-                data_handler_calibrate_neg = DataHandler(X_neg,
-                                                  batch_size=batch_size_neg,
-                                                  dataset_type='test',
-                                                  epochs=epochs,
-                                                  use_filter=False,
-                                                  use_indexer=self.data_indexer)
+                data_handler_calibrate_neg = data_adapter.DataHandler(X_neg,
+                                                                      batch_size=batch_size_neg,
+                                                                      dataset_type='test',
+                                                                      epochs=epochs,
+                                                                      use_filter=False,
+                                                                      use_indexer=self.data_indexer)
             
             
             if positive_base_rate is None:
@@ -950,11 +1033,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         if positive_base_rate is not None and (positive_base_rate <= 0 or positive_base_rate >= 1):
             raise ValueError("positive_base_rate must be a value between 0 and 1.")
         
+        self.calibration_layer = CalibrationLayer(pos_size, neg_size, positive_base_rate)
         calibrate_function = self.make_calibrate_function()
-        
-        self.calib_w = tf.Variable(initial_value=0.0, dtype=tf.float32, trainable=True)
-        self.calib_b = tf.Variable(initial_value=np.log((neg_size + 1.0) / (pos_size + 1.0)).astype(np.float32),
-                                dtype=tf.float32, trainable=True)
         
         optimizer = tf.keras.optimizers.Adam()
         
@@ -978,26 +1058,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         with data_handler_calibrate_neg.catch_stop_iteration():
                             scores_neg = calibrate_function(neg_handle)
                             
-                    scores_all = tf.concat([scores_pos, scores_neg], axis=0)
-                    labels = tf.concat([tf.cast(tf.fill(scores_pos.shape[0], 
-                                                        (pos_size + 1.0) / (pos_size + 2.0)), tf.float32),
-                                tf.cast(tf.fill(scores_neg.shape[0], 1 / (neg_size + 2.0)), tf.float32)],
-                               axis=0)
                     
-                    weigths_pos = scores_neg.shape[0] / scores_pos.shape[0]
-                    weights_neg = (1.0 - positive_base_rate) / positive_base_rate
-                    weights = tf.concat([tf.cast(tf.fill(scores_pos.shape[0], weigths_pos), tf.float32),
-                                         tf.cast(tf.fill(scores_neg.shape[0], weights_neg), tf.float32)], axis=0)
-
                     
                     with tf.GradientTape() as tape:
-                        logits = -(self.calib_w * scores_all + self.calib_b)
-                        loss = weights * tf.nn.sigmoid_cross_entropy_with_logits(labels, logits)
+                        out = self.calibration_layer(scores_pos, scores_neg, 1)
 
-                    all_trainable_vars = [self.calib_w, self.calib_b]
-                    gradients = tape.gradient(loss, all_trainable_vars)
+                    gradients = tape.gradient(out, self.calibration_layer._trainable_weights)
                     # update the trainable params
-                    optimizer.apply_gradients(zip(gradients, all_trainable_vars))
+                    optimizer.apply_gradients(zip(gradients, self.calibration_layer._trainable_weights))
         self.is_calibrated = True
         
         
@@ -1006,12 +1074,32 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         batch_size=32,
                         verbose=0,
                         callbacks=None):
+        '''
+        Compute calibrated scores (0 <= score <= 1) of the input triples 
+
+        Parameters:
+        -----------
+        x: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
+            Data OR Filename of the data file OR Data Handle - that would be used for training
+        batch_size: int
+            batch size to use during training.
+            May be overridden if x is GraphDataLoader or AbstractGraphPartitioner instance
+        verbose: bool
+            Verbosity mode.
+        callbacks: keras.callbacks.Callback
+            List of `keras.callbacks.Callback` instances. List of callbacks to apply during evaluation.
+
+        Returns:
+        --------
+        scores: (n, )
+            calibrated score of the input triples
+        '''
         if not self.is_calibrated:
             msg = "Model has not been calibrated. \
             Please call `model.calibrate(...)` before predicting probabilities."
             raise RuntimeError(msg)
             
-        self.data_handler_test = DataHandler(x,
+        self.data_handler_test = data_adapter.DataHandler(x,
                                                           batch_size=batch_size,
                                                           dataset_type='test',
                                                           epochs=1,
@@ -1036,8 +1124,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 for step in self.data_handler_test.steps():
                     callbacks.on_predict_batch_begin(step)
                     batch_outputs = predict_function(iterator)
-                    logits = -(self.calib_w * batch_outputs + self.calib_b)
-                    probas = tf.math.sigmoid(logits)
+                    probas = self.calibration_layer(batch_outputs, training=0)
                     outputs.append(probas)
 
                     callbacks.on_predict_batch_end(step, {'outputs': batch_outputs})
