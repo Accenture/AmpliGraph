@@ -158,9 +158,12 @@ class AbstractGraphPartitioner(ABC):
             if f.split(".")[-1] != "shf":
                 os.remove(f)
             else:
-                os.remove(f + ".bak")
-                os.remove(f + ".dir")
-                os.remove(f + ".dat")
+                try:
+                    os.remove(f + ".bak")
+                    os.remove(f + ".dir")
+                    os.remove(f + ".dat")
+                except:
+                    os.remove(f + ".db")
     
 @register_partitioning_strategy("Bucket", "BucketPartitionedDataManager")
 class BucketGraphPartitioner(AbstractGraphPartitioner):
