@@ -567,7 +567,6 @@ class NLLMulticlass(Loss):
         neg_exp = tf.exp(scores_neg)
         pos_exp = tf.exp(scores_pos)
         softmax_score = pos_exp / (self._reduce_sample_loss(neg_exp) + pos_exp)
-
         loss = -tf.math.log(softmax_score)
         return loss
     

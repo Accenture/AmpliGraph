@@ -153,6 +153,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         triple_score = tf.cast(triple_score * COMPARISION_PRECISION, tf.int32)
         
         out_ranks = tf.TensorArray(tf.int32, size=0, dynamic_size=True)
+        filter_index = 0
         if tf.strings.regex_full_match(corrupt_side, '.*s.*'):
             
             # compare True positive score against their respective corruptions and get rank.
@@ -163,7 +164,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                 for i in tf.range(tf.shape(triple_score)[0]):
                     # TODO change the hard coded filter index
                     # get the ids of True positives that needs to be filtered
-                    filter_ids = filters[0][i]
+                    filter_ids = filters[filter_index][i]
                     # This is done for patritioning (where the full emb matrix is not used)
                     # this gets only the filter ids of the current partition being used for generating corruption
                     filter_ids_selector = tf.logical_and(filter_ids >= start_ent_id, 
@@ -179,6 +180,8 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                         tf.cast(tf.gather(triple_score, [i]) <= score_filter, tf.int32))
                     # ajust the rank of the test triple accordingly
                     sub_rank = tf.tensor_scatter_nd_sub(sub_rank, [[i]], [num_filters_ranked_higher])
+                 
+                filter_index = 1
                 
             out_ranks = out_ranks.write(out_ranks.size(), sub_rank)
         
@@ -188,7 +191,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                 for i in tf.range(tf.shape(triple_score)[0]):
                     # TODO change the hard coded filter index
                     # get the ids of True positives that needs to be filtered
-                    filter_ids = filters[1][i]
+                    filter_ids = filters[filter_index][i]
                     # This is done for patritioning (where the full emb matrix is not used)
                     # this gets only the filter ids of the current partition being used for generating corruption
                     filter_ids_selector = tf.logical_and(filter_ids >= start_ent_id, 

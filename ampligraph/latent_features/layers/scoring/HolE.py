@@ -24,7 +24,7 @@ class HolE(ComplEx):
             tensor of scores of inputs
         '''
         # HolE scoring is 2/k * complex_score
-        return (2 / (self.internal_k / 2)) * (super().compute_scores(triples))
+        return (2 / (self.internal_k / 2)) * (super()._compute_scores(triples))
 
     def _get_subject_corruption_scores(self, triples, ent_matrix):
         ''' Compute subject corruption scores.

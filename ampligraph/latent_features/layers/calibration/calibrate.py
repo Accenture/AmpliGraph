@@ -3,9 +3,18 @@ import numpy as np
 
 class CalibrationLayer(tf.keras.layers.Layer):
     
-    def __init__(self, pos_size=0, neg_size=0, positive_base_rate=0.0, **kwargs):
+    def __init__(self, pos_size=0, neg_size=0, positive_base_rate=None, **kwargs):
         self.pos_size = pos_size
-        self.neg_size = neg_size
+        self.neg_size = pos_size if neg_size == 0 else neg_size
+        
+        if positive_base_rate is not None:
+            if (positive_base_rate <= 0 or positive_base_rate >= 1):
+                raise ValueError("Positive_base_rate must be a value between 0 and 1.")
+        else:
+            assert pos_size > 0 and neg_size > 0, 'Positive size must be > 0.' 
+            
+            positive_base_rate = pos_size / (pos_size + neg_size)
+            
         self.positive_base_rate = positive_base_rate
         self.w_init = tf.constant_initializer(kwargs.pop('calib_w', 0.0))
         self.b_init = tf.constant_initializer(kwargs.pop('calib_b', 

@@ -82,6 +82,7 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
             self.ent_init = tf.keras.initializers.get(initializer[0])
             self.rel_init = tf.keras.initializers.get(initializer[1])
         else:
+            
             self.ent_init = tf.keras.initializers.get(initializer)
             self.rel_init = tf.keras.initializers.get(initializer)
             

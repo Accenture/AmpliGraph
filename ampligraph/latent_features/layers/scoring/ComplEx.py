@@ -95,7 +95,7 @@ class ComplEx(AbstractScoringLayer):
         # compute the object corruption score using ent_real, ent_img (corruption embeddings) as object embeddings
         obj_corr_score = tf.reduce_sum(
             (tf.expand_dims(e_s_real * e_p_real, 1) - tf.expand_dims(e_s_img * e_p_img, 1)) * ent_real + (
-                tf.expand_dims(e_s_img * e_p_real, 1) + tf.expand_dims(e_s_real * e_p_img, 1) * ent_img),
+                tf.expand_dims(e_s_img * e_p_real, 1) + tf.expand_dims(e_s_real * e_p_img, 1)) * ent_img,
             axis=2) 
                                           
         return obj_corr_score

@@ -68,11 +68,11 @@ class OptimizerWrapper(abc.ABC):
         self.optimizer.apply_gradients(zip(gradients, all_trainable_vars))
         
         # Compute the number of hyperparameters related to the optimizer
-        # if self.__number_hyperparams == -1:
-        #    optim_weights = self._optimizer.get_weights()
-        #    self.__number_hyperparams = 0
-        #    for i in range(1, len(optim_weights), self.__num_optimized_vars):
-        #        self.__number_hyperparams += 1
+        if self.number_hyperparams == -1:
+            optim_weights = self.optimizer.get_weights()
+            self.number_hyperparams = 0
+            for i in range(1, len(optim_weights), self.num_optimized_vars):
+                self.number_hyperparams += 1
 
     def get_hyperparam_count(self):
         ''' Number of hyperparams of the optimizer being used
