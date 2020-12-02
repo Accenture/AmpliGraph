@@ -11,7 +11,7 @@ class OptimizerWrapper(abc.ABC):
     """Wrapper around tensorflow optimizer
     """
     def __init__(self, optimizer=None):
-        """Initialize the Optimizer
+        """Initialize the tensorflow Optimizer and wraps it so that it can be used with graph partitioning.
         
         Parameters:
         -----------
@@ -132,6 +132,20 @@ class OptimizerWrapper(abc.ABC):
         
 
 def get(identifier):
+    '''
+    Get the optimizer specified by the identifier
+    
+    Parameters:
+    -----------
+    identifier: string, tf.optimizers.Optimizer instance
+        Instance of tf.optimizers.Optimizer or name of the optimizer to use (will use default parameters)
+        
+    Returns:
+    --------
+    optimizer: instance of OptimizerWrapper
+        Instance of tf.optimizers.Optimizer wrapped around by OptimizerWrapper so that graph partitioning is supported
+        
+    '''
     if isinstance(identifier, tf.optimizers.Optimizer):
         return OptimizerWrapper(identifier)
     elif isinstance(identifier, OptimizerWrapper):

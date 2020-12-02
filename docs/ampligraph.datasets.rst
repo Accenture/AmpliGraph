@@ -86,3 +86,20 @@ Functions to load custom knowledge graphs from disk.
 .. hint::
     AmpliGraph includes a helper function to split a generic knowledge graphs into **training**,
     **validation**, and **test** sets. See :meth:`ampligraph.evaluation.train_test_split_no_unseen`.
+
+Graph Partitioning
+^^^^^^^^^^^^^^^^^^
+
+Ampligraph supports training on partitions of graph. For large datasets, which do not fit in memory, users can choose between one of the following strategies to split the graph into partitions, and the training can be done by loading smaller partitions of the larger graph.
+
+.. autosummary::
+    :toctree: generated
+    :template: class.rst
+    
+    BucketGraphPartitioner
+    RandomVerticesGraphPartitioner
+    EdgeBasedGraphPartitioner
+    RandomEdgesGraphPartitioner
+    NaiveGraphPartitioner
+    SortedEdgesGraphPartitioner
+    DoubleSortedEdgesGraphPartitioner

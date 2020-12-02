@@ -1,7 +1,7 @@
 Loss
 ==================================
 
-.. currentmodule:: ampligraph.latent_features
+.. currentmodule:: ampligraph.latent_features.loss_functions
 
 .. autoclass:: Loss
 
@@ -18,17 +18,15 @@ Loss
    .. autosummary::
    
       ~Loss.__init__
-      ~Loss.get_state
+      ~Loss._reduce_sample_loss
       ~Loss._init_hyperparams
-      ~Loss._inputs_check
-      ~Loss.apply
-      ~Loss._apply
-   
+      ~Loss._apply_loss
+      ~Loss.__call__
+      
    .. automethod:: Loss.__init__
-   .. automethod:: Loss.get_state
+   .. automethod:: Loss._reduce_sample_loss
    .. automethod:: Loss._init_hyperparams
-   .. automethod:: Loss._inputs_check
-   .. automethod:: Loss.apply
-   .. automethod:: Loss._apply
+   .. automethod:: Loss._apply_loss
+   .. automethod:: Loss.__call__
    
    

@@ -4,21 +4,31 @@ from ampligraph.latent_features.layers.scoring import register_layer, AbstractSc
 
 @register_layer('DistMult')
 class DistMult(AbstractScoringLayer):
-    ''' DistMult scoring Layer class
-    '''
+    r"""The DistMult scoring layer
+    
+    The model as described in :cite:`yang2014embedding`.
+    
+    The bilinear diagonal DistMult model uses the trilinear dot product as scoring function:
+    
+    .. math::
+        f_{DistMult}=\langle \mathbf{r}_p, \mathbf{e}_s, \mathbf{e}_o \rangle
+        
+    where :math:`\mathbf{e}_{s}` is the embedding of the subject, :math:`\mathbf{r}_{p}` the embedding
+    of the predicate and :math:`\mathbf{e}_{o}` the embedding of the object.
+    """
     def __init__(self, k):
         super(DistMult, self).__init__(k)
 
     def _compute_scores(self, triples):
         ''' compute scores using distmult scoring function.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         triples: (n, 3)
             batch of input triples
         
-        Returns:
-        --------
+        Returns
+        -------
         scores: 
             tensor of scores of inputs
         '''
@@ -30,15 +40,15 @@ class DistMult(AbstractScoringLayer):
         ''' Compute subject corruption scores.
         Evaluate the inputs against subject corruptions and scores of the corruptions.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         triples: (n, k)
             batch of input embeddings
         ent_matrix: (m, k)
             slice of embedding matrix (corruptions)
         
-        Returns:
-        --------
+        Returns
+        -------
         scores: (n, 1)
             scores of subject corruptions (corruptions defined by ent_embs matrix)
         '''
@@ -52,15 +62,15 @@ class DistMult(AbstractScoringLayer):
         ''' Compute object corruption scores.
         Evaluate the inputs against object corruptions and scores of the corruptions.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         triples: (n, k)
             batch of input embeddings
         ent_matrix: (m, k)
             slice of embedding matrix (corruptions)
         
-        Returns:
-        --------
+        Returns
+        -------
         scores: (n, 1)
             scores of object corruptions (corruptions defined by ent_embs matrix)
         '''

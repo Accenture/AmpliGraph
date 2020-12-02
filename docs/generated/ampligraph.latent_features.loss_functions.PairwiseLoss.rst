@@ -1,7 +1,7 @@
 PairwiseLoss
 ==================================
 
-.. currentmodule:: ampligraph.latent_features
+.. currentmodule:: ampligraph.latent_features.loss_functions
 
 .. autoclass:: PairwiseLoss
 

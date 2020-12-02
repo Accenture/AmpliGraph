@@ -1,25 +1,8 @@
 Models
 ======
 
-.. currentmodule:: ampligraph.latent_features
-
-.. automodule:: ampligraph.latent_features
-
-
 Knowledge Graph Embedding Models
 --------------------------------
-
-.. autosummary::
-    :toctree: generated
-    :template: class.rst
-
-    RandomBaseline
-    TransE
-    DistMult
-    ComplEx
-    HolE
-    ConvE
-    ConvKB
 
 Anatomy of a Model
 ^^^^^^^^^^^^^^^^^^
@@ -34,6 +17,8 @@ AmpliGraph models include the following components:
 + :ref:`Scoring function <scoring>` :math:`f(t)`
 + :ref:`Loss function <loss>` :math:`\mathcal{L}`
 + :ref:`Optimization algorithm <optimizer>`
++ :ref:`Regularizer <ref-reg>`
++ :ref:`Initializer <ref-init>`
 + :ref:`Negatives generation strategy <negatives>`
 
 AmpliGraph comes with a number of such components. They can be used in any combination to come up with a model that
@@ -41,15 +26,25 @@ performs sufficiently well for the dataset of choice.
 
 AmpliGraph features a number of abstract classes that can be extended to design new models:
 
+.. currentmodule:: ampligraph.latent_features.layers.scoring
+
+.. automodule:: ampligraph.latent_features.layers.scoring
+
 .. autosummary::
     :toctree: generated
     :template: class.rst
 
-    EmbeddingModel
-    Loss
-    Regularizer
-    Initializer
+    AbstractScoringLayer
+    
+.. currentmodule:: ampligraph.latent_features.loss_functions
 
+.. automodule:: ampligraph.latent_features.loss_functions
+
+.. autosummary::
+    :toctree: generated
+    :template: class.rst
+    
+    Loss
 
 .. _scoring:
 
@@ -62,6 +57,19 @@ and object of a triple :math:`t=(s,p,o)` according to different intuitions:
 
 + :class:`TransE` :cite:`bordes2013translating` relies on distances. The scoring function computes a similarity between the embedding of the subject translated by the embedding of the predicate  and the embedding of the object, using the :math:`L_1` or :math:`L_2` norm :math:`||\cdot||`:
 
+.. currentmodule:: ampligraph.latent_features.layers.scoring
+
+.. automodule:: ampligraph.latent_features.layers.scoring
+
+.. autosummary::
+    :toctree: generated
+    :template: class.rst
+
+    TransE
+    DistMult
+    ComplEx
+    HolE
+    
 .. math::
     f_{TransE}=-||\mathbf{e}_{s} + \mathbf{r}_{p} - \mathbf{e}_{o}||_n
 
@@ -80,24 +88,14 @@ and object of a triple :math:`t=(s,p,o)` according to different intuitions:
 .. math::
     f_{HolE}=\mathbf{w}_r \cdot (\mathbf{e}_s \otimes \mathbf{e}_o) = \frac{1}{k}\mathcal{F}(\mathbf{w}_r)\cdot( \overline{\mathcal{F}(\mathbf{e}_s)} \odot \mathcal{F}(\mathbf{e}_o))
 
-+ :class:`ConvE` :cite:`DettmersMS018` uses convolutional layers (:math:`g` is a non-linear activation function, :math:`\ast` is the linear convolution operator, :math:`vec` indicates 2D reshaping):
-
-.. math::
-
-    f_{ConvE} =  \langle \sigma \, (vec \, ( g \, ([ \overline{\mathbf{e}_s} ; \overline{\mathbf{r}_p} ] \ast \Omega )) \, \mathbf{W} )) \, \mathbf{e}_o\rangle
-
-
-+ :class:`ConvKB` :cite:`Nguyen2018` uses convolutional layers and a dot product:
-
-.. math::
-
-    f_{ConvKB}= concat \,(g \, ([\mathbf{e}_s, \mathbf{r}_p, \mathbf{e}_o]) * \Omega)) \cdot W
-
-
 .. _loss:
 
 Loss Functions
 --------------
+
+.. currentmodule:: ampligraph.latent_features.loss_functions
+
+.. automodule:: ampligraph.latent_features.loss_functions
 
 AmpliGraph includes a number of loss functions commonly used in literature.
 Each function can be used with any of the implemented models. Loss functions are passed to models as hyperparameter,
@@ -114,55 +112,52 @@ and they can be thus used :ref:`during model selection <eval>`.
     SelfAdversarialLoss
     NLLLoss
     NLLMulticlass
-    BCELoss
+    LossFunctionWrapper
     
+.. autosummary::
+    :toctree: generated
+    :template: function.rst
+    
+    get
+
 .. _ref-reg:
 
 Regularizers
 --------------
 
 AmpliGraph includes a number of regularizers that can be used with the :ref:`loss function <loss>`.
-:class:`LPRegularizer` supports L1, L2, and L3.
-
-.. autosummary::
-    :toctree: generated
-    :template: class.rst
-
-    LPRegularizer
-
+Ampligraph supports any regularizer defined in tensorflow.
 
 .. _ref-init:
 
 Initializers
 --------------
 
-AmpliGraph includes a number of initializers that can be used to initialize the embeddings. They can be passed as hyperparameter,
-and they can be thus used :ref:`during model selection <eval>`.
-
-.. autosummary::
-    :toctree: generated
-    :template: class.rst
-
-    RandomNormal
-    RandomUniform
-    Xavier
-
+AmpliGraph embeddings can be initialized using any types of initializers provided by tensorflow. This can be passed as a hyperparameter to the compile function as ``entity_relation_initializer`` argument. It can either be a list of 2 initializers for entity and relations or a single initializer for both the embedding matrices.
 
 .. _optimizer:
 
 Optimizers
 ----------
 
+.. currentmodule:: ampligraph.latent_features.optimizers
+
+.. automodule:: ampligraph.latent_features.optimizers
+
 The goal of the optimization procedure is learning optimal embeddings, such that the scoring function is able to
 assign high scores to positive statements and low scores to statements unlikely to be true.
 
-We support SGD-based optimizers provided by TensorFlow, by setting the ``optimizer`` argument in a model initializer.
+We support SGD-based optimizers provided by TensorFlow, by setting the ``optimizer`` argument in compile function.
 Best results are currently obtained with Adam.
 
+.. autosummary::
+    :toctree: generated
+    :template: class.rst
 
-Saving/Restoring Models
------------------------
+    OptimizerWrapper
 
-Models can be saved and restored from disk. This is useful to avoid re-training a model.
-
-More details in the :mod:`.utils` module.
+.. autosummary::
+    :toctree: generated
+    :template: function.rst
+    
+    get

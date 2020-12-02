@@ -9,7 +9,7 @@ SCORING_LAYER_REGISTRY = {}
 def register_layer(name, external_params=None, class_params=None):
     '''register the scoring function using this decorator
     
-    Parameters:
+    Parameters
     -----------
     name: string
         name of the scoring function to be used to register the class
@@ -47,8 +47,8 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
     def __init__(self, k):
         '''Initializes the scoring layer
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         k: int
             embedding size
         '''
@@ -57,17 +57,17 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         self.internal_k = k
 
     def call(self, triples):
-        '''
-        Computes the scores of the triples
+        ''' Interface to the external world. 
+        Computes the scores of the triples. 
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         triples: (n, 3)
             batch of input triples
         
-        Returns:
-        --------
-        scores: 
+        Returns
+        -------
+        scores: tf.Tensor (n,1)
             tensor of scores of inputs
         '''
         return self._compute_scores(triples)
@@ -75,14 +75,14 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
     def _compute_scores(self, triples):
         ''' Abstract function to compute scores. Override this method in concrete classes.
         
-        Parameters:
+        Parameters
         -----------
         triples: (n, 3)
             batch of input triples
         
-        Returns:
+        Returns
         --------
-        scores: 
+        scores: tf.Tensor (n,1)
             tensor of scores of inputs
         '''
         raise NotImplementedError('Abstract method not implemented!')
@@ -91,16 +91,16 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         ''' Abstract function to compute object corruption scores.
         Evaluate the inputs against object corruptions and scores of the corruptions.
         
-        Parameters:
+        Parameters
         -----------
         triples: (n, k)
             batch of input embeddings
         ent_matrix: (m, k)
             slice of embedding matrix (corruptions)
         
-        Returns:
+        Returns
         --------
-        scores: (n, 1)
+        scores: tf.Tensor (n,1)
             scores of object corruptions (corruptions defined by ent_embs matrix)
         '''
         raise NotImplementedError('Abstract method not implemented!')
@@ -109,16 +109,16 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         ''' Abstract function to compute subject corruption scores.
         Evaluate the inputs against subject corruptions and scores of the corruptions.
         
-        Parameters:
+        Parameters
         -----------
         triples: (n, k)
             batch of input embeddings
         ent_matrix: (m, k)
             slice of embedding matrix (corruptions)
         
-        Returns:
+        Returns
         --------
-        scores: (n, 1)
+        scores: tf.Tensor (n,1)
             scores of subject corruptions (corruptions defined by ent_embs matrix)
         '''
         raise NotImplementedError('Abstract method not implemented!')
@@ -127,16 +127,16 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         ''' Computes the ranks of triples against their corruptions. 
         Ranks are computed by corruptiong triple s and o side by embeddings in ent_matrix.
         
-        Parameters:
+        Parameters
         -----------
         triples: (n, k)
             batch of input embeddings
         ent_matrix: (m, k)
             slice of embedding matrix (corruptions)
         
-        Returns:
+        Returns
         --------
-        ranks: (n, 2)
+        ranks: tf.Tensor (n,2)
             ranks of triple against subject and object corruptions (corruptions defined by ent_embs matrix)
         '''
         # compute the score of true positives
@@ -216,12 +216,12 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
     def compute_output_shape(self, input_shape):
         ''' returns the output shape of outputs of call function
         
-        Parameters:
+        Parameters
         -----------
         input_shape: 
             shape of inputs of call function
         
-        Returns:
+        Returns
         --------
         output_shape:
             shape of outputs of call function
