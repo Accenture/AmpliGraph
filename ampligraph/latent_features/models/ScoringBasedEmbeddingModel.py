@@ -29,8 +29,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         Initializes the scoring based embedding model
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         eta: int
             num of negatives to use during training per triple
         k: int
@@ -80,13 +80,13 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def compute_output_shape(self, inputShape):
         ''' returns the output shape of outputs of call function
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         input_shape: 
             shape of inputs of call function
         
-        Returns:
-        --------
+        Returns
+        -------
         output_shape:
             shape of outputs of call function
         '''
@@ -96,8 +96,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def partition_change_updates(self, num_ents, ent_emb, rel_emb):
         ''' perform the changes that are required when the partition is changed during training
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         num_ents: 
             number of unique entities in the partition
         ent_emb:
@@ -122,13 +122,13 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         Computes the scores of the triples and returns the corruption scores as well
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         inputs: (n, 3)
             batch of input triples
         
-        Returns:
-        --------
+        Returns
+        -------
         out: list
             list of input scores along with their corruptions
         '''
@@ -155,8 +155,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         Evaluate the inputs against corruptions and return ranks
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         inputs: (n, 3)
             batch of input triples
         ent_embs: (m, k)
@@ -172,8 +172,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             corresponding triple in inputs. 
         corrupt_side: string
             which side to corrupt during evaluation
-        Returns:
-        --------
+            
+        Returns
+        -------
         rank: (n, num of sides being corrupted)
             ranks by corrupting against subject corruptions and object corruptions 
             (corruptions defined by ent_embs matrix)
@@ -202,13 +203,13 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         Training step
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         data: (n, 3)
             batch of input triples (true positives)
         
-        Returns:
-        --------
+        Returns
+        -------
         out: dict
             dictionary of metrics computed on the outputs (eg: loss)
         '''
@@ -230,8 +231,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         ''' Similar to keras lib, this function returns the handle to training step function. 
         It processes one batch of data by iterating over the dataset iterator and computes the loss and optimizes on it.
 
-        Returns:
-        --------
+        Returns
+        -------
         out: Function handle.
               Handle to the training step function  
         '''
@@ -241,13 +242,13 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         def train_function(iterator):
             ''' This is the function whose handle will be returned.
             
-            Parameters:
-            -----------
+            Parameters
+            ----------
             iterator: tf.data.Iterator
                 Data iterator
                 
-            Returns:
-            --------
+            Returns
+            -------
             output: dict
               return a `dict` containing values that will be passed to `tf.keras.Callbacks.on_train_batch_end`
             '''
@@ -278,8 +279,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             use_partitioning=False):
         '''Fit the model of the user data.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         x: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
             Data OR Filename of the data file OR Data Handle - that would be used for training
         batch_size: int
@@ -311,8 +312,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             flag to indicate whether to use partitioning or not.
             May be overridden if x is an AbstractGraphPartitioner instance
             
-        Returns:
-        --------
+        Returns
+        -------
         history: A `History` object. Its `History.history` attribute is a record of training loss values, 
         as well as validation loss values and validation metrics values.
         '''
@@ -502,8 +503,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 **kwargs):
         ''' Compile the model
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         optimizer: String (name of optimizer) or optimizer instance. 
             See `tf.keras.optimizers`.
         loss: String (name of objective function), objective function or
@@ -552,15 +553,15 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def get_emb_matrix_test(self, part_number=1, number_of_parts=1):
         ''' get the embedding matrix during evaluation
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         part number: int
             specifies which part of number_of_parts of entire emb matrix to return
         number_of_parts: int
             Total number of parts in which to split the emb matrix
             
-        Returns:
-        --------
+        Returns
+        -------
         emb_matrix: np.array(n,k)
             embedding matrix corresponding the part_number out of number_of_parts parts.
         start_index: int
@@ -587,8 +588,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         ''' Similar to keras lib, this function returns the handle to test step function. 
         It processes one batch of data by iterating over the dataset iterator and computes the test metrics.
 
-        Returns:
-        --------
+        Returns
+        -------
         out: Function handle.
               Handle to the test step function  
         '''
@@ -662,8 +663,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     
     def process_model_inputs_for_test(self, triples):
         ''' Return the processed triples. 
-        Returns:
-        --------
+        
+        Returns
+        -------
         In regular (non partitioned) mode, the triples are returned as it is.
         In case of partitioning, it returns the triple embeddings as a list of size 3 - sub, pred and obj embeddings.
         '''
@@ -696,8 +698,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         Evaluate the inputs against corruptions and return ranks
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         x: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
             Data OR Filename of the data file OR Data Handle - that would be used for training
         batch_size: int
@@ -713,8 +715,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         callbacks: keras.callbacks.Callback
             List of `keras.callbacks.Callback` instances. List of callbacks to apply during evaluation.
 
-        Returns:
-        --------
+        Returns
+        -------
         rank: (n, number of corrupted sides)
             ranks by corrupting against subject corruptions and/or object corruptions 
             (corruptions defined by ent_embs matrix)
@@ -788,8 +790,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         ''' Similar to keras lib, this function returns the handle to predict step function. 
         It processes one batch of data by iterating over the dataset iterator and computes the predict outputs.
 
-        Returns:
-        --------
+        Returns
+        -------
         out: Function handle.
               Handle to the predict step function
         '''
@@ -820,7 +822,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         Compute scores of the input triples
 
-        Parameters:
+        Parameters
         -----------
         x: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
             Data OR Filename of the data file OR Data Handle - that would be used for training
@@ -832,8 +834,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         callbacks: keras.callbacks.Callback
             List of `keras.callbacks.Callback` instances. List of callbacks to apply during evaluation.
 
-        Returns:
-        --------
+        Returns
+        -------
         scores: (n, )
             score of the input triples
         '''
@@ -873,8 +875,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         ''' Similar to keras lib, this function returns the handle to calibrate step function. 
         It processes one batch of data by iterating over the dataset iterator and computes the predict outputs.
 
-        Returns:
-        --------
+        Returns
+        -------
         out: Function handle.
               Handle to the predict step function
         '''
@@ -1077,8 +1079,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         Compute calibrated scores (0 <= score <= 1) of the input triples 
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         x: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
             Data OR Filename of the data file OR Data Handle - that would be used for training
         batch_size: int
@@ -1089,8 +1091,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         callbacks: keras.callbacks.Callback
             List of `keras.callbacks.Callback` instances. List of callbacks to apply during evaluation.
 
-        Returns:
-        --------
+        Returns
+        -------
         scores: (n, )
             calibrated score of the input triples
         '''

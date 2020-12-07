@@ -640,8 +640,8 @@ class LossFunctionWrapper(Loss):
                  name=None):
         ''' Initializes the LossFunctionWrapper.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         user_defined_loss : function_handle
             Handle to loss function (should take 2 parameters as input)
         name: string

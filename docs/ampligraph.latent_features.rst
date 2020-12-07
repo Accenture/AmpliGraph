@@ -3,6 +3,19 @@ Models
 
 Knowledge Graph Embedding Models
 --------------------------------
+In Ampligraph library, we categorize the models into two types:
+.. currentmodule:: ampligraph.latent_features.models
+
+.. automodule:: ampligraph.latent_features.models
+
+.. autosummary::
+    :toctree: generated
+    :template: class.rst
+    
++ :class:`ScoringBasedEmbeddingModel` : These are the type of models which follows the ranking protocol during training. For each training sample, the model generates eta corruptions and scores them. The model then tries to maximize the margin between the positive triple and the generated corruption using any one of the distance based losses mentioned below.
+
++ :class:`TargetBasedEmbeddingModel` : These type of models take as input subject and predicate embeddings of the input triple and try to predict the object. This is the standard protocol that is followed by models such as ConvE and typically use target based losses such as BCE loss.
+    
 
 Anatomy of a Model
 ^^^^^^^^^^^^^^^^^^
@@ -35,6 +48,17 @@ AmpliGraph features a number of abstract classes that can be extended to design 
     :template: class.rst
 
     AbstractScoringLayer
+
+.. currentmodule:: ampligraph.datasets
+
+.. automodule:: ampligraph.datasets
+
+.. autosummary::
+    :toctree: generated
+    :template: class.rst
+
+    AbstractGraphPartitioner
+    PartitionDataManager
     
 .. currentmodule:: ampligraph.latent_features.loss_functions
 
@@ -51,12 +75,6 @@ AmpliGraph features a number of abstract classes that can be extended to design 
 Scoring functions
 -----------------
 
-Existing models propose scoring functions that combine the embeddings
-:math:`\mathbf{e}_{s},\mathbf{r}_{p}, \mathbf{e}_{o} \in \mathcal{R}^k` of the subject, predicate,
-and object of a triple :math:`t=(s,p,o)` according to different intuitions:
-
-+ :class:`TransE` :cite:`bordes2013translating` relies on distances. The scoring function computes a similarity between the embedding of the subject translated by the embedding of the predicate  and the embedding of the object, using the :math:`L_1` or :math:`L_2` norm :math:`||\cdot||`:
-
 .. currentmodule:: ampligraph.latent_features.layers.scoring
 
 .. automodule:: ampligraph.latent_features.layers.scoring
@@ -69,6 +87,12 @@ and object of a triple :math:`t=(s,p,o)` according to different intuitions:
     DistMult
     ComplEx
     HolE
+    
+Existing models propose scoring functions that combine the embeddings
+:math:`\mathbf{e}_{s},\mathbf{r}_{p}, \mathbf{e}_{o} \in \mathcal{R}^k` of the subject, predicate,
+and object of a triple :math:`t=(s,p,o)` according to different intuitions:
+
++ :class:`TransE` :cite:`bordes2013translating` relies on distances. The scoring function computes a similarity between the embedding of the subject translated by the embedding of the predicate  and the embedding of the object, using the :math:`L_1` or :math:`L_2` norm :math:`||\cdot||`:
     
 .. math::
     f_{TransE}=-||\mathbf{e}_{s} + \mathbf{r}_{p} - \mathbf{e}_{o}||_n
@@ -87,6 +111,7 @@ and object of a triple :math:`t=(s,p,o)` according to different intuitions:
 
 .. math::
     f_{HolE}=\mathbf{w}_r \cdot (\mathbf{e}_s \otimes \mathbf{e}_o) = \frac{1}{k}\mathcal{F}(\mathbf{w}_r)\cdot( \overline{\mathcal{F}(\mathbf{e}_s)} \odot \mathcal{F}(\mathbf{e}_o))
+
 
 .. _loss:
 
