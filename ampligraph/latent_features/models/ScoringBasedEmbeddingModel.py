@@ -74,6 +74,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.data_indexer = True
         
         self.is_calibrated = False
+        self.is_fitted = False
         
         self.seed = seed
   
@@ -151,7 +152,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             return inp_score
 
     @tf.function(experimental_relax_shapes=True)
-    def _get_ranks(self, inputs, ent_embs, start_id, end_id, filters, corrupt_side='s,o'):
+    def _get_ranks(self, inputs, ent_embs, start_id, end_id, filters, mapping_dict, corrupt_side='s,o'):
         '''
         Evaluate the inputs against corruptions and return ranks
         
@@ -183,7 +184,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                       tf.nn.embedding_lookup(self.encoding_layer.rel_emb, inputs[:, 1]),
                       tf.nn.embedding_lookup(self.encoding_layer.ent_emb, inputs[:, 2])]
             
-        return self.scoring_layer.get_ranks(inputs, ent_embs, start_id, end_id, filters, corrupt_side)
+        return self.scoring_layer.get_ranks(inputs, ent_embs, start_id, end_id, filters, mapping_dict, corrupt_side)
     
     def build(self, input_shape):
         ''' Overide the build function of the Model class. This is called on the first cal; to __call__
@@ -255,7 +256,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             output = self.train_step(data)
             return output
         
-        if not self.run_eagerly:
+        if not self.run_eagerly and not self.is_partitioned_training:
             train_function = def_function.function(
                 train_function, experimental_relax_shapes=True)
             
@@ -339,6 +340,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                          # if model is already trained use the old indexer
                                                          use_indexer=self.data_indexer,
                                                          use_partitioning=use_partitioning)
+            
             # get the mapping details
             self.data_indexer = self.data_handler.get_mapper()
             # get the maximum entities and relations that will be trained (useful during partitioning)
@@ -357,6 +359,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # This variable is used by callbacks to stop training in case of any error
             self.stop_training = False
             self.is_partitioned_training = self.data_handler.using_partitioning
+            self.optimizer.set_partitioned_training(self.is_partitioned_training)
             
             # set some partition related params if it is partitioned training
             if self.is_partitioned_training:
@@ -413,6 +416,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
             # on training end call this method
             callbacks.on_train_end()
+            self.is_fitted = True
             # all the training and validation logs are stored in the history object by keras.Model
             return self.history
         
@@ -443,6 +447,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         'max_rel_size': self.max_rel_size,
                         'eta': self.eta,
                         'k': self.k,
+                        'is_fitted': self.is_fitted,
                         'is_calibrated': self.is_calibrated
                         }
             
@@ -452,6 +457,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             if self.is_calibrated:
                 metadata['calib_w'] = self.calibration_layer.calib_w.numpy()
                 metadata['calib_b'] = self.calibration_layer.calib_b.numpy()
+                metadata['pos_size'] = self.calibration_layer.pos_size
+                metadata['neg_size'] = self.calibration_layer.neg_size
+                metadata['positive_base_rate'] = self.calibration_layer.positive_base_rate
 
             pickle.dump(metadata, f)
 
@@ -481,12 +489,17 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             self.is_partitioned_training = metadata['is_partitioned_training']
             self.max_ent_size = metadata['max_ent_size']
             self.max_rel_size = metadata['max_rel_size']
+            self.is_fitted = metadata['is_fitted']
             if self.is_partitioned_training:
                 self.partitioner_k = metadata['partitioner_k']
             self.is_calibrated = metadata['is_calibrated']
             if self.is_calibrated:
-                self.calibration_layer = CalibrationLayer(calib_w=metadata['calib_w'],
-                                                          calib_b=metadata['calib_b'])
+                self.calibration_layer = CalibrationLayer(
+                    metadata['pos_size'],
+                    metadata['neg_size'],
+                    metadata['positive_base_rate'],
+                    calib_w=metadata['calib_w'],
+                    calib_b=metadata['calib_b'])
         self.build_full_model()
         if not self.is_partitioned_training:
             super(ScoringBasedEmbeddingModel, self).load_weights(filepath, 
@@ -570,7 +583,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
         '''
         if number_of_parts == 1:
-            return self.encoding_layer.ent_emb, 0, self.encoding_layer.ent_emb.shape[0] - 1
+            if self.entities_subset.shape[0] != 0:
+                out = tf.nn.embedding_lookup(self.encoding_layer.ent_emb, self.entities_subset)
+            else:
+                out = self.encoding_layer.ent_emb
+            return out, 0, out.shape[0] - 1
         else:
             with shelve.open('ent_partition') as ent_partition:
                 batch_size = int(np.ceil(len(ent_partition.keys()) / number_of_parts))
@@ -592,8 +609,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         out: Function handle.
               Handle to the test step function  
         '''
-        if self.test_function is not None:
-            return self.test_function
+        #if self.test_function is not None:
+        #    return self.test_function
 
         def test_function(iterator):
             # total number of parts in which to split the embedding matrix 
@@ -632,17 +649,17 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # run the loop based on number of parts in which the original emb matrix was generated
             for j in range(number_of_parts):
                 # get the embedding matrix along with entity ids of first and last row of emb matrix
-                emb_mat, start_ent_id, end_ent_id = self.get_emb_matrix_test(j, number_of_parts)
+                emb_mat, start_ent_id, end_ent_id = self.get_emb_matrix_test(j, 
+                                                                             number_of_parts)
                 # compute the rank
-                
                 ranks = self._get_ranks(inputs, emb_mat, 
                                         start_ent_id, end_ent_id, 
-                                        filters, self.corrupt_side)
+                                        filters, self.mapping_dict, self.corrupt_side)
                 # store it in the output
                 for i in tf.range(output_shape):
                     overall_rank = tf.tensor_scatter_nd_add(overall_rank, [[i]], [ranks[i, :]])
                     
-            overall_rank = tf.reshape(overall_rank, (-1, output_shape))     
+            overall_rank = tf.transpose(tf.reshape(overall_rank, (output_shape, -1)))
             # if corruption type is s+o then add s and o ranks and return the added ranks
             if self.corrupt_side == 's+o':
                 # add the subject and object ranks
@@ -692,6 +709,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                  verbose=True,
                  use_filter=False,
                  corrupt_side='s,o',
+                 entities_subset=None,
                  callbacks=None):
         '''
         Evaluate the inputs against corruptions and return ranks
@@ -730,6 +748,16 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         assert corrupt_side in ['s', 'o', 's,o', 's+o'], 'Invalid value for corrupt_side'
 
         self.corrupt_side = corrupt_side
+        
+        
+        self.entities_subset = tf.constant([])
+        self.mapping_dict = tf.lookup.experimental.DenseHashTable(tf.int32, tf.int32, -1, -1, -2)
+        if entities_subset is not None:
+            entities_subset = self.data_indexer.get_indexes(entities_subset, 'e')
+            self.entities_subset = tf.constant(entities_subset, dtype=tf.int32)
+            self.mapping_dict.insert(self.entities_subset, 
+                                     tf.range(self.entities_subset.shape[0]))
+            
         # flag to indicate if we are using filter or not
         self.use_filter = self.data_handler_test._parent_adapter.backend.use_filter or \
             type(self.data_handler_test._parent_adapter.backend.use_filter) == dict
@@ -1130,3 +1158,46 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     callbacks.on_predict_batch_end(step, {'outputs': batch_outputs})
         callbacks.on_predict_end()
         return np.concatenate(outputs)
+
+    def get_embeddings(self, entities, embedding_type='e'):
+        """Get the embeddings of entities or relations.
+        .. Note ::
+            Use :meth:`ampligraph.utils.create_tensorboard_visualizations` to visualize the embeddings with TensorBoard.
+        Parameters
+        ----------
+        entities : array-like, dtype=int, shape=[n]
+            The entities (or relations) of interest. Element of the vector must be the original string literals, and
+            not internal IDs.
+        embedding_type : string
+            If 'e', ``entities`` argument will be considered as a list of knowledge graph entities (i.e. nodes).
+            If set to 'r', they will be treated as relation types instead (i.e. predicates).
+        Returns
+        -------
+        embeddings : ndarray, shape [n, k]
+            An array of k-dimensional embeddings.
+        """
+
+        if embedding_type == 'e':
+            lookup_concept = self.data_indexer.get_indexes(entities, 'e')
+            if self.is_partitioned_training:
+                emb_out = []
+                with shelve.open('ent_partition') as ent_emb:
+                    for ent_id in lookup_concept:
+                        emb_out.append(ent_emb[str(ent_id)])
+            else:
+                return tf.nn.embedding_lookup(self.encoding_layer.ent_emb, lookup_concept)
+        elif embedding_type == 'r':
+            lookup_concept = self.data_indexer.get_indexes(entities, 'r')
+            if self.is_partitioned_training:
+                emb_out = []
+                with shelve.open('rel_partition') as rel_emb:
+                    for rel_id in lookup_concept:
+                        emb_out.append(rel_emb[str(rel_id)])
+            else:
+                return tf.nn.embedding_lookup(self.encoding_layer.rel_emb, lookup_concept)
+        else:
+            msg = 'Invalid entity type: {}'.format(embedding_type)
+            raise ValueError(msg)
+
+        
+         
