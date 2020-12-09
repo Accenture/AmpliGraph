@@ -565,7 +565,7 @@ ClusteringAndClassificationWithEmbeddings.ipynb
         msg = "For 'e' or 'r' mode the input X must be an array."
         raise ValueError(msg)
 
-    if mode == "triple":
+    if mode == "t":
         s = model.get_embeddings(X[:, 0], embedding_type='e')
         p = model.get_embeddings(X[:, 1], embedding_type='r')
         o = model.get_embeddings(X[:, 2], embedding_type='e')
@@ -576,14 +576,14 @@ ClusteringAndClassificationWithEmbeddings.ipynb
     return clustering_algorithm.fit_predict(emb)
 
 
-def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
+def find_duplicates(X, model, mode="e", metric='l2', tolerance='auto',
                     expected_fraction_duplicates=0.1, verbose=False):
     r"""
     Find duplicate entities, relations or triples in a graph based on their embeddings.
 
     For example, say you have a movie dataset that was scraped off the web with possible duplicate movies.
     The movies in this case are the entities.
-    Therefore, you would use the 'entity' mode to find all the movies that could de duplicates of each other.
+    Therefore, you would use the 'e' mode to find all the movies that could de duplicates of each other.
 
     Duplicates are defined as points whose distance in the embedding space are smaller than
     some given threshold (called the tolerance).
@@ -614,9 +614,9 @@ def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
     mode: string
         Choose from:
 
-        - | 'entity' (default): the algorithm will find duplicates of the provided entities based on their embeddings.
-        - | 'relation': the algorithm will find duplicates of the provided relations based on their embeddings.
-        - | 'triple' : the algorithm will find duplicates of the concatenation
+        - | 'e' (default): the algorithm will find duplicates of the provided entities based on their embeddings.
+        - | 'r': the algorithm will find duplicates of the provided relations based on their embeddings.
+        - | 't' : the algorithm will find duplicates of the concatenation
             of the embeddings of the subject, predicate and object for each provided triple.
 
     metric: str
@@ -768,7 +768,7 @@ def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
         nn.fit(emb)
         neighbors = nn.radius_neighbors(emb)[1]
         idx_dups = ((i, row) for i, row in enumerate(neighbors) if len(row) > 1)
-        if mode == "triple":
+        if mode == "t":
             dups = {frozenset(tuple(X[idx]) for idx in row) for i, row in idx_dups}
         else:
             dups = {frozenset(X[idx] for idx in row) for i, row in idx_dups}
