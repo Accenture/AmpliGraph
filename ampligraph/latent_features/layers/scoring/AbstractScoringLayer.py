@@ -167,7 +167,9 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                     
                     if mapping_dict.size() > 0:
                         filter_ids = mapping_dict.lookup(filter_ids)
-                        filter_ids_selector = tf.reshape(tf.math.greater_equal(filter_ids, 0), (-1, 1))
+                        filter_ids = tf.reshape(filter_ids, (-1, ))
+                        
+                        filter_ids_selector = tf.math.greater_equal(filter_ids, 0)
                         filter_ids = tf.boolean_mask(filter_ids, 
                                                      filter_ids_selector, 
                                                      axis=0)
@@ -176,7 +178,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                     # this gets only the filter ids of the current partition being used for generating corruption
                     filter_ids_selector = tf.logical_and(filter_ids >= start_ent_id, 
                                                          filter_ids <= end_ent_id)
-                    filter_ids_selector = tf.reshape(filter_ids_selector, (-1, 1))
+
                     filter_ids = tf.boolean_mask(filter_ids, filter_ids_selector)
                     # from entity id convert to index in the current partition
                     filter_ids = filter_ids - start_ent_id
@@ -203,7 +205,9 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                     
                     if mapping_dict.size() > 0:
                         filter_ids = mapping_dict.lookup(filter_ids)
-                        filter_ids_selector = tf.reshape(tf.math.greater_equal(filter_ids, 0), (-1, 1))
+                        filter_ids = tf.reshape(filter_ids, (-1, ))
+                        
+                        filter_ids_selector = tf.math.greater_equal(filter_ids, 0)
                         filter_ids = tf.boolean_mask(filter_ids, 
                                                      filter_ids_selector, 
                                                      axis=0)
@@ -212,7 +216,6 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                     # this gets only the filter ids of the current partition being used for generating corruption
                     filter_ids_selector = tf.logical_and(filter_ids >= start_ent_id, 
                                                          filter_ids <= end_ent_id)
-                    filter_ids_selector = tf.reshape(filter_ids_selector, (-1, 1))
                     filter_ids = tf.boolean_mask(filter_ids, filter_ids_selector)
                     # from entity id convert to index in the current partition
                     filter_ids = filter_ids - start_ent_id
