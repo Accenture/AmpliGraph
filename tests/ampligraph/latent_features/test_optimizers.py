@@ -8,7 +8,7 @@ from tensorflow.keras.optimizers import Adagrad, Adam
 def test_optimizer_adam():
     ''' test by passing a string'''
     adam = optimizers.get('Adam')
-    
+    adam.set_partitioned_training()
     ent = tf.Variable(np.array([[1, 2], [3, 4]], dtype=np.float32), trainable=True)
     rel = tf.Variable(np.array([[1, 2], [3, 4]], dtype=np.float32), trainable=True)
     
@@ -17,6 +17,7 @@ def test_optimizer_adam():
     
     adam.minimize(loss, ent, rel, tape)
     curr_weights = adam.get_weights()
+    
     # step + 2 hyperparams * 2 trainable vars
     assert len(curr_weights) == (1 + adam.get_hyperparam_count() * adam.num_optimized_vars), \
         'Adam: Lengths dont match!'
@@ -34,7 +35,7 @@ def test_optimizer_adam():
 def test_optimizer_adagrad():
     ''' test the wrapping functionality around keras optimizer'''
     adagrad = optimizers.get(Adagrad(learning_rate = 0.0001))
-    
+    adagrad.set_partitioned_training()
     ent = tf.Variable(np.array([[1, 2], [3, 4]], dtype=np.float32), trainable=True)
     rel = tf.Variable(np.array([[1, 2], [3, 4]], dtype=np.float32), trainable=True)
     

@@ -123,7 +123,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         '''
         raise NotImplementedError('Abstract method not implemented!')
 
-    def get_ranks(self, triples, ent_matrix, start_ent_id, end_ent_id, filters, corrupt_side='s,o'):
+    def get_ranks(self, triples, ent_matrix, start_ent_id, end_ent_id, filters, mapping_dict, corrupt_side='s,o'):
         ''' Computes the ranks of triples against their corruptions. 
         Ranks are computed by corruptiong triple s and o side by embeddings in ent_matrix.
         
@@ -162,13 +162,23 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
             if filters.shape[0] > 0:
                 # tf.print(tf.shape(triple_score)[0])
                 for i in tf.range(tf.shape(triple_score)[0]):
-                    # TODO change the hard coded filter index
                     # get the ids of True positives that needs to be filtered
                     filter_ids = filters[filter_index][i]
+                    
+                    if mapping_dict.size() > 0:
+                        filter_ids = mapping_dict.lookup(filter_ids)
+                        filter_ids = tf.reshape(filter_ids, (-1, ))
+                        
+                        filter_ids_selector = tf.math.greater_equal(filter_ids, 0)
+                        filter_ids = tf.boolean_mask(filter_ids, 
+                                                     filter_ids_selector, 
+                                                     axis=0)
+                        
                     # This is done for patritioning (where the full emb matrix is not used)
                     # this gets only the filter ids of the current partition being used for generating corruption
                     filter_ids_selector = tf.logical_and(filter_ids >= start_ent_id, 
                                                          filter_ids <= end_ent_id)
+
                     filter_ids = tf.boolean_mask(filter_ids, filter_ids_selector)
                     # from entity id convert to index in the current partition
                     filter_ids = filter_ids - start_ent_id
@@ -192,6 +202,16 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                     # TODO change the hard coded filter index
                     # get the ids of True positives that needs to be filtered
                     filter_ids = filters[filter_index][i]
+                    
+                    if mapping_dict.size() > 0:
+                        filter_ids = mapping_dict.lookup(filter_ids)
+                        filter_ids = tf.reshape(filter_ids, (-1, ))
+                        
+                        filter_ids_selector = tf.math.greater_equal(filter_ids, 0)
+                        filter_ids = tf.boolean_mask(filter_ids, 
+                                                     filter_ids_selector, 
+                                                     axis=0)
+                        
                     # This is done for patritioning (where the full emb matrix is not used)
                     # this gets only the filter ids of the current partition being used for generating corruption
                     filter_ids_selector = tf.logical_and(filter_ids >= start_ent_id, 
@@ -229,3 +249,4 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         assert isinstance(input_shape, list)
         batch_size, _ = input_shape
         return [batch_size, 1]
+

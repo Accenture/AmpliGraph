@@ -84,6 +84,8 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
     >>> import requests
     >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
     >>> from ampligraph.datasets import load_from_csv
+    >>> from ampligraph.latent_features.models import ScoringBasedEmbeddingModel
+    >>> from ampligraph.discovery import discover_facts
     >>> # Game of Thrones relations dataset
     >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
     >>> open('GoT.csv', 'wb').write(requests.get(url).content)
@@ -150,9 +152,9 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
         logger.error(msg)
         raise ValueError(msg)
 
-    if not model.is_fitted_on(X):
-        msg = 'Model might not be fitted on this data.'
-        logger.warning(msg)
+    #if not model.is_fitted_on(X):
+    #    msg = 'Model might not be fitted on this data.'
+    #    logger.warning(msg)
         # raise ValueError(msg)
 
     if strategy not in ['random_uniform', 'entity_frequency', 'graph_degree', 'cluster_coefficient',
@@ -176,11 +178,11 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
     if target_rel is None:
         msg = 'No target relation specified. Using all relations to generate candidate statements.'
         logger.info(msg)
-        rel_list = [x for x in model.rel_to_idx.keys()]
+        rel_list = [x for x in model.data_indexer.relations_dict.values()]
     else:
         missing_rels = []
         for rel in target_rel:
-            if rel not in model.rel_to_idx.keys():
+            if rel not in model.data_indexer.relations_dict.values():
                 missing_rels.append(rel)
 
         if len(missing_rels) > 0:
@@ -194,7 +196,7 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
     np.random.seed(seed)
 
     # Remove unseen entities
-    X_filtered = filter_unseen_entities(X, model)
+    #X_filtered = filter_unseen_entities(X, model)
 
     discoveries = []
     discovery_ranks = []
@@ -204,13 +206,15 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
 
         logger.info('Generating candidates for relation: %s' % relation)
 
-        candidates = generate_candidates(X_filtered, strategy, relation, max_candidates, seed=seed)
+        candidates = generate_candidates(X, strategy, relation, max_candidates, seed=seed)
 
         logger.debug('Generated %d candidate statements.' % len(candidates))
 
         # Get ranks of candidate statements
-        ranks = evaluate_performance(candidates, model=model, filter_triples=X, use_default_protocol=True,
-                                     verbose=False)
+        #ranks = evaluate_performance(candidates, model=model, filter_triples=X, use_default_protocol=True,
+        #                             verbose=False)
+        
+        ranks = model.evaluate(candidates, use_filter={'test': X}, corrupt_side='s,o', verbose=False)
 
         # Select candidate statements within the top_n predicted ranks standard protocol evaluates against
         # corruptions on both sides, we just average the ranks here
@@ -450,7 +454,7 @@ def _setdiff2d(A, B):
     return A[~ np.sum(np.cumsum(tmp, axis=0) * tmp == 1, axis=1).astype(bool)]
 
 
-def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="entity"):
+def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="e"):
     """
     Perform link-based cluster analysis on a knowledge graph.
 
@@ -493,9 +497,9 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="entity"):
     mode: string
         Clustering mode. Choose from:
 
-        - | 'entity' (default): the algorithm will cluster the embeddings of the provided entities.
-        - | 'relation': the algorithm will cluster the embeddings of the provided relations.
-        - | 'triple' : the algorithm will cluster the concatenation
+        - | 'e' (default): the algorithm will cluster the embeddings of the provided entities.
+        - | 'r': the algorithm will cluster the embeddings of the provided relations.
+        - | 't' : the algorithm will cluster the concatenation
             of the embeddings of the subject, predicate and object for each triple.
 
     Returns
@@ -550,6 +554,7 @@ ClusteringAndClassificationWithEmbeddings.ipynb
     >>> embeddings_2d = PCA(n_components=2).fit_transform(np.array([i for i in team_embeddings]))
     >>>
     >>> # Find clusters of embeddings using KMeans
+    >>> 
     >>> kmeans = KMeans(n_clusters=6, n_init=100, max_iter=500)
     >>> clusters = find_clusters(teams, model, kmeans, mode='e')
     >>>
@@ -581,25 +586,25 @@ ClusteringAndClassificationWithEmbeddings.ipynb
         logger.error(msg)
         raise ValueError(msg)
 
-    modes = ("triple", "entity", "relation")
+    modes = ("t", "e", "r")
     if mode not in modes:
         msg = "Argument `mode` must be one of the following: {}.".format(", ".join(modes))
         logger.error(msg)
         raise ValueError(msg)
 
-    if mode == "triple" and (len(X.shape) != 2 or X.shape[1] != 3):
-        msg = "For 'triple' mode the input X must be a matrix with three columns."
+    if mode == "t" and (len(X.shape) != 2 or X.shape[1] != 3):
+        msg = "For 't' mode the input X must be a matrix with three columns."
         logger.error(msg)
         raise ValueError(msg)
 
-    if mode in ("entity", "relation") and len(X.shape) != 1:
-        msg = "For 'entity' or 'relation' mode the input X must be an array."
+    if mode in ("e", "r") and len(X.shape) != 1:
+        msg = "For 'e' or 'r' mode the input X must be an array."
         raise ValueError(msg)
 
-    if mode == "triple":
-        s = model.get_embeddings(X[:, 0], embedding_type='entity')
-        p = model.get_embeddings(X[:, 1], embedding_type='relation')
-        o = model.get_embeddings(X[:, 2], embedding_type='entity')
+    if mode == "t":
+        s = model.get_embeddings(X[:, 0], embedding_type='e')
+        p = model.get_embeddings(X[:, 1], embedding_type='r')
+        o = model.get_embeddings(X[:, 2], embedding_type='e')
         emb = np.hstack((s, p, o))
     else:
         emb = model.get_embeddings(X, embedding_type=mode)
@@ -607,14 +612,14 @@ ClusteringAndClassificationWithEmbeddings.ipynb
     return clustering_algorithm.fit_predict(emb)
 
 
-def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
+def find_duplicates(X, model, mode="e", metric='l2', tolerance='auto',
                     expected_fraction_duplicates=0.1, verbose=False):
     r"""
     Find duplicate entities, relations or triples in a graph based on their embeddings.
 
     For example, say you have a movie dataset that was scraped off the web with possible duplicate movies.
     The movies in this case are the entities.
-    Therefore, you would use the 'entity' mode to find all the movies that could de duplicates of each other.
+    Therefore, you would use the 'e' mode to find all the movies that could de duplicates of each other.
 
     Duplicates are defined as points whose distance in the embedding space are smaller than
     some given threshold (called the tolerance).
@@ -645,9 +650,9 @@ def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
     mode: string
         Choose from:
 
-        - | 'entity' (default): the algorithm will find duplicates of the provided entities based on their embeddings.
-        - | 'relation': the algorithm will find duplicates of the provided relations based on their embeddings.
-        - | 'triple' : the algorithm will find duplicates of the concatenation
+        - | 'e' (default): the algorithm will find duplicates of the provided entities based on their embeddings.
+        - | 'r': the algorithm will find duplicates of the provided relations based on their embeddings.
+        - | 't' : the algorithm will find duplicates of the concatenation
             of the embeddings of the subject, predicate and object for each provided triple.
 
     metric: str
@@ -679,7 +684,7 @@ def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
     >>> import pandas as pd
     >>> import numpy as np
     >>> import re
-    >>>
+    >>> from ampligraph.latent_features.models import ScoringBasedEmbeddingModel
     >>> # The IMDB dataset used here is part of the Movies5 dataset found on:
     >>> # The Magellan Data Repository (https://sites.google.com/site/anhaidgroup/projects/data)
     >>> import requests
@@ -711,6 +716,7 @@ def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
     >>>     actors_triples = [(movie_id, "hasActor", a) for a in actors]
     >>>     genres_triples = [(movie_id, "hasGenre", g) for g in genres]
     >>>     duration_triple = (movie_id, "hasDuration", duration)
+    >>>
     >>>
     >>>     imdb_triples.extend(directors_triples)
     >>>     imdb_triples.extend(actors_triples)
@@ -773,26 +779,26 @@ def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
         logger.error(msg)
         raise ValueError(msg)
 
-    modes = ("triple", "entity", "relation")
+    modes = ("t", "e", "r")
     if mode not in modes:
         msg = "Argument `mode` must be one of the following: {}.".format(", ".join(modes))
         logger.error(msg)
         raise ValueError(msg)
 
-    if mode == "triple" and (len(X.shape) != 2 or X.shape[1] != 3):
-        msg = "For 'triple' mode the input X must be a matrix with three columns."
+    if mode == "t" and (len(X.shape) != 2 or X.shape[1] != 3):
+        msg = "For 't' mode the input X must be a matrix with three columns."
         logger.error(msg)
         raise ValueError(msg)
 
-    if mode in ("entity", "relation") and len(X.shape) != 1:
-        msg = "For 'entity' or 'relation' mode the input X must be an array."
+    if mode in ("e", "r") and len(X.shape) != 1:
+        msg = "For 'e' or 'r' mode the input X must be an array."
         logger.error(msg)
         raise ValueError(msg)
 
-    if mode == "triple":
-        s = model.get_embeddings(X[:, 0], embedding_type='entity')
-        p = model.get_embeddings(X[:, 1], embedding_type='relation')
-        o = model.get_embeddings(X[:, 2], embedding_type='entity')
+    if mode == "t":
+        s = model.get_embeddings(X[:, 0], embedding_type='e')
+        p = model.get_embeddings(X[:, 1], embedding_type='r')
+        o = model.get_embeddings(X[:, 2], embedding_type='e')
         emb = np.hstack((s, p, o))
     else:
         emb = model.get_embeddings(X, embedding_type=mode)
@@ -818,7 +824,7 @@ def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
         nn.fit(emb)
         neighbors = nn.radius_neighbors(emb)[1]
         idx_dups = ((i, row) for i, row in enumerate(neighbors) if len(row) > 1)
-        if mode == "triple":
+        if mode == "t":
             dups = {frozenset(tuple(X[idx]) for idx in row) for i, row in idx_dups}
         else:
             dups = {frozenset(X[idx] for idx in row) for i, row in idx_dups}
@@ -889,20 +895,19 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
 
     >>> import requests
     >>> from ampligraph.datasets import load_from_csv
-    >>> from ampligraph.latent_features import ComplEx
     >>> from ampligraph.discovery import discover_facts
     >>> from ampligraph.discovery import query_topn
-    >>>
+    >>> from ampligraph.latent_features.models import ScoringBasedEmbeddingModel
     >>> # Game of Thrones relations dataset
     >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
     >>> open('GoT.csv', 'wb').write(requests.get(url).content)
     >>> X = load_from_csv('.', 'GoT.csv', sep=',')
     >>>
-    >>>model = ScoringBasedEmbeddingModel(eta=5, 
+    >>> model = ScoringBasedEmbeddingModel(eta=5, 
     >>>                             k=150,
     >>>                             scoring_type='TransE')
-    >>>model.compile(optimizer='adagrad', loss='pairwise')
-    >>>model.fit(X,
+    >>> model.compile(optimizer='adagrad', loss='pairwise')
+    >>> model.fit(X,
     >>>      batch_size=100,
     >>>      epochs=20, 
     >>>      verbose=False)
@@ -932,19 +937,19 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
         raise ValueError(msg)
 
     if head:
-        if head not in list(model.ent_to_idx.keys()):
+        if head not in list(model.data_indexer.entities_dict.values()):
             msg = 'Head entity `{}` not seen by model'.format(head)
             logger.error(msg)
             raise ValueError(msg)
 
     if relation:
-        if relation not in list(model.rel_to_idx.keys()):
+        if relation not in list(model.data_indexer.relations_dict.values()):
             msg = 'Relation `{}` not seen by model'.format(relation)
             logger.error(msg)
             raise ValueError(msg)
 
     if tail:
-        if tail not in list(model.ent_to_idx.keys()):
+        if tail not in list(model.data_indexer.entities_dict.values()):
             msg = 'Tail entity `{}` not seen by model'.format(tail)
             logger.error(msg)
             raise ValueError(msg)
@@ -958,7 +963,7 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
             msg = '`ents_to_consider` must be a list or numpy array.'
             logger.error(msg)
             raise ValueError(msg)
-        if not all(x in list(model.ent_to_idx.keys()) for x in ents_to_consider):
+        if not all(x in list(model.data_indexer.entities_dict.values()) for x in ents_to_consider):
             msg = 'Entities in `ents_to_consider` have not been seen by the model.'
             logger.error(msg)
             raise ValueError(msg)
@@ -975,7 +980,7 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
             msg = '`rels_to_consider` must be a list or numpy array.'
             logger.error(msg)
             raise ValueError(msg)
-        if not all(x in list(model.rel_to_idx.keys()) for x in rels_to_consider):
+        if not all(x in list(model.data_indexer.relations_dict.values()) for x in rels_to_consider):
             msg = 'Relations in `rels_to_consider` have not been seen by the model.'
             logger.error(msg)
             raise ValueError(msg)
@@ -985,10 +990,10 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
 
     # Complete triples from entity and relation dict
     if relation is None:
-        rels = rels_to_consider or list(model.rel_to_idx.keys())
+        rels = rels_to_consider or list(model.data_indexer.relations_dict.values())
         triples = np.array([[head, x, tail] for x in rels])
     else:
-        ents = ents_to_consider or list(model.ent_to_idx.keys())
+        ents = ents_to_consider or list(model.data_indexer.entities_dict.values())
         if head:
             triples = np.array([[head, relation, x] for x in ents])
         else:

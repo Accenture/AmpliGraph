@@ -196,8 +196,7 @@ class Loss(abc.ABC):
         scores_neg = tf.reshape(scores_neg, [eta, -1])
         
         loss = self._apply_loss(scores_pos, scores_neg)
-        loss_values.append(loss)
-
+        loss_values.append(tf.reduce_sum(loss))
         if regularization_losses:
             regularization_losses = losses_utils.cast_losses_to_common_dtype(regularization_losses)
             reg_loss = math_ops.add_n(regularization_losses)
