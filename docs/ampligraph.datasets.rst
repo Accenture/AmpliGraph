@@ -72,16 +72,15 @@ FB13      316,232   11,816  47,464  75,043        13
 Loaders for Custom Knowledge Graphs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Functions to load custom knowledge graphs from disk.
+Ampligraph provides a dataloader class to load custom datasets. 
 
 .. autosummary::
     :toctree: generated
-    :template: function.rst
+    :template: class.rst
 
-    load_from_csv
-    load_from_ntriples
-    load_from_rdf
-
+    GraphDataLoader
+    
+This can be used to load datasets from different file sources.
 
 .. hint::
     AmpliGraph includes a helper function to split a generic knowledge graphs into **training**,

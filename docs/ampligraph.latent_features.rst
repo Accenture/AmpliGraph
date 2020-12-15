@@ -17,8 +17,8 @@ In Ampligraph library, we categorize the models into two types:
 + :class:`TargetBasedEmbeddingModel` : These type of models take as input subject and predicate embeddings of the input triple and try to predict the object. This is the standard protocol that is followed by models such as ConvE and typically use target based losses such as BCE loss.
     
 
-Anatomy of a Model
-^^^^^^^^^^^^^^^^^^
+Anatomy of a Score Based Model
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Knowledge graph embeddings are learned by training a neural architecture over a graph. Although such architectures vary,
 the training phase always consists in minimizing a :ref:`loss function <loss>` :math:`\mathcal{L}` that includes a

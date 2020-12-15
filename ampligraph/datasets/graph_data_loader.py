@@ -359,18 +359,19 @@ class DummyBackend():
 
 class GraphDataLoader():
     """Data loader for graphs implemented as a batch iterator
+    
         - graph-specific functions: get complementary entities
           (previously called "participating entities"),
         - support for various backends and in-memory processing through dependency injection
 
        Example
        -------
-       >>># with a SQLite backend
-       >>>data = GraphDataLoader("./train.csv", backend=SQLiteAdapter, batch_size=4)
-       >>># with no backend
-       >>>data = GraphDataLoader("./train.csv", batch_size=4)
-       >>>for elem in data:
-       >>>    process(data)
+       >>> # with a SQLite backend
+       >>> data = GraphDataLoader("./train.csv", backend=SQLiteAdapter, batch_size=4)
+       >>> # with no backend
+       >>> data = GraphDataLoader("./train.csv", batch_size=4)
+       >>> for elem in data:
+       >>>     process(data)
     """    
     def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, 
                  root_directory=tempfile.gettempdir(), use_indexer=True, verbose=False, 
