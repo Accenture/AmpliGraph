@@ -80,31 +80,69 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
 
     Examples
     --------
-    >>> import requests
-    >>> from ampligraph.datasets import load_from_csv
-    >>> from ampligraph.latent_features import ComplEx
     >>> from ampligraph.discovery import discover_facts
-    >>>
+    >>> import requests
+    >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+    >>> from ampligraph.datasets import load_from_csv
     >>> # Game of Thrones relations dataset
     >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
     >>> open('GoT.csv', 'wb').write(requests.get(url).content)
     >>> X = load_from_csv('.', 'GoT.csv', sep=',')
-    >>>
-    >>> model = ComplEx(batches_count=10, seed=0, epochs=200, k=150, eta=5,
-    >>>                 optimizer='adam', optimizer_params={'lr':1e-3},
-    >>>                 loss='multiclass_nll', regularizer='LP',
-    >>>                 regularizer_params={'p':3, 'lambda':1e-5},
-    >>>                 verbose=True)
-    >>> model.fit(X)
-    >>>
-    >>> discover_facts(X, model, top_n=3, max_candidates=20000, strategy='entity_frequency',
-    >>>                target_rel='ALLIED_WITH', seed=42)
-    array([['House Reed of Greywater Watch', 'ALLIED_WITH', 'Sybelle Glover'],
-           ['Hugo Wull', 'ALLIED_WITH', 'House Norrey'],
-           ['House Grell', 'ALLIED_WITH', 'Delonne Allyrion'],
-           ['Lorent Lorch', 'ALLIED_WITH', 'House Ruttiger']], dtype=object)
-
-
+    >>> model = ScoringBasedEmbeddingModel(eta=5, 
+    >>>                                      k=300,
+    >>>                                      scoring_type='ComplEx')
+    >>> model.compile(optimizer='adam', loss='multiclass_nll')
+    >>> model.fit(X,
+    >>>              batch_size=100,
+    >>>              epochs=10,
+    >>>              validation_freq=50,
+    >>>              validation_batch_size=100,
+    >>>              validation_data = dataset['valid'])
+    >>> discover_facts(X, 
+    >>>                model, 
+    >>>                top_n=100, 
+    >>>                strategy='random_uniform', 
+    >>>                max_candidates=100, 
+    >>>                target_rel='ALLIED_WITH', 
+    >>>                seed=0)
+    Epoch 1/10
+    33/33 [==============================] - 1s 27ms/step - loss: 177.7778
+    Epoch 2/10
+    33/33 [==============================] - 0s 6ms/step - loss: 177.4795
+    Epoch 3/10
+    33/33 [==============================] - 0s 6ms/step - loss: 176.9654
+    Epoch 4/10
+    33/33 [==============================] - 0s 6ms/step - loss: 175.8453
+    Epoch 5/10
+    33/33 [==============================] - 0s 6ms/step - loss: 173.4385
+    Epoch 6/10
+    33/33 [==============================] - 0s 6ms/step - loss: 168.8143
+    Epoch 7/10
+    33/33 [==============================] - 0s 6ms/step - loss: 161.2919
+    Epoch 8/10
+    33/33 [==============================] - 0s 6ms/step - loss: 151.3496
+    Epoch 9/10
+    33/33 [==============================] - 0s 6ms/step - loss: 140.4268
+    Epoch 10/10
+    33/33 [==============================] - 0s 5ms/step - loss: 129.8206
+    3175 triples containing invalid keys skipped!
+    (array([['House Nymeros Martell of Sunspear', 'ALLIED_WITH',
+             'House Mallister of Seagard'],
+            ['Ben', 'ALLIED_WITH', 'House Mallister of Seagard'],
+            ['Selwyn Tarth', 'ALLIED_WITH', 'House Mallister of Seagard'],
+            ['Clarence Charlton', 'ALLIED_WITH', 'House Woods'],
+            ['Selwyn Tarth', 'ALLIED_WITH', 'House Woods'],
+            ['Dacks', 'ALLIED_WITH', 'Titus Peake'],
+            ['Barra', 'ALLIED_WITH', 'Titus Peake'],
+            ['House Chelsted', 'ALLIED_WITH', 'Denys Darklyn'],
+            ['Crow Spike Keep', 'ALLIED_WITH', 'Denys Darklyn'],
+            ['Selwyn Tarth', 'ALLIED_WITH', 'Denys Darklyn'],
+            ['House Chelsted', 'ALLIED_WITH', 'House Belmore of Strongsong'],
+            ['Barra', 'ALLIED_WITH', 'House Belmore of Strongsong'],
+            ['Walder Frey', 'ALLIED_WITH', 'House Belmore of Strongsong']],
+           dtype=object),
+     array([ 2. , 53. , 73. , 42. , 18. , 59.5, 86. , 76.5, 31. , 60.5, 31.5,
+            32. , 24. ]))
     """
 
     if not model.is_fitted:
@@ -484,7 +522,7 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="entity"):
     >>> from adjustText import adjust_text
     >>>
     >>> from ampligraph.datasets import load_from_csv
-    >>> from ampligraph.latent_features import ComplEx
+    >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
     >>> from ampligraph.discovery import find_clusters
     >>>
     >>> # International football matches triples
@@ -495,30 +533,25 @@ ClusteringAndClassificationWithEmbeddings.ipynb
     >>> open('football.csv', 'wb').write(requests.get(url).content)
     >>> X = load_from_csv('.', 'football.csv', sep=',')[:, 1:]
     >>>
-    >>> model = ComplEx(batches_count=50,
-    >>>                 epochs=300,
-    >>>                 k=100,
-    >>>                 eta=20,
-    >>>                 optimizer='adam',
-    >>>                 optimizer_params={'lr':1e-4},
-    >>>                 loss='multiclass_nll',
-    >>>                 regularizer='LP',
-    >>>                 regularizer_params={'p':3, 'lambda':1e-5},
-    >>>                 seed=0,
-    >>>                 verbose=True)
-    >>> model.fit(X)
+    >>> model = ScoringBasedEmbeddingModel(eta=5, 
+    >>>                                  k=300,
+    >>>                                  scoring_type='ComplEx')
+    >>> model.compile(optimizer='adam', loss='multiclass_nll')
+    >>> model.fit(X,
+    >>>           batch_size=10000,
+    >>>           epochs=10)
     >>>
     >>> df = pd.DataFrame(X, columns=["s", "p", "o"])
     >>>
     >>> teams = np.unique(np.concatenate((df.s[df.s.str.startswith("Team")],
     >>>                                   df.o[df.o.str.startswith("Team")])))
-    >>> team_embeddings = model.get_embeddings(teams, embedding_type='entity')
+    >>> team_embeddings = model.get_embeddings(teams, embedding_type='e')
     >>>
     >>> embeddings_2d = PCA(n_components=2).fit_transform(np.array([i for i in team_embeddings]))
     >>>
     >>> # Find clusters of embeddings using KMeans
     >>> kmeans = KMeans(n_clusters=6, n_init=100, max_iter=500)
-    >>> clusters = find_clusters(teams, model, kmeans, mode='entity')
+    >>> clusters = find_clusters(teams, model, kmeans, mode='e')
     >>>
     >>> # Plot results
     >>> df = pd.DataFrame({"teams": teams, "clusters": "cluster" + pd.Series(clusters).astype(str),
@@ -685,39 +718,54 @@ def find_duplicates(X, model, mode="entity", metric='l2', tolerance='auto',
     >>>     imdb_triples.append(duration_triple)
     >>>
     >>> # Training knowledge graph embedding with ComplEx model
-    >>> from ampligraph.latent_features import ComplEx
-    >>>
-    >>> model = ComplEx(batches_count=10,
-    >>>                 seed=0,
-    >>>                 epochs=200,
-    >>>                 k=150,
-    >>>                 eta=5,
-    >>>                 optimizer='adam',
-    >>>                 optimizer_params={'lr':1e-3},
-    >>>                 loss='multiclass_nll',
-    >>>                 regularizer='LP',
-    >>>                 regularizer_params={'p':3, 'lambda':1e-5},
-    >>>                 verbose=True)
+    >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
     >>>
     >>> imdb_triples = np.array(imdb_triples)
-    >>> model.fit(imdb_triples)
+    >>> model = ScoringBasedEmbeddingModel(eta=5, 
+    >>>                                    k=300,
+    >>>                                    scoring_type='ComplEx')
+    >>> model.compile(optimizer='adam', loss='multiclass_nll')
+    >>> model.fit(imdb_triples,
+    >>>           batch_size=10000,
+    >>>           epochs=10)
     >>>
     >>> # Finding duplicates movies (entities)
     >>> from ampligraph.discovery import find_duplicates
     >>>
     >>> entities = np.unique(imdb_triples[:, 0])
-    >>> dups, _ = find_duplicates(entities, model, mode='entity', tolerance=0.4)
-    >>> print(list(dups)[:3])
-    [frozenset({'ID4048', 'ID4049'}), frozenset({'ID5994', 'ID5993'}), frozenset({'ID6447', 'ID6448'})]
-    >>> print(imdb[imdb.id.isin((4048, 4049, 5994, 5993, 6447, 6448))][['movie_name', 'year']])
-                        movie_name  year
-    4048          Ulterior Motives  1993
-    4049          Ulterior Motives  1993
-    5993          Chinese Hercules  1973
-    5994          Chinese Hercules  1973
-    6447  The Stranglers of Bombay  1959
-    6448  The Stranglers of Bombay  1959
-
+    >>> dups, _ = find_duplicates(entities, model, mode='e', tolerance=0.45)
+    >>> id_list = []
+    >>> for data in dups:
+    >>>     for i in data:
+    >>>         id_list.append(int(i[2:]))
+    >>> print(imdb.iloc[id_list[:6]][['movie_name', 'year']])
+    Epoch 1/10
+    7/7 [==============================] - 1s 122ms/step - loss: 15612.8799
+    Epoch 2/10
+    7/7 [==============================] - 0s 20ms/step - loss: 15610.5010
+    Epoch 3/10
+    7/7 [==============================] - 0s 19ms/step - loss: 15607.7412
+    Epoch 4/10
+    7/7 [==============================] - 0s 19ms/step - loss: 15604.0674
+    Epoch 5/10
+    7/7 [==============================] - 0s 20ms/step - loss: 15598.9365
+    Epoch 6/10
+    7/7 [==============================] - 0s 19ms/step - loss: 15591.7188
+    Epoch 7/10
+    7/7 [==============================] - 0s 19ms/step - loss: 15581.6055
+    Epoch 8/10
+    7/7 [==============================] - 0s 20ms/step - loss: 15567.6807
+    Epoch 9/10
+    7/7 [==============================] - 0s 20ms/step - loss: 15548.8184
+    Epoch 10/10
+    7/7 [==============================] - 0s 21ms/step - loss: 15523.8721
+               movie_name  year
+    5198    Duel to Death  1983
+    5199    Duel to Death  1983
+    2649   The Eliminator  2004
+    2650   The Eliminator  2004
+    3967  Lipstick Camera  1994
+    3968  Lipstick Camera  1994
     """
 
     if not model.is_fitted:
@@ -850,26 +898,26 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
     >>> open('GoT.csv', 'wb').write(requests.get(url).content)
     >>> X = load_from_csv('.', 'GoT.csv', sep=',')
     >>>
-    >>> model = ComplEx(batches_count=10, seed=0, epochs=200, k=150, eta=5,
-    >>>                 optimizer='adam', optimizer_params={'lr':1e-3}, loss='multiclass_nll',
-    >>>                 regularizer='LP', regularizer_params={'p':3, 'lambda':1e-5},
-    >>>                 verbose=True)
-    >>> model.fit(X)
+    >>>model = ScoringBasedEmbeddingModel(eta=5, 
+    >>>                             k=150,
+    >>>                             scoring_type='TransE')
+    >>>model.compile(optimizer='adagrad', loss='pairwise')
+    >>>model.fit(X,
+    >>>      batch_size=100,
+    >>>      epochs=20, 
+    >>>      verbose=False)
     >>>
     >>> query_topn(model, top_n=5,
-    >>>            head='Catelyn Stark', relation='ALLIED_WITH', tail=None,
-    >>>            ents_to_consider=None, rels_to_consider=None)
+    >>>         head='Eddard Stark', relation='ALLIED_WITH', tail=None,
+    >>>         ents_to_consider=None, rels_to_consider=None)
     >>>
-    (array([['Catelyn Stark', 'ALLIED_WITH', 'House Tully of Riverrun'],
-            ['Catelyn Stark', 'ALLIED_WITH', 'House Stark of Winterfell'],
-            ['Catelyn Stark', 'ALLIED_WITH', 'House Wayn'],
-            ['Catelyn Stark', 'ALLIED_WITH', 'House Mollen'],
-            ['Catelyn Stark', 'ALLIED_WITH', 'Orton Merryweather']],
-           dtype='<U44'), array([[10.261374 ],
-            [ 8.84298  ],
-            [ 2.78139  ],
-            [ 1.9809164],
-            [ 1.833096 ]], dtype=float32))
+    (array([['Eddard Stark', 'ALLIED_WITH', 'Smithyton'],
+            ['Eddard Stark', 'ALLIED_WITH', 'Eden Risley'],
+            ['Eddard Stark', 'ALLIED_WITH', 'House Westbrook'],
+            ['Eddard Stark', 'ALLIED_WITH', 'House Leygood'],
+            ['Eddard Stark', 'ALLIED_WITH', 'House Bridges']], dtype='<U44'),
+     array([9.000417 , 5.272001 , 5.1876183, 5.121145 , 5.0564814],
+           dtype=float32))
 
     """
 
