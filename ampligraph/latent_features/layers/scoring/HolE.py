@@ -5,41 +5,48 @@ from .ComplEx import ComplEx
 
 @register_layer('HolE')
 class HolE(ComplEx):
-    ''' HolE scoring Layer class
-    '''
+    r"""Holographic Embeddings scoring layer
+    
+    The HolE model :cite:`nickel2016holographic` as re-defined by Hayashi et al. :cite:`HayashiS17`:
+    
+    .. math::
+        f_{HolE}= \frac{2}{n} \, f_{ComplEx}
+        
+    """
+
     def __init__(self, k):
         super(HolE, self).__init__(k)
 
     def _compute_scores(self, triples):
         ''' compute scores using HolE scoring function.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         triples: (n, 3)
             batch of input triples
         
-        Returns:
-        --------
-        scores: 
+        Returns
+        -------
+        scores: tf.Tensor(n,1)
             tensor of scores of inputs
         '''
         # HolE scoring is 2/k * complex_score
-        return (2 / (self.internal_k / 2)) * (super().compute_scores(triples))
+        return (2 / (self.internal_k / 2)) * (super()._compute_scores(triples))
 
     def _get_subject_corruption_scores(self, triples, ent_matrix):
         ''' Compute subject corruption scores.
         Evaluate the inputs against subject corruptions and scores of the corruptions.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         triples: (n, k)
             batch of input embeddings
         ent_matrix: (m, k)
             slice of embedding matrix (corruptions)
         
-        Returns:
-        --------
-        scores: (n, 1)
+        Returns
+        -------
+        scores: tf.Tensor(n,1)
             scores of subject corruptions (corruptions defined by ent_embs matrix)
         '''
         # HolE scoring is 2/k * complex_score
@@ -50,16 +57,16 @@ class HolE(ComplEx):
         ''' Compute object corruption scores.
         Evaluate the inputs against object corruptions and scores of the corruptions.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         triples: (n, k)
             batch of input embeddings
         ent_matrix: (m, k)
             slice of embedding matrix (corruptions)
         
-        Returns:
-        --------
-        scores: (n, 1)
+        Returns
+        -------
+        scores: tf.Tensor(n,1)
             scores of object corruptions (corruptions defined by ent_embs matrix)
         '''
         # HolE scoring is 2/k * complex_score

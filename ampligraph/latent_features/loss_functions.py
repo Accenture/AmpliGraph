@@ -84,6 +84,7 @@ class Loss(abc.ABC):
             Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
             
             (Other Keys are described in the hyperparameters section)
+            
         """
         self._loss_parameters = {}
         self._loss_parameters['reduction'] = hyperparam_dict.get('reduction', DEFAULT_REDUCTION)
@@ -222,6 +223,17 @@ class PairwiseLoss(Loss):
     where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives,
     :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
+    Examples
+    --------
+    >>> import ampligraph.latent_features.loss_functions as lfs
+    >>> loss = lfs.PairwiseLoss({'margin': 0.005, 'reduction': 'sum'})
+    >>> isinstance(loss, lfs.PairwiseLoss)
+    True
+    
+    >>> loss = lfs.get('pairwise')
+    >>> isinstance(loss, lfs.PairwiseLoss)
+    True
+    
     """
 
     def __init__(self, loss_params={}, verbose=False):
@@ -287,6 +299,16 @@ class NLLLoss(Loss):
     where :math:`y \in {-1, 1}` is the label of the statement, :math:`\mathcal{G}` is the set of positives,
     :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
+    Examples
+    --------
+    >>> import ampligraph.latent_features.loss_functions as lfs
+    >>> loss = lfs.NLLLoss({'reduction': 'mean'})
+    >>> isinstance(loss, lfs.NLLLoss)
+    True
+    
+    >>> loss = lfs.get('nll')
+    >>> isinstance(loss, lfs.NLLLoss)
+    True
     """
 
     def __init__(self, loss_params={}, verbose=False):
@@ -352,6 +374,16 @@ class AbsoluteMarginLoss(Loss):
     where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives, :math:`\mathcal{C}` is the
     set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
+    Examples
+    --------
+    >>> import ampligraph.latent_features.loss_functions as lfs
+    >>> loss = lfs.AbsoluteMarginLoss({'margin': 1, 'reduction': 'mean'})
+    >>> isinstance(loss, lfs.AbsoluteMarginLoss)
+    True
+    
+    >>> loss = lfs.get('absolute_margin')
+    >>> isinstance(loss, lfs.AbsoluteMarginLoss)
+    True
     """
 
     def __init__(self, loss_params={}, verbose=False):
@@ -431,7 +463,16 @@ class SelfAdversarialLoss(Loss):
     where :math:`\alpha` is the temperature of sampling, :math:`f_{model}` is the scoring function of
     the desired embeddings model.
 
-
+    Examples
+    --------
+    >>> import ampligraph.latent_features.loss_functions as lfs
+    >>> loss = lfs.SelfAdversarialLoss({'margin': 1, 'alpha': 0.1, 'reduction': 'mean'})
+    >>> isinstance(loss, lfs.SelfAdversarialLoss)
+    True
+    
+    >>> loss = lfs.get('self_adversarial')
+    >>> isinstance(loss, lfs.SelfAdversarialLoss)
+    True
     """
 
     def __init__(self, loss_params={}, verbose=False):
@@ -510,13 +551,17 @@ class NLLMulticlass(Loss):
 
         \mathcal{L(X)} = -\sum_{x_{e_1,e_2,r_k} \in X} log\,p(e_2|e_1,r_k)
          -\sum_{x_{e_1,e_2,r_k} \in X} log\,p(e_1|r_k, e_2)
-
+         
     Examples
     --------
-    >>> from ampligraph.latent_features import TransE
-    >>> model = TransE(batches_count=1, seed=555, epochs=20, k=10,
-    >>>                embedding_model_params={'corrupt_sides':['s', 'o']},
-    >>>                loss='multiclass_nll', loss_params={})
+    >>> import ampligraph.latent_features.loss_functions as lfs
+    >>> loss = lfs.NLLMulticlass({'reduction': 'mean'})
+    >>> isinstance(loss, lfs.NLLMulticlass)
+    True
+    
+    >>> loss = lfs.get('multiclass_nll')
+    >>> isinstance(loss, lfs.NLLMulticlass)
+    True
 
     """
     def __init__(self, loss_params={}, verbose=False):
@@ -567,17 +612,41 @@ class NLLMulticlass(Loss):
         neg_exp = tf.exp(scores_neg)
         pos_exp = tf.exp(scores_pos)
         softmax_score = pos_exp / (self._reduce_sample_loss(neg_exp) + pos_exp)
-
         loss = -tf.math.log(softmax_score)
         return loss
     
 
 class LossFunctionWrapper(Loss):
-    """Wraps a loss function in the `Loss` class."""
+    """Wraps a loss function in the `Loss` class.
+    
+    Examples
+    --------
+    >>> import ampligraph.latent_features.loss_functions as lfs
+    >>> def user_defined_loss(scores_pos, scores_neg):
+    >>>    neg_exp = tf.exp(scores_neg)
+    >>>    pos_exp = tf.exp(scores_pos)
+    >>>    softmax_score = pos_exp / (tf.reduce_sum(neg_exp, axis=0) + pos_exp)
+    >>>    loss = -tf.math.log(softmax_score)
+    >>>    return loss
+    >>> udf_loss = lfs.get(user_defined_loss)
+    >>> isinstance(udf_loss, Loss)
+    True
+    >>> isinstance(udf_loss, LossFunctionWrapper)
+    True
+    """
 
     def __init__(self,
                  user_defined_loss,
                  name=None):
+        ''' Initializes the LossFunctionWrapper.
+        
+        Parameters
+        ----------
+        user_defined_loss : function_handle
+            Handle to loss function (should take 2 parameters as input)
+        name: string
+            name of the loss function
+        '''
         super(LossFunctionWrapper, self).__init__()
         self._user_losses = user_defined_loss
         self.name = name
@@ -613,6 +682,37 @@ class LossFunctionWrapper(Loss):
 
     
 def get(identifier):
+    '''
+    Get the loss function specified by the identifier
+    
+    Parameters
+    ----------
+    identifier: instance of Loss class, string, function handle
+        Instance of Loss class (Pairwise, NLLLoss, etc), name of the (existing) loss function to be used (will use default
+        parameters) or handle of the function which takes in two params(signature: def loss_fn(scores_pos, scores_neg))
+        
+    Returns
+    -------
+    loss: instance of Loss
+        loss function
+        
+    Examples
+    --------
+    >>> import ampligraph.latent_features.loss_functions as lfs
+    >>> nll_loss = lfs.get('nll')
+    >>> isinstance(udf_loss, Loss)
+    True
+
+    >>> def user_defined_loss(scores_pos, scores_neg):
+    >>>    neg_exp = tf.exp(scores_neg)
+    >>>    pos_exp = tf.exp(scores_pos)
+    >>>    softmax_score = pos_exp / (tf.reduce_sum(neg_exp, axis=0) + pos_exp)
+    >>>    loss = -tf.math.log(softmax_score)
+    >>>    return loss
+    >>> udf_loss = lfs.get(user_defined_loss)
+    >>> isinstance(udf_loss, Loss)
+    True
+    '''
     if isinstance(identifier, Loss):
         return identifier
     elif isinstance(identifier, six.string_types):

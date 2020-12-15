@@ -20,7 +20,7 @@ def register_partitioning_manager(name):
        Example
        -------
        >>>@register_partitioning_manager("NewManagerName")
-       >>>class NewManagerName(PartitionedDataManager):
+       >>>class NewManagerName(PartitionDataManager):
        >>>... pass
     """
     def insert_in_registry(class_handle):
@@ -38,10 +38,11 @@ def register_partitioning_manager(name):
     return insert_in_registry
 
 
-class PartitionedDataManager(abc.ABC):
+class PartitionDataManager(abc.ABC):
     def __init__(self, dataset_loader, model, strategy='Bucket'):
         """Initializes the Partitioning Data Manager. 
-        Uses/Creates partitioner and generates partition related params.
+        Uses/Creates partitioner and generates and manages partition related params.
+        This is the base class.
         
         Parameters
         ----------
@@ -120,8 +121,8 @@ class PartitionedDataManager(abc.ABC):
         Once the partition data is exhausted, the current params are persisted; the partition is changed 
         and model is notified.
         
-        Returns:
-        --------
+        Returns
+        -------
         batch_data_from_current_partition: (n,3)
             A batch of triples from current partition being trained
         '''
@@ -141,6 +142,8 @@ class PartitionedDataManager(abc.ABC):
                 self._update_partion_embeddings(partition_data, i)
                 
     def get_tf_generator(self):
+        ''' Returns tensorflow data generator
+        '''
         return tf.data.Dataset.from_generator(
             self.data_generator,
             output_types=tf.dtypes.int32,
@@ -173,8 +176,8 @@ class PartitionedDataManager(abc.ABC):
         pass
     
 
-@register_partitioning_manager('GeneralPartitionedDataManager')
-class GeneralPartitionedDataManager(PartitionedDataManager):
+@register_partitioning_manager('GeneralPartitionDataManager')
+class GeneralPartitionDataManager(PartitionDataManager):
     ''' Manages the partitioning related controls. 
     Handles data generation and informs model about changes in partition.
     '''
@@ -192,7 +195,7 @@ class GeneralPartitionedDataManager(PartitionedDataManager):
             Type of partitioning strategy to use
         
         """
-        super(GeneralPartitionedDataManager, self).__init__(dataset_loader, model, strategy)
+        super(GeneralPartitionDataManager, self).__init__(dataset_loader, model, strategy)
         
     def _generate_partition_params(self):
         ''' Generates the metadata needed for persisting and loading partition embeddings and other params
@@ -367,8 +370,8 @@ class GeneralPartitionedDataManager(PartitionedDataManager):
                 rel_partition[str(i)] = rel_partition[str(i)][1][0]
 
 
-@register_partitioning_manager('BucketPartitionedDataManager')
-class BucketPartitionedDataManager(PartitionedDataManager):
+@register_partitioning_manager('BucketPartitionDataManager')
+class BucketPartitionDataManager(PartitionDataManager):
     ''' Manages the partitioning related controls. 
     Handles data generation and informs model about changes in partition.
     '''
@@ -386,7 +389,7 @@ class BucketPartitionedDataManager(PartitionedDataManager):
             Type of partitioning strategy to use
         
         """
-        super(BucketPartitionedDataManager, self).__init__(dataset_loader, model, strategy)
+        super(BucketPartitionDataManager, self).__init__(dataset_loader, model, strategy)
         
     def _generate_partition_params(self):
         ''' Generates the metadata needed for persisting and loading partition embeddings and other params
@@ -649,6 +652,17 @@ class BucketPartitionedDataManager(PartitionedDataManager):
         
 
 def get_partition_adapter(dataset_loader, model, strategy='Bucket'):
+    ''' Returns partition manager depending on the one registered by the partitioning strategy
+    
+    Parameters
+    ----------
+    dataset_loader:
+        parent dataset loader that will be used for partitioning
+    model:
+        KGE model that will be managed while using partitioning
+    strategy:
+        Graph partitioning strategy
+    '''
     if isinstance(dataset_loader, AbstractGraphPartitioner):
         partitioner_manager = PARTITION_MANAGER_REGISTRY.get(dataset_loader.manager)(
             dataset_loader, model, dataset_loader.name)

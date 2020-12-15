@@ -103,9 +103,11 @@ class AbstractGraphPartitioner(ABC):
         return self
     
     def reload(self):
+        """Reload the partition"""
         self.generator = self.partitions_generator()
 
     def get_data(self):
+        """Get the underlying data handler"""
         return self._data
 
     def partitions_generator(self):
@@ -152,6 +154,8 @@ class AbstractGraphPartitioner(ABC):
         pass
 
     def clean(self):
+        """ Remove the temperory files created for the partitions
+        """
         for partition in self.partitions:
             partition.clean()
         for f in self.files:
@@ -165,31 +169,31 @@ class AbstractGraphPartitioner(ABC):
                 except:
                     os.remove(f + ".db")
     
-@register_partitioning_strategy("Bucket", "BucketPartitionedDataManager")
+@register_partitioning_strategy("Bucket", "BucketPartitionDataManager")
 class BucketGraphPartitioner(AbstractGraphPartitioner):
     """Bucket-based partition strategy.
 
        Example
        -------
-       >>>d = np.array([[1,1,2], [1,1,3],[1,1,4],[5,1,3],[5,1,2],[6,1,3],[6,1,2],[6,1,4],[6,1,7]])
-       >>>data = GraphDataLoader(d, batch_size=1, dataset_type="test")
-       >>>partitioner = BucketGraphPartitioner(data, k=2)
-       >>>for i, partition in enumerate(partitioner):
-       >>>    print("partition ", i)
-       >>>    for batch in partition:
-       >>>        print(batch)
-        partition  0
-        [['0,0,1']]
-        [['0,0,2']]
-        [['0,0,3']]
-        partition  1
-        [['4,0,1']]
-        [['4,0,2']]
-        [['5,0,1']]
-        [['5,0,2']]
-        [['5,0,3']]
-        partition  2
-        [['5,0,6']]
+           >>> d = np.array([[1,1,2], [1,1,3],[1,1,4],[5,1,3],[5,1,2],[6,1,3],[6,1,2],[6,1,4],[6,1,7]])
+           >>> data = GraphDataLoader(d, batch_size=1, dataset_type="test")
+           >>> partitioner = BucketGraphPartitioner(data, k=2)
+           >>> for i, partition in enumerate(partitioner):
+           >>>    print("partition ", i)
+           >>>    for batch in partition:
+           >>>        print(batch)
+            partition  0
+            [['0,0,1']]
+            [['0,0,2']]
+            [['0,0,3']]
+            partition  1
+            [['4,0,1']]
+            [['4,0,2']]
+            [['5,0,1']]
+            [['5,0,2']]
+            [['5,0,3']]
+            partition  2
+            [['5,0,6']]
     """
     def __init__(self, data, k=2, **kwargs):
         """Initialiser for BucketGraphPartitioner.
@@ -290,7 +294,7 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
                     partition_nb += 1 
 
     
-@register_partitioning_strategy("RandomVertices", "GeneralPartitionedDataManager")
+@register_partitioning_strategy("RandomVertices", "GeneralPartitionDataManager")
 class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
     """Partitioning strategy that splits vertices into equal
        sized buckets of random entities from the graph.
@@ -397,7 +401,7 @@ class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
                                                name="partition_{}".format(partition_nb))
             self.partitions.append(partition_loader)
 
-@register_partitioning_strategy("RandomEdges", "GeneralPartitionedDataManager")
+@register_partitioning_strategy("RandomEdges", "GeneralPartitionDataManager")
 class RandomEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
     """Partitioning strategy that splits edges into equal size
        partitions randomly drawing triples from the data.
@@ -415,7 +419,7 @@ class RandomEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
         self._k = k
         super().__init__(data, k, random=True, index_by="", **kwargs)
 
-@register_partitioning_strategy("Naive", "GeneralPartitionedDataManager")
+@register_partitioning_strategy("Naive", "GeneralPartitionDataManager")
 class NaiveGraphPartitioner(EdgeBasedGraphPartitioner):
     """Partitioning strategy that splits edges into equal size
        partitions drawing triples from the data sequentially.
@@ -430,7 +434,7 @@ class NaiveGraphPartitioner(EdgeBasedGraphPartitioner):
         self.partitions = []
         super().__init__(data, k, random=False, index_by="", **kwargs)
 
-@register_partitioning_strategy("SortedEdges", "GeneralPartitionedDataManager")
+@register_partitioning_strategy("SortedEdges", "GeneralPartitionDataManager")
 class SortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
     """Partitioning strategy that splits edges into equal size
        partitions retriving triples from the data ordered by subject.
@@ -446,7 +450,7 @@ class SortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
         self.partitions = []
         super().__init__(data, k, random=False, index_by="s", **kwargs)
 
-@register_partitioning_strategy("DoubleSortedEdges", "GeneralPartitionedDataManager")
+@register_partitioning_strategy("DoubleSortedEdges", "GeneralPartitionDataManager")
 class DoubleSortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
     """Partitioning strategy that splits edges into equal size
        partitions retriving triples from the data ordered by subject and object.

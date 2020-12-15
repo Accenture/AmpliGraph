@@ -9,7 +9,7 @@ SCORING_LAYER_REGISTRY = {}
 def register_layer(name, external_params=None, class_params=None):
     '''register the scoring function using this decorator
     
-    Parameters:
+    Parameters
     -----------
     name: string
         name of the scoring function to be used to register the class
@@ -47,8 +47,8 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
     def __init__(self, k):
         '''Initializes the scoring layer
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         k: int
             embedding size
         '''
@@ -57,17 +57,17 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         self.internal_k = k
 
     def call(self, triples):
-        '''
-        Computes the scores of the triples
+        ''' Interface to the external world. 
+        Computes the scores of the triples. 
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         triples: (n, 3)
             batch of input triples
         
-        Returns:
-        --------
-        scores: 
+        Returns
+        -------
+        scores: tf.Tensor (n,1)
             tensor of scores of inputs
         '''
         return self._compute_scores(triples)
@@ -75,14 +75,14 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
     def _compute_scores(self, triples):
         ''' Abstract function to compute scores. Override this method in concrete classes.
         
-        Parameters:
+        Parameters
         -----------
         triples: (n, 3)
             batch of input triples
         
-        Returns:
+        Returns
         --------
-        scores: 
+        scores: tf.Tensor (n,1)
             tensor of scores of inputs
         '''
         raise NotImplementedError('Abstract method not implemented!')
@@ -91,16 +91,16 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         ''' Abstract function to compute object corruption scores.
         Evaluate the inputs against object corruptions and scores of the corruptions.
         
-        Parameters:
+        Parameters
         -----------
         triples: (n, k)
             batch of input embeddings
         ent_matrix: (m, k)
             slice of embedding matrix (corruptions)
         
-        Returns:
+        Returns
         --------
-        scores: (n, 1)
+        scores: tf.Tensor (n,1)
             scores of object corruptions (corruptions defined by ent_embs matrix)
         '''
         raise NotImplementedError('Abstract method not implemented!')
@@ -109,16 +109,16 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         ''' Abstract function to compute subject corruption scores.
         Evaluate the inputs against subject corruptions and scores of the corruptions.
         
-        Parameters:
+        Parameters
         -----------
         triples: (n, k)
             batch of input embeddings
         ent_matrix: (m, k)
             slice of embedding matrix (corruptions)
         
-        Returns:
+        Returns
         --------
-        scores: (n, 1)
+        scores: tf.Tensor (n,1)
             scores of subject corruptions (corruptions defined by ent_embs matrix)
         '''
         raise NotImplementedError('Abstract method not implemented!')
@@ -127,16 +127,16 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         ''' Computes the ranks of triples against their corruptions. 
         Ranks are computed by corruptiong triple s and o side by embeddings in ent_matrix.
         
-        Parameters:
+        Parameters
         -----------
         triples: (n, k)
             batch of input embeddings
         ent_matrix: (m, k)
             slice of embedding matrix (corruptions)
         
-        Returns:
+        Returns
         --------
-        ranks: (n, 2)
+        ranks: tf.Tensor (n,2)
             ranks of triple against subject and object corruptions (corruptions defined by ent_embs matrix)
         '''
         # compute the score of true positives
@@ -153,6 +153,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         triple_score = tf.cast(triple_score * COMPARISION_PRECISION, tf.int32)
         
         out_ranks = tf.TensorArray(tf.int32, size=0, dynamic_size=True)
+        filter_index = 0
         if tf.strings.regex_full_match(corrupt_side, '.*s.*'):
             
             # compare True positive score against their respective corruptions and get rank.
@@ -163,7 +164,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                 for i in tf.range(tf.shape(triple_score)[0]):
                     # TODO change the hard coded filter index
                     # get the ids of True positives that needs to be filtered
-                    filter_ids = filters[0][i]
+                    filter_ids = filters[filter_index][i]
                     # This is done for patritioning (where the full emb matrix is not used)
                     # this gets only the filter ids of the current partition being used for generating corruption
                     filter_ids_selector = tf.logical_and(filter_ids >= start_ent_id, 
@@ -179,6 +180,8 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                         tf.cast(tf.gather(triple_score, [i]) <= score_filter, tf.int32))
                     # ajust the rank of the test triple accordingly
                     sub_rank = tf.tensor_scatter_nd_sub(sub_rank, [[i]], [num_filters_ranked_higher])
+                 
+                filter_index = 1
                 
             out_ranks = out_ranks.write(out_ranks.size(), sub_rank)
         
@@ -188,7 +191,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                 for i in tf.range(tf.shape(triple_score)[0]):
                     # TODO change the hard coded filter index
                     # get the ids of True positives that needs to be filtered
-                    filter_ids = filters[1][i]
+                    filter_ids = filters[filter_index][i]
                     # This is done for patritioning (where the full emb matrix is not used)
                     # this gets only the filter ids of the current partition being used for generating corruption
                     filter_ids_selector = tf.logical_and(filter_ids >= start_ent_id, 
@@ -213,12 +216,12 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
     def compute_output_shape(self, input_shape):
         ''' returns the output shape of outputs of call function
         
-        Parameters:
+        Parameters
         -----------
         input_shape: 
             shape of inputs of call function
         
-        Returns:
+        Returns
         --------
         output_shape:
             shape of outputs of call function

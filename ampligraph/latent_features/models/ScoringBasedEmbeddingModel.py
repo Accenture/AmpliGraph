@@ -25,12 +25,187 @@ tf.debugging.set_log_device_placement(False)
 
 
 class ScoringBasedEmbeddingModel(tf.keras.Model):
+    ''' Class for handling KGE models which follows the ranking based protocol
+    
+        Examples
+        --------
+        >>> # create model and compile using default optimizer settings and default settings of the loss
+        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> model = ScoringBasedEmbeddingModel(eta=5, 
+        >>>                                      k=300,
+        >>>                                      scoring_type='ComplEx',
+        >>>                                      seed=0)
+        >>> model.compile(optimizer='adam', loss='nll')
+        >>> model.fit('./fb15k-237/train.txt',
+        >>>           batch_size=10000,
+        >>>           epochs=5)
+        Epoch 1/5
+        29/29 [==============================] - 1s 45ms/step - loss: 67361.3203
+        Epoch 2/5
+        29/29 [==============================] - 1s 21ms/step - loss: 67318.1172
+        Epoch 3/5
+        29/29 [==============================] - 1s 21ms/step - loss: 67017.7266
+        Epoch 4/5
+        29/29 [==============================] - 1s 20ms/step - loss: 65864.6406
+        Epoch 5/5
+        29/29 [==============================] - 1s 20ms/step - loss: 63518.3633
+        
+        >>> # create model and compile using user defined optimizer settings and user defined settings of an existing loss
+        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> from ampligraph.latent_features.loss_functions import SelfAdversarialLoss
+        >>> import tensorflow as tf
+        >>> optim = tf.optimizers.Adam(learning_rate=0.01)
+        >>> loss = SelfAdversarialLoss({'margin': 0.1, 'alpha': 5, 'reduction': 'sum'})
+        >>> model = ScoringBasedEmbeddingModel(eta=5, 
+        >>>                                      k=300,
+        >>>                                      scoring_type='ComplEx',
+        >>>                                      seed=0)
+        >>> model.compile(optimizer=optim, loss=loss)
+        >>> model.fit('./fb15k-237/train.txt',
+        >>>           batch_size=10000,
+        >>>           epochs=5)
+        Epoch 1/5
+        29/29 [==============================] - 2s 67ms/step - loss: 13101.9443
+        Epoch 2/5
+        29/29 [==============================] - 1s 20ms/step - loss: 11907.5771
+        Epoch 3/5
+        29/29 [==============================] - 1s 21ms/step - loss: 10890.3447
+        Epoch 4/5
+        29/29 [==============================] - 1s 20ms/step - loss: 9520.3994
+        Epoch 5/5
+        29/29 [==============================] - 1s 20ms/step - loss: 8314.7529
+        
+        >>> # create model and compile using user defined optimizer settings and user defined loss function
+        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> import tensorflow as tf
+        >>> optim = tf.optimizers.Adam(learning_rate=0.01)
+        >>> def userLoss(scores_pos, scores_neg):
+        >>>     # user defined loss - takes in 2 params and returns loss    
+        >>>     neg_exp = tf.exp(scores_neg)
+        >>>     pos_exp = tf.exp(scores_pos)
+        >>>     softmax_score = pos_exp / (tf.reduce_sum(neg_exp, axis=0) + pos_exp)
+        >>>     loss = -tf.math.log(softmax_score)
+        >>>     return loss
+        >>> model = ScoringBasedEmbeddingModel(eta=5, 
+        >>>                                      k=300,
+        >>>                                      scoring_type='ComplEx',
+        >>>                                      seed=0)
+        >>> model.compile(optimizer=optim, loss=userLoss)
+        >>> model.fit('./fb15k-237/train.txt',
+        >>>           batch_size=10000,
+        >>>           epochs=5)
+        Epoch 1/5
+        29/29 [==============================] - 2s 65ms/step - loss: 16389.1543
+        Epoch 2/5
+        29/29 [==============================] - 1s 21ms/step - loss: 10464.8750
+        Epoch 3/5
+        29/29 [==============================] - 1s 20ms/step - loss: 7459.9829
+        Epoch 4/5
+        29/29 [==============================] - 1s 21ms/step - loss: 5856.6294
+        Epoch 5/5
+        29/29 [==============================] - 1s 21ms/step - loss: 4870.1465
+        
+        >>> # Fit and calibrate the model
+        >>> from ampligraph.datasets import load_fb15k_237
+        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> import numpy as np
+        >>> dataset = load_fb15k_237()
+        >>> model = ScoringBasedEmbeddingModel(eta=5, 
+        >>>                                      k=300,
+        >>>                                      scoring_type='ComplEx')
+        >>> model.compile(optimizer='adam', loss='nll')
+        >>> model.fit(dataset['train'],
+        >>>              batch_size=10000,
+        >>>              epochs=5)
+        >>> print('Raw scores (sorted):', np.sort(model.predict(dataset['test'])))
+        >>> print('Indices obtained by sorting (scores):', np.argsort(model.predict(dataset['test'])))
+        >>> model.calibrate(dataset['test'], 
+        >>>                 batch_size=10000, positive_base_rate=0.9, epochs=100)
+        >>> print('Calibrated scores (sorted):', np.sort(model.predict_proba(dataset['test'])))
+        >>> print('Indices obtained by sorting (Calibrated):', np.argsort(model.predict_proba(dataset['test'])))
+        Raw scores (sorted): [-0.6014494 -0.5925436 -0.5465378 ...  1.9067042  2.0135512  2.2477078]
+        Indices obtained by sorting (scores): [14573 11577  4404 ... 17817 17816   733]
+        Calibrated scores (sorted): [0.5553725  0.5556108  0.5568415  ... 0.6211011  0.62382233 0.6297585 ]
+        Indices obtained by sorting (Calibrated): [14573 11577  4404 ... 17817 17816   733]
+        
+        >>> # create a partitioned model and train using default partitioning algorithm
+        >>> import tensorflow as tf
+        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
+        >>> partitioned_model = ScoringBasedEmbeddingModel(eta=5, 
+        >>>                                                k=300, 
+        >>>                                                scoring_type='TransE')
+        >>> optim = tf.optimizers.Adam(learning_rate=0.001, amsgrad=True)
+        >>> partitioned_model.compile(optimizer=optim, loss='multiclass_nll')
+        >>> # set use_partitioning parameter to True
+        >>> partitioned_model.fit('./fb15k-237/train.txt',
+        >>>                       batch_size=1000, 
+        >>>                       use_partitioning=True,             
+        >>>                       epochs=2)
+        _split: memory before: 896.0Bytes, after: 12.864MB, consumed: 12.863MB; exec time: 85.558s
+        Epoch 1/2
+        277/277 [==============================] - 13s 46ms/step - loss: 1700.5206
+        Epoch 2/2
+        277/277 [==============================] - 12s 44ms/step - loss: 1594.2839
+        >>> ranks = partitioned_model.evaluate('./fb15k-237/test.txt',
+        >>>                                    batch_size=400)
+        >>> mr_score(ranks), mrr_score(ranks), hits_at_n_score(ranks, 1), hits_at_n_score(ranks, 10), len(ranks)
+        28 triples containing invalid keys skipped!
+        53/53 [==============================] - 125s 2s/step
+        (1256.1263333007144, 0.0860230769344167, 0.0, 0.22837361777081908, 20438)        
+        
+        >>> # create a partitioned model and train using a specific partitioning approach with user settings
+        >>> from ampligraph.datasets import SQLiteAdapter
+        >>> from ampligraph.datasets import GraphDataLoader
+        >>> import tensorflow as tf
+        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> from ampligraph.datasets.graph_partitioner import PARTITION_ALGO_REGISTRY
+        >>> from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
+        >>> # create dataloader for training data
+        >>> dataset_loader = GraphDataLoader('./fb15k-237/train.txt', 
+        >>>                                  backend=SQLiteAdapter,
+        >>>                                  batch_size=1000, 
+        >>>                                  dataset_type='train', 
+        >>>                                  use_filter=False,
+        >>>                                  use_indexer=True)
+        >>> # create partitioner and partition the training set into 3 partitions
+        >>> partitioner = PARTITION_ALGO_REGISTRY.get('RandomEdges')(dataset_loader, k=3)
+        _split: memory before: 896.0Bytes, after: 12.994MB, consumed: 12.993MB; exec time: 31.847s
+        >>> partitioned_model = ScoringBasedEmbeddingModel(eta=5, 
+        >>>                                                k=300, 
+        >>>                                                scoring_type='TransE')
+        >>> optim = tf.optimizers.Adam(learning_rate=0.001, amsgrad=True)
+        >>> partitioned_model.compile(optimizer=optim, loss='multiclass_nll')
+        >>> # pass the partitioner as first parameter to fit function, indicating that this is the data source
+        >>> partitioned_model.fit(partitioner,
+        >>>                       batch_size=1000, 
+        >>>                       use_partitioning=True,             
+        >>>                       epochs=2)
+        Epoch 1/2
+        274/274 [==============================] - 19s 70ms/step - loss: 1587.2159
+        Epoch 2/2
+        274/274 [==============================] - 18s 67ms/step - loss: 1413.8411
+        >>> # create dataloader for test data
+        >>> dataset_loader_test = GraphDataLoader('./fb15k-237/test.txt', 
+        >>>                                       backend=SQLiteAdapter,
+        >>>                                       batch_size=400, 
+        >>>                                       dataset_type='test', 
+        >>>                                       use_indexer=partitioned_model.data_handler.get_mapper())
+        >>> # pass the partitioner as first parameter to evaluate function, indicating that this is the data source
+        >>> ranks = partitioned_model.evaluate(dataset_loader_test, 
+        >>>                                    batch_size=400)
+        >>> mr_score(ranks), mrr_score(ranks), hits_at_n_score(ranks, 1), hits_at_n_score(ranks, 10), len(ranks)
+        28 triples containing invalid keys skipped!
+        53/53 [==============================] - 131s 2s/step
+        (1664.7265143360407, 0.08627483922249177, 0.0, 0.23722967022213523, 20438)
+        
+    '''
     def __init__(self, eta, k, scoring_type='DistMult', seed=0):
         '''
         Initializes the scoring based embedding model
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         eta: int
             num of negatives to use during training per triple
         k: int
@@ -43,6 +218,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         super(ScoringBasedEmbeddingModel, self).__init__()
         # set the random seed
         tf.random.set_seed(seed)
+        np.random.seed(seed)
         
         self.max_ent_size = None
         self.max_rel_size = None
@@ -80,13 +256,13 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def compute_output_shape(self, inputShape):
         ''' returns the output shape of outputs of call function
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         input_shape: 
             shape of inputs of call function
         
-        Returns:
-        --------
+        Returns
+        -------
         output_shape:
             shape of outputs of call function
         '''
@@ -96,8 +272,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def partition_change_updates(self, num_ents, ent_emb, rel_emb):
         ''' perform the changes that are required when the partition is changed during training
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         num_ents: 
             number of unique entities in the partition
         ent_emb:
@@ -122,13 +298,13 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         Computes the scores of the triples and returns the corruption scores as well
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         inputs: (n, 3)
             batch of input triples
         
-        Returns:
-        --------
+        Returns
+        -------
         out: list
             list of input scores along with their corruptions
         '''
@@ -155,8 +331,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         Evaluate the inputs against corruptions and return ranks
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         inputs: (n, 3)
             batch of input triples
         ent_embs: (m, k)
@@ -172,8 +348,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             corresponding triple in inputs. 
         corrupt_side: string
             which side to corrupt during evaluation
-        Returns:
-        --------
+            
+        Returns
+        -------
         rank: (n, num of sides being corrupted)
             ranks by corrupting against subject corruptions and object corruptions 
             (corruptions defined by ent_embs matrix)
@@ -202,13 +379,13 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         Training step
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         data: (n, 3)
             batch of input triples (true positives)
         
-        Returns:
-        --------
+        Returns
+        -------
         out: dict
             dictionary of metrics computed on the outputs (eg: loss)
         '''
@@ -230,8 +407,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         ''' Similar to keras lib, this function returns the handle to training step function. 
         It processes one batch of data by iterating over the dataset iterator and computes the loss and optimizes on it.
 
-        Returns:
-        --------
+        Returns
+        -------
         out: Function handle.
               Handle to the training step function  
         '''
@@ -241,13 +418,13 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         def train_function(iterator):
             ''' This is the function whose handle will be returned.
             
-            Parameters:
-            -----------
+            Parameters
+            ----------
             iterator: tf.data.Iterator
                 Data iterator
                 
-            Returns:
-            --------
+            Returns
+            -------
             output: dict
               return a `dict` containing values that will be passed to `tf.keras.Callbacks.on_train_batch_end`
             '''
@@ -278,8 +455,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             use_partitioning=False):
         '''Fit the model of the user data.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         x: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
             Data OR Filename of the data file OR Data Handle - that would be used for training
         batch_size: int
@@ -311,10 +488,32 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             flag to indicate whether to use partitioning or not.
             May be overridden if x is an AbstractGraphPartitioner instance
             
-        Returns:
-        --------
+        Returns
+        -------
         history: A `History` object. Its `History.history` attribute is a record of training loss values, 
         as well as validation loss values and validation metrics values.
+        
+        Examples
+        --------
+        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> model = ScoringBasedEmbeddingModel(eta=5, 
+        >>>                                      k=300,
+        >>>                                      scoring_type='ComplEx',
+        >>>                                      seed=0)
+        >>> model.compile(optimizer='adam', loss='nll')
+        >>> model.fit('./fb15k-237/train.txt',
+        >>>           batch_size=10000,
+        >>>           epochs=5)
+        Epoch 1/5
+        29/29 [==============================] - 1s 45ms/step - loss: 67361.3203
+        Epoch 2/5
+        29/29 [==============================] - 1s 21ms/step - loss: 67318.1172
+        Epoch 3/5
+        29/29 [==============================] - 1s 21ms/step - loss: 67017.7266
+        Epoch 4/5
+        29/29 [==============================] - 1s 20ms/step - loss: 65864.6406
+        Epoch 5/5
+        29/29 [==============================] - 1s 20ms/step - loss: 63518.3633
         '''
         # verifies if compile has been called before calling fit
         self._assert_compile_was_called()
@@ -502,8 +701,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 **kwargs):
         ''' Compile the model
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         optimizer: String (name of optimizer) or optimizer instance. 
             See `tf.keras.optimizers`.
         loss: String (name of objective function), objective function or
@@ -523,6 +722,28 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             If it is a single value, then both the entities and relations will be regularized based on 
             the same regularizer. if it is a list, the first regularizer will be used for entities and second 
             for relations.
+            
+        Examples
+        --------
+        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> model = ScoringBasedEmbeddingModel(eta=5, 
+        >>>                                      k=300,
+        >>>                                      scoring_type='ComplEx',
+        >>>                                      seed=0)
+        >>> model.compile(optimizer='adam', loss='nll')
+        >>> model.fit('./fb15k-237/train.txt',
+        >>>           batch_size=10000,
+        >>>           epochs=5)
+        Epoch 1/5
+        29/29 [==============================] - 1s 45ms/step - loss: 67361.3203
+        Epoch 2/5
+        29/29 [==============================] - 1s 21ms/step - loss: 67318.1172
+        Epoch 3/5
+        29/29 [==============================] - 1s 21ms/step - loss: 67017.7266
+        Epoch 4/5
+        29/29 [==============================] - 1s 20ms/step - loss: 65864.6406
+        Epoch 5/5
+        29/29 [==============================] - 1s 20ms/step - loss: 63518.3633
         '''
         # get the optimizer
         self.optimizer = optimizers.get(optimizer)
@@ -552,15 +773,15 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def get_emb_matrix_test(self, part_number=1, number_of_parts=1):
         ''' get the embedding matrix during evaluation
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         part number: int
             specifies which part of number_of_parts of entire emb matrix to return
         number_of_parts: int
             Total number of parts in which to split the emb matrix
             
-        Returns:
-        --------
+        Returns
+        -------
         emb_matrix: np.array(n,k)
             embedding matrix corresponding the part_number out of number_of_parts parts.
         start_index: int
@@ -587,8 +808,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         ''' Similar to keras lib, this function returns the handle to test step function. 
         It processes one batch of data by iterating over the dataset iterator and computes the test metrics.
 
-        Returns:
-        --------
+        Returns
+        -------
         out: Function handle.
               Handle to the test step function  
         '''
@@ -662,8 +883,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     
     def process_model_inputs_for_test(self, triples):
         ''' Return the processed triples. 
-        Returns:
-        --------
+        
+        Returns
+        -------
         In regular (non partitioned) mode, the triples are returned as it is.
         In case of partitioning, it returns the triple embeddings as a list of size 3 - sub, pred and obj embeddings.
         '''
@@ -696,8 +918,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         Evaluate the inputs against corruptions and return ranks
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         x: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
             Data OR Filename of the data file OR Data Handle - that would be used for training
         batch_size: int
@@ -713,11 +935,52 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         callbacks: keras.callbacks.Callback
             List of `keras.callbacks.Callback` instances. List of callbacks to apply during evaluation.
 
-        Returns:
-        --------
+        Returns
+        -------
         rank: (n, number of corrupted sides)
             ranks by corrupting against subject corruptions and/or object corruptions 
             (corruptions defined by ent_embs matrix)
+            
+        Examples
+        --------
+        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
+        >>> model = ScoringBasedEmbeddingModel(eta=5, 
+        >>>                                      k=300,
+        >>>                                      scoring_type='ComplEx',
+        >>>                                      seed=0)
+        >>> model.compile(optimizer='adam', loss='nll')
+        >>> model.fit('./fb15k-237/train.txt',
+        >>>           batch_size=10000,
+        >>>           epochs=5)
+        Epoch 1/5
+        29/29 [==============================] - 1s 45ms/step - loss: 67361.3203
+        Epoch 2/5
+        29/29 [==============================] - 1s 21ms/step - loss: 67318.1172
+        Epoch 3/5
+        29/29 [==============================] - 1s 21ms/step - loss: 67017.7266
+        Epoch 4/5
+        29/29 [==============================] - 1s 20ms/step - loss: 65864.6406
+        Epoch 5/5
+        29/29 [==============================] - 1s 20ms/step - loss: 63518.3633
+        >>> ranks = model.evaluate('./fb15k-237/test.txt', 
+        >>>                        batch_size=100,
+        >>>                        corrupt_side='s,o',
+        >>>                        use_filter={'train':'./fb15k-237/train.txt',
+        >>>                                    'valid':'./fb15k-237/valid.txt',
+        >>>                                    'test':'./fb15k-237/test.txt'})
+        >>> mr_score(ranks), mrr_score(ranks), hits_at_n_score(ranks, 1), hits_at_n_score(ranks, 10), len(ranks)
+        28 triples containing invalid keys skipped!
+
+        9 triples containing invalid keys skipped!
+
+        28 triples containing invalid keys skipped!
+        206/206 [==============================] - 69s 333ms/step
+        (428.6952979743615,
+         0.25894770022882885,
+         0.1915304824346805,
+         0.39155005382131325,
+         20438)
         '''
         # get teh test set handler
         self.data_handler_test = data_adapter.DataHandler(x,
@@ -788,8 +1051,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         ''' Similar to keras lib, this function returns the handle to predict step function. 
         It processes one batch of data by iterating over the dataset iterator and computes the predict outputs.
 
-        Returns:
-        --------
+        Returns
+        -------
         out: Function handle.
               Handle to the predict step function
         '''
@@ -820,7 +1083,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         Compute scores of the input triples
 
-        Parameters:
+        Parameters
         -----------
         x: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
             Data OR Filename of the data file OR Data Handle - that would be used for training
@@ -832,10 +1095,38 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         callbacks: keras.callbacks.Callback
             List of `keras.callbacks.Callback` instances. List of callbacks to apply during evaluation.
 
-        Returns:
-        --------
+        Returns
+        -------
         scores: (n, )
             score of the input triples
+            
+        Examples
+        --------
+        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
+        >>> import numpy as np
+        >>> model = ScoringBasedEmbeddingModel(eta=5, 
+        >>>                                      k=300,
+        >>>                                      scoring_type='ComplEx',
+        >>>                                      seed=0)
+        >>> model.compile(optimizer='adam', loss='nll')
+        >>> model.fit('./fb15k-237/train.txt',
+        >>>           batch_size=10000,
+        >>>           epochs=5)
+        Epoch 1/5
+        29/29 [==============================] - 1s 45ms/step - loss: 67361.3203
+        Epoch 2/5
+        29/29 [==============================] - 1s 21ms/step - loss: 67318.1172
+        Epoch 3/5
+        29/29 [==============================] - 1s 21ms/step - loss: 67017.7266
+        Epoch 4/5
+        29/29 [==============================] - 1s 20ms/step - loss: 65864.6406
+        Epoch 5/5
+        29/29 [==============================] - 1s 20ms/step - loss: 63518.3633
+        >>> pred = model.predict('./fb15k-237/test.txt', 
+        >>>                      batch_size=100)
+        >>> print(np.sort(pred))
+        [-1.0262519  -0.53667593 -0.5083029  ...  3.3078291   3.311306 3.3261664 ]
         '''
 
         self.data_handler_test = data_adapter.DataHandler(x,
@@ -873,8 +1164,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         ''' Similar to keras lib, this function returns the handle to calibrate step function. 
         It processes one batch of data by iterating over the dataset iterator and computes the predict outputs.
 
-        Returns:
-        --------
+        Returns
+        -------
         out: Function handle.
               Handle to the predict step function
         '''
@@ -987,6 +1278,30 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             Only applies when ``X_neg`` is  `None`.
         verbose: bool
             Verbosity
+           
+        Example
+        -------
+        >>> from ampligraph.datasets import load_fb15k_237
+        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> import numpy as np
+        >>> dataset = load_fb15k_237()
+        >>> model = ScoringBasedEmbeddingModel(eta=5, 
+        >>>                                      k=300,
+        >>>                                      scoring_type='ComplEx')
+        >>> model.compile(optimizer='adam', loss='nll')
+        >>> model.fit(dataset['train'],
+        >>>              batch_size=10000,
+        >>>              epochs=5)
+        >>> print('Raw scores (sorted):', np.sort(model.predict(dataset['test'])))
+        >>> print('Indices obtained by sorting (scores):', np.argsort(model.predict(dataset['test'])))
+        >>> model.calibrate(dataset['test'], 
+        >>>                 batch_size=10000, positive_base_rate=0.9, epochs=100)
+        >>> print('Calibrated scores (sorted):', np.sort(model.predict_proba(dataset['test'])))
+        >>> print('Indices obtained by sorting (Calibrated):', np.argsort(model.predict_proba(dataset['test'])))
+        Raw scores (sorted): [-0.6014494 -0.5925436 -0.5465378 ...  1.9067042  2.0135512  2.2477078]
+        Indices obtained by sorting (scores): [14573 11577  4404 ... 17817 17816   733]
+        Calibrated scores (sorted): [0.5553725  0.5556108  0.5568415  ... 0.6211011  0.62382233 0.6297585 ]
+        Indices obtained by sorting (Calibrated): [14573 11577  4404 ... 17817 17816   733]
         """
         self.is_calibrated = False
         data_handler_calibrate_pos = data_adapter.DataHandler(X_pos,
@@ -1077,8 +1392,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         Compute calibrated scores (0 <= score <= 1) of the input triples 
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         x: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
             Data OR Filename of the data file OR Data Handle - that would be used for training
         batch_size: int
@@ -1089,10 +1404,34 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         callbacks: keras.callbacks.Callback
             List of `keras.callbacks.Callback` instances. List of callbacks to apply during evaluation.
 
-        Returns:
-        --------
+        Returns
+        -------
         scores: (n, )
             calibrated score of the input triples
+            
+        Example
+        -------
+        >>> from ampligraph.datasets import load_fb15k_237
+        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> import numpy as np
+        >>> dataset = load_fb15k_237()
+        >>> model = ScoringBasedEmbeddingModel(eta=5, 
+        >>>                                      k=300,
+        >>>                                      scoring_type='ComplEx')
+        >>> model.compile(optimizer='adam', loss='nll')
+        >>> model.fit(dataset['train'],
+        >>>              batch_size=10000,
+        >>>              epochs=5)
+        >>> print('Raw scores (sorted):', np.sort(model.predict(dataset['test'])))
+        >>> print('Indices obtained by sorting (scores):', np.argsort(model.predict(dataset['test'])))
+        >>> model.calibrate(dataset['test'], 
+        >>>                 batch_size=10000, positive_base_rate=0.9, epochs=100)
+        >>> print('Calibrated scores (sorted):', np.sort(model.predict_proba(dataset['test'])))
+        >>> print('Indices obtained by sorting (Calibrated):', np.argsort(model.predict_proba(dataset['test'])))
+        Raw scores (sorted): [-0.6014494 -0.5925436 -0.5465378 ...  1.9067042  2.0135512  2.2477078]
+        Indices obtained by sorting (scores): [14573 11577  4404 ... 17817 17816   733]
+        Calibrated scores (sorted): [0.5553725  0.5556108  0.5568415  ... 0.6211011  0.62382233 0.6297585 ]
+        Indices obtained by sorting (Calibrated): [14573 11577  4404 ... 17817 17816   733]
         '''
         if not self.is_calibrated:
             msg = "Model has not been calibrated. \

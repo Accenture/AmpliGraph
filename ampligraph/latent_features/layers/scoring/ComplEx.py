@@ -4,8 +4,20 @@ from ampligraph.latent_features.layers.scoring import register_layer, AbstractSc
 
 @register_layer('ComplEx')
 class ComplEx(AbstractScoringLayer):
-    ''' Complex scoring Layer class
-    '''
+    r"""Complex embeddings (ComplEx) Layer class
+    
+    The ComplEx model :cite:`trouillon2016complex` is an extension of
+    the :class:`ampligraph.latent_features.DistMult` bilinear diagonal model
+    
+    . ComplEx scoring function is based on the trilinear Hermitian dot product in :math:`\mathcal{C}`:
+    
+    .. math::
+        f_{ComplEx}=Re(\langle \mathbf{r}_p, \mathbf{e}_s, \overline{\mathbf{e}_o}  \rangle)
+        
+    .. note::
+        Since ComplEx embeddings belong to :math:`\mathcal{C}`, this model uses twice as many parameters as
+        :class:`ampligraph.latent_features.DistMult`.
+    """
     
     def __init__(self, k):
         super(ComplEx, self).__init__(k)
@@ -16,13 +28,13 @@ class ComplEx(AbstractScoringLayer):
     def _compute_scores(self, triples):
         ''' compute scores using ComplEx scoring function.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         triples: (n, 3)
             batch of input triples
         
-        Returns:
-        --------
+        Returns
+        -------
         scores: 
             tensor of scores of inputs
         '''
@@ -40,15 +52,15 @@ class ComplEx(AbstractScoringLayer):
         ''' Compute subject corruption scores.
         Evaluate the inputs against subject corruptions and scores of the corruptions.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         triples: (n, k)
             batch of input embeddings
         ent_matrix: (m, k)
             slice of embedding matrix (corruptions)
         
-        Returns:
-        --------
+        Returns
+        -------
         scores: (n, 1)
             scores of subject corruptions (corruptions defined by ent_embs matrix)
         '''
@@ -72,15 +84,15 @@ class ComplEx(AbstractScoringLayer):
         ''' Compute object corruption scores.
         Evaluate the inputs against object corruptions and scores of the corruptions.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         triples: (n, k)
             batch of input embeddings
         ent_matrix: (m, k)
             slice of embedding matrix (corruptions)
         
-        Returns:
-        --------
+        Returns
+        -------
         scores: (n, 1)
             scores of object corruptions (corruptions defined by ent_embs matrix)
         '''
@@ -95,7 +107,7 @@ class ComplEx(AbstractScoringLayer):
         # compute the object corruption score using ent_real, ent_img (corruption embeddings) as object embeddings
         obj_corr_score = tf.reduce_sum(
             (tf.expand_dims(e_s_real * e_p_real, 1) - tf.expand_dims(e_s_img * e_p_img, 1)) * ent_real + (
-                tf.expand_dims(e_s_img * e_p_real, 1) + tf.expand_dims(e_s_real * e_p_img, 1) * ent_img),
+                tf.expand_dims(e_s_img * e_p_real, 1) + tf.expand_dims(e_s_real * e_p_img, 1)) * ent_img,
             axis=2) 
                                           
         return obj_corr_score
