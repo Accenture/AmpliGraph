@@ -81,6 +81,7 @@ class DataIndexer():
        """
     def __init__(self, X, backend="in_memory", **kwargs):
         logger.debug("Initialisation of DataIndexer.")
+        self.backend_type = backend
         self.data = X
 #        if len(kwargs) == 0:
 #            self.backend = INDEXER_BACKEND_REGISTRY.get(backend)(X)
@@ -109,11 +110,11 @@ class DataIndexer():
 
     def get_relations_count(self):
         """Get number of unique relations"""
-        return self.backend.get_relations_count()
+        return self.backend.get_relations_count() - 1
 
     def get_entities_count(self):
         """Get number of unique entities"""
-        return self.backend.get_entities_count()
+        return self.backend.get_entities_count() - 1
        
     def clean(self):
         """Remove persisted and in-memor objects."""
@@ -395,9 +396,29 @@ class InMemory():
             logger.error(msg)
             raise Exception(msg)
 
-        subjects   = np.array([entities[x] for x in sample[:,0]],  dtype=dtype)
-        objects    = np.array([entities[x] for x in sample[:,2]],  dtype=dtype)
-        predicates = np.array([relations[x] for x in sample[:,1]],  dtype=dtype)
+        subjects = []
+        objects = []
+        predicates = []
+        
+        invalid_keys = 0
+        for row in sample:
+            try:
+                s = entities[row[0]]
+                p = relations[row[1]]
+                o = entities[row[2]]
+                subjects.append(s)
+                predicates.append(p)
+                objects.append(o)
+            except KeyError:
+                invalid_keys += 1
+        
+        if invalid_keys > 0:
+            print('\n{} triples containing invalid keys skipped!'.format(invalid_keys))
+            
+        subjects = np.array(subjects, dtype=dtype)
+        objects = np.array(objects, dtype=dtype)
+        predicates = np.array(predicates, dtype=dtype)
+        
         merged = np.stack([subjects, predicates, objects], axis=1)
         return merged            
 

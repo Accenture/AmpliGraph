@@ -636,11 +636,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                                  options)
         # store ampligraph specific metadata
         with open(filepath + '.ampkl', "wb") as f:
-            metadata = {'inmemory': self.data_indexer.in_memory,
-                        'entities_dict': self.data_indexer.entities_dict,
-                        'reversed_entities_dict': self.data_indexer.reversed_entities_dict,
-                        'relations_dict': self.data_indexer.relations_dict,
-                        'reversed_relations_dict': self.data_indexer.reversed_relations_dict,
+            metadata = {'inmemory': self.data_indexer.backend_type,
+                        'entities_dict': self.data_indexer.backend.entities_dict,
+                        'reversed_entities_dict': self.data_indexer.backend.reversed_entities_dict,
+                        'relations_dict': self.data_indexer.backend.relations_dict,
+                        'reversed_relations_dict': self.data_indexer.backend.reversed_relations_dict,
                         'is_partitioned_training': self.is_partitioned_training,
                         'max_ent_size': self.max_ent_size,
                         'max_rel_size': self.max_rel_size,
@@ -681,10 +681,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             metadata = pickle.load(f)
             self.data_indexer = DataIndexer([], 
                                             metadata['inmemory'],
-                                            metadata['entities_dict'],
-                                            metadata['reversed_entities_dict'],
-                                            metadata['relations_dict'],
-                                            metadata['reversed_relations_dict'])
+                                            entities_dict=metadata['entities_dict'],
+                                            reversed_entities_dict=metadata['reversed_entities_dict'],
+                                            relations_dict=metadata['relations_dict'],
+                                            reversed_relations_dict=metadata['reversed_relations_dict'])
             self.is_partitioned_training = metadata['is_partitioned_training']
             self.max_ent_size = metadata['max_ent_size']
             self.max_rel_size = metadata['max_rel_size']

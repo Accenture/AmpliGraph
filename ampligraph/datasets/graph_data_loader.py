@@ -81,24 +81,22 @@ class DummyBackend():
         self.data_source = data_source
         self.dataset_type = dataset_type
         if isinstance(self.data_source, np.ndarray):
-            if self.use_indexer:
+            if self.use_indexer == True:
                 self.mapper = DataIndexer(self.data_source, backend="in_memory", 
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(self.data_source)
             elif self.remap:
                 # create a special mapping for partitions, persistent mapping from main indexes 
                 # to partition indexes
-                print(self.data_source)
-                print(self.name)
-                self.mapper = DataIndexer(self.data_source, backend="sqlite", name=self.name, 
+                self.mapper = DataIndexer(self.data_source, backend="shelves", name=self.name, 
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(self.data_source)
             else:
-                self.data = self.data_source
+                self.mapper = self.use_indexer
+                self.data = self.mapper.get_indexes(self.data_source)
         else:
             loader = self.identifier.fetch_loader()
             raw_data = loader(self.data_source)
-
             if self.use_indexer == True:
                 self.mapper = DataIndexer(raw_data, backend="in_memory", 
                                           root_directory=self.root_directory)
@@ -107,7 +105,7 @@ class DummyBackend():
                 if self.remap:
                     # create a special mapping for partitions, persistent mapping from 
                     # main indexes to partition indexes
-                    self.mapper = DataIndexer(raw_data, backend="sqlite", name=self.name, 
+                    self.mapper = DataIndexer(raw_data, backend="shelves", name=self.name, 
                                               root_directory=self.root_directory)
                     self.data = self.mapper.get_indexes(raw_data)
                 else:
@@ -449,11 +447,11 @@ class GraphDataLoader():
     
     @property
     def max_entities(self):
-        return self.backend.mapper.get_max_ents_index() + 1
+        return self.backend.mapper.get_entities_count() + 1
 
     @property
     def max_relations(self):
-        return self.backend.mapper.get_max_rels_index() + 1
+        return self.backend.mapper.get_relations_count() + 1
     
     def __next__(self):
         """Function needed to be used as an itertor."""

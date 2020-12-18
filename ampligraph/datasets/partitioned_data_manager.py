@@ -66,12 +66,12 @@ class PartitionDataManager(abc.ABC):
             print('Partitioning may take a while...')
             self.partitioner = PARTITION_ALGO_REGISTRY.get(strategy)(dataset_loader, k=self.partitioner_k)
 
-        self.num_ents = self.partitioner._data.backend.mapper.ents_length
-        self.num_rels = self.partitioner._data.backend.mapper.rels_length
+        self.num_ents = self.partitioner._data.backend.mapper.backend.ents_length
+        self.num_rels = self.partitioner._data.backend.mapper.backend.rels_length
         self.max_ent_size = 0
         for i in range(len(self.partitioner.partitions)):
             self.max_ent_size = max(self.max_ent_size, 
-                                    self.partitioner.partitions[i].backend.mapper.ents_length)
+                                    self.partitioner.partitions[i].backend.mapper.backend.ents_length)
         
         self._generate_partition_params()
         
@@ -202,9 +202,13 @@ class GeneralPartitionDataManager(PartitionDataManager):
         '''
 
         # create entity embeddings and optimizer hyperparams for all entities
+        
+        # compute each partition size
         update_part_size = int(np.ceil(self.num_ents / self.partitioner_k))
+        # for each partition
         for part_num in range(self.partitioner_k):
             with shelve.open('ent_partition', writeback=True) as ent_partition:
+                # create the key (entity index) and value (optim params and embs)
                 for i in range(update_part_size * part_num, 
                                min(update_part_size * (part_num + 1), self.num_ents)):
                     out_dict_key = str(i)
@@ -294,10 +298,19 @@ class GeneralPartitionDataManager(PartitionDataManager):
         partition_number: int
             Partition number of the next partition will be trained
         '''
+        # from the graph data loader of the current partition get the original entity ids 
+        ent_count_in_partition = graph_data_loader.backend.mapper.get_entities_count()
+        self.ent_original_ids = graph_data_loader.backend.mapper.get_indexes(
+            np.arange(ent_count_in_partition),
+            type_of = 'e',
+            order="ind2raw")
+        '''
         with shelve.open(graph_data_loader.backend.mapper.entities_dict) as partition:
+            # get the partition keys(remapped 0 - partition size)
             partition_keys = sorted([int(key) for key in partition.keys()])
+            # get the original key's i.e. original entity ids (between 0 and total entities in dataset)
             self.ent_original_ids = [partition[str(key)] for key in partition_keys]
-
+        '''
         with shelve.open('ent_partition') as partition:
             self.all_ent_embs = []
             self.all_ent_opt_params = []
@@ -307,10 +320,16 @@ class GeneralPartitionDataManager(PartitionDataManager):
             self.all_ent_embs = np.concatenate(self.all_ent_embs, 0)
             self.all_ent_opt_params = np.concatenate(self.all_ent_opt_params, 0)
 
+        rel_count_in_partition = graph_data_loader.backend.mapper.get_relations_count()
+        self.rel_original_ids = graph_data_loader.backend.mapper.get_indexes(
+            np.arange(rel_count_in_partition),
+            type_of = 'r',
+            order="ind2raw")
+        '''
         with shelve.open(graph_data_loader.backend.mapper.relations_dict) as partition:
             partition_keys = sorted([int(key) for key in partition.keys()])
             self.rel_original_ids = [partition[str(key)] for key in partition_keys]
-
+        '''
         with shelve.open('rel_partition') as partition:
             self.all_rel_embs = []
             self.all_rel_opt_params = []
@@ -398,25 +417,25 @@ class BucketPartitionDataManager(PartitionDataManager):
         # create entity embeddings and optimizer hyperparams for all entities
         for i in range(self.partitioner_k):
             with shelve.open('ent_partition', writeback=True) as ent_partition:
+                
                 with shelve.open(self.partitioner.files[i]) as bucket:
     
                     out_dict_key = str(i)
                     num_ents_bucket = bucket['indexes'].shape[0]
+                    #print(num_ents_bucket)
                     # TODO change the hardcoding from 3 to actual hyperparam of optim
                     opt_param = np.zeros(shape=(num_ents_bucket, 3, self.k), dtype=np.float32)
-                    # ent_emb = xavier(self.num_ents, self.k, num_ents_bucket)
                     ent_emb = self._model.encoding_layer.ent_init(
                         shape=(num_ents_bucket, self.k),
                         dtype=tf.float32).numpy()
                     ent_partition.update({out_dict_key: [opt_param, ent_emb]})
-         
+
         # create relation embeddings and optimizer hyperparams for all relations
         # relations are not partitioned
         with shelve.open('rel_partition', writeback=True) as rel_partition:
             out_dict_key = str(0)
             # TODO change the hardcoding from 3 to actual hyperparam of optim
             opt_param = np.zeros(shape=(self.num_rels, 3, self.k), dtype=np.float32)
-            # rel_emb = xavier(self.num_rels, self.k, self.num_rels)
             rel_emb = self._model.encoding_layer.rel_init(
                 shape=(self.num_rels, self.k), 
                 dtype=tf.float32).numpy()
@@ -425,6 +444,7 @@ class BucketPartitionDataManager(PartitionDataManager):
         # for every partition
         for i in range(len(self.partitioner.partitions)):
             # get the source and dest bucket
+            #print(self.partitioner.partitions[i].backend.mapper.metadata['name'])
             splits = self.partitioner.partitions[i].backend.mapper.metadata['name'].split('-')
             source_bucket = splits[0][-1]
             dest_bucket = splits[1]
@@ -449,26 +469,30 @@ class BucketPartitionDataManager(PartitionDataManager):
             # entities of the partition in the concatenated emb matrix
             # data_index -> original_ent_index -> ent_emb_matrix mappings (a->b->c) 0->2002->1, 1->2003->2 
             # (because 2001 may not exist in this partition)
-            with shelve.open(self.partitioner.partitions[i].backend.mapper.metadata['entities_shelf']) as ent_sh:
-                sorted_partition_keys = np.sort(np.array(list(ent_sh.keys())).astype(np.int32))
-                # a : 0 to n
-                for key in sorted_partition_keys:
-                    # a->b mapping
-                    a_to_b = int(ent_sh[str(key)])
-                    # a->b->c mapping
-                    emb_mat_order.append(merged_bucket_to_ent_mat_mappings[a_to_b])
+            # a->b mapping
+            num_ents_bucket = self.partitioner.partitions[i].backend.mapper.get_entities_count()
+            sorted_partition_keys = np.arange(num_ents_bucket)
+            sorted_partition_values = self.partitioner.partitions[i].backend.mapper.get_indexes(
+                sorted_partition_keys, type_of='e', order="ind2raw")
+            for val in sorted_partition_values:
+                
+                # a->b->c mapping
+                emb_mat_order.append(merged_bucket_to_ent_mat_mappings[int(val)])
 
             # store it 
             with shelve.open('ent_partition_metadata', writeback=True) as metadata:
                 metadata[str(i)] = emb_mat_order      
                 
             rel_mat_order = []
-            with shelve.open(self.partitioner.partitions[i].backend.mapper.metadata['relations']) as rel_sh:
-                sorted_partition_keys = np.sort(np.array(list(rel_sh.keys())).astype(np.int32))
-                # a : 0 to n
-                for key in sorted_partition_keys:
-                    # a->b mapping
-                    rel_mat_order.append(int(rel_sh[str(key)]))
+            #with shelve.open(self.partitioner.partitions[i].backend.mapper.metadata['relations']) as rel_sh:
+            num_rels_bucket = self.partitioner.partitions[i].backend.mapper.get_relations_count()
+            sorted_partition_keys = np.arange(num_rels_bucket)
+            sorted_partition_values = self.partitioner.partitions[i].backend.mapper.get_indexes(
+                sorted_partition_keys, type_of='r', order="ind2raw")
+            # a : 0 to n
+            for val in sorted_partition_values:
+                # a->b mapping
+                rel_mat_order.append(int(val))
 
             with shelve.open('rel_partition_metadata', writeback=True) as metadata:
                 metadata[str(i)] = rel_mat_order      
