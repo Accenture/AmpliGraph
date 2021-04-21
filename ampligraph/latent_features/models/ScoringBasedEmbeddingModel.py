@@ -395,12 +395,17 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             score_pos, score_neg = self(tf.cast(data, tf.int32), training=1)
             # compute the loss
             loss = self.compiled_loss(score_pos, score_neg, self.eta, regularization_losses=self.losses)
-
-        # minimize the loss and update the trainable variables
-        self.optimizer.minimize(loss, 
-                                self.encoding_layer.ent_emb, 
-                                self.encoding_layer.rel_emb,
-                                tape)
+        try:
+            # minimize the loss and update the trainable variables
+            self.optimizer.minimize(loss, 
+                                    self.encoding_layer.ent_emb, 
+                                    self.encoding_layer.rel_emb,
+                                    tape)
+        except ValueError as e:
+            if self.scoring_layer.name == 'Random':
+                pass
+            else:
+                raise e
 
         return {m.name: m.result() for m in self.metrics}
     
