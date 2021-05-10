@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def save_model(model, model_name_path=None):
+def save_model(model, model_name_path=None, protocol=pickle.HIGHEST_PROTOCOL):
     """Save a trained model to disk.
 
         Examples
@@ -84,7 +84,7 @@ def save_model(model, model_name_path=None):
         model_name_path = DEFAULT_MODEL_NAMES.format(strftime("%Y_%m_%d-%H_%M_%S", gmtime()))
 
     with open(model_name_path, 'wb') as fw:
-        pickle.dump(obj, fw)
+        pickle.dump(obj, fw, protocol=protocol)
         # dump model tf
 
 
