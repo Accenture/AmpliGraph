@@ -104,14 +104,24 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
             batch_size = int(np.ceil(self.get_size(dataset_type) / batches_count))
 
         for i in range(batches_count):
+            output = []
             out = np.int32(self.dataset[dataset_type][(i * batch_size):((i + 1) * batch_size), :])
-
+            output.append(out)
+            
+            try:
+                focusE_numeric_edge_values_batch = self.focusE_numeric_edge_values[
+                    dataset_type][(i * batch_size):((i + 1) * batch_size), :]
+                output.append(focusE_numeric_edge_values_batch)
+            except KeyError:
+                pass
+            
             if use_filter:
                 # get the filter values by querying the database
                 participating_objects, participating_subjects = self.filter_adapter.get_participating_entities(out)
-                yield out, participating_objects, participating_subjects
-            else:
-                yield out
+                output.append(participating_objects)
+                output.append(participating_subjects)
+                
+            yield output
 
     def map_data(self, remap=False):
         """map the data to the mappings of ent_to_idx and rel_to_idx
@@ -142,7 +152,7 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
             msg = 'Invalid size for input data. Expected number of column 3, got {}'.format(np.shape(data)[1])
             raise ValueError(msg)
 
-    def set_data(self, dataset, dataset_type=None, mapped_status=False):
+    def set_data(self, dataset, dataset_type=None, mapped_status=False, focusE_numeric_edge_values=None):
         """set the dataset based on the type.
             Note: If you pass the same dataset type (which exists) it will be overwritten
 
@@ -154,17 +164,22 @@ class NumpyDatasetAdapter(AmpligraphDatasetAdapter):
             if the dataset parameter is an nd- array then this indicates the type of the data being based
         mapped_status : bool
             indicates whether the data has already been mapped to the indices
-
+        focusE_numeric_edge_values: nd-array
+            list of all the numeric values associated the link
         """
         if isinstance(dataset, dict):
             for key in dataset.keys():
                 self._validate_data(dataset[key])
                 self.dataset[key] = dataset[key]
                 self.mapped_status[key] = mapped_status
+                if focusE_numeric_edge_values is not None:
+                    self.focusE_numeric_edge_values[key] = focusE_numeric_edge_values[key]
         elif dataset_type is not None:
             self._validate_data(dataset)
             self.dataset[dataset_type] = dataset
             self.mapped_status[dataset_type] = mapped_status
+            if focusE_numeric_edge_values is not None:
+                self.focusE_numeric_edge_values[dataset_type] = focusE_numeric_edge_values
         else:
             raise Exception("Incorrect usage. Expected a dictionary or a combination of dataset and it's type.")
 
