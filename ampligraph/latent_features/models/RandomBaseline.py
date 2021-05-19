@@ -79,7 +79,7 @@ class RandomBaseline(EmbeddingModel):
         else:
             return tf.random_uniform((tf.size(e_s),), minval=0, maxval=1)
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}):
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None):
         """Train the random model.
 
         There is no actual training involved in practice and the early stopping parameters won't have any effect.
@@ -136,9 +136,14 @@ class RandomBaseline(EmbeddingModel):
                 - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o' (default)
 
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
-
+        
+        focusE_numeric_edge_values: nd array (n, 1)
+            Numeric values associated with links. 
+            Semantically, the numeric value can signify importance, uncertainity, significance, confidence, etc.
+            If the numeric value is unknown pass a NaN weight. The model will uniformly randomly assign a numeric value.
+            One can also think about assigning numeric values by looking at the distribution of it per predicate.
         """
-        super().fit(X, early_stopping, early_stopping_params)
+        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values)
 
     def predict(self, X, from_idx=False):
         __doc__ = super().predict.__doc__  # NOQA

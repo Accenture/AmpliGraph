@@ -101,7 +101,15 @@ class ConvKB(EmbeddingModel):
             - **num_filters** - Number of feature maps per convolution kernel. Default: 32
             - **filter_sizes** - List of convolution kernel sizes. Default: [1]
             - **dropout** - Dropout on the embedding layer. Default: 0.0
+            - **'non_linearity'**: can be one of the following values ``linear``, ``softplus``, ``sigmoid``, ``tanh``
+            - **'stop_epoch'**: specifies how long to decay (linearly) the numeric values from 1 to original value 
+            until it reachs original value.
+            - **'structural_wt'**: structural influence hyperparameter [0, 1] that modulates the influence of graph 
+            topology. 
+            - **'normalize_numeric_values'**: normalize the numeric values, such that they are scaled between [0, 1]
 
+            The last 4 parameters are related to FocusE layers.
+            
         optimizer : string
             The optimizer used to minimize the loss function. Choose between
             'sgd', 'adagrad', 'adam', 'momentum'.
@@ -400,7 +408,7 @@ class ConvKB(EmbeddingModel):
 
         return tf.squeeze(self.scores)
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}):
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None):
         """Train a ConvKB model (with optional early stopping).
 
         The model is trained on a training set X using the training protocol described in :cite:`trouillon2016complex`.
@@ -467,6 +475,12 @@ class ConvKB(EmbeddingModel):
                 - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o' (default)
 
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
-
+        
+        focusE_numeric_edge_values: nd array (n, 1)
+            Numeric values associated with links. 
+            Semantically, the numeric value can signify importance, uncertainity, significance, confidence, etc.
+            If the numeric value is unknown pass a NaN weight. The model will uniformly randomly assign a numeric value.
+            One can also think about assigning numeric values by looking at the distribution of it per predicate.
+            
         """
-        super().fit(X, early_stopping, early_stopping_params)
+        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values)

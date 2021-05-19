@@ -101,7 +101,15 @@ class TransE(EmbeddingModel):
               or an int (which indicates how many entities that should be used for corruption generation).
             - **corrupt_sides** : Specifies how to generate corruptions for training.
               Takes values `s`, `o`, `s+o` or any combination passed as a list.
+            - **'non_linearity'**: can be one of the following values ``linear``, ``softplus``, ``sigmoid``, ``tanh``
+            - **'stop_epoch'**: specifies how long to decay (linearly) the numeric values from 1 to original value 
+            until it reachs original value.
+            - **'structural_wt'**: structural influence hyperparameter [0, 1] that modulates the influence of graph 
+            topology. 
+            - **'normalize_numeric_values'**: normalize the numeric values, such that they are scaled between [0, 1]
 
+            The last 4 parameters are related to FocusE layers.
+            
             Example: ``embedding_model_params={'norm': 1, 'normalize_ent_emb': False}``
 
         optimizer : string
@@ -201,7 +209,7 @@ class TransE(EmbeddingModel):
             tf.norm(e_s + e_p - e_o, ord=self.embedding_model_params.get('norm', constants.DEFAULT_NORM_TRANSE),
                     axis=1))
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}):
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None):
         """Train an Translating Embeddings model.
 
         The model is trained on a training set X using the training protocol
@@ -260,9 +268,14 @@ class TransE(EmbeddingModel):
 
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
-
+        focusE_numeric_edge_values: nd array (n, 1)
+            Numeric values associated with links. 
+            Semantically, the numeric value can signify importance, uncertainity, significance, confidence, etc.
+            If the numeric value is unknown pass a NaN weight. The model will uniformly randomly assign a numeric value.
+            One can also think about assigning numeric values by looking at the distribution of it per predicate.
+            
         """
-        super().fit(X, early_stopping, early_stopping_params)
+        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values)
 
     def predict(self, X, from_idx=False):
         __doc__ = super().predict.__doc__  # NOQA
