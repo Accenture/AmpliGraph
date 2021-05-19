@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 from itertools import islice
 
-from ampligraph.latent_features import TransE, ComplEx, RandomBaseline
+from ampligraph.latent_features import TransE, ComplEx, RandomBaseline, set_entity_threshold, reset_entity_threshold
 from ampligraph.evaluation import evaluate_performance, generate_corruptions_for_eval, \
     generate_corruptions_for_fit, to_idx, create_mappings, mrr_score, hits_at_n_score, select_best_model_ranking, \
     filter_unseen_entities
@@ -1053,3 +1053,30 @@ def test_select_best_model_ranking_random():
     assert set(test_results.keys()) == {"mrr", "mr", "hits_1", "hits_3", "hits_10"}
     assert all(r >= 0 for r in test_results.values())
     assert all(not np.isnan(r) for r in test_results.values())
+
+    
+def test_evaluate_with_ent_subset_large_graph():
+    set_entity_threshold(1)
+    X = load_wn18()
+    model = ComplEx(batches_count=10, seed=0, epochs=2, k=10, eta=1,
+                optimizer='sgd', optimizer_params={'lr': 1e-5},
+                loss='pairwise', loss_params={'margin': 0.5},
+                regularizer='LP', regularizer_params={'p': 2, 'lambda': 1e-5},
+                verbose=True)
+
+    model.fit(X['train'])
+
+    X_filter = np.concatenate((X['train'], X['valid'], X['test']))
+    all_nodes = set(X_filter[:, 0]).union(X_filter[:, 2])
+    
+    entities_subset = np.random.choice(list(all_nodes), 100, replace=False)
+    
+    ranks = evaluate_performance(X['test'][::10],
+                             model=model,
+                             filter_triples=X_filter,
+                             corrupt_side='o',
+                             use_default_protocol=False,
+                             entities_subset=list(entities_subset),
+                             verbose=True)
+    assert np.sum(ranks > (100 + 1)) == 0, "No ranks must be greater than 101"
+    reset_entity_threshold()
