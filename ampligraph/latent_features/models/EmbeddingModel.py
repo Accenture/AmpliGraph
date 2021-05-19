@@ -1160,11 +1160,21 @@ class EmbeddingModel(abc.ABC):
                                                                            default_value=-1,
                                                                            empty_key=-2,
                                                                            deleted_key=-1)
-
             insert_lookup_op = self.sparse_mappings.insert(unique_ent,
                                                            tf.reshape(tf.range(tf.shape(unique_ent)[0],
                                                                       dtype=tf.int32), (-1, 1)))
             test_dependency.append(insert_lookup_op)
+            if isinstance(corruption_entities, np.ndarray):
+                rankings_mappings = tf.contrib.lookup.MutableDenseHashTable(key_dtype=tf.int32,
+                                                                            value_dtype=tf.int32,
+                                                                            default_value=-1,
+                                                                            empty_key=-2,
+                                                                            deleted_key=-1)
+
+                ranking_lookup_op = rankings_mappings.insert(corruption_entities.reshape(-1, 1),
+                                                             tf.reshape(tf.range(len(corruption_entities),
+                                                                                 dtype=tf.int32), (-1, 1)))
+                test_dependency.append(ranking_lookup_op)
 
             # Execute the dependency
             with tf.control_dependencies(test_dependency):
@@ -1173,7 +1183,7 @@ class EmbeddingModel(abc.ABC):
                 self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
 
                 # Generate corruptions in batches
-                self.corr_batches_count = int(np.ceil(len(self.ent_to_idx) / (self.corr_batch_size)))
+                self.corr_batches_count = int(np.ceil(len(corruption_entities) / (self.corr_batch_size)))
 
                 # Corruption generator -
                 # returns corruptions and their corresponding embeddings that need to be loaded on the GPU
@@ -1188,8 +1198,8 @@ class EmbeddingModel(abc.ABC):
                 corruption_iter = tf.data.make_one_shot_iterator(corruption_generator)
 
                 # Create tensor arrays for storing the scores of subject and object evals
-                scores_predict_s_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(self.ent_to_idx)))
-                scores_predict_o_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(self.ent_to_idx)))
+                scores_predict_s_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(corruption_entities)))
+                scores_predict_o_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(corruption_entities)))
 
                 def loop_cond(i,
                               scores_predict_s_corruptions_in,
@@ -1205,7 +1215,7 @@ class EmbeddingModel(abc.ABC):
                     # Add dependency to load the embeddings
                     init_ent_emb_corrpt = self.ent_emb.assign(entity_embeddings_corrpt, use_locking=True)
                     corr_dependency.append(init_ent_emb_corrpt)
-
+                    
                     # Add dependency to remap the indices to the corresponding indices on the GPU
                     insert_lookup_op2 = self.sparse_mappings.insert(corr_batch,
                                                                     tf.reshape(tf.range(tf.shape(corr_batch)[0],
@@ -1217,17 +1227,21 @@ class EmbeddingModel(abc.ABC):
                     # Execute the dependency
                     with tf.control_dependencies(corr_dependency):
                         emb_corr = tf.squeeze(self._entity_lookup(corr_batch))
+                        if isinstance(corruption_entities, np.ndarray):
+                            remapping = rankings_mappings.lookup(corr_batch)
+                        else:
+                            remapping = corr_batch
                         if 's' in corrupt_side:
                             # compute and store the scores batch wise
                             scores_predict_s_c = self._fn(emb_corr, e_p, e_o)
                             scores_predict_s_corruptions_in = \
-                                scores_predict_s_corruptions_in.scatter(tf.squeeze(corr_batch),
+                                scores_predict_s_corruptions_in.scatter(tf.squeeze(remapping),
                                                                         tf.squeeze(scores_predict_s_c))
 
                         if 'o' in corrupt_side:
                             scores_predict_o_c = self._fn(e_s, e_p, emb_corr)
                             scores_predict_o_corruptions_in = \
-                                scores_predict_o_corruptions_in.scatter(tf.squeeze(corr_batch),
+                                scores_predict_o_corruptions_in.scatter(tf.squeeze(remapping),
                                                                         tf.squeeze(scores_predict_o_c))
 
                     return i + 1, scores_predict_s_corruptions_in, scores_predict_o_corruptions_in
