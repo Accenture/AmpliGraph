@@ -2,6 +2,7 @@ from .EmbeddingModel import EmbeddingModel, register_model
 from ampligraph.latent_features import constants as constants
 from ampligraph.latent_features.initializers import DEFAULT_XAVIER_IS_UNIFORM
 import tensorflow as tf
+import time
 
 
 @register_model("ComplEx", ["negative_corruption_entities"])
@@ -185,21 +186,26 @@ class ComplEx(EmbeddingModel):
     def _initialize_parameters(self):
         """Initialize the complex embeddings.
         """
+        timestamp = int(time.time() * 1e6)
         if not self.dealing_with_large_graphs:
-            self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.internal_k],
+            self.ent_emb = tf.get_variable('ent_emb_{}'.format(timestamp),
+                                           shape=[len(self.ent_to_idx), self.internal_k],
                                            initializer=self.initializer.get_entity_initializer(
                                            len(self.ent_to_idx), self.internal_k),
                                            dtype=tf.float32)
-            self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
+            self.rel_emb = tf.get_variable('rel_emb_{}'.format(timestamp),
+                                           shape=[len(self.rel_to_idx), self.internal_k],
                                            initializer=self.initializer.get_relation_initializer(
                                            len(self.rel_to_idx), self.internal_k),
                                            dtype=tf.float32)
         else:
             # initialize entity embeddings to zero (these are reinitialized every batch by batch embeddings)
-            self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
+            self.ent_emb = tf.get_variable('ent_emb_{}'.format(timestamp),
+                                           shape=[self.batch_size * 2, self.internal_k],
                                            initializer=tf.zeros_initializer(),
                                            dtype=tf.float32)
-            self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
+            self.rel_emb = tf.get_variable('rel_emb_{}'.format(timestamp),
+                                           shape=[len(self.rel_to_idx), self.internal_k],
                                            initializer=self.initializer.get_relation_initializer(
                                            len(self.rel_to_idx), self.internal_k),
                                            dtype=tf.float32)
