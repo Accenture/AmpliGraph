@@ -1165,6 +1165,10 @@ class EmbeddingModel(abc.ABC):
                                                                       dtype=tf.int32), (-1, 1)))
             test_dependency.append(insert_lookup_op)
             if isinstance(corruption_entities, np.ndarray):
+                # This is used for mapping the scores of corryption entities to the array which stores the scores
+                # Since the number of entities are low when entities_subset is used, the size of the array
+                # which stores the scores would be len(entities_subset). 
+                # Hence while storing, the corruption entity id needs to be mapped to array index
                 rankings_mappings = tf.contrib.lookup.MutableDenseHashTable(key_dtype=tf.int32,
                                                                             value_dtype=tf.int32,
                                                                             default_value=-1,
@@ -1198,6 +1202,7 @@ class EmbeddingModel(abc.ABC):
                 corruption_iter = tf.data.make_one_shot_iterator(corruption_generator)
 
                 # Create tensor arrays for storing the scores of subject and object evals
+                # size of this array must be equal to size of entities used for corruption.
                 scores_predict_s_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(corruption_entities)))
                 scores_predict_o_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(corruption_entities)))
 
