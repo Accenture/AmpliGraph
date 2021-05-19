@@ -20,6 +20,7 @@ from ampligraph.evaluation import generate_corruptions_for_fit, to_idx, generate
 from ampligraph.datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
 from functools import partial
 from ampligraph.latent_features import constants as constants
+import time
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -462,7 +463,7 @@ class EmbeddingModel(abc.ABC):
             A Tensor that includes the embeddings of the objects.
         """
         e_s = self._entity_lookup(x[:, 0])
-        e_p = tf.nn.embedding_lookup(self.rel_emb, x[:, 1], name='embedding_lookup_predicate')
+        e_p = tf.nn.embedding_lookup(self.rel_emb, x[:, 1])
         e_o = self._entity_lookup(x[:, 2])
         return e_s, e_p, e_o
 
@@ -495,21 +496,26 @@ class EmbeddingModel(abc.ABC):
             and all relation embeddings.
             Overload this function if the parameters needs to be initialized differently.
         """
+        timestamp = int(time.time() * 1e6)
         if not self.dealing_with_large_graphs:
-            self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.internal_k],
+            self.ent_emb = tf.get_variable('ent_emb_{}'.format(timestamp),
+                                           shape=[len(self.ent_to_idx), self.internal_k],
                                            initializer=self.initializer.get_entity_initializer(
                                                len(self.ent_to_idx), self.internal_k),
                                            dtype=tf.float32)
-            self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
+            self.rel_emb = tf.get_variable('rel_emb_{}'.format(timestamp),
+                                           shape=[len(self.rel_to_idx), self.internal_k],
                                            initializer=self.initializer.get_relation_initializer(
                                                len(self.rel_to_idx), self.internal_k),
                                            dtype=tf.float32)
         else:
             # initialize entity embeddings to zero (these are reinitialized every batch by batch embeddings)
-            self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
+            self.ent_emb = tf.get_variable('ent_emb_{}'.format(timestamp),
+                                           shape=[self.batch_size * 2, self.internal_k],
                                            initializer=tf.zeros_initializer(),
                                            dtype=tf.float32)
-            self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
+            self.rel_emb = tf.get_variable('rel_emb_{}'.format(timestamp),
+                                           shape=[len(self.rel_to_idx), self.internal_k],
                                            initializer=self.initializer.get_relation_initializer(
                                                len(self.rel_to_idx), self.internal_k),
                                            dtype=tf.float32)
