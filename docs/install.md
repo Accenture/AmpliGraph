@@ -4,7 +4,7 @@
 ## Prerequisites
 
 * Linux, macOS, Windows
-* Python ≥ 3.7
+* Python 3.7
 
 #### Provision a Virtual Environment
 
