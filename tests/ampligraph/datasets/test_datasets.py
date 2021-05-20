@@ -219,10 +219,9 @@ def test_cn15k():
 
 
 def test_load_from_ntriples():
-    X = load_from_ntriples('.', 'test_triples.nt', data_home='.')
-    print(X)
+    X = load_from_ntriples('', 'test_triples.nt', data_home='.')
     assert X.shape == (3, 3)
-    assert len(np.unique(X.flatten())) == 5
+    assert len(np.unique(X.flatten())) == 6
 
 
 def test_oneton_adapter():
