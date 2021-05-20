@@ -59,7 +59,7 @@ def train_test_split_no_unseen_fast(X, test_size=100, seed=0, allow_duplication=
     --------
 
     >>> import numpy as np
-    >>> from ampligraph.evaluation import train_test_split_no_unseen_fast
+    >>> from ampligraph.evaluation import train_test_split_no_unseen
     >>> # load your dataset to X
     >>> X = np.array([['a', 'y', 'b'],
     >>>               ['f', 'y', 'e'],
@@ -71,7 +71,7 @@ def train_test_split_no_unseen_fast(X, test_size=100, seed=0, allow_duplication=
     >>>               ['b', 'y', 'c'],
     >>>               ['f', 'y', 'e']])
     >>> # if you want to split into train/test datasets
-    >>> X_train, X_test = train_test_split_no_unseen_fast(X, test_size=2)
+    >>> X_train, X_test = train_test_split_no_unseen(X, test_size=2)
     >>> X_train
     array([['a', 'y', 'd'],
        ['b', 'y', 'a'],
@@ -84,8 +84,8 @@ def train_test_split_no_unseen_fast(X, test_size=100, seed=0, allow_duplication=
     array([['f', 'y', 'e'],
        ['c', 'y', 'd']], dtype='<U1')
     >>> # if you want to split into train/valid/test datasets, call it 2 times
-    >>> X_train_valid, X_test = train_test_split_no_unseen_fast(X, test_size=2)
-    >>> X_train, X_valid = train_test_split_no_unseen_fast(X_train_valid, test_size=2)
+    >>> X_train_valid, X_test = train_test_split_no_unseen(X, test_size=2)
+    >>> X_train, X_valid = train_test_split_no_unseen(X_train_valid, test_size=2)
     >>> X_train
     array([['a', 'y', 'b'],
        ['a', 'y', 'd'],
@@ -213,7 +213,7 @@ def train_test_split_no_unseen_old(X, test_size=100, seed=0, allow_duplication=F
     --------
 
     >>> import numpy as np
-    >>> from ampligraph.evaluation import train_test_split_no_unseen_old
+    >>> from ampligraph.evaluation import train_test_split_no_unseen
     >>> # load your dataset to X
     >>> X = np.array([['a', 'y', 'b'],
     >>>               ['f', 'y', 'e'],
@@ -225,7 +225,7 @@ def train_test_split_no_unseen_old(X, test_size=100, seed=0, allow_duplication=F
     >>>               ['b', 'y', 'c'],
     >>>               ['f', 'y', 'e']])
     >>> # if you want to split into train/test datasets
-    >>> X_train, X_test = train_test_split_no_unseen_old(X, test_size=2)
+    >>> X_train, X_test = train_test_split_no_unseen(X, test_size=2, backward_compatible=True)
     >>> X_train
     array([['a', 'y', 'b'],
         ['f', 'y', 'e'],
@@ -238,8 +238,8 @@ def train_test_split_no_unseen_old(X, test_size=100, seed=0, allow_duplication=F
     array([['a', 'y', 'c'],
         ['a', 'y', 'd']], dtype='<U1')
     >>> # if you want to split into train/valid/test datasets, call it 2 times
-    >>> X_train_valid, X_test = train_test_split_no_unseen_old(X, test_size=2)
-    >>> X_train, X_valid = train_test_split_no_unseen_old(X_train_valid, test_size=2)
+    >>> X_train_valid, X_test = train_test_split_no_unseen(X, test_size=2, backward_compatible=True)
+    >>> X_train, X_valid = train_test_split_no_unseen(X_train_valid, test_size=2, backward_compatible=True)
     >>> X_train
     array([['a', 'y', 'b'],
         ['b', 'y', 'a'],
