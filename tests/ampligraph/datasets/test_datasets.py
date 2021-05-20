@@ -8,6 +8,7 @@
 from ampligraph.datasets import load_wn18, load_fb15k, load_fb15k_237, load_yago3_10, load_wn18rr, load_wn11, \
     load_fb13, load_onet20k, load_ppi5k, load_nl27k, load_cn15k, OneToNDatasetAdapter, load_from_ntriples
 from ampligraph.datasets.datasets import _clean_data
+import os
 import numpy as np
 import pytest
 
