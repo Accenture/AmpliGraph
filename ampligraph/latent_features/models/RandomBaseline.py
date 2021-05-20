@@ -79,7 +79,7 @@ class RandomBaseline(EmbeddingModel):
         else:
             return tf.random_uniform((tf.size(e_s),), minval=0, maxval=1)
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None):
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None, tensorboard=False):
         """Train the random model.
 
         There is no actual training involved in practice and the early stopping parameters won't have any effect.
@@ -143,7 +143,7 @@ class RandomBaseline(EmbeddingModel):
             If the numeric value is unknown pass a NaN weight. The model will uniformly randomly assign a numeric value.
             One can also think about assigning numeric values by looking at the distribution of it per predicate.
         """
-        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values)
+        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values, tensorboard=tensorboard)
 
     def predict(self, X, from_idx=False):
         __doc__ = super().predict.__doc__  # NOQA

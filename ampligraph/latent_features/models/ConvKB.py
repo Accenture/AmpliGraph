@@ -418,7 +418,7 @@ class ConvKB(EmbeddingModel):
 
         return tf.squeeze(self.scores)
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None):
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None, tensorboard=False):
         """Train a ConvKB model (with optional early stopping).
 
         The model is trained on a training set X using the training protocol described in :cite:`trouillon2016complex`.
@@ -493,4 +493,4 @@ class ConvKB(EmbeddingModel):
             One can also think about assigning numeric values by looking at the distribution of it per predicate.
             
         """
-        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values)
+        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values, tensorboard=tensorboard)

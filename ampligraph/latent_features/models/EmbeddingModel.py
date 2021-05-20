@@ -944,7 +944,7 @@ class EmbeddingModel(abc.ABC):
             else:
                 yield np.squeeze(out_triples), unique_entities, entity_embeddings
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None):
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None, tensorboard=False):
         """Train an EmbeddingModel (with optional early stopping).
 
         The model is trained on a training set X using the training protocol
@@ -1067,7 +1067,8 @@ class EmbeddingModel(abc.ABC):
                 tf.random.set_random_seed(self.seed)
 
             self.sess_train = tf.Session(config=self.tf_config)
-
+            if tensorboard:
+                self.writer = tf.summary.FileWriter('./tensorboard_files', self.sess_train.graph)
             batch_size = int(np.ceil(self.train_dataset_handle.get_size("train") / self.batches_count))
             # dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(2)
 
@@ -1146,7 +1147,9 @@ class EmbeddingModel(abc.ABC):
                     losses.append(loss_batch)
                     if self.embedding_model_params.get('normalize_ent_emb', constants.DEFAULT_NORMALIZE_EMBEDDINGS):
                         self.sess_train.run(normalize_ent_emb_op)
-
+                if tensorboard:
+                    summary = tf.Summary(value=[tf.Summary.Value(tag="Average Loss", simple_value=sum(losses)/(batch_size * self.batches_count))])
+                    self.writer.add_summary(summary, epoch)
                 if self.verbose:
                     focusE = ''
                     if self.use_focusE:
@@ -1169,6 +1172,9 @@ class EmbeddingModel(abc.ABC):
                         pass
 
                     if self._perform_early_stopping_test(epoch):
+                        if tensorboard:
+                            self.writer.flush()
+                            self.writer.close()
                         self._end_training()
                         return
 
@@ -1176,6 +1182,9 @@ class EmbeddingModel(abc.ABC):
                         self.sess_train.run(self.set_training_true)
                     except AttributeError:
                         pass
+            if tensorboard:
+                self.writer.flush()
+                self.writer.close()
 
             self._save_trained_params()
             self._end_training()
