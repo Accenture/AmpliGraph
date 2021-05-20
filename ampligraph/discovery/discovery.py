@@ -1015,8 +1015,8 @@ def find_nearest_neighbours(kge_model, entities, n_neighbors=10, entities_subset
         all_neighbors_emb = kge_model.get_embeddings(entities_subset)
         all_neighbors = entities_subset
     else:
-        all_neighbors_emb = model.trained_model_params[0]
-        all_neighbors = list(model.ent_to_idx.keys())
+        all_neighbors_emb = kge_model.trained_model_params[0]
+        all_neighbors = list(kge_model.ent_to_idx.keys())
 
     assert n_neighbors < len(all_neighbors), 'n_neighbors must be less than the number of entities being fit!'
     knn_model = NearestNeighbors(n_neighbors=n_neighbors, metric=metric).fit(all_neighbors_emb)
