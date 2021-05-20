@@ -218,8 +218,10 @@ def test_cn15k():
     assert len(cn15k['test_numeric_values']) == 19224
 
 
-def test_load_from_ntriples():
-    X = load_from_ntriples('', 'test_triples.nt', data_home='.')
+def test_load_from_ntriples(request):
+    rootdir = request.config.rootdir
+    path = os.path.join(rootdir, 'tests', 'ampligraph', 'datasets')
+    X = load_from_ntriples('', 'test_triples.nt', data_home=path)
     assert X.shape == (3, 3)
     assert len(np.unique(X.flatten())) == 6
 
