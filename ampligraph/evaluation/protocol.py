@@ -103,7 +103,7 @@ def train_test_split_no_unseen_fast(X, test_size=100, seed=0, allow_duplication=
     if type(test_size) is float:
         test_size = int(len(X) * test_size)
 
-    rnd = np.random.RandomState(seed)
+    np.random.seed(seed)
     if filtered_test_predicates:
         candidate_idx = np.isin(X[:, 1], filtered_test_predicates)
         X_test_candidates = X[candidate_idx]
@@ -113,7 +113,7 @@ def train_test_split_no_unseen_fast(X, test_size=100, seed=0, allow_duplication=
         X_test_candidates = X
 
     entities, entity_cnt = np.unique(np.concatenate([X_test_candidates[:, 0], 
-                                                        X_test_candidates[:, 2]]), return_counts=True)
+                                                     X_test_candidates[:, 2]]), return_counts=True)
     rels, rels_cnt = np.unique(X_test_candidates[:, 1], return_counts=True)
     dict_entities = dict(zip(entities, entity_cnt))
     dict_rels = dict(zip(rels, rels_cnt))
@@ -131,8 +131,8 @@ def train_test_split_no_unseen_fast(X, test_size=100, seed=0, allow_duplication=
 
         # test if the counts are > 0
         if dict_entities[test_triple[0]] > 0 and \
-            dict_rels[test_triple[1]] > 0 and \
-            dict_entities[test_triple[2]] > 0:
+                dict_rels[test_triple[1]] > 0 and \
+                dict_entities[test_triple[2]] > 0:
             
             # Can safetly add the triple to test set
             idx_test.append(idx)
@@ -162,10 +162,10 @@ def train_test_split_no_unseen_fast(X, test_size=100, seed=0, allow_duplication=
             # throw an exception since we cannot get unique triples in the test set without creating 
             # unseen entities
             raise Exception("Cannot create a test split of the desired size. "
-                                "Some entities will not occur in both training and test set. "
-                                "Set allow_duplication=True," 
-                                "remove filter on test predicates or "
-                                "set test_size to a smaller value.")
+                            "Some entities will not occur in both training and test set. "
+                            "Set allow_duplication=True," 
+                            "remove filter on test predicates or "
+                            "set test_size to a smaller value.")
     
     if X_train is None:
         X_train = X_test_candidates[idx_train]
@@ -316,7 +316,7 @@ def train_test_split_no_unseen_old(X, test_size=100, seed=0, allow_duplication=F
 
 
 def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False, 
-                                   filtered_test_predicates=None, backward_compatible=False):
+                               filtered_test_predicates=None, backward_compatible=False):
     """Split into train and test sets.
 
      This function carves out a test set that contains only entities

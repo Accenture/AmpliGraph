@@ -469,11 +469,44 @@ def test_train_test_split():
     expected_X_test = np.array([['a', 'y', 'c'],
                                 ['f', 'y', 'c']])
 
-    X_train, X_test = train_test_split_no_unseen(X, test_size=2, seed=0)
+    X_train, X_test = train_test_split_no_unseen(X, test_size=2, seed=0, backward_compatible=True)
 
     np.testing.assert_array_equal(X_train, expected_X_train)
     np.testing.assert_array_equal(X_test, expected_X_test)
 
+
+def test_train_test_split_fast():
+    X = load_fb15k_237()
+    x_all = np.concatenate([X['train'], X['valid'], X['test']], 0)
+    unique_entities = len(set(x_all[:, 0]).union(x_all[:, 2]))
+    unique_rels = len(set(x_all[:, 1]))
+
+    x_train, x_test = train_test_split_no_unseen(x_all, 0.90)
+
+    assert x_train.shape[0] + x_test.shape[0] == x_all.shape[0]
+
+    unique_entities_train = len(set(x_train[:, 0]).union(x_train[:, 2]))
+    unique_rels_train = len(set(x_train[:, 1]))
+
+    assert unique_entities_train == unique_entities and unique_rels_train == unique_rels
+
+    with pytest.raises(Exception) as e:
+        x_train, x_test = train_test_split_no_unseen(x_all, 0.99, allow_duplication=False)
+
+    assert str(e.value) == "Cannot create a test split of the desired size. " \
+                                    "Some entities will not occur in both training and test set. "  \
+                                    "Set allow_duplication=True,"  \
+                                    "remove filter on test predicates or "  \
+                                    "set test_size to a smaller value."
+
+    x_train, x_test = train_test_split_no_unseen(x_all, 0.99, allow_duplication=True)
+    assert x_train.shape[0] + x_test.shape[0] > x_all.shape[0]
+
+    unique_entities_train = len(set(x_train[:, 0]).union(x_train[:, 2]))
+    unique_rels_train = len(set(x_train[:, 1]))
+
+    assert unique_entities_train == unique_entities and unique_rels_train == unique_rels
+    
 
 def test_remove_unused_params():
     params1 = {
