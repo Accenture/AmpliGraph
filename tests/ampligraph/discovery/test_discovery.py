@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 from sklearn.cluster import DBSCAN
 from ampligraph.discovery.discovery import discover_facts, generate_candidates, _setdiff2d, find_clusters, \
-    find_duplicates, query_topn
-from ampligraph.latent_features import ComplEx
+    find_duplicates, query_topn, find_nearest_neighbours
+from ampligraph.latent_features import ComplEx, DistMult
 
 def test_discover_facts():
 
