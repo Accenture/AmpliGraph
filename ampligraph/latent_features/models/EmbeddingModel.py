@@ -2035,28 +2035,22 @@ class EmbeddingModel(abc.ABC):
 
             loss = tf.losses.sigmoid_cross_entropy(labels, logits, weights=weights)
 
-            if X_neg is not None:
-                optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss)
-            else:
-                optimizer = tf.train.AdamOptimizer()
-                train = optimizer.minimize(loss)
+            optimizer = tf.train.AdamOptimizer()
+            train = optimizer.minimize(loss)
 
             with tf.Session(config=self.tf_config) as sess:
                 sess.run(tf.global_variables_initializer())
 
-                if X_neg is not None:
-                    optimizer.minimize(sess)
-                else:
-                    epoch_iterator_with_progress = tqdm(range(1, epochs + 1), disable=(not self.verbose), unit='epoch')
-                    for _ in epoch_iterator_with_progress:
-                        losses = []
-                        for batch in range(batches_count):
-                            loss_batch, _ = sess.run([loss, train])
-                            losses.append(loss_batch)
-                        if self.verbose:
-                            msg = 'Calibration Loss: {:10f}'.format(sum(losses) / batches_count)
-                            logger.debug(msg)
-                            epoch_iterator_with_progress.set_description(msg)
+                epoch_iterator_with_progress = tqdm(range(1, epochs + 1), disable=(not self.verbose), unit='epoch')
+                for _ in epoch_iterator_with_progress:
+                    losses = []
+                    for batch in range(batches_count):
+                        loss_batch, _ = sess.run([loss, train])
+                        losses.append(loss_batch)
+                    if self.verbose:
+                        msg = 'Calibration Loss: {:10f}'.format(sum(losses) / batches_count)
+                        logger.debug(msg)
+                        epoch_iterator_with_progress.set_description(msg)
 
                 self.calibration_parameters = sess.run([w, b])
             self.is_calibrated = True
