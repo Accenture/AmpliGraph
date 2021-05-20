@@ -14,7 +14,7 @@ from ampligraph.evaluation import evaluate_performance, generate_corruptions_for
     generate_corruptions_for_fit, to_idx, create_mappings, mrr_score, hits_at_n_score, select_best_model_ranking, \
     filter_unseen_entities
 
-from ampligraph.datasets import load_wn18, load_wn18rr, load_yago3_10
+from ampligraph.datasets import load_wn18, load_wn18rr, load_yago3_10, load_fb15k_237
 import tensorflow as tf
 
 from ampligraph.evaluation import train_test_split_no_unseen
