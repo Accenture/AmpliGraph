@@ -1035,11 +1035,14 @@ def load_from_ntriples(folder_name, file_name, data_home=None, add_reciprocal_re
     logger.debug('Loading rdf ntriples from {}.'.format(file_name))
     data_home = _get_data_home(data_home)
     df = pd.read_csv(os.path.join(data_home, folder_name, file_name),
-                     sep=' ',
+                     sep='\s+',
                      header=None,
                      names=None,
                      dtype=str,
                      usecols=[0, 1, 2])
+
+    # Remove last occurrence of full stop (if present)
+    df[2] = df[2].apply(lambda x: x.rsplit(".", 1)[0])
 
     if add_reciprocal_rels:
         df = _add_reciprocal_relations(df)
