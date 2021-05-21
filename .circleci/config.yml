@@ -19,7 +19,7 @@
     name: Install package
     command: |
       . venv/bin/activate
-      venv/bin/python3 -m pip install tensorflow==1.15.3
+      venv/bin/python3 -m pip install tensorflow==1.15.5
       venv/bin/python3 -m pip install .
 
 version: 2
@@ -64,6 +64,7 @@ jobs:
           command: |
             . venv/bin/activate
             venv/bin/python3 -m pytest tests
+          no_output_timeout: 60m
   lint:
     docker:
       - image: *docker-image
