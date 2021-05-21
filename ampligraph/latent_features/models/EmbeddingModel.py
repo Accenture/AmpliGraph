@@ -983,6 +983,11 @@ class EmbeddingModel(abc.ABC):
             If the numeric value is unknown pass a NaN weight. The model will uniformly randomly assign a numeric value.
             One can also think about assigning numeric values by looking at the distribution of it per predicate.
 
+        tensorboard: bool
+            Flag to enable average training loss tracking per epoch via tensorboard (default: ``False``). When enabled
+            it will create a ``tensorboard_files`` folder within current directory and save tensorboard files there.
+            To then view the loss in the terminal run: ``tensorboard --logdir ./tensorboard_files``.
+
         """
         self.train_dataset_handle = None
         # try-except block is mainly to handle clean up in case of exception or manual stop in jupyter notebook
