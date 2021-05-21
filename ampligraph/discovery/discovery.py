@@ -958,10 +958,11 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
 
 
 def find_nearest_neighbours(kge_model, entities, n_neighbors=10, entities_subset=None, metric="euclidean"):
-    """ Find the nearest neighbors of the entities of the graph.
-    This API helps you to find neighbors from either all entities of the graph or from a subset of entities 
-    passed to it.
-    
+    """ Return the nearest neighbors of entities.
+
+    The method works in the embedding space and finds a desired number of neighboring embeddings.
+    It can operate from all the entities in the graph or from a subset of interest.
+
     Parameters
     ----------
     kge_model: ampligraph.latent_features.EmbeddingModel
