@@ -993,7 +993,10 @@ class EmbeddingModel(abc.ABC):
                     self.use_focusE = True
                     assert focusE_numeric_edge_values.shape[0] == X.shape[0], \
                         "Each triple must have a numeric value"
-                    
+
+                    if focusE_numeric_edge_values.ndim == 1:
+                        focusE_numeric_edge_values = focusE_numeric_edge_values.reshape(-1, 1)
+
                     logger.debug("normalizing numeric values")
                     unique_relations = np.unique(X[:, 1])
                     for reln in unique_relations:
