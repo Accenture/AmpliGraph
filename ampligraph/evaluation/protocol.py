@@ -26,11 +26,15 @@ logger.setLevel(logging.DEBUG)
 TOO_MANY_ENTITIES_TH = 50000
 
 
-def train_test_split_no_unseen_fast(X, test_size=100, seed=0, allow_duplication=False, filtered_test_predicates=None):
+def _train_test_split_no_unseen_fast(X, test_size=100, seed=0, allow_duplication=False, filtered_test_predicates=None):
     """Split into train and test sets.
 
      This function carves out a test set that contains only entities
      and relations which also occur in the training set.
+     
+     This is an improved version which is much faster - since this doesnt sample like earlier approach but rather 
+     shuffles indices and gets the test set of required size by selecting from the shuffled indices only triples 
+     which do not disconnect entities/relations.
 
     Parameters
     ----------
@@ -180,11 +184,14 @@ def train_test_split_no_unseen_fast(X, test_size=100, seed=0, allow_duplication=
     return X_train, X_test 
     
 
-def train_test_split_no_unseen_old(X, test_size=100, seed=0, allow_duplication=False, filtered_test_predicates=None):
+def _train_test_split_no_unseen_old(X, test_size=100, seed=0, allow_duplication=False, filtered_test_predicates=None):
     """Split into train and test sets.
 
      This function carves out a test set that contains only entities
      and relations which also occur in the training set.
+     
+     This is very slow as it runs an infinite loop and samples a triples and appends to test set and checks if it is 
+     unique or not. This is very time consuming process and highly inefficient.
 
     Parameters
     ----------
@@ -339,7 +346,8 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
         the test set.
     backward_compatible: boolean
         Uses the old (slower) version of the API for reproducibility of splits in older pipelines(if any)
-        Avoid setting this to True, unless necessary.
+        Avoid setting this to True, unless necessary. Set this flag only if you want to use the 
+        train_test_split_no_unseen of Ampligraph versions 1.3.2 and below. The older version is slow and inefficient
 
     Returns
     -------
@@ -393,9 +401,9 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
        ['b', 'y', 'a']], dtype='<U1')
     """
     if backward_compatible:
-        return train_test_split_no_unseen_old(X, test_size, seed, allow_duplication, filtered_test_predicates)
+        return _train_test_split_no_unseen_old(X, test_size, seed, allow_duplication, filtered_test_predicates)
     
-    return train_test_split_no_unseen_fast(X, test_size, seed, allow_duplication, filtered_test_predicates)
+    return _train_test_split_no_unseen_fast(X, test_size, seed, allow_duplication, filtered_test_predicates)
 
 
 def _create_unique_mappings(unique_obj, unique_rel):
