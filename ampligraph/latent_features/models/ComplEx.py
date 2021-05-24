@@ -255,7 +255,7 @@ class ComplEx(EmbeddingModel):
             tf.reduce_sum(e_p_img * e_s_real * e_o_img, axis=1) - \
             tf.reduce_sum(e_p_img * e_s_img * e_o_real, axis=1)
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None):
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None, tensorboard_logs_path=None):
         """Train a ComplEx model.
 
         The model is trained on a training set X using the training protocol
@@ -321,7 +321,7 @@ class ComplEx(EmbeddingModel):
             One can also think about assigning numeric values by looking at the distribution of it per predicate.
             
         """
-        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values)
+        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values, tensorboard_logs_path=tensorboard_logs_path)
 
     def predict(self, X, from_idx=False):
         __doc__ = super().predict.__doc__  # NOQA
