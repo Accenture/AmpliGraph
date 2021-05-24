@@ -828,10 +828,12 @@ class EmbeddingModel(abc.ABC):
                 current_test_value = hits_at_n_score(ranks, 1)
             elif self.early_stopping_criteria == 'mrr':
                 current_test_value = mrr_score(ranks)
-            tag = "Early stopping {} current value".format(self.early_stopping_criteria)
-            summary = tf.Summary(value=[tf.Summary.Value(tag=tag, 
-                                                         simple_value=current_test_value)])
-            self.writer.add_summary(summary, epoch)
+
+            if self.tensorboard_logs_path is not None:
+                tag = "Early stopping {} current value".format(self.early_stopping_criteria)
+                summary = tf.Summary(value=[tf.Summary.Value(tag=tag, 
+                                                             simple_value=current_test_value)])
+                self.writer.add_summary(summary, epoch)
 
             if self.early_stopping_best_value is None:  # First validation iteration
                 self.early_stopping_best_value = current_test_value
@@ -995,6 +997,7 @@ class EmbeddingModel(abc.ABC):
 
         """
         self.train_dataset_handle = None
+        self.tensorboard_logs_path = tensorboard_logs_path
         # try-except block is mainly to handle clean up in case of exception or manual stop in jupyter notebook
         try:
             if isinstance(X, np.ndarray):
@@ -1080,8 +1083,8 @@ class EmbeddingModel(abc.ABC):
                 tf.random.set_random_seed(self.seed)
 
             self.sess_train = tf.Session(config=self.tf_config)
-            if tensorboard_logs_path is not None:
-                self.writer = tf.summary.FileWriter(tensorboard_logs_path, self.sess_train.graph)
+            if self.tensorboard_logs_path is not None:
+                self.writer = tf.summary.FileWriter(self.tensorboard_logs_path, self.sess_train.graph)
             batch_size = int(np.ceil(self.train_dataset_handle.get_size("train") / self.batches_count))
             # dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(2)
 
@@ -1160,7 +1163,7 @@ class EmbeddingModel(abc.ABC):
                     losses.append(loss_batch)
                     if self.embedding_model_params.get('normalize_ent_emb', constants.DEFAULT_NORMALIZE_EMBEDDINGS):
                         self.sess_train.run(normalize_ent_emb_op)
-                if tensorboard_logs_path is not None:
+                if self.tensorboard_logs_path is not None:
                     avg_loss = sum(losses) / (batch_size * self.batches_count)
                     summary = tf.Summary(value=[tf.Summary.Value(tag="Average Loss",
                                                                      simple_value=avg_loss)])
@@ -1187,7 +1190,7 @@ class EmbeddingModel(abc.ABC):
                         pass
 
                     if self._perform_early_stopping_test(epoch):
-                        if tensorboard_logs_path is not None:
+                        if self.tensorboard_logs_path is not None:
                             self.writer.flush()
                             self.writer.close()
                         self._end_training()
@@ -1197,7 +1200,7 @@ class EmbeddingModel(abc.ABC):
                         self.sess_train.run(self.set_training_true)
                     except AttributeError:
                         pass
-            if tensorboard_logs_path is not None:
+            if self.tensorboard_logs_path is not None:
                 self.writer.flush()
                 self.writer.close()
 
