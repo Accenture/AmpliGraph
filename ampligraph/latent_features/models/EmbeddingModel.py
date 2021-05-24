@@ -828,9 +828,9 @@ class EmbeddingModel(abc.ABC):
                 current_test_value = hits_at_n_score(ranks, 1)
             elif self.early_stopping_criteria == 'mrr':
                 current_test_value = mrr_score(ranks)
-
-            summary = tf.Summary(value=[tf.Summary.Value(tag="Early stopping {} current value".format(self.early_stopping_criteria), 
-                                                                                                      simple_value=current_test_value)])
+            tag = "Early stopping {} current value".format(self.early_stopping_criteria)
+            summary = tf.Summary(value=[tf.Summary.Value(tag=tag, 
+                                                         simple_value=current_test_value)])
             self.writer.add_summary(summary, epoch)
 
             if self.early_stopping_best_value is None:  # First validation iteration
@@ -1157,7 +1157,9 @@ class EmbeddingModel(abc.ABC):
                     if self.embedding_model_params.get('normalize_ent_emb', constants.DEFAULT_NORMALIZE_EMBEDDINGS):
                         self.sess_train.run(normalize_ent_emb_op)
                 if tensorboard_logs_path is not None:
-                    summary = tf.Summary(value=[tf.Summary.Value(tag="Average Loss", simple_value=sum(losses)/(batch_size * self.batches_count))])
+                    avg_loss = sum(losses)/(batch_size * self.batches_count)
+                    summary = tf.Summary(value=[tf.Summary.Value(tag="Average Loss",
+                                                                     simple_value=avg_loss)])
                     self.writer.add_summary(summary, epoch)
                 if self.verbose:
                     focusE = ''
