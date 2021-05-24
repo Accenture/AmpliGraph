@@ -1205,11 +1205,11 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
 def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
     """Load the PPI5k dataset
 
-    PPI5K was originally proposed in :cite:`chen2019embedding`, is a subset of Knowledge graph of protein-protein 
-    interactions :cite:`PPI`. Numeric values represent the confidence of the link based on existing 
+    Originally proposed in :cite:`chen2019embedding`, PPI5K is a subset of the protein-protein
+    interactions knowledge graph PPI :cite:`PPI`. Numeric values represent the confidence of the link based on existing
     scientific literature evidence.
 
-    PPI5K dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    PPI5K is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
     If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
 
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
@@ -1252,8 +1252,7 @@ def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
     -------
 
     splits : dict
-        The dataset splits: {'train': train, 
-                             'train_numeric_values': train_numeric_values, 
+        The dataset splits: {'train': train, 'train_numeric_values': train_numeric_values,
                              'valid': valid, 
                              'valid_numeric_values': valid_numeric_values,
                              'test': test, 
@@ -1265,7 +1264,7 @@ def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
         Each numeric value split contains numeric values associated with corresponding dataset split and 
         is a ndarray of shape [n, 1].
         Each dataset split is a ndarray of shape [n,3]
-        The topk and bottomk splits are only returned when split_test_into_top_bottom is set to True
+        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom`` is set to True
 
     Examples
     -------

@@ -261,11 +261,46 @@ class DistMult(EmbeddingModel):
 
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
         
-        focusE_numeric_edge_values: nd array (n, 1)
-            Numeric values associated with links. 
-            Semantically, the numeric value can signify importance, uncertainity, significance, confidence, etc.
-            If the numeric value is unknown pass a NaN weight. The model will uniformly randomly assign a numeric value.
-            One can also think about assigning numeric values by looking at the distribution of it per predicate.           
+        focusE_numeric_edge_values: ndarray, shape [n]
+            .. _focuse_distmult:
+
+            If processing a knowledge graph with numeric values associated with links, this is the vector of such
+            numbers. Passing this argument will activate the :ref:`FocusE layer <edge-literals>`
+            :cite:`pai2021learning`.
+            Semantically, numeric values can signify importance, uncertainity, significance, confidence, etc.
+            Values can be any number, and will be automatically normalised to the [0, 1] range, on a
+            predicate-specific basis.
+            If the numeric value is unknown pass a ``np.NaN`` value.
+            The model will uniformly randomly assign a numeric value.
+
+            .. note::
+
+                The following toy example shows how to enable the FocusE layer
+                to process edges with numeric literals: ::
+
+                    import numpy as np
+                    from ampligraph.latent_features import DistMult
+                    model = DistMult(batches_count=1, seed=555, epochs=20,
+                                     k=10, loss='pairwise',
+                                     loss_params={'margin':5})
+                    X = np.array([['a', 'y', 'b'],
+                                  ['b', 'y', 'a'],
+                                  ['a', 'y', 'c'],
+                                  ['c', 'y', 'a'],
+                                  ['a', 'y', 'd'],
+                                  ['c', 'y', 'd'],
+                                  ['b', 'y', 'c'],
+                                  ['f', 'y', 'e']])
+
+                    # Numeric values below are associate to each triple in X.
+                    # They can be any number and will be automatically
+                    # normalised to the [0, 1] range, on a
+                    # predicate-specific basis.
+                    X_edge_values = np.array([5.34, -1.75, 0.33, 5.12,
+                                              np.nan, 3.17, 2.76, 0.41])
+
+                    model.fit(X, focusE_numeric_edge_values=X_edge_values)
+
 
         tensorboard_logs_path: str or None
             Path to store tensorboard logs, e.g. average training loss tracking per epoch (default: ``None`` indicating

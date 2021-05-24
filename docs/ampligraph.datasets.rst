@@ -70,7 +70,7 @@ FB13      316,232   11,816  47,464  75,043        13
 
 Benchmark Datasets Loaders (Knowledge Graphs With Numeric Values on Edges)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-.. _edge_numeric_enriched_loaders:
+.. _numeric-enriched-edges-loaders:
 These helper functions load benchmark datasets **with numeric values on edges**,
 as described in :cite:`pai2021learning` (the figure below shows a toy example).
 

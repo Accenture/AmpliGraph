@@ -273,7 +273,7 @@ class TransE(EmbeddingModel):
             .. _focuse_transe:
 
             If processing a knowledge graph with numeric values associated with links, this is the vector of such
-            numbers. Passing this argument will activate the the :ref:`FocusE layer <edge-literals>`
+            numbers. Passing this argument will activate the :ref:`FocusE layer <edge-literals>`
             :cite:`pai2021learning`.
             Semantically, numeric values can signify importance, uncertainity, significance, confidence, etc.
             Values can be any number, and will be automatically normalised to the [0, 1] range, on a
