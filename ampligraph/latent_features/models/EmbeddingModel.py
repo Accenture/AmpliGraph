@@ -948,7 +948,8 @@ class EmbeddingModel(abc.ABC):
             else:
                 yield np.squeeze(out_triples), unique_entities, entity_embeddings
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None, tensorboard_logs_path=None):
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None,
+            tensorboard_logs_path=None):
         """Train an EmbeddingModel (with optional early stopping).
 
         The model is trained on a training set X using the training protocol
@@ -988,9 +989,9 @@ class EmbeddingModel(abc.ABC):
             One can also think about assigning numeric values by looking at the distribution of it per predicate.
 
         tensorboard_logs_path: str or None
-            Path to store tensorboard logs, e.g. average training loss tracking per epoch (default: ``None`` indicating no 
-            logs will be collected). When provided it will create a folder under provided path and save tensorboard files there.
-            To then view the loss in the terminal run: ``tensorboard --logdir <tensorboard_logs_path>``.
+            Path to store tensorboard logs, e.g. average training loss tracking per epoch (default: ``None`` indicating
+            no logs will be collected). When provided it will create a folder under provided path and save tensorboard 
+            files there. To then view the loss in the terminal run: ``tensorboard --logdir <tensorboard_logs_path>``.
 
         """
         self.train_dataset_handle = None
@@ -1157,7 +1158,7 @@ class EmbeddingModel(abc.ABC):
                     if self.embedding_model_params.get('normalize_ent_emb', constants.DEFAULT_NORMALIZE_EMBEDDINGS):
                         self.sess_train.run(normalize_ent_emb_op)
                 if tensorboard_logs_path is not None:
-                    avg_loss = sum(losses)/(batch_size * self.batches_count)
+                    avg_loss = sum(losses) / (batch_size * self.batches_count)
                     summary = tf.Summary(value=[tf.Summary.Value(tag="Average Loss",
                                                                      simple_value=avg_loss)])
                     self.writer.add_summary(summary, epoch)

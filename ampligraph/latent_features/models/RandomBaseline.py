@@ -79,7 +79,8 @@ class RandomBaseline(EmbeddingModel):
         else:
             return tf.random_uniform((tf.size(e_s),), minval=0, maxval=1)
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None, tensorboard_logs_path=None):
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None,
+            tensorboard_logs_path=None):
         """Train the random model.
 
         There is no actual training involved in practice and the early stopping parameters won't have any effect.
@@ -142,8 +143,15 @@ class RandomBaseline(EmbeddingModel):
             Semantically, the numeric value can signify importance, uncertainity, significance, confidence, etc.
             If the numeric value is unknown pass a NaN weight. The model will uniformly randomly assign a numeric value.
             One can also think about assigning numeric values by looking at the distribution of it per predicate.
+
+        tensorboard_logs_path: str or None
+            Path to store tensorboard logs, e.g. average training loss tracking per epoch (default: ``None`` indicating
+            no logs will be collected). When provided it will create a folder under provided path and save tensorboard 
+            files there. To then view the loss in the terminal run: ``tensorboard --logdir <tensorboard_logs_path>``.
+
         """
-        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values, tensorboard_logs_path=tensorboard_logs_path)
+        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values,
+                    tensorboard_logs_path=tensorboard_logs_path)
 
     def predict(self, X, from_idx=False):
         __doc__ = super().predict.__doc__  # NOQA
