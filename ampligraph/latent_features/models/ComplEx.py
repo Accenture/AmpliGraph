@@ -255,7 +255,8 @@ class ComplEx(EmbeddingModel):
             tf.reduce_sum(e_p_img * e_s_real * e_o_img, axis=1) - \
             tf.reduce_sum(e_p_img * e_s_img * e_o_real, axis=1)
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None, tensorboard_logs_path=None):
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None,
+            tensorboard_logs_path=None):
         """Train a ComplEx model.
 
         The model is trained on a training set X using the training protocol
@@ -320,8 +321,14 @@ class ComplEx(EmbeddingModel):
             If the numeric value is unknown pass a NaN weight. The model will uniformly randomly assign a numeric value.
             One can also think about assigning numeric values by looking at the distribution of it per predicate.
             
+        tensorboard_logs_path: str or None
+            Path to store tensorboard logs, e.g. average training loss tracking per epoch (default: ``None`` indicating
+            no logs will be collected). When provided it will create a folder under provided path and save tensorboard 
+            files there. To then view the loss in the terminal run: ``tensorboard --logdir <tensorboard_logs_path>``.
+
         """
-        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values, tensorboard_logs_path=tensorboard_logs_path)
+        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values,
+                    tensorboard_logs_path=tensorboard_logs_path)
 
     def predict(self, X, from_idx=False):
         __doc__ = super().predict.__doc__  # NOQA
