@@ -209,7 +209,7 @@ class TransE(EmbeddingModel):
             tf.norm(e_s + e_p - e_o, ord=self.embedding_model_params.get('norm', constants.DEFAULT_NORM_TRANSE),
                     axis=1))
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None, tensorboard=False):
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None, tensorboard_logs_path=None):
         """Train an Translating Embeddings model.
 
         The model is trained on a training set X using the training protocol
@@ -275,7 +275,7 @@ class TransE(EmbeddingModel):
             One can also think about assigning numeric values by looking at the distribution of it per predicate.
             
         """
-        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values, tensorboard=tensorboard)
+        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values, tensorboard_logs_path=tensorboard_logs_path)
 
     def predict(self, X, from_idx=False):
         __doc__ = super().predict.__doc__  # NOQA

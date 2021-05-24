@@ -201,7 +201,7 @@ class DistMult(EmbeddingModel):
 
         return tf.reduce_sum(e_s * e_p * e_o, axis=1)
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None, tensorboard=False):
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None, tensorboard_logs_path=None):
         """Train an DistMult.
 
         The model is trained on a training set X using the training protocol
@@ -267,7 +267,7 @@ class DistMult(EmbeddingModel):
             One can also think about assigning numeric values by looking at the distribution of it per predicate.
             
         """
-        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values, tensorboard=tensorboard)
+        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values, tensorboard_logs_path=tensorboard_logs_path)
 
     def predict(self, X, from_idx=False):
         __doc__ = super().predict.__doc__  # NOQA

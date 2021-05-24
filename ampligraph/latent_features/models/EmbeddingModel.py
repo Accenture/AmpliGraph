@@ -829,6 +829,10 @@ class EmbeddingModel(abc.ABC):
             elif self.early_stopping_criteria == 'mrr':
                 current_test_value = mrr_score(ranks)
 
+            summary = tf.Summary(value=[tf.Summary.Value(tag="Early stopping {} current value".format(self.early_stopping_criteria), 
+                                                                                                      simple_value=current_test_value)])
+            self.writer.add_summary(summary, epoch)
+
             if self.early_stopping_best_value is None:  # First validation iteration
                 self.early_stopping_best_value = current_test_value
                 self.early_stopping_first_value = current_test_value
@@ -944,7 +948,7 @@ class EmbeddingModel(abc.ABC):
             else:
                 yield np.squeeze(out_triples), unique_entities, entity_embeddings
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None, tensorboard=False):
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None, tensorboard_logs_path=None):
         """Train an EmbeddingModel (with optional early stopping).
 
         The model is trained on a training set X using the training protocol
@@ -983,10 +987,10 @@ class EmbeddingModel(abc.ABC):
             If the numeric value is unknown pass a NaN weight. The model will uniformly randomly assign a numeric value.
             One can also think about assigning numeric values by looking at the distribution of it per predicate.
 
-        tensorboard: bool
-            Flag to enable average training loss tracking per epoch via tensorboard (default: ``False``). When enabled
-            it will create a ``tensorboard_files`` folder within current directory and save tensorboard files there.
-            To then view the loss in the terminal run: ``tensorboard --logdir ./tensorboard_files``.
+        tensorboard_logs_path: str or None
+            Path to store tensorboard logs, e.g. average training loss tracking per epoch (default: ``None`` indicating no 
+            logs will be collected). When provided it will create a folder under provided path and save tensorboard files there.
+            To then view the loss in the terminal run: ``tensorboard --logdir <tensorboard_logs_path>``.
 
         """
         self.train_dataset_handle = None
@@ -1072,8 +1076,8 @@ class EmbeddingModel(abc.ABC):
                 tf.random.set_random_seed(self.seed)
 
             self.sess_train = tf.Session(config=self.tf_config)
-            if tensorboard:
-                self.writer = tf.summary.FileWriter('./tensorboard_files', self.sess_train.graph)
+            if tensorboard_logs_path is not None:
+                self.writer = tf.summary.FileWriter(tensorboard_logs_path, self.sess_train.graph)
             batch_size = int(np.ceil(self.train_dataset_handle.get_size("train") / self.batches_count))
             # dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(2)
 
@@ -1152,7 +1156,7 @@ class EmbeddingModel(abc.ABC):
                     losses.append(loss_batch)
                     if self.embedding_model_params.get('normalize_ent_emb', constants.DEFAULT_NORMALIZE_EMBEDDINGS):
                         self.sess_train.run(normalize_ent_emb_op)
-                if tensorboard:
+                if tensorboard_logs_path is not None:
                     summary = tf.Summary(value=[tf.Summary.Value(tag="Average Loss", simple_value=sum(losses)/(batch_size * self.batches_count))])
                     self.writer.add_summary(summary, epoch)
                 if self.verbose:
@@ -1177,7 +1181,7 @@ class EmbeddingModel(abc.ABC):
                         pass
 
                     if self._perform_early_stopping_test(epoch):
-                        if tensorboard:
+                        if tensorboard_logs_path is not None:
                             self.writer.flush()
                             self.writer.close()
                         self._end_training()
@@ -1187,7 +1191,7 @@ class EmbeddingModel(abc.ABC):
                         self.sess_train.run(self.set_training_true)
                     except AttributeError:
                         pass
-            if tensorboard:
+            if tensorboard_logs_path is not None:
                 self.writer.flush()
                 self.writer.close()
 
