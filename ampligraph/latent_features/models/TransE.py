@@ -268,11 +268,40 @@ class TransE(EmbeddingModel):
 
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
-        focusE_numeric_edge_values: nd array (n, 1)
+        focusE_numeric_edge_values: ndarray, shape [n]
+            .. _focuse_transe:
+
             Numeric values associated with links. 
             Semantically, the numeric value can signify importance, uncertainity, significance, confidence, etc.
-            If the numeric value is unknown pass a NaN weight. The model will uniformly randomly assign a numeric value.
+            If the numeric value is unknown pass a `NaN` value. The model will uniformly randomly assign a numeric value.
             One can also think about assigning numeric values by looking at the distribution of it per predicate.
+
+            .. note::
+
+                Example of processing edges with numeric literals: ::
+
+                    import numpy as np
+                    from ampligraph.latent_features import TransE
+                    model = TransE(batches_count=1, seed=555, epochs=20,
+                                   k=10, loss='pairwise',
+                                   loss_params={'margin':5})
+                    X = np.array([['a', 'y', 'b']
+                                  ['b', 'y', 'a'],
+                                  ['a', 'y', 'c'],
+                                  ['c', 'y', 'a'],
+                                  ['a', 'y', 'd'],
+                                  ['c', 'y', 'd'],
+                                  ['b', 'y', 'c'],
+                                  ['f', 'y', 'e']])
+
+                    # Numeric values below are associate to each triple in X.
+                    # They can be any number and will be automatically
+                    # normalised to the [0, 1] range, on a
+                    # predicate-specific basis.
+                    X_edge_values = np.array([5.34, -1.75, 0.33, 5.12,
+                                              NaN, 3.17, 2.76, 0.41])
+
+                    model.fit(X, focusE_numeric_edge_values=X_edge_values)
             
         """
         super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values)

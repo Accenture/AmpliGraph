@@ -1110,14 +1110,14 @@ def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, spl
 
 
 def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
-    """Load the O*NET20K (ONET20K) dataset
+    """Load the O*NET20K dataset
 
     O*NET20K was originally proposed in :cite:`pai2021learning`.
     It a  subset  of  O*NET (https://www.onetonline.org/),  a dataset that includes job descriptions, skills 
     and labeled, binary relations between such concepts. Each triple is labeled with a numeric value that 
     indicates the importance of that link. 
 
-    ONET20K dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    ONET*20K dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
     If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
 
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
@@ -1135,7 +1135,7 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
     ========= ========= ======== =========== ========== ===========
     Dataset   Train     Valid    Test        Entities   Relations
     ========= ========= ======== =========== ========== ===========
-    ONET20K   461932    850      2000        20643      19    
+    ONET*20K  461,932    850     2,000       20,643     19
     ========= ========= ======== =========== ========== ===========
 
     Parameters
