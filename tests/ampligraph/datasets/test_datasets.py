@@ -1,4 +1,4 @@
-# Copyright 2019-2020 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -6,8 +6,9 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 from ampligraph.datasets import load_wn18, load_fb15k, load_fb15k_237, load_yago3_10, load_wn18rr, load_wn11, \
-    load_fb13, OneToNDatasetAdapter
+    load_fb13, load_onet20k, load_ppi5k, load_nl27k, load_cn15k, OneToNDatasetAdapter, load_from_ntriples
 from ampligraph.datasets.datasets import _clean_data
+import os
 import numpy as np
 import pytest
 
@@ -168,6 +169,62 @@ def test_fb13():
     assert len(fb13['test_labels']) == 23733 + 23731
     assert sum(fb13['valid_labels']) == 5908
     assert sum(fb13['test_labels']) == 23733
+    
+    
+def test_onet20k():
+    onet = load_onet20k()
+    assert len(onet['train']) == 461932
+    assert len(onet['valid']) == 850
+    assert len(onet['test']) == 2000
+    assert len(onet['train_numeric_values']) == 461932
+    assert len(onet['valid_numeric_values']) == 850
+    assert len(onet['test_numeric_values']) == 2000
+    
+
+def test_nl27k():
+    nl27k = load_nl27k()
+    assert len(nl27k['train']) == 149100
+    assert len(nl27k['valid']) == 12274
+    assert len(nl27k['test']) == 14026
+    assert len(nl27k['train_numeric_values']) == 149100
+    assert len(nl27k['valid_numeric_values']) == 12274
+    assert len(nl27k['test_numeric_values']) == 14026
+    
+    nl27k = load_nl27k(clean_unseen=False)
+    assert len(nl27k['train']) == 149100
+    assert len(nl27k['valid']) == 12274 + 4
+    assert len(nl27k['test']) == 14026 + 8
+    assert len(nl27k['train_numeric_values']) == 149100
+    assert len(nl27k['valid_numeric_values']) == 12274 + 4
+    assert len(nl27k['test_numeric_values']) == 14026 + 8
+    
+    
+def test_ppi5k():
+    ppi5k = load_ppi5k()
+    assert len(ppi5k['train']) == 230929
+    assert len(ppi5k['valid']) == 19017
+    assert len(ppi5k['test']) == 21720
+    assert len(ppi5k['train_numeric_values']) == 230929
+    assert len(ppi5k['valid_numeric_values']) == 19017
+    assert len(ppi5k['test_numeric_values']) == 21720
+    
+    
+def test_cn15k():
+    cn15k = load_cn15k()
+    assert len(cn15k['train']) == 199417
+    assert len(cn15k['valid']) == 16829
+    assert len(cn15k['test']) == 19224
+    assert len(cn15k['train_numeric_values']) == 199417
+    assert len(cn15k['valid_numeric_values']) == 16829
+    assert len(cn15k['test_numeric_values']) == 19224
+
+
+def test_load_from_ntriples(request):
+    rootdir = request.config.rootdir
+    path = os.path.join(rootdir, 'tests', 'ampligraph', 'datasets')
+    X = load_from_ntriples('', 'test_triples.nt', data_home=path)
+    assert X.shape == (3, 3)
+    assert len(np.unique(X.flatten())) == 6
 
 
 def test_oneton_adapter():

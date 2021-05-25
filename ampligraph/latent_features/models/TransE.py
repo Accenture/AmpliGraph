@@ -1,3 +1,10 @@
+# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 from .EmbeddingModel import EmbeddingModel, register_model
 from ampligraph.latent_features import constants as constants
 from ampligraph.latent_features.initializers import DEFAULT_XAVIER_IS_UNIFORM
@@ -101,7 +108,15 @@ class TransE(EmbeddingModel):
               or an int (which indicates how many entities that should be used for corruption generation).
             - **corrupt_sides** : Specifies how to generate corruptions for training.
               Takes values `s`, `o`, `s+o` or any combination passed as a list.
+            - **'non_linearity'**: can be one of the following values ``linear``, ``softplus``, ``sigmoid``, ``tanh``
+            - **'stop_epoch'**: specifies how long to decay (linearly) the numeric values from 1 to original value 
+            until it reachs original value.
+            - **'structural_wt'**: structural influence hyperparameter [0, 1] that modulates the influence of graph 
+            topology. 
+            - **'normalize_numeric_values'**: normalize the numeric values, such that they are scaled between [0, 1]
 
+            The last 4 parameters are related to FocusE layers.
+            
             Example: ``embedding_model_params={'norm': 1, 'normalize_ent_emb': False}``
 
         optimizer : string
@@ -201,7 +216,8 @@ class TransE(EmbeddingModel):
             tf.norm(e_s + e_p - e_o, ord=self.embedding_model_params.get('norm', constants.DEFAULT_NORM_TRANSE),
                     axis=1))
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}):
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None,
+            tensorboard_logs_path=None):
         """Train an Translating Embeddings model.
 
         The model is trained on a training set X using the training protocol
@@ -260,9 +276,53 @@ class TransE(EmbeddingModel):
 
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
 
+        focusE_numeric_edge_values: ndarray, shape [n]
+            .. _focuse_transe:
 
+            If processing a knowledge graph with numeric values associated with links, this is the vector of such
+            numbers. Passing this argument will activate the :ref:`FocusE layer <edge-literals>`
+            :cite:`pai2021learning`.
+            Semantically, numeric values can signify importance, uncertainity, significance, confidence, etc.
+            Values can be any number, and will be automatically normalised to the [0, 1] range, on a
+            predicate-specific basis.
+            If the numeric value is unknown pass a ``np.NaN`` value.
+            The model will uniformly randomly assign a numeric value.
+
+            .. note::
+
+                The following toy example shows how to enable the FocusE layer
+                to process edges with numeric literals: ::
+
+                    import numpy as np
+                    from ampligraph.latent_features import TransE
+                    model = TransE(batches_count=1, seed=555, epochs=20,
+                                   k=10, loss='pairwise',
+                                   loss_params={'margin':5})
+                    X = np.array([['a', 'y', 'b'],
+                                  ['b', 'y', 'a'],
+                                  ['a', 'y', 'c'],
+                                  ['c', 'y', 'a'],
+                                  ['a', 'y', 'd'],
+                                  ['c', 'y', 'd'],
+                                  ['b', 'y', 'c'],
+                                  ['f', 'y', 'e']])
+
+                    # Numeric values below are associate to each triple in X.
+                    # They can be any number and will be automatically
+                    # normalised to the [0, 1] range, on a
+                    # predicate-specific basis.
+                    X_edge_values = np.array([5.34, -1.75, 0.33, 5.12,
+                                              np.nan, 3.17, 2.76, 0.41])
+
+                    model.fit(X, focusE_numeric_edge_values=X_edge_values)
+ 
+        tensorboard_logs_path: str or None
+            Path to store tensorboard logs, e.g. average training loss tracking per epoch (default: ``None`` indicating
+            no logs will be collected). When provided it will create a folder under provided path and save tensorboard 
+            files there. To then view the loss in the terminal run: ``tensorboard --logdir <tensorboard_logs_path>``.
         """
-        super().fit(X, early_stopping, early_stopping_params)
+        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values,
+                    tensorboard_logs_path=tensorboard_logs_path)
 
     def predict(self, X, from_idx=False):
         __doc__ = super().predict.__doc__  # NOQA

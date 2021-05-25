@@ -1,4 +1,4 @@
-# Copyright 2019-2020 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -9,12 +9,12 @@ import numpy as np
 import pytest
 from itertools import islice
 
-from ampligraph.latent_features import TransE, ComplEx, RandomBaseline
+from ampligraph.latent_features import TransE, ComplEx, RandomBaseline, set_entity_threshold, reset_entity_threshold
 from ampligraph.evaluation import evaluate_performance, generate_corruptions_for_eval, \
     generate_corruptions_for_fit, to_idx, create_mappings, mrr_score, hits_at_n_score, select_best_model_ranking, \
     filter_unseen_entities
 
-from ampligraph.datasets import load_wn18, load_wn18rr, load_yago3_10
+from ampligraph.datasets import load_wn18, load_wn18rr, load_yago3_10, load_fb15k_237
 import tensorflow as tf
 
 from ampligraph.evaluation import train_test_split_no_unseen
@@ -469,11 +469,44 @@ def test_train_test_split():
     expected_X_test = np.array([['a', 'y', 'c'],
                                 ['f', 'y', 'c']])
 
-    X_train, X_test = train_test_split_no_unseen(X, test_size=2, seed=0)
+    X_train, X_test = train_test_split_no_unseen(X, test_size=2, seed=0, backward_compatible=True)
 
     np.testing.assert_array_equal(X_train, expected_X_train)
     np.testing.assert_array_equal(X_test, expected_X_test)
 
+
+def test_train_test_split_fast():
+    X = load_fb15k_237()
+    x_all = np.concatenate([X['train'], X['valid'], X['test']], 0)
+    unique_entities = len(set(x_all[:, 0]).union(x_all[:, 2]))
+    unique_rels = len(set(x_all[:, 1]))
+
+    x_train, x_test = train_test_split_no_unseen(x_all, 0.90)
+
+    assert x_train.shape[0] + x_test.shape[0] == x_all.shape[0]
+
+    unique_entities_train = len(set(x_train[:, 0]).union(x_train[:, 2]))
+    unique_rels_train = len(set(x_train[:, 1]))
+
+    assert unique_entities_train == unique_entities and unique_rels_train == unique_rels
+
+    with pytest.raises(Exception) as e:
+        x_train, x_test = train_test_split_no_unseen(x_all, 0.99, allow_duplication=False)
+
+    assert str(e.value) == "Cannot create a test split of the desired size. " \
+                                    "Some entities will not occur in both training and test set. "  \
+                                    "Set allow_duplication=True,"  \
+                                    "remove filter on test predicates or "  \
+                                    "set test_size to a smaller value."
+
+    x_train, x_test = train_test_split_no_unseen(x_all, 0.99, allow_duplication=True)
+    assert x_train.shape[0] + x_test.shape[0] > x_all.shape[0]
+
+    unique_entities_train = len(set(x_train[:, 0]).union(x_train[:, 2]))
+    unique_rels_train = len(set(x_train[:, 1]))
+
+    assert unique_entities_train == unique_entities and unique_rels_train == unique_rels
+    
 
 def test_remove_unused_params():
     params1 = {
@@ -1053,3 +1086,30 @@ def test_select_best_model_ranking_random():
     assert set(test_results.keys()) == {"mrr", "mr", "hits_1", "hits_3", "hits_10"}
     assert all(r >= 0 for r in test_results.values())
     assert all(not np.isnan(r) for r in test_results.values())
+
+    
+def test_evaluate_with_ent_subset_large_graph():
+    set_entity_threshold(1)
+    X = load_wn18()
+    model = ComplEx(batches_count=10, seed=0, epochs=2, k=10, eta=1,
+                optimizer='sgd', optimizer_params={'lr': 1e-5},
+                loss='pairwise', loss_params={'margin': 0.5},
+                regularizer='LP', regularizer_params={'p': 2, 'lambda': 1e-5},
+                verbose=True)
+
+    model.fit(X['train'])
+
+    X_filter = np.concatenate((X['train'], X['valid'], X['test']))
+    all_nodes = set(X_filter[:, 0]).union(X_filter[:, 2])
+    
+    entities_subset = np.random.choice(list(all_nodes), 100, replace=False)
+    
+    ranks = evaluate_performance(X['test'][::10],
+                             model=model,
+                             filter_triples=X_filter,
+                             corrupt_side='o',
+                             use_default_protocol=False,
+                             entities_subset=list(entities_subset),
+                             verbose=True)
+    assert np.sum(ranks > (100 + 1)) == 0, "No ranks must be greater than 101"
+    reset_entity_threshold()

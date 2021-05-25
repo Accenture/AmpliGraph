@@ -1,4 +1,4 @@
-# Copyright 2019-2020 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -51,9 +51,14 @@ def _clean_data(X, return_idx=False):
         Indices of the remaining rows of the test dataset (with respect to the original test ndarray).
 
     """
-    train = pd.DataFrame(X["train"], columns=['s', 'p', 'o'])
-    valid = pd.DataFrame(X["valid"], columns=['s', 'p', 'o'])
-    test = pd.DataFrame(X["test"], columns=['s', 'p', 'o'])
+    if X["train"].shape[1] == 3:
+        columns = ['s', 'p', 'o']
+    else:
+        columns = ['s', 'p', 'o', 'w']
+        
+    train = pd.DataFrame(X["train"], columns=columns)
+    valid = pd.DataFrame(X["valid"], columns=columns)
+    test = pd.DataFrame(X["test"], columns=columns)
 
     train_ent = np.unique(np.concatenate((train.s, train.o)))
     train_rel = train.p.unique()
@@ -97,6 +102,7 @@ def _get_data_home(data_home=None):
 
     if data_home is None:
         data_home = os.environ.get(AMPLIGRAPH_ENV_NAME, os.path.join('~', 'ampligraph_datasets'))
+
     data_home = os.path.expanduser(data_home)
     if not os.path.exists(data_home):
         os.makedirs(data_home)
@@ -1029,13 +1035,459 @@ def load_from_ntriples(folder_name, file_name, data_home=None, add_reciprocal_re
     logger.debug('Loading rdf ntriples from {}.'.format(file_name))
     data_home = _get_data_home(data_home)
     df = pd.read_csv(os.path.join(data_home, folder_name, file_name),
-                     sep=' ',
+                     sep=r'\s+',
                      header=None,
                      names=None,
                      dtype=str,
                      usecols=[0, 1, 2])
 
+    # Remove trailing full stop (if present)
+    df[2] = df[2].apply(lambda x: x.rsplit(".", 1)[0])
+
     if add_reciprocal_rels:
         df = _add_reciprocal_relations(df)
 
     return df.values
+
+
+def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, split_threshold=0.1):
+    """ Creates the dataset splits for training models with FocusE layers
+    
+    Parameters
+    ----------
+    dataset : dict
+        dictionary of train, test, valid datasets of size (n,4) - where the first 3 cols are s, p, o and 
+        4th is the numeric value associated with the triple
+    
+    split_test_into_top_bottom: bool
+        Splits the test set by numeric values and returns test_top_split and test_bottom_split by splitting 
+        based on sorted numeric values and returning top and bottom k% triples, where k is specified by 
+        `split_threshold` argument
+        
+    split_threshold: float
+        specifies the top and bottom percentage of triples to return
+        
+    Returns
+    -------
+    splits : dict
+        The dataset splits: {'train': train, 
+                             'train_numeric_values': train_numeric_values, 
+                             'valid': valid, 
+                             'valid_numeric_values': valid_numeric_values,
+                             'test': test, 
+                             'test_numeric_values': test_numeric_values,
+                             'test_topk': test_topk, 
+                             'test_topk_numeric_values': test_topk_numeric_values,
+                             'test_bottomk': test_bottomk, 
+                             'test_bottomk_numeric_values': test_bottomk_numeric_values}.
+        Each numeric value split contains numeric values associated with corresponding dataset split and 
+        is a ndarray of shape [n, 1].
+        Each dataset split is a ndarray of shape [n,3]
+        The topk and bottomk splits are only returned when split_test_into_top_bottom is set to True
+    """
+    dataset['train_numeric_values'] = dataset['train'][:, 3].astype(np.float32)
+    dataset['valid_numeric_values'] = dataset['valid'][:, 3].astype(np.float32)
+    dataset['test_numeric_values'] = dataset['test'][:, 3].astype(np.float32)
+    
+    dataset['train'] = dataset['train'][:, 0:3]
+    dataset['valid'] = dataset['valid'][:, 0:3]
+    dataset['test'] = dataset['test'][:, 0:3]
+        
+    sorted_indices = np.argsort(dataset['test_numeric_values'])
+    dataset['test'] = dataset['test'][sorted_indices]
+    dataset['test_numeric_values'] = dataset['test_numeric_values'][sorted_indices]
+    
+    if split_test_into_top_bottom:
+        split_threshold = int(split_threshold * dataset['test'].shape[0])
+        
+        dataset['test_bottomk'] = dataset['test'][:split_threshold]
+        dataset['test_bottomk_numeric_values'] = dataset['test_numeric_values'][:split_threshold]
+        
+        dataset['test_topk'] = dataset['test'][-split_threshold:]
+        dataset['test_topk_numeric_values'] = dataset['test_numeric_values'][-split_threshold:]
+        
+    return dataset
+
+
+def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
+    """Load the O*NET20K dataset
+
+    O*NET20K was originally proposed in :cite:`pai2021learning`.
+    It a  subset  of `O*NET <https://www.onetonline.org/>`_, a dataset that includes job descriptions, skills
+    and labeled, binary relations between such concepts. Each triple is labeled with a numeric value that 
+    indicates the importance of that link. 
+
+    ONET*20K dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+
+    If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    or ``~/ampligraph_datasets``.
+
+    It is divided in three splits:
+
+    - ``train``
+    - ``valid``
+    - ``test``
+
+    Each triple in these splits is associated to a numeric value which represents the importance/relevance of
+    the link.
+
+    ========= ========= ======== =========== ========== ===========
+    Dataset   Train     Valid    Test        Entities   Relations
+    ========= ========= ======== =========== ========== ===========
+    ONET*20K  461,932    850     2,000       20,643     19
+    ========= ========= ======== =========== ========== ===========
+
+    Parameters
+    ----------
+    check_md5hash : boolean
+        If ``True`` check the md5hash of the files. Defaults to ``False``.
+
+    clean_unseen : bool
+        If ``True``, filters triples in validation and test sets that include entities not present in the training 
+        set.
+        
+    split_test_into_top_bottom: bool
+        Splits the test set by numeric values and returns test_top_split and test_bottom_split by splitting based 
+        on sorted numeric values and returning top and bottom k% triples, where k is specified by `split_threshold` 
+        argument
+        
+    split_threshold: float
+        specifies the top and bottom percentage of triples to return
+        
+
+    Returns
+    -------
+
+    splits : dict
+        The dataset splits: {'train': train,
+        'valid': valid,
+        'test': test,
+        'test_topk': test_topk,
+        'test_bottomk': test_bottomk,
+        'train_numeric_values': train_numeric_values,
+        'valid_numeric_values':valid_numeric_values,
+        'test_numeric_values': test_numeric_values,
+        'test_topk_numeric_values': test_topk_numeric_values,
+        'test_bottomk_numeric_values': test_bottomk_numeric_values}.
+
+        Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
+        is a ndarray of shape [n].
+
+        Each dataset split is a ndarray of shape [n,3].
+
+        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
+
+    Examples
+    -------
+
+    >>> from ampligraph.datasets import load_onet20k
+    >>> X = load_onet20k()
+    """
+    onet20k = DatasetMetadata(
+        dataset_name='onet20k',
+        filename='onet20k.zip',
+        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/onet20k.zip',
+        train_name='train.tsv',
+        valid_name='valid.tsv',
+        test_name='test.tsv',
+        train_checksum='516220427a9a18516fd7a804a6944d64',
+        valid_checksum='d7806951ac3d916c5c5a0304eea064d2',
+        test_checksum='e5baec19037cb0bddc5a2fe3c0f4445a'
+    )
+
+    dataset = _load_dataset(onet20k, data_home=None,
+                            check_md5hash=check_md5hash)
+    
+    if clean_unseen:
+        dataset = _clean_data(dataset)
+    
+    return generate_focusE_dataset_splits(dataset, split_test_into_top_bottom, split_threshold)
+
+
+def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
+    """Load the PPI5K dataset
+
+    Originally proposed in :cite:`chen2019embedding`, PPI5K is a subset of the protein-protein
+    interactions (PPI) knowledge graph :cite:`PPI`. Numeric values represent the confidence of the link
+    based on existing scientific literature evidence.
+
+    PPI5K is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+
+    If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    or ``~/ampligraph_datasets``.
+
+    It is divided into three splits:
+
+    - ``train``
+    - ``valid``
+    - ``test``
+
+    Each triple in these splits is associated to a numeric value which models additional information on the
+    fact (importance, relevance of the link).
+
+    ========= ========= ======== =========== ========== ===========
+    Dataset   Train     Valid    Test        Entities   Relations
+    ========= ========= ======== =========== ========== ===========
+    PPI5K     230929    19017    21720       4999       7    
+    ========= ========= ======== =========== ========== ===========
+
+    Parameters
+    ----------
+    check_md5hash : boolean
+        If ``True`` check the md5hash of the files. Defaults to ``False``.
+
+    clean_unseen : bool
+        If ``True``, filters triples in validation and test sets that include entities not present in the training 
+        set.
+        
+    split_test_into_top_bottom: bool
+        When set to ``True``, the function also returns subsets of the test set that includes only the top-k or
+        bottom-k numeric-enriched triples. splits ``test_topk``, ``test_bottomk`` and their
+        numeric values. Such splits are generated by sorting Splits the test set by numeric values and returns
+        test_top_split and test_bottom_split by splitting based
+        on sorted numeric values and returning top and bottom k% triples, where 'k' is specified by the
+        ``split_threshold`` argument.
+        
+    split_threshold: float
+        specifies the top and bottom percentage of triples to return
+        
+
+    Returns
+    -------
+
+    splits : dict
+        The dataset splits: {'train': train,
+        'valid': valid,
+        'test': test,
+        'test_topk': test_topk,
+        'test_bottomk': test_bottomk,
+        'train_numeric_values': train_numeric_values,
+        'valid_numeric_values':valid_numeric_values,
+        'test_numeric_values': test_numeric_values,
+        'test_topk_numeric_values': test_topk_numeric_values,
+        'test_bottomk_numeric_values': test_bottomk_numeric_values}.
+
+        Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
+        is a ndarray of shape [n].
+
+        Each dataset split is a ndarray of shape [n,3].
+
+        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
+
+    Examples
+    -------
+
+    >>> from ampligraph.datasets import load_ppi5k
+    >>> X = load_ppi5k()
+    """
+    ppi5k = DatasetMetadata(
+        dataset_name='ppi5k',
+        filename='ppi5k.zip',
+        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/ppi5k.zip',
+        train_name='train.tsv',
+        valid_name='valid.tsv',
+        test_name='test.tsv',
+        train_checksum='d8b54de3482c0d043118cbd05f2666cf',
+        valid_checksum='2bd094118f4be1f4f6d6a1d4707271c1',
+        test_checksum='7e6e345f496ed9a0cc58b91d4877ddd6'
+    )
+
+    dataset = _load_dataset(ppi5k, data_home=None,
+                            check_md5hash=check_md5hash)
+    
+    if clean_unseen:
+        dataset = _clean_data(dataset)
+
+    return generate_focusE_dataset_splits(dataset, split_test_into_top_bottom, split_threshold)
+
+
+def load_nl27k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
+    """Load the NL27K dataset
+
+    NL27K was originally proposed in :cite:`chen2019embedding`. It is a subset of the Never Ending Language
+    Learning (NELL) dataset :cite:`mitchell2018never`, which collects data from web pages.
+    Numeric values on triples represent link uncertainty.
+
+    NL27K is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+
+    If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    or ``~/ampligraph_datasets``.
+
+    It is divided into three splits:
+
+    - ``train``
+    - ``valid``
+    - ``test``
+
+    Each triple in these splits is associated to a numeric value which represents the importance/relevance of
+    the link.
+
+    ========= ========= ======== =========== ========== ===========
+    Dataset   Train     Valid    Test        Entities   Relations
+    ========= ========= ======== =========== ========== ===========
+    NL27K     149100    12274    14026       27221      405    
+    ========= ========= ======== =========== ========== ===========
+
+    Parameters
+    ----------
+    check_md5hash : boolean
+        If ``True`` check the md5hash of the files. Defaults to ``False``.
+
+    clean_unseen : bool
+        If ``True``, filters triples in validation and test sets that include entities not present in the training 
+        set.
+        
+    split_test_into_top_bottom: bool
+        Splits the test set by numeric values and returns test_top_split and test_bottom_split by splitting based 
+        on sorted numeric values and returning top and bottom k% triples, where k is specified by `split_threshold` 
+        argument
+        
+    split_threshold: float
+        specifies the top and bottom percentage of triples to return
+        
+
+    Returns
+    -------
+
+    splits : dict
+        The dataset splits: {'train': train,
+        'valid': valid,
+        'test': test,
+        'test_topk': test_topk,
+        'test_bottomk': test_bottomk,
+        'train_numeric_values': train_numeric_values,
+        'valid_numeric_values':valid_numeric_values,
+        'test_numeric_values': test_numeric_values,
+        'test_topk_numeric_values': test_topk_numeric_values,
+        'test_bottomk_numeric_values': test_bottomk_numeric_values}.
+
+        Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
+        is a ndarray of shape [n].
+
+        Each dataset split is a ndarray of shape [n,3].
+
+        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
+
+    Examples
+    -------
+
+    >>> from ampligraph.datasets import load_nl27k
+    >>> X = load_nl27k()
+    """
+    nl27k = DatasetMetadata(
+        dataset_name='nl27k',
+        filename='nl27k.zip',
+        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/nl27k.zip',
+        train_name='train.tsv',
+        valid_name='valid.tsv',
+        test_name='test.tsv',
+        train_checksum='d4ce775401d299074d98e046f13e7283',
+        valid_checksum='00177fa6b9f5cec18814ee599c02eae3',
+        test_checksum='2ba17f29119688d93c9d29ab40f63b3e'
+    )
+
+    dataset = _load_dataset(nl27k, data_home=None,
+                            check_md5hash=check_md5hash)
+    
+    if clean_unseen:
+        dataset = _clean_data(dataset)
+
+    return generate_focusE_dataset_splits(dataset, split_test_into_top_bottom, split_threshold)
+
+
+def load_cn15k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
+    """Load the CN15K dataset
+
+    CN15K was originally proposed in :cite:`chen2019embedding`, it is a subset of ConceptNet :cite:`CN`,
+    a common-sense knowledge graph built to represent general human knowledge.
+    Numeric values on triples represent uncertainty.
+
+    CN15k dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+
+    If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    or ``~/ampligraph_datasets``.
+
+    It is divided into three splits:
+
+    - ``train``
+    - ``valid``
+    - ``test``
+
+    Each triple in these splits is associated to a numeric value which represents the importance/relevance of
+    the link.
+
+    ========= ========= ======== =========== ========== ===========
+    Dataset   Train     Valid    Test        Entities   Relations
+    ========= ========= ======== =========== ========== ===========
+    CN15K     199417    16829    19224       15000      36    
+    ========= ========= ======== =========== ========== ===========
+
+    Parameters
+    ----------
+    check_md5hash : boolean
+        If ``True`` check the md5hash of the files. Defaults to ``False``.
+
+    clean_unseen : bool
+        If ``True``, filters triples in validation and test sets that include entities not present in the training 
+        set.
+        
+    split_test_into_top_bottom: bool
+        Splits the test set by numeric values and returns test_top_split and test_bottom_split by splitting based 
+        on sorted numeric values and returning top and bottom k% triples, where k is specified by `split_threshold` 
+        argument
+        
+    split_threshold: float
+        specifies the top and bottom percentage of triples to return
+        
+
+    Returns
+    -------
+
+    splits : dict
+        The dataset splits: {'train': train,
+        'valid': valid,
+        'test': test,
+        'test_topk': test_topk,
+        'test_bottomk': test_bottomk,
+        'train_numeric_values': train_numeric_values,
+        'valid_numeric_values':valid_numeric_values,
+        'test_numeric_values': test_numeric_values,
+        'test_topk_numeric_values': test_topk_numeric_values,
+        'test_bottomk_numeric_values': test_bottomk_numeric_values}.
+
+        Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
+        is a ndarray of shape [n].
+
+        Each dataset split is a ndarray of shape [n,3].
+
+        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
+
+    Examples
+    -------
+
+    >>> from ampligraph.datasets import load_cn15k
+    >>> X = load_cn15k()
+    """
+    cn15k = DatasetMetadata(
+        dataset_name='cn15k',
+        filename='cn15k.zip',
+        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/cn15k.zip',
+        train_name='train.tsv',
+        valid_name='valid.tsv',
+        test_name='test.tsv',
+        train_checksum='8bf2ecc8f34e7b3b544afc30abaac478',
+        valid_checksum='15b63ebd7428a262ad5fe869cc944208',
+        test_checksum='29df4b8d24a3d89fc7c1032b9c508112'
+    )
+
+    dataset = _load_dataset(cn15k, data_home=None,
+                            check_md5hash=check_md5hash)
+    
+    if clean_unseen:
+        dataset = _clean_data(dataset)
+
+    return generate_focusE_dataset_splits(dataset, split_test_into_top_bottom, split_threshold)

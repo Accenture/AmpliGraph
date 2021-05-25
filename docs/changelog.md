@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.4.0
+**26 May 2021**
+
+- Added support for numerical attributes on edges (FocusE) (#235)
+- Added loaders for benchmark datasets with numeric values on edges (O*NET20K, PPI5K, NL27K, CN15K)  
+- Added discovery API to find nearest neighbors in embedding space (#240)
+- Change of optimizer (from BFSG to Adam) to calibrate models with ground truth negatives (#239)
+- 10x speed improvement on train_test_split_unseen API (#242)
+- Added support to visualize training progression via tensorboard (#230)
+- Bug fix in large graph mode (when evaluate_performance with entities_subset is used) (#231)
+- Updated save model api to save embedding matrix > 6GB (#233)
+- Doc updates (#247, #221)
+- Fixed ntriples loader spurious trailing dot.
+- Add tensorboard_logs_path to model.fit() for tracking training loss and early stopping criteria.
+
+
 ## 1.3.2 
 **25 Aug 2020**
 

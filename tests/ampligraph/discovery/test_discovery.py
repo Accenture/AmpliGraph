@@ -1,9 +1,16 @@
+# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 import numpy as np
 import pytest
 from sklearn.cluster import DBSCAN
 from ampligraph.discovery.discovery import discover_facts, generate_candidates, _setdiff2d, find_clusters, \
-    find_duplicates, query_topn
-from ampligraph.latent_features import ComplEx
+    find_duplicates, query_topn, find_nearest_neighbours
+from ampligraph.latent_features import ComplEx, DistMult
 
 def test_discover_facts():
 
@@ -291,3 +298,49 @@ def test_query_topn():
     Y, S = query_topn(model, top_n=10, relation=pred, tail=obj)
     assert all(S[i] >= S[i + 1] for i in range(len(S) - 1))
 
+
+def test_find_neighbors():
+    model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
+                     loss='pairwise', loss_params={'margin': 5},
+                     optimizer='adagrad', optimizer_params={'lr': 0.1})
+    X = np.array([['a', 'y', 'b'],
+                  ['b', 'y', 'a'],
+                  ['e', 'y', 'c'],
+                  ['c', 'z', 'a'],
+                  ['a', 'z', 'd'],
+                  ['f', 'z', 'g'],
+                  ['c', 'z', 'g']])
+    with pytest.raises(AssertionError) as e:
+        neighbors, dist = find_nearest_neighbours(model, 
+                                              entities=['b'], 
+                                              n_neighbors=3, 
+                                              entities_subset=['a', 'c', 'd', 'e', 'f'])
+        
+    assert str(e.value) == "KGE model is not fit!"
+    model.fit(X)
+    neighbors, dist = find_nearest_neighbours(model, 
+                                              entities=['b'], 
+                                              n_neighbors=3, 
+                                              entities_subset=['a', 'c', 'd', 'e', 'f'])
+    assert np.all(neighbors == [['e', 'd', 'c']])
+    
+    with pytest.raises(AssertionError) as e:
+        neighbors, dist = find_nearest_neighbours(model, 
+                                                  entities=['b'], 
+                                                  n_neighbors=30, 
+                                                  entities_subset=['a', 'c', 'd', 'e', 'f'])
+    assert str(e.value) == "n_neighbors must be less than the number of entities being fit!"
+    
+    with pytest.raises(AssertionError) as e:
+        neighbors, dist = find_nearest_neighbours(model, 
+                                                  entities=['b'], 
+                                                  n_neighbors=3, 
+                                                  entities_subset='a')
+    assert str(e.value) == "Invalid type for entities_subset! Must be a list or np.array"
+    
+    with pytest.raises(AssertionError) as e:
+        neighbors, dist = find_nearest_neighbours(model, 
+                                                  entities='b', 
+                                                  n_neighbors=3, 
+                                                  entities_subset=['a', 'c', 'd', 'e', 'f'])
+    assert str(e.value) == "Invalid type for entities! Must be a list or np.array"

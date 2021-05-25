@@ -53,7 +53,7 @@ AmpliGraph includes the following submodules:
 ### Prerequisites
 
 * Linux, macOS, Windows
-* Python ≥ 3.7
+* Python 3.7
 
 #### Provision a Virtual Environment
 
@@ -116,7 +116,7 @@ pip install -e .
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'1.3.2'
+'1.4.0'
 ```
 
 

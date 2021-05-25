@@ -1,4 +1,4 @@
-# Copyright 2019-2020 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -20,6 +20,7 @@ from ampligraph.evaluation import generate_corruptions_for_fit, to_idx, generate
 from ampligraph.datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter
 from functools import partial
 from ampligraph.latent_features import constants as constants
+import time
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -57,6 +58,15 @@ def register_model(name, external_params=None, class_params=None):
         return class_handle
 
     return insert_in_registry
+
+
+@tf.custom_gradient
+def custom_softplus(x):
+    e = 9999 * tf.exp(x)
+    
+    def grad(dy):
+        return dy * (1 - 1 / (1 + e))
+    return tf.math.log(1 + e), grad
 
 
 class EmbeddingModel(abc.ABC):
@@ -108,6 +118,15 @@ class EmbeddingModel(abc.ABC):
         embedding_model_params : dict
             Model-specific hyperparams, passed to the model as a dictionary.
             Refer to model-specific documentation for details.
+            
+            For FocusE Layer, following hyper-params can be passed:
+            
+            - **'non_linearity'**: can be one of the following values ``linear``, ``softplus``, ``sigmoid``, ``tanh``
+            - **'stop_epoch'**: specifies how long to decay (linearly) the numeric values from 1 to original value 
+            until it reachs original value.
+            - **'structural_wt'**: structural influence hyperparameter [0, 1] that modulates the influence of graph 
+            topology. 
+            - **'normalize_numeric_values'**: normalize the numeric values, such that they are scaled between [0, 1]
 
         optimizer : string
             The optimizer used to minimize the loss function. Choose between
@@ -203,6 +222,7 @@ class EmbeddingModel(abc.ABC):
         tf.random.set_random_seed(seed)
 
         self.is_filtered = False
+        self.use_focusE = False
         self.loss_params = loss_params
 
         self.embedding_model_params = embedding_model_params
@@ -354,10 +374,15 @@ class EmbeddingModel(abc.ABC):
         The order would be useful for loading the model.
         This method must be overridden if the model has any other parameters (apart from entity-relation embeddings).
         """
+        params_to_save = []
         if not self.dealing_with_large_graphs:
-            self.trained_model_params = self.sess_train.run([self.ent_emb, self.rel_emb])
+            params_to_save.append(self.sess_train.run(self.ent_emb))
         else:
-            self.trained_model_params = [self.ent_emb_cpu, self.sess_train.run(self.rel_emb)]
+            params_to_save.append(self.ent_emb_cpu) 
+            
+        params_to_save.append(self.sess_train.run(self.rel_emb))
+        
+        self.trained_model_params = params_to_save
 
     def _load_model_from_trained_params(self):
         """Load the model from trained params.
@@ -444,7 +469,7 @@ class EmbeddingModel(abc.ABC):
         idxs = np.vectorize(lookup_dict.get)(entities)
         return emb_list[idxs]
 
-    def _lookup_embeddings(self, x):
+    def _lookup_embeddings(self, x, get_weight=False):
         """Get the embeddings for subjects, predicates, and objects of a list of statements used to train the model.
 
         Parameters
@@ -462,8 +487,14 @@ class EmbeddingModel(abc.ABC):
             A Tensor that includes the embeddings of the objects.
         """
         e_s = self._entity_lookup(x[:, 0])
-        e_p = tf.nn.embedding_lookup(self.rel_emb, x[:, 1], name='embedding_lookup_predicate')
+        e_p = tf.nn.embedding_lookup(self.rel_emb, x[:, 1])
         e_o = self._entity_lookup(x[:, 2])
+        
+        if get_weight:
+            wt = self.weight_triple[
+                self.batch_number * self.batch_size:(self.batch_number + 1) * self.batch_size]
+        
+            return e_s, e_p, e_o, wt
         return e_s, e_p, e_o
 
     def _entity_lookup(self, entity):
@@ -495,21 +526,26 @@ class EmbeddingModel(abc.ABC):
             and all relation embeddings.
             Overload this function if the parameters needs to be initialized differently.
         """
+        timestamp = int(time.time() * 1e6)
         if not self.dealing_with_large_graphs:
-            self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.internal_k],
+            self.ent_emb = tf.get_variable('ent_emb_{}'.format(timestamp),
+                                           shape=[len(self.ent_to_idx), self.internal_k],
                                            initializer=self.initializer.get_entity_initializer(
                                                len(self.ent_to_idx), self.internal_k),
                                            dtype=tf.float32)
-            self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
+            self.rel_emb = tf.get_variable('rel_emb_{}'.format(timestamp),
+                                           shape=[len(self.rel_to_idx), self.internal_k],
                                            initializer=self.initializer.get_relation_initializer(
                                                len(self.rel_to_idx), self.internal_k),
                                            dtype=tf.float32)
         else:
             # initialize entity embeddings to zero (these are reinitialized every batch by batch embeddings)
-            self.ent_emb = tf.get_variable('ent_emb', shape=[self.batch_size * 2, self.internal_k],
+            self.ent_emb = tf.get_variable('ent_emb_{}'.format(timestamp),
+                                           shape=[self.batch_size * 2, self.internal_k],
                                            initializer=tf.zeros_initializer(),
                                            dtype=tf.float32)
-            self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.internal_k],
+            self.rel_emb = tf.get_variable('rel_emb_{}'.format(timestamp),
+                                           shape=[len(self.rel_to_idx), self.internal_k],
                                            initializer=self.initializer.get_relation_initializer(
                                                len(self.rel_to_idx), self.internal_k),
                                            dtype=tf.float32)
@@ -528,9 +564,16 @@ class EmbeddingModel(abc.ABC):
         loss : tf.Tensor
             The loss value that must be minimized.
         """
-        # get the train triples of the batch, unique entities and the corresponding embeddings
-        # the latter 2 variables are passed only for large graphs.
-        x_pos_tf, self.unique_entities, ent_emb_batch = dataset_iterator.get_next()
+        self.epoch = tf.placeholder(tf.float32)
+        self.batch_number = tf.placeholder(tf.int32)
+        
+        if self.use_focusE:
+            x_pos_tf, self.unique_entities, ent_emb_batch, weights = dataset_iterator.get_next()
+                
+        else:
+            # get the train triples of the batch, unique entities and the corresponding embeddings
+            # the latter 2 variables are passed only for large graphs.
+            x_pos_tf, self.unique_entities, ent_emb_batch = dataset_iterator.get_next()
 
         # list of dependent ops that need to be evaluated before computing the loss
         dependencies = []
@@ -560,8 +603,44 @@ class EmbeddingModel(abc.ABC):
             x_pos = x_pos_tf
 
             e_s_pos, e_p_pos, e_o_pos = self._lookup_embeddings(x_pos)
-            scores_pos = self._fn(e_s_pos, e_p_pos, e_o_pos)
 
+            scores_pos = self._fn(e_s_pos, e_p_pos, e_o_pos)
+            
+            non_linearity = self.embedding_model_params.get('non_linearity', 'linear')
+            if non_linearity == 'linear':
+                scores_pos = scores_pos
+            elif non_linearity == 'tanh':
+                scores_pos = tf.tanh(scores_pos)
+            elif non_linearity == 'sigmoid':
+                scores_pos = tf.sigmoid(scores_pos)
+            elif non_linearity == 'softplus':
+                scores_pos = custom_softplus(scores_pos)
+            else:
+                raise ValueError('Invalid non-linearity')
+                
+            if self.use_focusE:
+
+                epoch_before_stopping_weight = self.embedding_model_params.get('stop_epoch', 251)
+                assert epoch_before_stopping_weight >= 0, "Invalid value for stop_epoch"
+                
+                if epoch_before_stopping_weight == 0:
+                    # use fixed structural weight
+                    structure_weight = self.embedding_model_params.get('structural_wt', 0.001)
+                    assert structure_weight <= 1 and structure_weight >= 0, \
+                        "Invalid structure_weight passed to model params!"
+                    
+                else:
+                    # decay of numeric values
+                    # start with all triples having same numeric values and linearly decay till original value
+                    structure_weight = tf.maximum(1 - self.epoch / epoch_before_stopping_weight, 0.001)
+            
+                weights = tf.reduce_mean(weights, 1)
+                weights_pos = structure_weight + (1 - structure_weight) * (1 - weights)
+                weights_neg = structure_weight + (1 - structure_weight) * (
+                    tf.reshape(tf.tile(weights, [self.eta]), [tf.shape(weights)[0] * self.eta]))
+                    
+                scores_pos = scores_pos * weights_pos
+                    
             if self.loss.get_state('require_same_size_pos_neg'):
                 logger.debug('Requires the same size of postive and negative')
                 scores_pos = tf.reshape(tf.tile(scores_pos, [self.eta]), [tf.shape(scores_pos)[0] * self.eta])
@@ -611,7 +690,21 @@ class EmbeddingModel(abc.ABC):
                 # compute corruption scores
                 e_s_neg, e_p_neg, e_o_neg = self._lookup_embeddings(x_neg_tf)
                 scores_neg = self._fn(e_s_neg, e_p_neg, e_o_neg)
-
+                    
+                if non_linearity == 'linear':
+                    scores_neg = scores_neg
+                elif non_linearity == 'tanh':
+                    scores_neg = tf.tanh(scores_neg)
+                elif non_linearity == 'sigmoid':
+                    scores_neg = tf.sigmoid(scores_neg)
+                elif non_linearity == 'softplus':
+                    scores_neg = custom_softplus(scores_neg)
+                else:
+                    raise ValueError('Invalid non-linearity')
+                    
+                if self.use_focusE:
+                    scores_neg = scores_neg * weights_neg
+                
                 # Apply the loss function
                 loss += self.loss.apply(scores_pos, scores_neg)
 
@@ -736,6 +829,12 @@ class EmbeddingModel(abc.ABC):
             elif self.early_stopping_criteria == 'mrr':
                 current_test_value = mrr_score(ranks)
 
+            if self.tensorboard_logs_path is not None:
+                tag = "Early stopping {} current value".format(self.early_stopping_criteria)
+                summary = tf.Summary(value=[tf.Summary.Value(tag=tag, 
+                                                             simple_value=current_test_value)])
+                self.writer.add_summary(summary, epoch)
+
             if self.early_stopping_best_value is None:  # First validation iteration
                 self.early_stopping_best_value = current_test_value
                 self.early_stopping_first_value = current_test_value
@@ -812,10 +911,17 @@ class EmbeddingModel(abc.ABC):
         batch_iterator = iter(self.train_dataset_handle.get_next_batch(self.batches_count, "train"))
         for i in range(self.batches_count):
             out = next(batch_iterator)
+            
+            out_triples = out[0]
+            if self.use_focusE:
+                out_weights = out[1]
+
             # If large graph, load batch_size*2 entities on GPU memory
             if self.dealing_with_large_graphs:
                 # find the unique entities - these HAVE to be loaded
-                unique_entities = np.int32(np.unique(np.concatenate([out[:, 0], out[:, 2]], axis=0)))
+                unique_entities = np.int32(np.unique(np.concatenate([out_triples[:, 0], 
+                                                                     out_triples[:, 2]], 
+                                                                    axis=0)))
                 # Load the remaining entities by randomly selecting from the rest of the entities
                 self.leftover_entities = self.rnd.permutation(np.setdiff1d(all_ent, unique_entities))
                 needed = (self.batch_size * 2 - unique_entities.shape[0])
@@ -832,9 +938,20 @@ class EmbeddingModel(abc.ABC):
 
                 unique_entities = unique_entities.reshape(-1, 1)
 
-            yield out, unique_entities, entity_embeddings
+            if self.use_focusE:
+                for col_idx in range(out_weights.shape[1]):
+                    # random weights are used where weights are unknown
+                    nan_indices = np.isnan(out_weights[:, col_idx])
+                    out_weights[nan_indices, col_idx] = np.random.uniform(size=(np.sum(nan_indices)))
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}):
+                out_weights = np.mean(out_weights, 1)
+                out_weights = out_weights[:, np.newaxis]
+                yield out_triples, unique_entities, entity_embeddings, out_weights
+            else:
+                yield np.squeeze(out_triples), unique_entities, entity_embeddings
+
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None,
+            tensorboard_logs_path=None):
         """Train an EmbeddingModel (with optional early stopping).
 
         The model is trained on a training set X using the training protocol
@@ -867,15 +984,62 @@ class EmbeddingModel(abc.ABC):
                 - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o', 's,o' (default)
 
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
+        focusE_numeric_edge_values: nd array (n, 1)
+            Numeric values associated with links. 
+            Semantically, the numeric value can signify importance, uncertainity, significance, confidence, etc.
+            If the numeric value is unknown pass a NaN weight. The model will uniformly randomly assign a numeric value.
+            One can also think about assigning numeric values by looking at the distribution of it per predicate.
+
+        tensorboard_logs_path: str or None
+            Path to store tensorboard logs, e.g. average training loss tracking per epoch (default: ``None`` indicating
+            no logs will be collected). When provided it will create a folder under provided path and save tensorboard 
+            files there. To then view the loss in the terminal run: ``tensorboard --logdir <tensorboard_logs_path>``.
 
         """
         self.train_dataset_handle = None
+        self.tensorboard_logs_path = tensorboard_logs_path
         # try-except block is mainly to handle clean up in case of exception or manual stop in jupyter notebook
         try:
             if isinstance(X, np.ndarray):
+                if focusE_numeric_edge_values is not None:
+                    logger.debug("Using FocusE")
+                    self.use_focusE = True
+                    assert focusE_numeric_edge_values.shape[0] == X.shape[0], \
+                        "Each triple must have a numeric value (the size of the training set does not match the size" \
+                        "of the focusE_numeric_edge_values argument."
+
+                    if focusE_numeric_edge_values.ndim == 1:
+                        focusE_numeric_edge_values = focusE_numeric_edge_values.reshape(-1, 1)
+
+                    logger.debug("normalizing numeric values")
+                    unique_relations = np.unique(X[:, 1])
+                    for reln in unique_relations:
+                        for col_idx in range(focusE_numeric_edge_values.shape[1]):
+                            # here nans signify unknown numeric values
+                            if np.sum(np.isnan(
+                                focusE_numeric_edge_values[X[:, 1] == reln,
+                                                           col_idx])) != focusE_numeric_edge_values[
+                                    X[:, 1] == reln, col_idx].shape[0]:
+                                min_val = np.nanmin(focusE_numeric_edge_values[X[:, 1] == reln,
+                                                                               col_idx])
+                                max_val = np.nanmax(focusE_numeric_edge_values[X[:, 1] == reln,
+                                                                               col_idx])
+                                if min_val == max_val:
+                                    focusE_numeric_edge_values[X[:, 1] == reln, col_idx] = 1.0
+                                    continue
+                                    
+                                if self.embedding_model_params.get('normalize_numeric_values', True) \
+                                        or min_val < 0 or max_val > 1:
+                                    focusE_numeric_edge_values[X[:, 1] == reln, col_idx] = (
+                                        focusE_numeric_edge_values[X[:, 1] == reln, 
+                                                                   col_idx] - min_val) / (
+                                        max_val - min_val)
+                            else:
+                                pass  # all the weights are nans
+                  
                 # Adapt the numpy data in the internal format - to generalize
                 self.train_dataset_handle = NumpyDatasetAdapter()
-                self.train_dataset_handle.set_data(X, "train")
+                self.train_dataset_handle.set_data(X, "train", focusE_numeric_edge_values=focusE_numeric_edge_values)
             elif isinstance(X, AmpligraphDatasetAdapter):
                 self.train_dataset_handle = X
             else:
@@ -920,7 +1084,8 @@ class EmbeddingModel(abc.ABC):
                 tf.random.set_random_seed(self.seed)
 
             self.sess_train = tf.Session(config=self.tf_config)
-
+            if self.tensorboard_logs_path is not None:
+                self.writer = tf.summary.FileWriter(self.tensorboard_logs_path, self.sess_train.graph)
             batch_size = int(np.ceil(self.train_dataset_handle.get_size("train") / self.batches_count))
             # dataset = tf.data.Dataset.from_tensor_slices(X).repeat().batch(batch_size).prefetch(2)
 
@@ -930,9 +1095,16 @@ class EmbeddingModel(abc.ABC):
             self.batch_size = batch_size
             self._initialize_parameters()
 
+            if self.use_focusE:
+                output_types = (tf.int32, tf.int32, tf.float32, tf.float32)
+                output_shapes = ((None, 3), (None, 1), (None, self.internal_k), (None, 1))
+            else:
+                output_types = (tf.int32, tf.int32, tf.float32)
+                output_shapes = ((None, 3), (None, 1), (None, self.internal_k))
+
             dataset = tf.data.Dataset.from_generator(self._training_data_generator,
-                                                     output_types=(tf.int32, tf.int32, tf.float32),
-                                                     output_shapes=((None, 3), (None, 1), (None, self.internal_k)))
+                                                     output_types=output_types,
+                                                     output_shapes=output_shapes)
 
             dataset = dataset.repeat().prefetch(prefetch_batches)
 
@@ -974,7 +1146,7 @@ class EmbeddingModel(abc.ABC):
             for epoch in epoch_iterator_with_progress:
                 losses = []
                 for batch in range(1, self.batches_count + 1):
-                    feed_dict = {}
+                    feed_dict = {self.epoch: epoch, self.batch_number: batch - 1}
                     self.optimizer.update_feed_dict(feed_dict, batch, epoch)
                     if self.dealing_with_large_graphs:
                         loss_batch, unique_entities, _ = self.sess_train.run([loss, self.unique_entities, train],
@@ -992,9 +1164,18 @@ class EmbeddingModel(abc.ABC):
                     losses.append(loss_batch)
                     if self.embedding_model_params.get('normalize_ent_emb', constants.DEFAULT_NORMALIZE_EMBEDDINGS):
                         self.sess_train.run(normalize_ent_emb_op)
-
+                if self.tensorboard_logs_path is not None:
+                    avg_loss = sum(losses) / (batch_size * self.batches_count)
+                    summary = tf.Summary(value=[tf.Summary.Value(tag="Average Loss",
+                                                                     simple_value=avg_loss)])
+                    self.writer.add_summary(summary, epoch)
                 if self.verbose:
-                    msg = 'Average Loss: {:10f}'.format(sum(losses) / (batch_size * self.batches_count))
+                    focusE = ''
+                    if self.use_focusE:
+                        focusE = '-FocusE'
+                    msg = 'Average {}{} Loss: {:10f}'.format(self.name,
+                                                             focusE,
+                                                             sum(losses) / (batch_size * self.batches_count))
                     if early_stopping and self.early_stopping_best_value is not None:
                         msg += ' — Best validation ({}): {:5f}'.format(self.early_stopping_criteria,
                                                                        self.early_stopping_best_value)
@@ -1010,6 +1191,9 @@ class EmbeddingModel(abc.ABC):
                         pass
 
                     if self._perform_early_stopping_test(epoch):
+                        if self.tensorboard_logs_path is not None:
+                            self.writer.flush()
+                            self.writer.close()
                         self._end_training()
                         return
 
@@ -1017,6 +1201,9 @@ class EmbeddingModel(abc.ABC):
                         self.sess_train.run(self.set_training_true)
                     except AttributeError:
                         pass
+            if self.tensorboard_logs_path is not None:
+                self.writer.flush()
+                self.writer.close()
 
             self._save_trained_params()
             self._end_training()
@@ -1070,6 +1257,8 @@ class EmbeddingModel(abc.ABC):
                 out, indices_obj, indices_sub = next(batch_iterator)
             else:
                 out = next(batch_iterator)
+                # since focuse layer is not used in evaluation mode
+                out = out[0]
 
             if self.dealing_with_large_graphs:
                 # since we are dealing with only one triple (2 entities)
@@ -1078,7 +1267,7 @@ class EmbeddingModel(abc.ABC):
                 large_number = np.zeros((needed, self.ent_emb_cpu.shape[1]), dtype=np.float32) + np.nan
                 entity_embeddings = np.concatenate((self.ent_emb_cpu[unique_ent, :], large_number), axis=0)
                 unique_ent = unique_ent.reshape(-1, 1)
-
+                
             yield out, indices_obj, indices_sub, entity_embeddings, unique_ent
 
     def _generate_corruptions_for_large_graphs(self):
@@ -1160,11 +1349,25 @@ class EmbeddingModel(abc.ABC):
                                                                            default_value=-1,
                                                                            empty_key=-2,
                                                                            deleted_key=-1)
-
             insert_lookup_op = self.sparse_mappings.insert(unique_ent,
                                                            tf.reshape(tf.range(tf.shape(unique_ent)[0],
                                                                       dtype=tf.int32), (-1, 1)))
             test_dependency.append(insert_lookup_op)
+            if isinstance(corruption_entities, np.ndarray):
+                # This is used for mapping the scores of corryption entities to the array which stores the scores
+                # Since the number of entities are low when entities_subset is used, the size of the array
+                # which stores the scores would be len(entities_subset). 
+                # Hence while storing, the corruption entity id needs to be mapped to array index
+                rankings_mappings = tf.contrib.lookup.MutableDenseHashTable(key_dtype=tf.int32,
+                                                                            value_dtype=tf.int32,
+                                                                            default_value=-1,
+                                                                            empty_key=-2,
+                                                                            deleted_key=-1)
+
+                ranking_lookup_op = rankings_mappings.insert(corruption_entities.reshape(-1, 1),
+                                                             tf.reshape(tf.range(len(corruption_entities),
+                                                                                 dtype=tf.int32), (-1, 1)))
+                test_dependency.append(ranking_lookup_op)
 
             # Execute the dependency
             with tf.control_dependencies(test_dependency):
@@ -1173,7 +1376,7 @@ class EmbeddingModel(abc.ABC):
                 self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
 
                 # Generate corruptions in batches
-                self.corr_batches_count = int(np.ceil(len(self.ent_to_idx) / (self.corr_batch_size)))
+                self.corr_batches_count = int(np.ceil(len(corruption_entities) / (self.corr_batch_size)))
 
                 # Corruption generator -
                 # returns corruptions and their corresponding embeddings that need to be loaded on the GPU
@@ -1188,8 +1391,9 @@ class EmbeddingModel(abc.ABC):
                 corruption_iter = tf.data.make_one_shot_iterator(corruption_generator)
 
                 # Create tensor arrays for storing the scores of subject and object evals
-                scores_predict_s_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(self.ent_to_idx)))
-                scores_predict_o_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(self.ent_to_idx)))
+                # size of this array must be equal to size of entities used for corruption.
+                scores_predict_s_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(corruption_entities)))
+                scores_predict_o_corruptions = tf.TensorArray(dtype=tf.float32, size=(len(corruption_entities)))
 
                 def loop_cond(i,
                               scores_predict_s_corruptions_in,
@@ -1205,7 +1409,7 @@ class EmbeddingModel(abc.ABC):
                     # Add dependency to load the embeddings
                     init_ent_emb_corrpt = self.ent_emb.assign(entity_embeddings_corrpt, use_locking=True)
                     corr_dependency.append(init_ent_emb_corrpt)
-
+                    
                     # Add dependency to remap the indices to the corresponding indices on the GPU
                     insert_lookup_op2 = self.sparse_mappings.insert(corr_batch,
                                                                     tf.reshape(tf.range(tf.shape(corr_batch)[0],
@@ -1217,17 +1421,21 @@ class EmbeddingModel(abc.ABC):
                     # Execute the dependency
                     with tf.control_dependencies(corr_dependency):
                         emb_corr = tf.squeeze(self._entity_lookup(corr_batch))
+                        if isinstance(corruption_entities, np.ndarray):
+                            remapping = rankings_mappings.lookup(corr_batch)
+                        else:
+                            remapping = corr_batch
                         if 's' in corrupt_side:
                             # compute and store the scores batch wise
                             scores_predict_s_c = self._fn(emb_corr, e_p, e_o)
                             scores_predict_s_corruptions_in = \
-                                scores_predict_s_corruptions_in.scatter(tf.squeeze(corr_batch),
+                                scores_predict_s_corruptions_in.scatter(tf.squeeze(remapping),
                                                                         tf.squeeze(scores_predict_s_c))
 
                         if 'o' in corrupt_side:
                             scores_predict_o_c = self._fn(e_s, e_p, emb_corr)
                             scores_predict_o_corruptions_in = \
-                                scores_predict_o_corruptions_in.scatter(tf.squeeze(corr_batch),
+                                scores_predict_o_corruptions_in.scatter(tf.squeeze(remapping),
                                                                         tf.squeeze(scores_predict_o_c))
 
                     return i + 1, scores_predict_s_corruptions_in, scores_predict_o_corruptions_in
@@ -1247,6 +1455,24 @@ class EmbeddingModel(abc.ABC):
 
                 if 'o' in corrupt_side:
                     obj_corruption_scores = scores_predict_o_corr_out.stack()
+                    
+                non_linearity = self.embedding_model_params.get('non_linearity', 'linear')
+                if non_linearity == 'linear':
+                    pass
+                elif non_linearity == 'tanh':
+                    subj_corruption_scores = tf.tanh(subj_corruption_scores)
+                    obj_corruption_scores = tf.tanh(obj_corruption_scores)
+                    self.score_positive = tf.tanh(self.score_positive)
+                elif non_linearity == 'sigmoid':
+                    subj_corruption_scores = tf.sigmoid(subj_corruption_scores)
+                    obj_corruption_scores = tf.sigmoid(obj_corruption_scores)
+                    self.score_positive = tf.sigmoid(self.score_positive)
+                elif non_linearity == 'softplus':
+                    subj_corruption_scores = custom_softplus(subj_corruption_scores)
+                    obj_corruption_scores = custom_softplus(obj_corruption_scores)
+                    self.score_positive = custom_softplus(self.score_positive)
+                else:
+                    raise ValueError('Invalid non-linearity')
 
                 if corrupt_side == 's+o' or corrupt_side == 's,o':
                     self.scores_predict = tf.concat([obj_corruption_scores, subj_corruption_scores], axis=0)
@@ -1269,10 +1495,25 @@ class EmbeddingModel(abc.ABC):
             # Compute scores for negatives
             e_s, e_p, e_o = self._lookup_embeddings(self.out_corr)
             self.scores_predict = self._fn(e_s, e_p, e_o)
-
+                
             # Compute scores for positive
             e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
             self.score_positive = tf.squeeze(self._fn(e_s, e_p, e_o))
+                
+            non_linearity = self.embedding_model_params.get('non_linearity', 'linear')
+            if non_linearity == 'linear':
+                pass
+            elif non_linearity == 'tanh':
+                self.score_positive = tf.tanh(self.score_positive)
+                self.scores_predict = tf.tanh(self.scores_predict)
+            elif non_linearity == 'sigmoid':
+                self.score_positive = tf.sigmoid(self.score_positive)
+                self.scores_predict = tf.sigmoid(self.scores_predict)
+            elif non_linearity == 'softplus':
+                self.score_positive = custom_softplus(self.score_positive)
+                self.scores_predict = custom_softplus(self.scores_predict)
+            else:
+                raise ValueError('Invalid non-linearity')
 
             if corrupt_side == 's,o':
                 obj_corruption_scores = tf.slice(self.scores_predict,
@@ -1490,6 +1731,18 @@ class EmbeddingModel(abc.ABC):
 
             e_s, e_p, e_o = self._lookup_embeddings(x_tf)
             scores = self._fn(e_s, e_p, e_o)
+                
+            non_linearity = self.embedding_model_params.get('non_linearity', 'linear')
+            if non_linearity == 'linear':
+                pass
+            elif non_linearity == 'tanh':
+                scores = tf.tanh(self.scores)
+            elif non_linearity == 'sigmoid':
+                scores = tf.sigmoid(scores)
+            elif non_linearity == 'softplus':
+                scores = custom_softplus(scores)
+            else:
+                raise ValueError('Invalid non-linearity')
 
             with tf.Session(config=self.tf_config) as sess:
                 sess.run(tf.global_variables_initializer())
@@ -1585,11 +1838,11 @@ class EmbeddingModel(abc.ABC):
         gen_fn = partial(dataset_handle.get_next_batch, batches_count=batches_count, dataset_type="pos")
         dataset = tf.data.Dataset.from_generator(gen_fn,
                                                  output_types=tf.int32,
-                                                 output_shapes=(None, 3))
+                                                 output_shapes=(1, None, 3))
         dataset = dataset.repeat().prefetch(1)
         dataset_iter = tf.data.make_one_shot_iterator(dataset)
 
-        x_pos_tf = dataset_iter.get_next()
+        x_pos_tf = dataset_iter.get_next()[0]
 
         e_s, e_p, e_o = self._lookup_embeddings(x_pos_tf)
         scores_pos = self._fn(e_s, e_p, e_o)
@@ -1680,8 +1933,8 @@ class EmbeddingModel(abc.ABC):
             Incompatible with large graph mode (i.e. if ``self.dealing_with_large_graphs=True``).
 
         .. Note ::
-            :cite:`calibration` `calibration experiments available here
-            <https://github.com/Accenture/AmpliGraph/tree/paper/ICLR-20/experiments/ICLR-20>`_.
+            `Experiments for the ICLR-21 calibration paper are available here
+            <https://github.com/Accenture/AmpliGraph/tree/paper/ICLR-20/experiments/ICLR-20>`_ :cite:`calibration`.
 
 
         Parameters
@@ -1810,28 +2063,22 @@ class EmbeddingModel(abc.ABC):
 
             loss = tf.losses.sigmoid_cross_entropy(labels, logits, weights=weights)
 
-            if X_neg is not None:
-                optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss)
-            else:
-                optimizer = tf.train.AdamOptimizer()
-                train = optimizer.minimize(loss)
+            optimizer = tf.train.AdamOptimizer()
+            train = optimizer.minimize(loss)
 
             with tf.Session(config=self.tf_config) as sess:
                 sess.run(tf.global_variables_initializer())
 
-                if X_neg is not None:
-                    optimizer.minimize(sess)
-                else:
-                    epoch_iterator_with_progress = tqdm(range(1, epochs + 1), disable=(not self.verbose), unit='epoch')
-                    for _ in epoch_iterator_with_progress:
-                        losses = []
-                        for batch in range(batches_count):
-                            loss_batch, _ = sess.run([loss, train])
-                            losses.append(loss_batch)
-                        if self.verbose:
-                            msg = 'Calibration Loss: {:10f}'.format(sum(losses) / batches_count)
-                            logger.debug(msg)
-                            epoch_iterator_with_progress.set_description(msg)
+                epoch_iterator_with_progress = tqdm(range(1, epochs + 1), disable=(not self.verbose), unit='epoch')
+                for _ in epoch_iterator_with_progress:
+                    losses = []
+                    for batch in range(batches_count):
+                        loss_batch, _ = sess.run([loss, train])
+                        losses.append(loss_batch)
+                    if self.verbose:
+                        msg = 'Calibration Loss: {:10f}'.format(sum(losses) / batches_count)
+                        logger.debug(msg)
+                        epoch_iterator_with_progress.set_description(msg)
 
                 self.calibration_parameters = sess.run([w, b])
             self.is_calibrated = True

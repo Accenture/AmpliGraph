@@ -1,9 +1,17 @@
+# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 import numpy as np
 import tensorflow as tf
 import logging
 from sklearn.utils import check_random_state
 from tqdm import tqdm
 from functools import partial
+import time
 
 from .EmbeddingModel import EmbeddingModel, register_model, ENTITY_THRESHOLD
 from ..initializers import DEFAULT_XAVIER_IS_UNIFORM
@@ -241,11 +249,11 @@ class ConvE(EmbeddingModel):
             and all relation embeddings.
             Overload this function if the parameters needs to be initialized differently.
         """
-
+        timestamp = int(time.time() * 1e6)
         if not self.dealing_with_large_graphs:
 
             with tf.variable_scope('meta'):
-                self.tf_is_training = tf.Variable(False, trainable=False, name='is_training')
+                self.tf_is_training = tf.Variable(False, trainable=False)
                 self.set_training_true = tf.assign(self.tf_is_training, True)
                 self.set_training_false = tf.assign(self.tf_is_training, False)
 
@@ -253,26 +261,32 @@ class ConvE(EmbeddingModel):
             ninput = self.embedding_model_params['embed_image_depth']
             ksize = self.embedding_model_params['conv_kernel_size']
             dense_dim = self.embedding_model_params['dense_dim']
-
-            self.ent_emb = tf.get_variable('ent_emb', shape=[len(self.ent_to_idx), self.k],
+    
+            self.ent_emb = tf.get_variable('ent_emb_{}'.format(timestamp),
+                                           shape=[len(self.ent_to_idx), self.k],
                                            initializer=self.initializer.get_entity_initializer(
                                            len(self.ent_to_idx), self.k),
                                            dtype=tf.float32)
-            self.rel_emb = tf.get_variable('rel_emb', shape=[len(self.rel_to_idx), self.k],
+            self.rel_emb = tf.get_variable('rel_emb_{}'.format(timestamp),
+                                           shape=[len(self.rel_to_idx), self.k],
                                            initializer=self.initializer.get_relation_initializer(
                                            len(self.rel_to_idx), self.k),
                                            dtype=tf.float32)
 
-            self.conv2d_W = tf.get_variable('conv2d_weights', shape=[ksize, ksize, ninput, nfilters],
+            self.conv2d_W = tf.get_variable('conv2d_weights_{}'.format(timestamp),
+                                            shape=[ksize, ksize, ninput, nfilters],
                                             initializer=tf.initializers.he_normal(seed=self.seed),
                                             dtype=tf.float32)
-            self.conv2d_B = tf.get_variable('conv2d_bias', shape=[nfilters],
+            self.conv2d_B = tf.get_variable('conv2d_bias_{}'.format(timestamp),
+                                            shape=[nfilters],
                                             initializer=tf.zeros_initializer(), dtype=tf.float32)
 
-            self.dense_W = tf.get_variable('dense_weights', shape=[dense_dim, self.k],
+            self.dense_W = tf.get_variable('dense_weights_{}'.format(timestamp),
+                                           shape=[dense_dim, self.k],
                                            initializer=tf.initializers.he_normal(seed=self.seed),
                                            dtype=tf.float32)
-            self.dense_B = tf.get_variable('dense_bias', shape=[self.k],
+            self.dense_B = tf.get_variable('dense_bias_{}'.format(timestamp),
+                                           shape=[self.k],
                                            initializer=tf.zeros_initializer(), dtype=tf.float32)
 
             if self.embedding_model_params['use_batchnorm']:
@@ -293,7 +307,8 @@ class ConvE(EmbeddingModel):
                                                     'moving_variance': np.ones(shape=[1])}}
 
             if self.embedding_model_params['use_bias']:
-                self.bias = tf.get_variable('activation_bias', shape=[1, len(self.ent_to_idx)],
+                self.bias = tf.get_variable('activation_bias_{}'.format(timestamp),
+                                            shape=[1, len(self.ent_to_idx)],
                                             initializer=tf.zeros_initializer(), dtype=tf.float32)
 
         else:
@@ -388,12 +403,12 @@ class ConvE(EmbeddingModel):
         self.batch_size = int(np.ceil(len(self.ent_to_idx) / self.batches_count))
 
         with tf.variable_scope('meta'):
-            self.tf_is_training = tf.Variable(False, trainable=False, name='is_training')
+            self.tf_is_training = tf.Variable(False, trainable=False)
             self.set_training_true = tf.assign(self.tf_is_training, True)
             self.set_training_false = tf.assign(self.tf_is_training, False)
 
-        self.ent_emb = tf.Variable(self.trained_model_params['ent_emb'], dtype=tf.float32, name='ent_emb')
-        self.rel_emb = tf.Variable(self.trained_model_params['rel_emb'], dtype=tf.float32, name='rel_emb')
+        self.ent_emb = tf.Variable(self.trained_model_params['ent_emb'], dtype=tf.float32)
+        self.rel_emb = tf.Variable(self.trained_model_params['rel_emb'], dtype=tf.float32)
 
         self.conv2d_W = tf.Variable(self.trained_model_params['conv2d_W'], dtype=tf.float32)
         self.conv2d_B = tf.Variable(self.trained_model_params['conv2d_B'], dtype=tf.float32)
@@ -456,8 +471,8 @@ class ConvE(EmbeddingModel):
             return x
 
         # Inputs
-        stacked_emb = tf.stack([e_s, e_p], axis=2, name='stacked_embeddings')
-        self.inputs = tf.reshape(stacked_emb, name='embed_image',
+        stacked_emb = tf.stack([e_s, e_p], axis=2)
+        self.inputs = tf.reshape(stacked_emb,
                                  shape=[tf.shape(stacked_emb)[0], self.embedding_model_params['embed_image_height'],
                                         self.embedding_model_params['embed_image_width'], 1])
 
@@ -478,7 +493,7 @@ class ConvE(EmbeddingModel):
             # Batch normalization will cancel out bias, so only add bias term if not using batchnorm
             x = tf.nn.bias_add(x, self.conv2d_B)
 
-        x = tf.nn.relu(x, name='conv_relu')
+        x = tf.nn.relu(x)
 
         if not self.embedding_model_params['dropout_conv'] is None:
             x = _dropout(x, rate=self.embedding_model_params['dropout_conv'])
@@ -504,11 +519,11 @@ class ConvE(EmbeddingModel):
         if not self.embedding_model_params['dropout_dense'] is None:
             x = _dropout(x, rate=self.embedding_model_params['dropout_dense'])
 
-        x = tf.nn.relu(x, name='dense_relu')
-        x = tf.matmul(x, tf.transpose(self.ent_emb), name='matmul')
+        x = tf.nn.relu(x)
+        x = tf.matmul(x, tf.transpose(self.ent_emb))
 
         if self.embedding_model_params['use_bias']:
-            x = tf.add(x, self.bias, name='add_bias')
+            x = tf.add(x, self.bias)
 
         self.scores = x
 
@@ -771,10 +786,10 @@ class ConvE(EmbeddingModel):
         e_s, e_p, e_o = self._lookup_embeddings(self.X_test_tf)
 
         # Scores for all triples
-        scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)), name='sigmoid_scores')
+        scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)))
 
         # Score of positive triple
-        self.score_positive = tf.gather(scores, indices=self.X_test_tf[:, 2], name='score_positive')
+        self.score_positive = tf.gather(scores, indices=self.X_test_tf[:, 2])
 
         # Scores for positive triples
         self.scores_filtered = tf.boolean_mask(scores, tf.cast(self.X_test_filter_tf, tf.bool))
@@ -786,7 +801,7 @@ class ConvE(EmbeddingModel):
         self.filter_rank = self.perform_comparision(self.scores_filtered, self.score_positive)
 
         # Rank of triple, with other positives filtered out.
-        self.rank = tf.subtract(self.total_rank, self.filter_rank, name='rank') + 1
+        self.rank = tf.subtract(self.total_rank, self.filter_rank) + 1
 
         # NOTE: if having trouble with the above rank calculation, consider when test triple
         # has the highest score (total_rank=1, filter_rank=1)
@@ -1042,7 +1057,7 @@ class ConvE(EmbeddingModel):
         e_s, e_p, e_o = self._lookup_embeddings(self.subject_corr)
 
         # Scores for all triples
-        self.sigmoid_scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)), name='sigmoid_scores')
+        self.sigmoid_scores = tf.sigmoid(tf.squeeze(self._fn(e_s, e_p, e_o)))
 
     def _get_subject_ranks(self, dataset_handle, corruption_batch_size=None):
         """ Internal function for obtaining subject ranks.

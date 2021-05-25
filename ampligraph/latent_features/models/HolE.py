@@ -1,3 +1,10 @@
+# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 from .ComplEx import ComplEx, register_model
 from ampligraph.latent_features import constants as constants
 from ampligraph.latent_features.initializers import DEFAULT_XAVIER_IS_UNIFORM
@@ -77,6 +84,14 @@ class HolE(ComplEx):
               or an int (which indicates how many entities that should be used for corruption generation).
             - **corrupt_sides** : Specifies how to generate corruptions for training.
               Takes values `s`, `o`, `s+o` or any combination passed as a list.
+            - **'non_linearity'**: can be one of the following values ``linear``, ``softplus``, ``sigmoid``, ``tanh``
+            - **'stop_epoch'**: specifies how long to decay (linearly) the numeric values from 1 to original value 
+            until it reachs original value.
+            - **'structural_wt'**: structural influence hyperparameter [0, 1] that modulates the influence of graph 
+            topology. 
+            - **'normalize_numeric_values'**: normalize the numeric values, such that they are scaled between [0, 1]
+
+            The last 4 parameters are related to FocusE layers.
 
         optimizer : string
             The optimizer used to minimize the loss function. Choose between 'sgd',
@@ -175,7 +190,8 @@ class HolE(ComplEx):
         """
         return (2 / self.k) * (super()._fn(e_s, e_p, e_o))
 
-    def fit(self, X, early_stopping=False, early_stopping_params={}):
+    def fit(self, X, early_stopping=False, early_stopping_params={}, focusE_numeric_edge_values=None,
+            tensorboard_logs_path=None):
         """Train a HolE model.
 
         The model is trained on a training set X using the training protocol
@@ -233,9 +249,21 @@ class HolE(ComplEx):
                 - **'corrupt_side'**: Specifies which side to corrupt. 's', 'o', 's+o' (default)
 
                 Example: ``early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}``
-
+        
+        focusE_numeric_edge_values: nd array (n, 1)
+            Numeric values associated with links. 
+            Semantically, the numeric value can signify importance, uncertainity, significance, confidence, etc.
+            If the numeric value is unknown pass a NaN weight. The model will uniformly randomly assign a numeric value.
+            One can also think about assigning numeric values by looking at the distribution of it per predicate.
+ 
+        tensorboard_logs_path: str or None
+            Path to store tensorboard logs, e.g. average training loss tracking per epoch (default: ``None`` indicating
+            no logs will be collected). When provided it will create a folder under provided path and save tensorboard 
+            files there. To then view the loss in the terminal run: ``tensorboard --logdir <tensorboard_logs_path>``.
+           
         """
-        super().fit(X, early_stopping, early_stopping_params)
+        super().fit(X, early_stopping, early_stopping_params, focusE_numeric_edge_values,
+                    tensorboard_logs_path=tensorboard_logs_path)
 
     def predict(self, X, from_idx=False):
         __doc__ = super().predict.__doc__  # NOQA

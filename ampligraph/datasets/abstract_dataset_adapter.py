@@ -1,3 +1,10 @@
+# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 import abc
 
 
@@ -16,6 +23,8 @@ class AmpligraphDatasetAdapter(abc.ABC):
         self.ent_to_idx = {}
         # Mapped status of each dataset
         self.mapped_status = {}
+        # link weights for focusE
+        self.focusE_numeric_edge_values = {}
 
     def use_mappings(self, rel_to_idx, ent_to_idx):
         """Use an existing mapping with the datasource.

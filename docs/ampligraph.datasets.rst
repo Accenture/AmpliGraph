@@ -21,7 +21,7 @@ Datasets
 Benchmark Datasets Loaders
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Use these helpers functions to load datasets used in graph representation learning literature.
+Use these helper functions to load datasets used in graph representation learning literature.
 The functions will **automatically download** the datasets if they are not present in ``~/ampligraph_datasets`` or
 at the location set in ``AMPLIGRAPH_DATA_HOME``.
 
@@ -67,6 +67,43 @@ FB13      316,232   11,816  47,464  75,043        13
 .. note::
     WN11 and FB13 also provide true and negative labels for the triples in the validation and tests sets.
     In both cases the positive base rate is close to 50%.
+
+Benchmark Datasets Loaders (Knowledge Graphs With Numeric Values on Edges)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. _numeric-enriched-edges-loaders:
+These helper functions load benchmark datasets **with numeric values on edges**,
+as described in :cite:`pai2021learning` (the figure below shows a toy example).
+
+.. image:: img/kg_eg.png
+    :scale: 50 %
+
+.. hint::
+    To process a knowledge graphs with numeric values associated to edges, enable the
+    :ref:`FocusE layer <edge-literals>`
+    when training a knowledge graph embedding model :cite:`pai2021learning`.
+
+The functions will **automatically download** the datasets if they are not present in ``~/ampligraph_datasets`` or
+at the location set in ``AMPLIGRAPH_DATA_HOME``.
+
+.. autosummary::
+    :toctree: generated
+    :template: function.rst
+
+    load_onet20k
+    load_ppi5k
+    load_nl27k
+    load_cn15k
+
+**Datasets Summary (KGs with numeric values on edges)**
+
+========= ========= ======= ========= =========== =========
+ Dataset  Train     Valid   Test      Entities    Relations
+========= ========= ======= ========= =========== =========
+O*NET20K  461,932   138      2,000    20,643      19
+PPI5K     230,929   19,017   21,720   4,999       7
+NL27K     149,100   12,274   14,026   27,221      405
+CN15K     199,417   16,829   19,224   15,000      36
+========= ========= ======= ========= =========== =========
 
 
 Loaders for Custom Knowledge Graphs

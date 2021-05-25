@@ -1,4 +1,4 @@
-# Copyright 2019-2020 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -26,11 +26,15 @@ logger.setLevel(logging.DEBUG)
 TOO_MANY_ENTITIES_TH = 50000
 
 
-def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False, filtered_test_predicates=None):
+def _train_test_split_no_unseen_fast(X, test_size=100, seed=0, allow_duplication=False, filtered_test_predicates=None):
     """Split into train and test sets.
 
      This function carves out a test set that contains only entities
      and relations which also occur in the training set.
+     
+     This is an improved version which is much faster - since this doesnt sample like earlier approach but rather 
+     shuffles indices and gets the test set of required size by selecting from the shuffled indices only triples 
+     which do not disconnect entities/relations.
 
     Parameters
     ----------
@@ -73,6 +77,163 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
     >>> # if you want to split into train/test datasets
     >>> X_train, X_test = train_test_split_no_unseen(X, test_size=2)
     >>> X_train
+    array([['a', 'y', 'd'],
+       ['b', 'y', 'a'],
+       ['a', 'y', 'c'],
+       ['f', 'y', 'e'],
+       ['a', 'y', 'b'],
+       ['c', 'y', 'a'],
+       ['b', 'y', 'c']], dtype='<U1')
+    >>> X_test
+    array([['f', 'y', 'e'],
+       ['c', 'y', 'd']], dtype='<U1')
+    >>> # if you want to split into train/valid/test datasets, call it 2 times
+    >>> X_train_valid, X_test = train_test_split_no_unseen(X, test_size=2)
+    >>> X_train, X_valid = train_test_split_no_unseen(X_train_valid, test_size=2)
+    >>> X_train
+    array([['a', 'y', 'b'],
+       ['a', 'y', 'd'],
+       ['a', 'y', 'c'],
+       ['c', 'y', 'a'],
+       ['f', 'y', 'e']], dtype='<U1')
+    >>> X_valid
+    array([['c', 'y', 'd'],
+       ['f', 'y', 'e']], dtype='<U1')
+    >>> X_test
+    array([['b', 'y', 'c'],
+       ['b', 'y', 'a']], dtype='<U1')
+    """
+    
+    if type(test_size) is float:
+        test_size = int(len(X) * test_size)
+
+    np.random.seed(seed)
+    if filtered_test_predicates:
+        candidate_idx = np.isin(X[:, 1], filtered_test_predicates)
+        X_test_candidates = X[candidate_idx]
+        X_train = X[~candidate_idx]
+    else:
+        X_train = None
+        X_test_candidates = X
+
+    entities, entity_cnt = np.unique(np.concatenate([X_test_candidates[:, 0], 
+                                                     X_test_candidates[:, 2]]), return_counts=True)
+    rels, rels_cnt = np.unique(X_test_candidates[:, 1], return_counts=True)
+    dict_entities = dict(zip(entities, entity_cnt))
+    dict_rels = dict(zip(rels, rels_cnt))
+    idx_test = []
+    idx_train = []
+    
+    all_indices_shuffled = np.random.permutation(np.arange(X_test_candidates.shape[0]))
+
+    for i, idx in enumerate(all_indices_shuffled):
+        test_triple = X_test_candidates[idx]
+        # reduce the entity and rel count
+        dict_entities[test_triple[0]] = dict_entities[test_triple[0]] - 1
+        dict_rels[test_triple[1]] = dict_rels[test_triple[1]] - 1
+        dict_entities[test_triple[2]] = dict_entities[test_triple[2]] - 1
+
+        # test if the counts are > 0
+        if dict_entities[test_triple[0]] > 0 and \
+                dict_rels[test_triple[1]] > 0 and \
+                dict_entities[test_triple[2]] > 0:
+            
+            # Can safetly add the triple to test set
+            idx_test.append(idx)
+            if len(idx_test) == test_size:
+                # Since we found the requested test set of given size
+                # add all the remaining indices of candidates to training set
+                idx_train.extend(list(all_indices_shuffled[i + 1:]))
+                
+                # break out of the loop
+                break
+            
+        else:
+            # since removing this triple results in unseen entities, add it to training
+            dict_entities[test_triple[0]] = dict_entities[test_triple[0]] + 1
+            dict_rels[test_triple[1]] = dict_rels[test_triple[1]] + 1
+            dict_entities[test_triple[2]] = dict_entities[test_triple[2]] + 1
+            idx_train.append(idx)
+            
+    if len(idx_test) != test_size:
+        # if we cannot get the test set of required size that means we cannot get unique triples
+        # in the test set without creating unseen entities
+        if allow_duplication:
+            # if duplication is allowed, randomly choose from the existing test set and create duplicates
+            duplicate_idx = np.random.choice(idx_test, size=(test_size - len(idx_test))).tolist()
+            idx_test.extend(list(duplicate_idx))
+        else:
+            # throw an exception since we cannot get unique triples in the test set without creating 
+            # unseen entities
+            raise Exception("Cannot create a test split of the desired size. "
+                            "Some entities will not occur in both training and test set. "
+                            "Set allow_duplication=True," 
+                            "remove filter on test predicates or "
+                            "set test_size to a smaller value.")
+    
+    if X_train is None:
+        X_train = X_test_candidates[idx_train]
+    else:
+        X_train_subset = X_test_candidates[idx_train]
+        X_train = np.concatenate([X_train, X_train_subset])
+    X_test = X_test_candidates[idx_test]
+    
+    X_train = np.random.permutation(X_train)
+    X_test = np.random.permutation(X_test)
+
+    return X_train, X_test 
+    
+
+def _train_test_split_no_unseen_old(X, test_size=100, seed=0, allow_duplication=False, filtered_test_predicates=None):
+    """Split into train and test sets.
+
+     This function carves out a test set that contains only entities
+     and relations which also occur in the training set.
+     
+     This is very slow as it runs an infinite loop and samples a triples and appends to test set and checks if it is 
+     unique or not. This is very time consuming process and highly inefficient.
+
+    Parameters
+    ----------
+    X : ndarray, size[n, 3]
+        The dataset to split.
+    test_size : int, float
+        If int, the number of triples in the test set.
+        If float, the percentage of total triples.
+    seed : int
+        A random seed used to split the dataset.
+    allow_duplication: boolean
+        Flag to indicate if the test set can contain duplicated triples.
+    filtered_test_predicates: None, list
+        If None, all predicate types will be considered for the test set.
+        If list, only the predicate types in the list will be considered for
+        the test set.
+
+    Returns
+    -------
+    X_train : ndarray, size[n, 3]
+        The training set.
+    X_test : ndarray, size[n, 3]
+        The test set.
+
+    Examples
+    --------
+
+    >>> import numpy as np
+    >>> from ampligraph.evaluation import train_test_split_no_unseen
+    >>> # load your dataset to X
+    >>> X = np.array([['a', 'y', 'b'],
+    >>>               ['f', 'y', 'e'],
+    >>>               ['b', 'y', 'a'],
+    >>>               ['a', 'y', 'c'],
+    >>>               ['c', 'y', 'a'],
+    >>>               ['a', 'y', 'd'],
+    >>>               ['c', 'y', 'd'],
+    >>>               ['b', 'y', 'c'],
+    >>>               ['f', 'y', 'e']])
+    >>> # if you want to split into train/test datasets
+    >>> X_train, X_test = train_test_split_no_unseen(X, test_size=2, backward_compatible=True)
+    >>> X_train
     array([['a', 'y', 'b'],
         ['f', 'y', 'e'],
         ['b', 'y', 'a'],
@@ -84,8 +245,8 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
     array([['a', 'y', 'c'],
         ['a', 'y', 'd']], dtype='<U1')
     >>> # if you want to split into train/valid/test datasets, call it 2 times
-    >>> X_train_valid, X_test = train_test_split_no_unseen(X, test_size=2)
-    >>> X_train, X_valid = train_test_split_no_unseen(X_train_valid, test_size=2)
+    >>> X_train_valid, X_test = train_test_split_no_unseen(X, test_size=2, backward_compatible=True)
+    >>> X_train, X_valid = train_test_split_no_unseen(X_train_valid, test_size=2, backward_compatible=True)
     >>> X_train
     array([['a', 'y', 'b'],
         ['b', 'y', 'a'],
@@ -159,6 +320,90 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
     logger.debug('Train test split completed.')
 
     return X[idx_train, :], X[idx_test, :]
+
+
+def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False, 
+                               filtered_test_predicates=None, backward_compatible=False):
+    """Split into train and test sets.
+
+     This function carves out a test set that contains only entities
+     and relations which also occur in the training set.
+
+    Parameters
+    ----------
+    X : ndarray, size[n, 3]
+        The dataset to split.
+    test_size : int, float
+        If int, the number of triples in the test set.
+        If float, the percentage of total triples.
+    seed : int
+        A random seed used to split the dataset.
+    allow_duplication: boolean
+        Flag to indicate if the test set can contain duplicated triples.
+    filtered_test_predicates: None, list
+        If None, all predicate types will be considered for the test set.
+        If list, only the predicate types in the list will be considered for
+        the test set.
+    backward_compatible: boolean
+        Uses the old (slower) version of the API for reproducibility of splits in older pipelines(if any)
+        Avoid setting this to True, unless necessary. Set this flag only if you want to use the 
+        train_test_split_no_unseen of Ampligraph versions 1.3.2 and below. The older version is slow and inefficient
+
+    Returns
+    -------
+    X_train : ndarray, size[n, 3]
+        The training set.
+    X_test : ndarray, size[n, 3]
+        The test set.
+
+    Examples
+    --------
+
+    >>> import numpy as np
+    >>> from ampligraph.evaluation import train_test_split_no_unseen
+    >>> # load your dataset to X
+    >>> X = np.array([['a', 'y', 'b'],
+    >>>               ['f', 'y', 'e'],
+    >>>               ['b', 'y', 'a'],
+    >>>               ['a', 'y', 'c'],
+    >>>               ['c', 'y', 'a'],
+    >>>               ['a', 'y', 'd'],
+    >>>               ['c', 'y', 'd'],
+    >>>               ['b', 'y', 'c'],
+    >>>               ['f', 'y', 'e']])
+    >>> # if you want to split into train/test datasets
+    >>> X_train, X_test = train_test_split_no_unseen(X, test_size=2)
+    >>> X_train
+    array([['a', 'y', 'd'],
+       ['b', 'y', 'a'],
+       ['a', 'y', 'c'],
+       ['f', 'y', 'e'],
+       ['a', 'y', 'b'],
+       ['c', 'y', 'a'],
+       ['b', 'y', 'c']], dtype='<U1')
+    >>> X_test
+    array([['f', 'y', 'e'],
+       ['c', 'y', 'd']], dtype='<U1')
+    >>> # if you want to split into train/valid/test datasets, call it 2 times
+    >>> X_train_valid, X_test = train_test_split_no_unseen(X, test_size=2)
+    >>> X_train, X_valid = train_test_split_no_unseen(X_train_valid, test_size=2)
+    >>> X_train
+    array([['a', 'y', 'b'],
+       ['a', 'y', 'd'],
+       ['a', 'y', 'c'],
+       ['c', 'y', 'a'],
+       ['f', 'y', 'e']], dtype='<U1')
+    >>> X_valid
+    array([['c', 'y', 'd'],
+       ['f', 'y', 'e']], dtype='<U1')
+    >>> X_test
+    array([['b', 'y', 'c'],
+       ['b', 'y', 'a']], dtype='<U1')
+    """
+    if backward_compatible:
+        return _train_test_split_no_unseen_old(X, test_size, seed, allow_duplication, filtered_test_predicates)
+    
+    return _train_test_split_no_unseen_fast(X, test_size, seed, allow_duplication, filtered_test_predicates)
 
 
 def _create_unique_mappings(unique_obj, unique_rel):

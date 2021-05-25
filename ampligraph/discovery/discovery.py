@@ -1,3 +1,10 @@
+# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 import logging
 import numpy as np
 from sklearn.cluster import DBSCAN
@@ -955,3 +962,79 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
     triples_out = np.copy(triples[topn_idx, :])
 
     return triples_out, scores_out
+
+
+def find_nearest_neighbours(kge_model, entities, n_neighbors=10, entities_subset=None, metric="euclidean"):
+    """ Return the nearest neighbors of entities.
+
+    The method works in the embedding space and finds a desired number of neighboring embeddings.
+    It can operate from all the entities in the graph or from a subset of interest.
+
+    Parameters
+    ----------
+    kge_model: ampligraph.latent_features.EmbeddingModel
+        Trained kge model
+    entities: list or np.array
+        List of entities whose neighbors need to be found
+    n_neighbors: int
+        number of neighbors to be computed
+    entities_subset: list or np.array
+        List of entities from which neighbors need to be computed. 
+        If this list is not passed, all the entities in the graph would be used
+    metric: string or callable
+        distance metric to be used with NearestNeighbors algorithm
+        For values that can be passed, refer sklearn NearestNeighbors
+        
+    Returns
+    -------
+    neighbors: np.array of size (len(entities), n_neighbors)
+        Each row contains the n_neighbors neighbours of corresponding concepts in entities
+    distance: np.array of size (len(entities), n_neighbors)
+        Each row contains distances of corresponding neighbours
+    
+    Examples
+    --------
+    >>> model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
+    >>>                  loss='pairwise', loss_params={'margin': 5},
+    >>>                  optimizer='adagrad', optimizer_params={'lr': 0.1})
+    >>> X = np.array([['a', 'y', 'b'],
+    >>>               ['b', 'y', 'a'],
+    >>>               ['e', 'y', 'c'],
+    >>>               ['c', 'z', 'a'],
+    >>>               ['a', 'z', 'd'],
+    >>>               ['f', 'z', 'g'],
+    >>>               ['c', 'z', 'g']])
+    >>> model.fit(X)
+    >>> neighbors, dist = find_nearest_neighbours(model, 
+    >>>                                           entities=['b'], 
+    >>>                                           n_neighbors=3, 
+    >>>                                           entities_subset=['a', 'c', 'd', 'e', 'f'])
+    >>> print(neighbors, dist)
+    [['e' 'd' 'c']] [[0.97474706 0.979108   1.2323136 ]]
+    """
+    assert kge_model.is_fitted, "KGE model is not fit!"
+    assert isinstance(entities, (list, np.ndarray)), \
+        "Invalid type for entities! Must be a list or np.array"
+
+    if entities_subset is not None:
+        assert isinstance(entities_subset, (list, np.ndarray)), \
+            "Invalid type for entities_subset! Must be a list or np.array"
+
+        all_neighbors_emb = kge_model.get_embeddings(entities_subset)
+        all_neighbors = entities_subset
+    else:
+        all_neighbors_emb = kge_model.trained_model_params[0]
+        all_neighbors = list(kge_model.ent_to_idx.keys())
+
+    assert n_neighbors < len(all_neighbors), 'n_neighbors must be less than the number of entities being fit!'
+    knn_model = NearestNeighbors(n_neighbors=n_neighbors, metric=metric).fit(all_neighbors_emb)
+
+    test_entities_emb = kge_model.get_embeddings(entities)
+    distances, indices = knn_model.kneighbors(test_entities_emb)
+    out_neighbors = []
+    for neighbor_idx_list in indices:
+        out_neighbors.append([])
+        for neighbor_idx in neighbor_idx_list:
+            out_neighbors[-1].append(all_neighbors[neighbor_idx])
+    
+    return np.array(out_neighbors), np.array(distances)
