@@ -333,8 +333,8 @@ class ComplEx(EmbeddingModel):
                 to process edges with numeric literals: ::
 
                     import numpy as np
-                    from ampligraph.latent_features import TransE
-                    model = TransE(batches_count=1, seed=555, epochs=20,
+                    from ampligraph.latent_features import ComplEx
+                    model = ComplEx(batches_count=1, seed=555, epochs=20,
                                    k=10, loss='pairwise',
                                    loss_params={'margin':5})
                     X = np.array([['a', 'y', 'b'],
