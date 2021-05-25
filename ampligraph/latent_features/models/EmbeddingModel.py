@@ -1,4 +1,4 @@
-# Copyright 2019-2020 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -1005,7 +1005,8 @@ class EmbeddingModel(abc.ABC):
                     logger.debug("Using FocusE")
                     self.use_focusE = True
                     assert focusE_numeric_edge_values.shape[0] == X.shape[0], \
-                        "Each triple must have a numeric value"
+                        "Each triple must have a numeric value (the size of the training set does not match the size" \
+                        "of the focusE_numeric_edge_values argument."
 
                     if focusE_numeric_edge_values.ndim == 1:
                         focusE_numeric_edge_values = focusE_numeric_edge_values.reshape(-1, 1)
@@ -1932,8 +1933,8 @@ class EmbeddingModel(abc.ABC):
             Incompatible with large graph mode (i.e. if ``self.dealing_with_large_graphs=True``).
 
         .. Note ::
-            :cite:`calibration` `calibration experiments available here
-            <https://github.com/Accenture/AmpliGraph/tree/paper/ICLR-20/experiments/ICLR-20>`_.
+            `Experiments for the ICLR-21 calibration paper are available here
+            <https://github.com/Accenture/AmpliGraph/tree/paper/ICLR-20/experiments/ICLR-20>`_ :cite:`calibration`.
 
 
         Parameters

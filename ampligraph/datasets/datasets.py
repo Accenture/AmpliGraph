@@ -1,4 +1,4 @@
-# Copyright 2019-2020 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -1085,9 +1085,9 @@ def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, spl
         Each dataset split is a ndarray of shape [n,3]
         The topk and bottomk splits are only returned when split_test_into_top_bottom is set to True
     """
-    dataset['train_numeric_values'] = dataset['train'][:, 3]
-    dataset['valid_numeric_values'] = dataset['valid'][:, 3]
-    dataset['test_numeric_values'] = dataset['test'][:, 3]
+    dataset['train_numeric_values'] = dataset['train'][:, 3].astype(np.float32)
+    dataset['valid_numeric_values'] = dataset['valid'][:, 3].astype(np.float32)
+    dataset['test_numeric_values'] = dataset['test'][:, 3].astype(np.float32)
     
     dataset['train'] = dataset['train'][:, 0:3]
     dataset['valid'] = dataset['valid'][:, 0:3]
@@ -1110,14 +1110,14 @@ def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, spl
 
 
 def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
-    """Load the O*NET20K (ONET20K) dataset
+    """Load the O*NET20K dataset
 
     O*NET20K was originally proposed in :cite:`pai2021learning`.
-    It a  subset  of  O*NET (https://www.onetonline.org/),  a dataset that includes job descriptions, skills 
+    It a  subset  of `O*NET <https://www.onetonline.org/>`_, a dataset that includes job descriptions, skills
     and labeled, binary relations between such concepts. Each triple is labeled with a numeric value that 
     indicates the importance of that link. 
 
-    ONET20K dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    ONET*20K dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
     If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
 
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
@@ -1129,13 +1129,13 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
     - ``valid``
     - ``test``
 
-    Each triples in these splits are associated with a numeric value which represents the importance/relevance of 
-    the links
+    Each triple in these splits is associated to a numeric value which represents the importance/relevance of
+    the link.
 
     ========= ========= ======== =========== ========== ===========
     Dataset   Train     Valid    Test        Entities   Relations
     ========= ========= ======== =========== ========== ===========
-    ONET20K   461932    850      2000        20643      19    
+    ONET*20K  461,932    850     2,000       20,643     19
     ========= ========= ======== =========== ========== ===========
 
     Parameters
@@ -1160,20 +1160,23 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
     -------
 
     splits : dict
-        The dataset splits: {'train': train, 
-                             'train_numeric_values': train_numeric_values, 
-                             'valid': valid, 
-                             'valid_numeric_values': valid_numeric_values,
-                             'test': test, 
-                             'test_numeric_values': test_numeric_values,
-                             'test_topk': test_topk, 
-                             'test_topk_numeric_values': test_topk_numeric_values,
-                             'test_bottomk': test_bottomk, 
-                             'test_bottomk_numeric_values': test_bottomk_numeric_values}.
-        Each numeric value split contains numeric values associated with corresponding dataset split and 
-        is a ndarray of shape [n, 1].
-        Each dataset split is a ndarray of shape [n,3]
-        The topk and bottomk splits are only returned when split_test_into_top_bottom is set to True
+        The dataset splits: {'train': train,
+        'valid': valid,
+        'test': test,
+        'test_topk': test_topk,
+        'test_bottomk': test_bottomk,
+        'train_numeric_values': train_numeric_values,
+        'valid_numeric_values':valid_numeric_values,
+        'test_numeric_values': test_numeric_values,
+        'test_topk_numeric_values': test_topk_numeric_values,
+        'test_bottomk_numeric_values': test_bottomk_numeric_values}.
+
+        Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
+        is a ndarray of shape [n].
+
+        Each dataset split is a ndarray of shape [n,3].
+
+        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
 
     Examples
     -------
@@ -1203,29 +1206,29 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
 
 
 def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
-    """Load the PPI5k dataset
+    """Load the PPI5K dataset
 
-    PPI5K was originally proposed in :cite:`chen2019embedding`, is a subset of Knowledge graph of protein-protein 
-    interactions :cite:`PPI`. Numeric values represent the confidence of the link based on existing 
-    scientific literature evidence.
+    Originally proposed in :cite:`chen2019embedding`, PPI5K is a subset of the protein-protein
+    interactions (PPI) knowledge graph :cite:`PPI`. Numeric values represent the confidence of the link
+    based on existing scientific literature evidence.
 
-    PPI5K dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    PPI5K is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
     If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
 
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
-    It is divided in three splits:
+    It is divided into three splits:
 
     - ``train``
     - ``valid``
     - ``test``
 
-    Each triples in these splits are associated with a numeric value which represents the importance/relevance of 
-    the links
+    Each triple in these splits is associated to a numeric value which models additional information on the
+    fact (importance, relevance of the link).
 
     ========= ========= ======== =========== ========== ===========
-    Dataset   Train     Valid    Test.       Entities   Relations
+    Dataset   Train     Valid    Test        Entities   Relations
     ========= ========= ======== =========== ========== ===========
     PPI5K     230929    19017    21720       4999       7    
     ========= ========= ======== =========== ========== ===========
@@ -1240,9 +1243,12 @@ def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
         set.
         
     split_test_into_top_bottom: bool
-        Splits the test set by numeric values and returns test_top_split and test_bottom_split by splitting based 
-        on sorted numeric values and returning top and bottom k% triples, where k is specified by `split_threshold` 
-        argument
+        When set to ``True``, the function also returns subsets of the test set that includes only the top-k or
+        bottom-k numeric-enriched triples. splits ``test_topk``, ``test_bottomk`` and their
+        numeric values. Such splits are generated by sorting Splits the test set by numeric values and returns
+        test_top_split and test_bottom_split by splitting based
+        on sorted numeric values and returning top and bottom k% triples, where 'k' is specified by the
+        ``split_threshold`` argument.
         
     split_threshold: float
         specifies the top and bottom percentage of triples to return
@@ -1252,20 +1258,23 @@ def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
     -------
 
     splits : dict
-        The dataset splits: {'train': train, 
-                             'train_numeric_values': train_numeric_values, 
-                             'valid': valid, 
-                             'valid_numeric_values': valid_numeric_values,
-                             'test': test, 
-                             'test_numeric_values': test_numeric_values,
-                             'test_topk': test_topk, 
-                             'test_topk_numeric_values': test_topk_numeric_values,
-                             'test_bottomk': test_bottomk, 
-                             'test_bottomk_numeric_values': test_bottomk_numeric_values}.
-        Each numeric value split contains numeric values associated with corresponding dataset split and 
-        is a ndarray of shape [n, 1].
-        Each dataset split is a ndarray of shape [n,3]
-        The topk and bottomk splits are only returned when split_test_into_top_bottom is set to True
+        The dataset splits: {'train': train,
+        'valid': valid,
+        'test': test,
+        'test_topk': test_topk,
+        'test_bottomk': test_bottomk,
+        'train_numeric_values': train_numeric_values,
+        'valid_numeric_values':valid_numeric_values,
+        'test_numeric_values': test_numeric_values,
+        'test_topk_numeric_values': test_topk_numeric_values,
+        'test_bottomk_numeric_values': test_bottomk_numeric_values}.
+
+        Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
+        is a ndarray of shape [n].
+
+        Each dataset split is a ndarray of shape [n,3].
+
+        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
 
     Examples
     -------
@@ -1295,26 +1304,26 @@ def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
 
 
 def load_nl27k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
-    """Load the NL27k dataset
+    """Load the NL27K dataset
 
-    NL27k was originally proposed in :cite:`chen2019embedding`, it is a subset of the Never Ending Language 
-    Learning(NELL) :cite:`mitchell2018never` dataset, which collects data from web pages. 
+    NL27K was originally proposed in :cite:`chen2019embedding`. It is a subset of the Never Ending Language
+    Learning (NELL) dataset :cite:`mitchell2018never`, which collects data from web pages.
     Numeric values on triples represent link uncertainty.
 
-    NL27k dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    NL27K is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
     If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
 
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
-    It is divided in three splits:
+    It is divided into three splits:
 
     - ``train``
     - ``valid``
     - ``test``
 
-    Each triples in these splits are associated with a numeric value which represents the importance/relevance of 
-    the links
+    Each triple in these splits is associated to a numeric value which represents the importance/relevance of
+    the link.
 
     ========= ========= ======== =========== ========== ===========
     Dataset   Train     Valid    Test        Entities   Relations
@@ -1344,20 +1353,23 @@ def load_nl27k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
     -------
 
     splits : dict
-        The dataset splits: {'train': train, 
-                             'train_numeric_values': train_numeric_values, 
-                             'valid': valid, 
-                             'valid_numeric_values': valid_numeric_values,
-                             'test': test, 
-                             'test_numeric_values': test_numeric_values,
-                             'test_topk': test_topk, 
-                             'test_topk_numeric_values': test_topk_numeric_values,
-                             'test_bottomk': test_bottomk, 
-                             'test_bottomk_numeric_values': test_bottomk_numeric_values}.
-        Each numeric value split contains numeric values associated with corresponding dataset split and 
-        is a ndarray of shape [n, 1].
-        Each dataset split is a ndarray of shape [n,3]
-        The topk and bottomk splits are only returned when split_test_into_top_bottom is set to True
+        The dataset splits: {'train': train,
+        'valid': valid,
+        'test': test,
+        'test_topk': test_topk,
+        'test_bottomk': test_bottomk,
+        'train_numeric_values': train_numeric_values,
+        'valid_numeric_values':valid_numeric_values,
+        'test_numeric_values': test_numeric_values,
+        'test_topk_numeric_values': test_topk_numeric_values,
+        'test_bottomk_numeric_values': test_bottomk_numeric_values}.
+
+        Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
+        is a ndarray of shape [n].
+
+        Each dataset split is a ndarray of shape [n,3].
+
+        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
 
     Examples
     -------
@@ -1387,10 +1399,10 @@ def load_nl27k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
 
 
 def load_cn15k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
-    """Load the CN15k dataset
+    """Load the CN15K dataset
 
-    CN15k was originally proposed in :cite:`chen2019embedding`, it is a subset of Concept-Net :cite:`CN`,  
-    a  common  sense  knowledge graph built to represent general human knowledge. 
+    CN15K was originally proposed in :cite:`chen2019embedding`, it is a subset of ConceptNet :cite:`CN`,
+    a common-sense knowledge graph built to represent general human knowledge.
     Numeric values on triples represent uncertainty.
 
     CN15k dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
@@ -1399,14 +1411,14 @@ def load_cn15k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
-    It is divided in three splits:
+    It is divided into three splits:
 
     - ``train``
     - ``valid``
     - ``test``
 
-    Each triples in these splits are associated with a numeric value which represents the importance/relevance of 
-    the links
+    Each triple in these splits is associated to a numeric value which represents the importance/relevance of
+    the link.
 
     ========= ========= ======== =========== ========== ===========
     Dataset   Train     Valid    Test        Entities   Relations
@@ -1436,20 +1448,23 @@ def load_cn15k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
     -------
 
     splits : dict
-        The dataset splits: {'train': train, 
-                             'train_numeric_values': train_numeric_values, 
-                             'valid': valid, 
-                             'valid_numeric_values': valid_numeric_values,
-                             'test': test, 
-                             'test_numeric_values': test_numeric_values,
-                             'test_topk': test_topk, 
-                             'test_topk_numeric_values': test_topk_numeric_values,
-                             'test_bottomk': test_bottomk, 
-                             'test_bottomk_numeric_values': test_bottomk_numeric_values}.
-        Each numeric value split contains numeric values associated with corresponding dataset split and 
-        is a ndarray of shape [n, 1].
-        Each dataset split is a ndarray of shape [n,3]
-        The topk and bottomk splits are only returned when split_test_into_top_bottom is set to True
+        The dataset splits: {'train': train,
+        'valid': valid,
+        'test': test,
+        'test_topk': test_topk,
+        'test_bottomk': test_bottomk,
+        'train_numeric_values': train_numeric_values,
+        'valid_numeric_values':valid_numeric_values,
+        'test_numeric_values': test_numeric_values,
+        'test_topk_numeric_values': test_topk_numeric_values,
+        'test_bottomk_numeric_values': test_bottomk_numeric_values}.
+
+        Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
+        is a ndarray of shape [n].
+
+        Each dataset split is a ndarray of shape [n,3].
+
+        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
 
     Examples
     -------

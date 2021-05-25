@@ -37,6 +37,7 @@ AmpliGraph models include the following components:
 + :ref:`Regularizer <ref-reg>`
 + :ref:`Initializer <ref-init>`
 + :ref:`Negatives generation strategy <negatives>`
++ :ref:`Support for Numeric Literals on Edges <edge-literals>`
 
 AmpliGraph comes with a number of such components. They can be used in any combination to come up with a model that
 performs sufficiently well for the dataset of choice.
@@ -170,6 +171,33 @@ Best results are currently obtained with Adam.
     AdagradOptimizer
     SGDOptimizer
     MomentumOptimizer
+
+Support for Numeric Literals on Edges
+-------------------------------------
+.. _edge-literals:
+
+Numeric values associated to edges of a knowledge graph have been used to represent uncertainty, edge importance,
+and even out-of-band knowledge in a growing number of scenarios, ranging from genetic data to social networks.
+
+Nevertheless, traditional knowledge graph embedding models (TransE, DistMult, ComplEx) are not
+designed to capture such information, to the detriment of predictive power.
+
+AmpliGraph includes FocusE :cite:`pai2021learning`, a novel method to inject numeric edge attributes into
+the scoring layer of a traditional knowledge graph embedding architecture.
+
+To process knowledge graphs with numeric-enriched edges, refer to the documentation and examples below:
+
++ :ref:`FocusE-TransE <focuse_transe>`
++ :ref:`FocusE-DistMult <focuse_distmult>`
++ :ref:`FocusE-ComplEx <focuse_complex>`
+
+You can load publicly available benchmark knowledge graphs with numeric-enriched edges
+:ref:`with the dataset loaders <numeric-enriched-edges-loaders>`.
+
+.. Note ::
+
+    `Experiments for the IJCAI-21 FocusE paper are available here
+    <https://github.com/Accenture/AmpliGraph/tree/paper/IJCAI-21/experiments/IJCAI-21>`_ :cite:`pai2021learning`.
 
 Saving/Restoring Models
 -----------------------
