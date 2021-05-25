@@ -66,5 +66,5 @@ pip install -e .
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'1.4-dev'
+'1.4.0'
 ```
