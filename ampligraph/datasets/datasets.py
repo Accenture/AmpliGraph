@@ -1085,9 +1085,9 @@ def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, spl
         Each dataset split is a ndarray of shape [n,3]
         The topk and bottomk splits are only returned when split_test_into_top_bottom is set to True
     """
-    dataset['train_numeric_values'] = dataset['train'][:, 3]
-    dataset['valid_numeric_values'] = dataset['valid'][:, 3]
-    dataset['test_numeric_values'] = dataset['test'][:, 3]
+    dataset['train_numeric_values'] = dataset['train'][:, 3].astype(np.float32)
+    dataset['valid_numeric_values'] = dataset['valid'][:, 3].astype(np.float32)
+    dataset['test_numeric_values'] = dataset['test'][:, 3].astype(np.float32)
     
     dataset['train'] = dataset['train'][:, 0:3]
     dataset['valid'] = dataset['valid'][:, 0:3]
