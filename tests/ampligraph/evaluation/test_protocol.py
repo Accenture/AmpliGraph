@@ -1079,7 +1079,7 @@ def test_select_best_model_ranking_random():
     assert best_params['k'] in (2, 50)
     assert np.log(1.00001) <= best_params['optimizer_params']['lr'] <= np.log(100)
     assert len(experimental_history) == 10
-    assert set(i["model_params"]["k"] for i in experimental_history) == {2, 50}
+    assert all(i["model_params"]["k"] in [2, 50] for i in experimental_history)
     assert np.all([np.log(1.00001) <= i["model_params"]["optimizer_params"]["lr"] <= np.log(100)
                    for i in experimental_history])
     assert len(set(frozenset(_flatten_nested_keys(i["model_params"]).items()) for i in experimental_history)) == 10
