@@ -205,6 +205,7 @@ class GeneralPartitionDataManager(PartitionDataManager):
         
         # compute each partition size
         update_part_size = int(np.ceil(self.num_ents / self.partitioner_k))
+        num_optimizer_hyperparams = self._model.optimizer.get_hyperparam_count()
         # for each partition
         for part_num in range(self.partitioner_k):
             with shelve.open('ent_partition', writeback=True) as ent_partition:
@@ -212,7 +213,7 @@ class GeneralPartitionDataManager(PartitionDataManager):
                 for i in range(update_part_size * part_num, 
                                min(update_part_size * (part_num + 1), self.num_ents)):
                     out_dict_key = str(i)
-                    opt_param = np.zeros(shape=(1, 3, self.k), dtype=np.float32)
+                    opt_param = np.zeros(shape=(1, num_optimizer_hyperparams, self.k), dtype=np.float32)
                     # ent_emb = xavier(self.num_ents, self.k, num_ents_bucket)
                     ent_emb = self._model.encoding_layer.ent_init(
                         shape=(1, self.k),
@@ -225,7 +226,7 @@ class GeneralPartitionDataManager(PartitionDataManager):
             for i in range(self.num_rels):
                 out_dict_key = str(i)
                 # TODO change the hardcoding from 3 to actual hyperparam of optim
-                opt_param = np.zeros(shape=(1, 3, self.k), dtype=np.float32)
+                opt_param = np.zeros(shape=(1, num_optimizer_hyperparams, self.k), dtype=np.float32)
                 # rel_emb = xavier(self.num_rels, self.k, self.num_rels)
                 rel_emb = self._model.encoding_layer.rel_init(
                     shape=(1, self.k), 
@@ -413,6 +414,8 @@ class BucketPartitionDataManager(PartitionDataManager):
     def _generate_partition_params(self):
         ''' Generates the metadata needed for persisting and loading partition embeddings and other params
         '''
+        
+        num_optimizer_hyperparams = self._model.optimizer.get_hyperparam_count()
 
         # create entity embeddings and optimizer hyperparams for all entities
         for i in range(self.partitioner_k):
@@ -424,7 +427,7 @@ class BucketPartitionDataManager(PartitionDataManager):
                     num_ents_bucket = bucket['indexes'].shape[0]
                     #print(num_ents_bucket)
                     # TODO change the hardcoding from 3 to actual hyperparam of optim
-                    opt_param = np.zeros(shape=(num_ents_bucket, 3, self.k), dtype=np.float32)
+                    opt_param = np.zeros(shape=(num_ents_bucket, num_optimizer_hyperparams, self.k), dtype=np.float32)
                     ent_emb = self._model.encoding_layer.ent_init(
                         shape=(num_ents_bucket, self.k),
                         dtype=tf.float32).numpy()
@@ -435,7 +438,7 @@ class BucketPartitionDataManager(PartitionDataManager):
         with shelve.open('rel_partition', writeback=True) as rel_partition:
             out_dict_key = str(0)
             # TODO change the hardcoding from 3 to actual hyperparam of optim
-            opt_param = np.zeros(shape=(self.num_rels, 3, self.k), dtype=np.float32)
+            opt_param = np.zeros(shape=(self.num_rels, num_optimizer_hyperparams, self.k), dtype=np.float32)
             rel_emb = self._model.encoding_layer.rel_init(
                 shape=(self.num_rels, self.k), 
                 dtype=tf.float32).numpy()

@@ -55,7 +55,7 @@ class SQLiteAdapter():
         >>>    backend.populate("data.csv", dataset_type="train")
     """
     def __init__(self, db_name, identifier=None, chunk_size=DEFAULT_CHUNKSIZE, root_directory=tempfile.gettempdir(),
-                 use_indexer=True, verbose=False, remap=False, name='main_partition', parent=None, in_memory=False,
+                 use_indexer=True, verbose=False, remap=False, name='main_partition', parent=None, in_memory=True,
                  use_filter=False):
         """ Initialise SQLiteAdapter.
        
@@ -101,6 +101,7 @@ class SQLiteAdapter():
             Setting chunksize to {}.".format(self.__name__(), DEFAULT_CHUNKSIZE))
         else:
             self.chunk_size = chunk_size
+            
             
     def get_output_signature(self):
         if self.use_filter:
@@ -361,6 +362,20 @@ class SQLiteAdapter():
             self._insert_values_to_a_table("triples_table", values_triples)  
         if self.verbose:
             logger.debug("data is populated")
+        
+        query = "SELECT count(*) from triples_table;"
+        count = self._execute_query(query)
+        
+        if isinstance(self.use_filter, dict):
+            for key in self.use_filter:
+                present_filters = [x[0] for x in self._execute_query("SELECT DISTINCT dataset_type FROM triples_table")]
+                if key not in present_filters:
+                    self.populate(self.use_filter[key], key)
+            
+        query = "SELECT count(*) from triples_table;"
+        count = self._execute_query(query)
+        
+        
     
     def get_data_size(self, table="triples_table", condition=""):
         """Gets the size of the given table [with specified condition].
@@ -618,6 +633,7 @@ class SQLiteAdapter():
            data_source: file from where to read data (e.g. csv file).
            dataset_type: kind of dataset that is being loaded (train | test | validation).
         """
+        
         self.data_source = data_source
         self.populate(self.data_source, dataset_type=dataset_type)
 

@@ -11,7 +11,7 @@ This module provides GraphDataLoader class that can be parametrized with a backe
 and in-memory backend (DummyBackend).
 """
 from ampligraph.datasets.source_identifier import DataSourceIdentifier
-from ampligraph.datasets import DataIndexer
+from ampligraph.datasets import DataIndexer, SQLiteAdapter
 from datetime import datetime
 import numpy as np
 import shelve
@@ -27,7 +27,7 @@ logger.setLevel(logging.DEBUG)
 class DummyBackend():
     """Class providing artificial backend, that reads data into memory."""
     def __init__(self, identifier, use_indexer=True, remap=False, name="main_partition", verbose=False, 
-                 parent=None, in_memory=True, root_directory=tempfile.gettempdir(), use_filter=False):
+                 parent=None, in_memory=False, root_directory=tempfile.gettempdir(), use_filter=False):
         """Initialise DummyBackend.
 
            Parameters
@@ -39,6 +39,7 @@ class DummyBackend():
            parent: parent data loader that persists data.
            name: identifying name of files for indexer, partition name/id.
         """
+        in_memory = False
         self.verbose = verbose
         self.identifier = identifier
         self.use_indexer = use_indexer
@@ -82,13 +83,13 @@ class DummyBackend():
         self.dataset_type = dataset_type
         if isinstance(self.data_source, np.ndarray):
             if self.use_indexer == True:
-                self.mapper = DataIndexer(self.data_source, backend="in_memory", 
+                self.mapper = DataIndexer(self.data_source, backend="in_memory" if self.in_memory else "sqlite", 
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(self.data_source)
             elif self.remap:
                 # create a special mapping for partitions, persistent mapping from main indexes 
                 # to partition indexes
-                self.mapper = DataIndexer(self.data_source, backend="shelves", name=self.name, 
+                self.mapper = DataIndexer(self.data_source, backend="sqlite", name=self.name, 
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(self.data_source)
             else:
@@ -98,14 +99,14 @@ class DummyBackend():
             loader = self.identifier.fetch_loader()
             raw_data = loader(self.data_source)
             if self.use_indexer == True:
-                self.mapper = DataIndexer(raw_data, backend="in_memory", 
+                self.mapper = DataIndexer(raw_data, backend="in_memory" if self.in_memory else "sqlite", 
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(raw_data)
             elif self.use_indexer == False:
                 if self.remap:
                     # create a special mapping for partitions, persistent mapping from 
                     # main indexes to partition indexes
-                    self.mapper = DataIndexer(raw_data, backend="shelves", name=self.name, 
+                    self.mapper = DataIndexer(raw_data, backend="sqlite", name=self.name, 
                                               root_directory=self.root_directory)
                     self.data = self.mapper.get_indexes(raw_data)
                 else:
@@ -353,7 +354,7 @@ class DummyBackend():
             
             if self.use_filter:
                 # get the filter values
-                participating_entities = self._get_complementary_entities(out)
+                participating_entities = self._get_complementary_entities(out, self.use_filter)
                 yield out, tf.ragged.constant(participating_entities, dtype=tf.int32)
             else:
                 yield out
@@ -380,7 +381,7 @@ class GraphDataLoader():
        >>>     process(data)
     """    
     def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, root_directory=tempfile.gettempdir(),
-                 use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=True, use_filter=False):
+                 use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=False, use_filter=False):
         """Initialise persistent/in-memory data storage.
        
            Parameters
@@ -428,8 +429,8 @@ class GraphDataLoader():
                                    use_indexer=self.use_indexer, remap=self.remap, name=self.name, 
                                    parent=self.parent, in_memory=self.in_memory, verbose=verbose, 
                                    use_filter=self.use_filter)
-
             logger.debug("Initialized Backend with database at: {}".format(self.backend.db_path))
+            
         elif backend is None or backend == DummyBackend:
             self.backend = DummyBackend(self.identifier, use_indexer=self.use_indexer, remap=self.remap, 
                                         name=self.name, parent=self.parent, in_memory=self.in_memory, 
@@ -438,6 +439,7 @@ class GraphDataLoader():
             self.backend = backend
 
         self.backend._load(self.data_source, dataset_type=self.dataset_type)  
+        
         self.batch_iterator = self.get_batch_generator(use_filter=self.use_filter, dataset_type=self.dataset_type)
         self.metadata = self.backend.mapper.metadata
       
@@ -447,11 +449,11 @@ class GraphDataLoader():
     
     @property
     def max_entities(self):
-        return self.backend.mapper.get_entities_count() + 1
+        return self.backend.mapper.get_entities_count()
 
     @property
     def max_relations(self):
-        return self.backend.mapper.get_relations_count() + 1
+        return self.backend.mapper.get_relations_count()
     
     def __next__(self):
         """Function needed to be used as an itertor."""

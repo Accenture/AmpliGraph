@@ -188,11 +188,13 @@ def test_get_number_of_partitions():
 
 def test_number_of_partitions_after_graph_partitioning(graph_partitioner):
    n_parts = len(graph_partitioner[0].partitions)
-   if graph_partitioner[0].__class__.__name__ == 'BucketGraphPartitioner':
+   # BucketGraph return k*(k+1)/2 partitions
+   # RandomVertices will return k or less than k partitions depending on the vertex splits.
+   if graph_partitioner[0].__class__.__name__ in ['BucketGraphPartitioner', 'RandomVerticesGraphPartitioner']:
        expected = get_number_of_partitions(graph_partitioner[1])
-       assert n_parts <= expected, "Requested number of partitions based on buckets should be greater or equal to the actual, expected max of {} got {}".format(expected, n_parts)
+       assert n_parts <= expected, "{}: Requested number of partitions based on buckets should be greater or equal to the actual, expected max of {} got {}".format(graph_partitioner[0].__class__.__name__, expected, n_parts)
    else:
-       assert n_parts == graph_partitioner[1], "Requested number of partitions not equal to the actual should be {} got {}".format(graph_partitioner[1], n_parts)
+       assert n_parts == graph_partitioner[1], "{}: Requested number of partitions not equal to the actual should be {} got {}".format(graph_partitioner[0].__class__.__name__, graph_partitioner[1], n_parts)
 
 
 def test_random_vertices_graph_partitioner(data, k):
