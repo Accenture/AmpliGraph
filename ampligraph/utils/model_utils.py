@@ -161,7 +161,7 @@ def restore_model(model_name_path=None):
     return model
 
 
-def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=True, export_tsv_embeddings=True):
+def create_tensorboard_visualizations(model, loc, entities_subset='all', labels=None, write_metadata=True, export_tsv_embeddings=True):
     """Export embeddings to Tensorboard.
 
     This function exports embeddings to disk in a format used by
@@ -200,24 +200,36 @@ def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=Tr
 
     Examples
     --------
-    >>> import numpy as np
-    >>> from ampligraph.latent_features import TransE
+    >>> # create model and compile using user defined optimizer settings and user defined settings of an existing loss
+    >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+    >>> from ampligraph.latent_features.loss_functions import SelfAdversarialLoss
+    >>> import tensorflow as tf
+    >>> optim = tf.optimizers.Adam(learning_rate=0.01)
+    >>> loss = SelfAdversarialLoss({'margin': 0.1, 'alpha': 5, 'reduction': 'sum'})
+    >>> model = ScoringBasedEmbeddingModel(eta=5, 
+    >>>                                      k=300,
+    >>>                                      scoring_type='ComplEx',
+    >>>                                      seed=0)
+    >>> model.compile(optimizer=optim, loss=loss)
+    >>> model.fit('./fb15k-237/train.txt',
+    >>>           batch_size=10000,
+    >>>           epochs=5)
+    Epoch 1/5
+    29/29 [==============================] - 2s 67ms/step - loss: 13101.9443
+    Epoch 2/5
+    29/29 [==============================] - 1s 20ms/step - loss: 11907.5771
+    Epoch 3/5
+    29/29 [==============================] - 1s 21ms/step - loss: 10890.3447
+    Epoch 4/5
+    29/29 [==============================] - 1s 20ms/step - loss: 9520.3994
+    Epoch 5/5
+    29/29 [==============================] - 1s 20ms/step - loss: 8314.7529
     >>> from ampligraph.utils import create_tensorboard_visualizations
-    >>>
-    >>> X = np.array([['a', 'y', 'b'],
-    >>>               ['b', 'y', 'a'],
-    >>>               ['a', 'y', 'c'],
-    >>>               ['c', 'y', 'a'],
-    >>>               ['a', 'y', 'd'],
-    >>>               ['c', 'y', 'd'],
-    >>>               ['b', 'y', 'c'],
-    >>>               ['f', 'y', 'e']])
-    >>>
-    >>> model = TransE(batches_count=1, seed=555, epochs=20, k=10, loss='pairwise',
-    >>>                loss_params={'margin':5})
-    >>> model.fit(X)
-    >>>
-    >>> create_tensorboard_visualizations(model, 'tensorboard_files')
+    >>> create_tensorboard_visualizations(model, 
+                                          entities_subset='all',
+                                          loc = './full_embeddings_vis')
+    >>> # On terminal run: tensorboard --logdir='./full_embeddings_vis' --port=8891 
+    >>> # Open the browser and go to the following URL: http://127.0.0.1:8891/#projector
 
 
     Parameters
@@ -227,6 +239,8 @@ def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=Tr
         DistMult, ComplEx, or HolE.
     loc: string
         Directory where the files are written.
+    entities_subset: list
+        list of entities whose embeddings have to be visualized
     labels: pd.DataFrame
         Label(s) for each embedding point in the Tensorboard visualization.
         Default behaviour is to use the embeddings labels included in the model.
@@ -246,47 +260,55 @@ def create_tensorboard_visualizations(model, loc, labels=None, write_metadata=Tr
     if not model.is_fitted:
         raise ValueError('Cannot write embeddings if model is not fitted.')
 
-    # If no label data supplied, use model ent_to_idx keys as labels
-    if labels is None:
-
-        logger.info('Using model entity dictionary to create Tensorboard metadata.tsv')
-        labels = list(model.ent_to_idx.keys())
+    if entities_subset != "all":
+        assert isinstance(entities_subset, list), "Please pass a list of entities of entities_subset!"
+            
+    if entities_subset == "all":
+        entities_index = np.arange(model.data_indexer.get_entities_count())
+        
+        entities_label = list(model.data_indexer.get_indexes(
+                                                entities_index,
+                                                type_of='e',
+                                                order='ind2raw'))
     else:
-        if len(labels) != len(model.ent_to_idx):
+        entities_index = model.data_indexer.get_indexes(
+                                            entities_subset,
+                                            type_of='e',
+                                            order='raw2ind')
+        entities_label = entities_subset
+        
+    
+    if labels is not None:
+        # Check if the lengths of the supplied labels is equal to the number of embeddings retrieved
+        if len(labels) != len(entities_label):
             raise ValueError('Label data rows must equal number of embeddings.')
+    else:
+        # If no label data supplied, use model ent_to_idx keys as labels
+        labels = entities_label
 
     if write_metadata:
         logger.debug('Writing metadata.tsv to: %s' % loc)
         write_metadata_tsv(loc, labels)
 
+    embeddings = model.get_embeddings(entities_label)
+    
     if export_tsv_embeddings:
         tsv_filename = "embeddings_projector.tsv"
         logger.info('Writing embeddings tsv to: %s' % os.path.join(loc, tsv_filename))
-        np.savetxt(os.path.join(loc, tsv_filename), model.trained_model_params[0], delimiter='\t')
+        np.savetxt(os.path.join(loc, tsv_filename), embeddings.numpy(), delimiter='\t')
+    
+    # Create a checkpoint with the embeddings only
+    embeddings = tf.Variable(embeddings, name='graph_embeddings')
+    checkpoint = tf.train.Checkpoint(KGE_embeddings=embeddings)
+    checkpoint.save(os.path.join(loc, "graph_embeddings.ckpt"))
+    
+    # create a config to display the embeddings in the checkpoint
+    config = projector.ProjectorConfig()
+    embedding = config.embeddings.add()
+    embedding.tensor_name = "KGE_embeddings/.ATTRIBUTES/VARIABLE_VALUE"
+    embedding.metadata_path = 'metadata.tsv'
+    projector.visualize_embeddings(loc, config)
 
-    checkpoint_path = os.path.join(loc, 'graph_embedding.ckpt')
-
-    # Create embeddings Variable
-    embedding_var = tf.Variable(model.trained_model_params[0], name='graph_embedding')
-
-    with tf.Session() as sess:
-        saver = tf.train.Saver([embedding_var])
-
-        sess.run(embedding_var.initializer)
-
-        saver.save(sess, checkpoint_path)
-
-        config = projector.ProjectorConfig()
-
-        # One can add multiple embeddings.
-        embedding = config.embeddings.add()
-        embedding.tensor_name = embedding_var.name
-
-        # Link this tensor to its metadata file (e.g. labels).
-        embedding.metadata_path = 'metadata.tsv'
-
-        # Saves a config file that TensorBoard will read during startup.
-        projector.visualize_embeddings(tf.summary.FileWriter(loc), config)
 
 
 def write_metadata_tsv(loc, data):
@@ -312,6 +334,9 @@ def write_metadata_tsv(loc, data):
 
     elif isinstance(data, pd.DataFrame):
         data.to_csv(metadata_path, sep='\t', index=False)
+        
+    else:
+        raise ValueError('Labels must be passed as a list or a dataframe')
 
 
 def dataframe_to_triples(X, schema):

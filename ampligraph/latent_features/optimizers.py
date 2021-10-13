@@ -20,7 +20,8 @@ class OptimizerWrapper(abc.ABC):
         """ 
         self.optimizer = optimizer
         self.num_optimized_vars = 0
-        self.number_hyperparams = -1
+        # number of optimizer hpyerparams - adam has 2 if amsgrad is false
+        self.number_hyperparams = 1
         self.is_partitioned_training = False
         
         # workaround for Adagrad/Adadelta/Ftrl optimizers to work on gpu
@@ -29,6 +30,9 @@ class OptimizerWrapper(abc.ABC):
             isinstance(self.optimizer, tf.keras.optimizers.Adagrad) or \
                 isinstance(self.optimizer, tf.keras.optimizers.Ftrl):
             self.gpu_workaround = True
+            
+        if isinstance(self.optimizer, tf.keras.optimizers.Adam):
+            self.number_hyperparams = 2
 
     def apply_gradients(self, grads_and_vars):
         """Wrapper around apply_gradients. 
@@ -72,11 +76,11 @@ class OptimizerWrapper(abc.ABC):
         self.optimizer.apply_gradients(zip(gradients, all_trainable_vars))
         
         # Compute the number of hyperparameters related to the optimizer
-        if self.is_partitioned_training and self.number_hyperparams == -1:
-            optim_weights = self.optimizer.get_weights()
-            self.number_hyperparams = 0
-            for i in range(1, len(optim_weights), self.num_optimized_vars):
-                self.number_hyperparams += 1
+        # if self.is_partitioned_training and self.number_hyperparams == -1:
+        #    optim_weights = self.optimizer.get_weights()
+        #    self.number_hyperparams = 0
+        #    for i in range(1, len(optim_weights), self.num_optimized_vars):
+        #        self.number_hyperparams += 1
 
     def get_hyperparam_count(self):
         ''' Number of hyperparams of the optimizer being used

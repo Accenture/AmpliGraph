@@ -177,11 +177,11 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
     if target_rel is None:
         msg = 'No target relation specified. Using all relations to generate candidate statements.'
         logger.info(msg)
-        rel_list = [x for x in model.data_indexer.backend.relations_dict.values()]
+        rel_list = [x for x in model.data_indexer.backend.get_all_relations()]
     else:
         missing_rels = []
         for rel in target_rel:
-            if rel not in model.data_indexer.backend.relations_dict.values():
+            if rel not in model.data_indexer.backend.get_all_relations():
                 missing_rels.append(rel)
 
         if len(missing_rels) > 0:
@@ -936,19 +936,19 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
         raise ValueError(msg)
 
     if head:
-        if head not in list(model.data_indexer.backend.entities_dict.values()):
+        if head not in list(model.data_indexer.backend.get_all_entities()):
             msg = 'Head entity `{}` not seen by model'.format(head)
             logger.error(msg)
             raise ValueError(msg)
 
     if relation:
-        if relation not in list(model.data_indexer.backend.relations_dict.values()):
+        if relation not in list(model.data_indexer.backend.get_all_relations()):
             msg = 'Relation `{}` not seen by model'.format(relation)
             logger.error(msg)
             raise ValueError(msg)
 
     if tail:
-        if tail not in list(model.data_indexer.backend.entities_dict.values()):
+        if tail not in list(model.data_indexer.backend.get_all_entities()):
             msg = 'Tail entity `{}` not seen by model'.format(tail)
             logger.error(msg)
             raise ValueError(msg)
@@ -962,7 +962,7 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
             msg = '`ents_to_consider` must be a list or numpy array.'
             logger.error(msg)
             raise ValueError(msg)
-        if not all(x in list(model.data_indexer.backend.entities_dict.values()) for x in ents_to_consider):
+        if not all(x in list(model.data_indexer.backend.get_all_entities()) for x in ents_to_consider):
             msg = 'Entities in `ents_to_consider` have not been seen by the model.'
             logger.error(msg)
             raise ValueError(msg)
@@ -979,7 +979,7 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
             msg = '`rels_to_consider` must be a list or numpy array.'
             logger.error(msg)
             raise ValueError(msg)
-        if not all(x in list(model.data_indexer.backend.relations_dict.values()) for x in rels_to_consider):
+        if not all(x in list(model.data_indexer.backend.get_all_relations()) for x in rels_to_consider):
             msg = 'Relations in `rels_to_consider` have not been seen by the model.'
             logger.error(msg)
             raise ValueError(msg)
@@ -989,10 +989,10 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
 
     # Complete triples from entity and relation dict
     if relation is None:
-        rels = rels_to_consider or list(model.data_indexer.backend.relations_dict.values())
+        rels = rels_to_consider or list(model.data_indexer.backend.get_all_relations())
         triples = np.array([[head, x, tail] for x in rels])
     else:
-        ents = ents_to_consider or list(model.data_indexer.backend.entities_dict.values())
+        ents = ents_to_consider or list(model.data_indexer.backend.get_all_entities())
         if head:
             triples = np.array([[head, relation, x] for x in ents])
         else:

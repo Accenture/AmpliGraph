@@ -395,12 +395,17 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             score_pos, score_neg = self(tf.cast(data, tf.int32), training=1)
             # compute the loss
             loss = self.compiled_loss(score_pos, score_neg, self.eta, regularization_losses=self.losses)
-
-        # minimize the loss and update the trainable variables
-        self.optimizer.minimize(loss, 
-                                self.encoding_layer.ent_emb, 
-                                self.encoding_layer.rel_emb,
-                                tape)
+        try:
+            # minimize the loss and update the trainable variables
+            self.optimizer.minimize(loss, 
+                                    self.encoding_layer.ent_emb, 
+                                    self.encoding_layer.rel_emb,
+                                    tape)
+        except ValueError as e:
+            if self.scoring_layer.name == 'Random':
+                pass
+            else:
+                raise e
 
         return {m.name: m.result() for m in self.metrics}
     
@@ -636,12 +641,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                                  options)
         # store ampligraph specific metadata
         with open(filepath + '.ampkl', "wb") as f:
-            metadata = {'inmemory': self.data_indexer.backend_type,
-                        'entities_dict': self.data_indexer.backend.entities_dict,
-                        'reversed_entities_dict': self.data_indexer.backend.reversed_entities_dict,
-                        'relations_dict': self.data_indexer.backend.relations_dict,
-                        'reversed_relations_dict': self.data_indexer.backend.reversed_relations_dict,
-                        'is_partitioned_training': self.is_partitioned_training,
+            metadata = {'is_partitioned_training': self.is_partitioned_training,
                         'max_ent_size': self.max_ent_size,
                         'max_rel_size': self.max_rel_size,
                         'eta': self.eta,
@@ -649,6 +649,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         'is_fitted': self.is_fitted,
                         'is_calibrated': self.is_calibrated
                         }
+            
+            metadata.update(self.data_indexer.get_metadata())
             
             if self.is_partitioned_training:
                 metadata['partitioner_k'] = self.partitioner_k
@@ -680,11 +682,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         with open(filepath + '.ampkl', "rb") as f:
             metadata = pickle.load(f)
             self.data_indexer = DataIndexer([], 
-                                            metadata['inmemory'],
-                                            entities_dict=metadata['entities_dict'],
-                                            reversed_entities_dict=metadata['reversed_entities_dict'],
-                                            relations_dict=metadata['relations_dict'],
-                                            reversed_relations_dict=metadata['reversed_relations_dict'])
+                                            **metadata)
             self.is_partitioned_training = metadata['is_partitioned_training']
             self.max_ent_size = metadata['max_ent_size']
             self.max_rel_size = metadata['max_rel_size']

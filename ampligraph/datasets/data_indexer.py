@@ -94,6 +94,11 @@ class DataIndexer():
     def update_mappings(self, X):
         """Update existing mappings with new data."""
         self.backend.update_mappings(X)
+        
+    def get_metadata(self):
+        metadata = self.backend.get_metadata()
+        metadata['backend'] = self.backend_type
+        return metadata
 
     def get_indexes(self, X, type_of='t', order="raw2ind"):
         """Converts given data to indexes or to raw data (according to order), works for 
@@ -110,11 +115,11 @@ class DataIndexer():
 
     def get_relations_count(self):
         """Get number of unique relations"""
-        return self.backend.get_relations_count() - 1
+        return self.backend.get_relations_count()
 
     def get_entities_count(self):
         """Get number of unique entities"""
-        return self.backend.get_entities_count() - 1
+        return self.backend.get_entities_count()
        
     def clean(self):
         """Remove persisted and in-memor objects."""
@@ -198,8 +203,10 @@ class InMemory():
         self.data = data
         self.mapped = False
         self.metadata = {}
+        # ent to idx dict
         self.entities_dict = entities_dict
         self.reversed_entities_dict = reversed_entities_dict
+        # rel to idx dict
         self.relations_dict = relations_dict
         self.reversed_relations_dict = reversed_relations_dict
 
@@ -212,7 +219,15 @@ class InMemory():
         self.rev_ents_length = 0
         self.rels_length = 0
         self.rev_rels_length = 0
+        
+    def get_all_entities(self):
+        """Returns all the (raw) entities in the dataset"""
+        return list(self.entities_dict.values())
 
+    def get_all_relations(self):
+        """Returns all the (raw) relations in the dataset"""
+        return list(self.relations_dict.values())
+    
     def create_mappings(self):
         """Create mappings of data into indexes. It creates four dictionaries with
            keys as unique entities/relations and values as indexes and reversed
@@ -279,6 +294,15 @@ class InMemory():
     def update_mappings(self, new_data):
         """Update existing mappings with new data."""
         self.update_dictionary_mappings(new_data)
+        
+    def get_metadata(self):
+        metadata = {
+            'entities_dict': self.entities_dict,
+            'reversed_entities_dict': self.reversed_entities_dict,
+            'relations_dict': self.relations_dict,
+            'reversed_relations_dict': self.reversed_relations_dict
+        }
+        return metadata
 
     def update_dictionary_mappings(self, sample=None):
         """Index entities and relations. Creates shelves for mappings between
@@ -484,7 +508,8 @@ class InMemory():
 @register_indexer_backend("shelves")
 class Shelves():
     def __init__(self, data, entities_dict=None, reversed_entities_dict=None,
-                 relations_dict=None, reversed_relations_dict=None, root_directory=tempfile.gettempdir(), name="main_partition"):
+                 relations_dict=None, reversed_relations_dict=None, root_directory=tempfile.gettempdir(), name="main_partition",
+                 **kwargs):
         """Initialise backend by creating mappings.
 
            Parameters
@@ -517,6 +542,23 @@ class Shelves():
         self.rev_ents_length = 0
         self.rels_length = 0
         self.rev_rels_length = 0
+        
+    def get_all_entities(self):
+        """Returns all the (raw) entities in the dataset"""
+        return list(self.entities_dict.values())
+
+    def get_all_relations(self):
+        """Returns all the (raw) relations in the dataset"""
+        return list(self.relations_dict.values())
+        
+    def get_metadata(self):
+        metadata = {
+            'entities_dict': self.entities_dict,
+            'reversed_entities_dict': self.reversed_entities_dict,
+            'relations_dict': self.relations_dict,
+            'reversed_relations_dict': self.reversed_relations_dict
+        }
+        return metadata
         
     def create_mappings(self):
         """Create mappings of data into indexes. It creates four dictionaries with
@@ -826,13 +868,30 @@ class Shelves():
             msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(order)
             logger.error(msg)
             raise Exception(msg)
-
+        
         with shelve.open(entities) as ents:
             with shelve.open(relations) as rels:
-                subjects = [ents[str(elem)] for elem in sample[:,0]]
-                objects = [ents[str(elem)] for elem in sample[:,2]]
-                predicates = [rels[str(elem)] for elem in sample[:,1]]
-                return np.array((subjects, predicates, objects), dtype=dtype).T        
+                subjects = []
+                objects = []
+                predicates = []
+
+                invalid_keys = 0
+                for row in sample:
+                    try:
+                        s = ents[str(row[0])]
+                        p = rels[str(row[1])]
+                        o = ents[str(row[2])]
+                        subjects.append(s)
+                        predicates.append(p)
+                        objects.append(o)
+                    except KeyError:
+                        invalid_keys += 1
+
+                if invalid_keys > 0:
+                    print('\n{} triples containing invalid keys skipped!'.format(invalid_keys))
+                    
+                out = np.array((subjects, predicates, objects), dtype=dtype).T
+                return out       
 
     def get_indexes_from_shelves_single(self, sample, type_of="e", order="raw2ind"):
         """Get indexed elements (entities or relations).
@@ -891,7 +950,7 @@ class Shelves():
 
 @register_indexer_backend("sqlite")
 class SQLite():
-    def __init__(self, data, db_file=None, root_directory=tempfile.gettempdir(), name="main_partition"):
+    def __init__(self, data, db_file=None, root_directory=tempfile.gettempdir(), name="main_partition", **kwargs):
         """Initialise backend by creating mappings.
 
            Parameters
@@ -916,6 +975,57 @@ class SQLite():
         self.max_rels_index = -1
         self.ents_length = 0
         self.rels_length = 0
+        
+    def get_all_entities(self):
+        """Returns all the (raw) entities in the dataset"""
+        
+        query = "select distinct name from entities"
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor() 
+            output = None
+            try:
+                cursor.execute(query)
+                output = cursor.fetchall()
+                out_val = []
+                for out in output:
+                    out_val.append(out[0])
+                conn.commit()
+            except Exception as e:
+                logger.debug("Query failed. The error '{}' occurred".format(e))  
+                logger.debug(query)
+                logger.debug(output)
+                return []
+
+        return out_val
+
+    def get_all_relations(self):
+        """Returns all the (raw) relations in the dataset"""
+        query = "select distinct name from relations"
+        with sqlite3.connect(self.db_file) as conn:
+            cursor = conn.cursor() 
+            output = None
+            try:
+                cursor.execute(query)
+                output = cursor.fetchall()
+                out_val = []
+                for out in output:
+                    out_val.append(out[0])
+                conn.commit()
+            except Exception as e:
+                logger.debug("Query failed. The error '{}' occurred".format(e))  
+                logger.debug(query)
+                logger.debug(output)
+                return []
+
+        return out_val
+        
+    def get_metadata(self):
+        metadata = {
+            'root_directory': self.root_directory, 
+            'db_file': self.db_file,
+            'name': self.name
+        }
+        return metadata
         
     def create_mappings(self):
         """Creates mappings."""
@@ -1057,7 +1167,8 @@ class SQLite():
         if type_of == "t":
             return self.get_indexes_from_db(sample, order=order)
         else:
-            return self.get_indexes_from_db_single(sample, type_of=type_of, order=order)
+            out, _ = self.get_indexes_from_db_single(sample, type_of=type_of, order=order)
+            return out
         
     def get_indexes_from_db(self, sample, order="raw2ind"):
         """Get indexed triples.
@@ -1076,9 +1187,9 @@ class SQLite():
         if isinstance(sample, pd.DataFrame):
             sample = sample.values
 
-        subjects = self.get_indexes_from_db_single(sample[:,0], type_of='e', order=order)
-        objects = self.get_indexes_from_db_single(sample[:,2], type_of='e', order=order)
-        predicates = self.get_indexes_from_db_single(sample[:,1], type_of='r', order=order)        
+        subjects, subject_present = self.get_indexes_from_db_single(sample[:,0], type_of='e', order=order)
+        objects, objects_present = self.get_indexes_from_db_single(sample[:,2], type_of='e', order=order)
+        predicates, predicates_present = self.get_indexes_from_db_single(sample[:,1], type_of='r', order=order)        
         if order == "raw2ind":
             dtype = int
         elif order == "ind2raw":
@@ -1087,8 +1198,17 @@ class SQLite():
             msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(order)
             logger.error(msg)
             raise Exception(msg)           
+            
+        present = np.array(subject_present) & np.array(objects_present) & np.array(predicates_present)
+        out = np.array((subjects, predicates, objects), dtype=dtype).T      
+        before = out.shape[0]
+        out = out[present]
+        after = out.shape[0]
         
-        return np.array((subjects, predicates, objects), dtype=dtype).T        
+        if before - after > 0:
+            print('\n{} triples containing invalid keys skipped!'.format(before - after))
+        
+        return out
 
     def get_indexes_from_db_single(self, sample, type_of="e", order="raw2ind"):
         """Get indexed elements (entities or relations).
@@ -1113,7 +1233,7 @@ class SQLite():
             raise Exception(msg)
 
         if order == 'raw2ind':
-            query = "select name, id from {0} where name in ({1});".format(table,','.join('"{}"'.format(v) for v in sample))
+            query = "select name, ifnull(id, '-1') from {0} where name in ({1});".format(table,','.join('"{}"'.format(v) for v in sample))
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor() 
                 output = None
@@ -1121,7 +1241,19 @@ class SQLite():
                     cursor.execute(query)
                     output = dict(cursor.fetchall())
                     conn.commit()
-                    return [output[str(x)] for x in sample]
+                    out_values = []
+                    present = []
+
+                    for x in sample:
+                        try:
+                            out_values.append(output[str(x)])
+                            present.append(True)
+                        except KeyError:
+                            out_values.append(str(-1))
+                            present.append(False)
+                        
+                    return out_values, present
+                
                 except Exception as e:
                     logger.debug("Query failed. The error '{}' occurred".format(e))  
                     logger.debug(query)
@@ -1136,7 +1268,19 @@ class SQLite():
                     cursor.execute(query)
                     output = dict(cursor.fetchall())
                     conn.commit()
-                    return [output[x] for x in sample]
+                    out_values = []
+                    present = []
+                    
+                    for x in sample:
+                        try:
+                            out_values.append(output[x])
+                            present.append(True)
+                        except KeyError:
+                            out_values.append(str(-1))
+                            present.append(False)
+                            
+                    return out_values, present
+
                 except Exception as e:
                     logger.debug("Query failed. The error '{}' occurred".format(e))  
                     return []    

@@ -1,5 +1,5 @@
 import contextlib
-from ampligraph.datasets import GraphDataLoader, DummyBackend
+from ampligraph.datasets import GraphDataLoader, DummyBackend, SQLiteAdapter
 from ampligraph.datasets.graph_partitioner import AbstractGraphPartitioner
 import ampligraph.datasets.partitioned_data_manager as partition_manager
 from tensorflow.python.framework import errors
@@ -56,7 +56,7 @@ class DataHandler():
         else:
             # use graph data loader by default
             self._adapter = GraphDataLoader(x,
-                                            backend=DummyBackend,
+                                            backend=SQLiteAdapter,
                                             batch_size=batch_size,
                                             dataset_type=dataset_type,
                                             use_indexer=use_indexer,

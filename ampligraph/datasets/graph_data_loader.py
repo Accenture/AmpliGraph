@@ -10,8 +10,8 @@
 This module provides GraphDataLoader class that can be parametrized with a backend
 and in-memory backend (DummyBackend).
 """
-from .source_identifier import DataSourceIdentifier
-from .data_indexer import DataIndexer
+from ampligraph.datasets.source_identifier import DataSourceIdentifier
+from ampligraph.datasets import DataIndexer, SQLiteAdapter
 from datetime import datetime
 import numpy as np
 import shelve
@@ -26,19 +26,20 @@ logger.setLevel(logging.DEBUG)
 
 class DummyBackend():
     """Class providing artificial backend, that reads data into memory."""
-    def __init__(self, identifier, use_indexer=True, remap=False, name="main_partition", verbose=False,
-                 parent=None, in_memory=True, root_directory=tempfile.gettempdir(), use_filter=False):
+    def __init__(self, identifier, use_indexer=True, remap=False, name="main_partition", verbose=False, 
+                 parent=None, in_memory=False, root_directory=tempfile.gettempdir(), use_filter=False):
         """Initialise DummyBackend.
 
            Parameters
            ----------
-           identifier: initialize data source identifier, provides loader.
+           identifier: initialize data source identifier, provides loader. 
            use_indexer: flag or mapper object to tell whether data should be indexed.
-           remap: flag for partitioner to indicate whether to remap previously
+           remap: flag for partitioner to indicate whether to remap previously 
                   indexed data to (0, <size_of_partition>).
            parent: parent data loader that persists data.
            name: identifying name of files for indexer, partition name/id.
         """
+        in_memory = False
         self.verbose = verbose
         self.identifier = identifier
         self.use_indexer = use_indexer
@@ -57,21 +58,21 @@ class DummyBackend():
     def __enter__(self):
         """Context manager enter function. Required by GraphDataLoader."""
         return self
-
+    
     def __exit__(self, type, value, tb):
         """Context manager exit function. Required by GraphDataLoader."""
         pass
-
+        
     def get_output_signature(self):
         if self.use_filter:
-            return (tf.TensorSpec(shape=(None, 3), dtype=tf.int32),
+            return (tf.TensorSpec(shape=(None, 3), dtype=tf.int32), 
                     tf.RaggedTensorSpec(shape=(2, None, None), dtype=tf.int32))
         else:
             return (tf.TensorSpec(shape=(None, 3), dtype=tf.int32))
-
+    
     def _load(self, data_source, dataset_type):
         """Loads data into self.data.
-
+           
            Parameters
            ----------
            data_source: file with data.
@@ -82,13 +83,13 @@ class DummyBackend():
         self.dataset_type = dataset_type
         if isinstance(self.data_source, np.ndarray):
             if self.use_indexer == True:
-                self.mapper = DataIndexer(self.data_source, backend="in_memory",
+                self.mapper = DataIndexer(self.data_source, backend="in_memory" if self.in_memory else "sqlite", 
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(self.data_source)
             elif self.remap:
-                # create a special mapping for partitions, persistent mapping from main indexes
+                # create a special mapping for partitions, persistent mapping from main indexes 
                 # to partition indexes
-                self.mapper = DataIndexer(self.data_source, backend="shelves", name=self.name,
+                self.mapper = DataIndexer(self.data_source, backend="sqlite", name=self.name, 
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(self.data_source)
             else:
@@ -98,14 +99,14 @@ class DummyBackend():
             loader = self.identifier.fetch_loader()
             raw_data = loader(self.data_source)
             if self.use_indexer == True:
-                self.mapper = DataIndexer(raw_data, backend="in_memory",
+                self.mapper = DataIndexer(raw_data, backend="in_memory" if self.in_memory else "sqlite", 
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(raw_data)
             elif self.use_indexer == False:
                 if self.remap:
-                    # create a special mapping for partitions, persistent mapping from
+                    # create a special mapping for partitions, persistent mapping from 
                     # main indexes to partition indexes
-                    self.mapper = DataIndexer(raw_data, backend="shelves", name=self.name,
+                    self.mapper = DataIndexer(raw_data, backend="sqlite", name=self.name, 
                                               root_directory=self.root_directory)
                     self.data = self.mapper.get_indexes(raw_data)
                 else:
@@ -134,8 +135,8 @@ class DummyBackend():
         triples = np.append(triples, np.array(len(triples) * [self.dataset_type]).reshape(-1, 1), axis=1)
         # triples_from_objects = self.data[check_objects(self.data[:,0])]
         # triples = np.vstack([triples_from_subjects, triples_from_objects])
-        return triples
-
+        return triples 
+        
     def get_data_size(self):
         """Returns number of triples."""
         return np.shape(self.data)[0]
@@ -162,11 +163,11 @@ class DummyBackend():
             logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
             logger.debug("Recover original indexes.")
-            triples_original_index = self.mapper.get_indexes(triples, order="ind2raw")
+            triples_original_index = self.mapper.get_indexes(xx, order="ind2raw")
 #            with shelve.open(self.mapper.entities_dict) as ents:
 #                with shelve.open(self.mapper.relations_dict) as rels:
-#                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])],
-#                                                        ents[str(xx[2])]) for xx in triples], dtype=np.int32)
+#                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], 
+#                                                        ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
             logger.debug("Query parent for data.")
             logger.debug("Original index: {}".format(triples_original_index))
             subjects = self.parent.get_complementary_subjects(triples_original_index, use_filter=use_filter)
@@ -198,14 +199,14 @@ class DummyBackend():
             logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
             logger.debug("Recover original indexes.")
-            triples_original_index = self.mapper.get_indexes(triples, order="ind2raw")
+            triples_original_index = self.mapper.get_indexes(xx, order="ind2raw")
 
 #            with shelve.open(self.mapper.reversed_entities_dict) as ents:
 #                with shelve.open(self.mapper.reversed_relations_dict) as rels:
-#                    triples_original_index = np.array([(ents[str(xx[0])],
-#                                                        rels[str(xx[1])],
-#                                                        ents[str(xx[2])]) for xx in triples],
-#                                                      dtype=np.int32)
+#                    triples_original_index = np.array([(ents[str(xx[0])], 
+#                                                        rels[str(xx[1])], 
+#                                                        ents[str(xx[2])]) for xx in triples], 
+#                                                      dtype=np.int32)    
             logger.debug("Query parent for data.")
             subjects = self.parent.get_complementary_subjects(triples_original_index)
             logger.debug("What to do with this new indexes? Evaluation should happen in the \
@@ -240,7 +241,7 @@ class DummyBackend():
            ----------
            source: data source
            name: name of the dataset to be loaded
-
+ 
            Returns
            -------
            loaded data as a numpy array indexed according to mapper.
@@ -251,7 +252,7 @@ class DummyBackend():
             else:
                 identifier = DataSourceIdentifier(source)
                 loader = identifier.fetch_loader()
-                raw_data = loader(source)
+                raw_data = loader(source) 
             if name != 'train-org':
                 self.sources[name] = self.mapper.get_indexes(raw_data)
             else:
@@ -272,16 +273,16 @@ class DummyBackend():
            result of a query, list of objects, per triple
         """
         logger.debug("Getting complementary objects")
-
+       
         if self.parent is not None:
             logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
             logger.debug("Recover original indexes.")
-            triples_original_index = self.mapper.get_indexes(triples, order="ind2raw")
+            triples_original_index = self.mapper.get_indexes(xx, order="ind2raw")
 #            with shelve.open(self.mapper.reversed_entities_dict) as ents:
 #                with shelve.open(self.mapper.reversed_relations_dict) as rels:
-#                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])],
-#                                                        ents[str(xx[2])]) for xx in triples], dtype=np.int32)
+#                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], 
+#                                                        ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
             logger.debug("Query parent for data.")
             objects = self.parent.get_complementary_objects(triples_original_index)
             logger.debug("What to do with this new indexes? Evaluation should happen in \
@@ -295,13 +296,13 @@ class DummyBackend():
 
             # load source if not loaded
             # filter
-
+ 
             tmp_filter = []
             for triple in triples:
                 tmp = source[source[:, 0] == triple[0]]
                 tmp_filter.append(list(set(tmp[tmp[:, 1] == triple[1]][:, 2])))
             filtered.append(tmp_filter)
-
+    
         # Unpack data into one  list per triple no matter what filter it comes from
         unpacked = list(zip(*filtered))
         objects = []
@@ -320,18 +321,18 @@ class DummyBackend():
             msg = "Intersection can only be calculated between same backends (DummyBackend), \
             instead get {}".format(type(dataloader.backend))
             logger.error(msg)
-            raise Exception(msg)
+            raise Exception(msg) 
         self.data = np.ascontiguousarray(self.data, dtype='int64')
-        dataloader.backend.data = np.ascontiguousarray(dataloader.backend.data, dtype='int64')
+        dataloader.backend.data = np.ascontiguousarray(dataloader.backend.data, dtype='int64') 
         av = self.data.view([('', self.data.dtype)] * self.data.shape[1])
         bv = dataloader.backend.data.view([('', dataloader.backend.data.dtype)] * dataloader.backend.data.shape[1])
         intersection = np.intersect1d(av, bv).view(
             self.data.dtype).reshape(-1, self.data.shape[0 if self.data.flags['F_CONTIGUOUS'] else 1])
         return intersection
-
+        
     def _get_batch_generator(self, batch_size, dataset_type="train", random=False, index_by=""):
         """Batch generator of data.
-
+        
            Parameters
            ----------
            batch_size: size of a batch
@@ -347,13 +348,13 @@ class DummyBackend():
         triples = range(0, length, batch_size)
         for start_index in triples:
             # if the last batch is smaller than the batch_size
-            if start_index + batch_size >= length:
+            if start_index + batch_size >= length: 
                 batch_size = length - start_index
             out = self.data[start_index:start_index + batch_size]
-
+            
             if self.use_filter:
                 # get the filter values
-                participating_entities = self._get_complementary_entities(out)
+                participating_entities = self._get_complementary_entities(out, self.use_filter)
                 yield out, tf.ragged.constant(participating_entities, dtype=tf.int32)
             else:
                 yield out
@@ -380,7 +381,7 @@ class GraphDataLoader():
        >>>     process(data)
     """    
     def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, root_directory=tempfile.gettempdir(),
-                 use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=True, use_filter=False):
+                 use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=False, use_filter=False):
         """Initialise persistent/in-memory data storage.
        
            Parameters
@@ -428,8 +429,8 @@ class GraphDataLoader():
                                    use_indexer=self.use_indexer, remap=self.remap, name=self.name, 
                                    parent=self.parent, in_memory=self.in_memory, verbose=verbose, 
                                    use_filter=self.use_filter)
-
             logger.debug("Initialized Backend with database at: {}".format(self.backend.db_path))
+            
         elif backend is None or backend == DummyBackend:
             self.backend = DummyBackend(self.identifier, use_indexer=self.use_indexer, remap=self.remap, 
                                         name=self.name, parent=self.parent, in_memory=self.in_memory, 
@@ -438,6 +439,7 @@ class GraphDataLoader():
             self.backend = backend
 
         self.backend._load(self.data_source, dataset_type=self.dataset_type)  
+        
         self.batch_iterator = self.get_batch_generator(use_filter=self.use_filter, dataset_type=self.dataset_type)
         self.metadata = self.backend.mapper.metadata
       
@@ -447,11 +449,11 @@ class GraphDataLoader():
     
     @property
     def max_entities(self):
-        return self.backend.mapper.get_entities_count() + 1
+        return self.backend.mapper.get_entities_count()
 
     @property
     def max_relations(self):
-        return self.backend.mapper.get_relations_count() + 1
+        return self.backend.mapper.get_relations_count()
     
     def __next__(self):
         """Function needed to be used as an itertor."""
@@ -515,10 +517,10 @@ class GraphDataLoader():
             logger.error(msg)
             raise Exception(msg)
         if 's' in sides:
-            subjects = self.get_complementary_subjects(triples, use_filter=use_filter)
+            subjects = get_complementary_subjects(triples, use_filter=use_filter)
 
         if 'o' in sides:
-            objects = self.get_complementary_objects(triples, use_filter=use_filter)
+            objects = get_complementary_objects(triples, use_filter=use_filter)
 
         if sides == 's,o':
             return subjects, objects
