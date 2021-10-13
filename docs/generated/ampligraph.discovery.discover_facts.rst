@@ -1,4 +1,4 @@
-discover_facts
+﻿discover_facts
 ===================================
 
 .. currentmodule:: ampligraph.discovery

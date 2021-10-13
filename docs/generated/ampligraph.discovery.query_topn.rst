@@ -1,4 +1,4 @@
-query_topn
+﻿query_topn
 ===============================
 
 .. currentmodule:: ampligraph.discovery

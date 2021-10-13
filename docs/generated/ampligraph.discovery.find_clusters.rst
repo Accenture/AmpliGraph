@@ -1,4 +1,4 @@
-find_clusters
+﻿find_clusters
 ==================================
 
 .. currentmodule:: ampligraph.discovery

@@ -4,7 +4,6 @@ from sklearn.cluster import DBSCAN
 from sklearn.neighbors import NearestNeighbors
 from scipy import optimize, spatial
 import networkx as nx
-from ..evaluation import evaluate_performance, filter_unseen_entities
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -537,7 +536,7 @@ ClusteringAndClassificationWithEmbeddings.ipynb
     >>> open('football.csv', 'wb').write(requests.get(url).content)
     >>> X = load_from_csv('.', 'football.csv', sep=',')[:, 1:]
     >>>
-    >>> model = ScoringBasedEmbeddingModel(eta=5, 
+    >>> model = ScoringBasedEmbeddingModel(eta=5,
     >>>                                  k=300,
     >>>                                  scoring_type='ComplEx')
     >>> model.compile(optimizer='adam', loss='multiclass_nll')
@@ -554,7 +553,7 @@ ClusteringAndClassificationWithEmbeddings.ipynb
     >>> embeddings_2d = PCA(n_components=2).fit_transform(np.array([i for i in team_embeddings]))
     >>>
     >>> # Find clusters of embeddings using KMeans
-    >>> 
+    >>>
     >>> kmeans = KMeans(n_clusters=6, n_init=100, max_iter=500)
     >>> clusters = find_clusters(teams, model, kmeans, mode='e')
     >>>

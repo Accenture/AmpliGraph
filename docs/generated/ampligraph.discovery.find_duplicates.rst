@@ -1,4 +1,4 @@
-find_duplicates
+﻿find_duplicates
 ====================================
 
 .. currentmodule:: ampligraph.discovery
