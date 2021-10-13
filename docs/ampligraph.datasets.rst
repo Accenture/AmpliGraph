@@ -21,7 +21,7 @@ Datasets
 Benchmark Datasets Loaders
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Use these helpers functions to load datasets used in graph representation learning literature.
+Use these helper functions to load datasets used in graph representation learning literature.
 The functions will **automatically download** the datasets if they are not present in ``~/ampligraph_datasets`` or
 at the location set in ``AMPLIGRAPH_DATA_HOME``.
 
@@ -89,12 +89,14 @@ This can be used to load datasets from different file sources.
 Graph Partitioning
 ^^^^^^^^^^^^^^^^^^
 
-Ampligraph supports training on partitions of graph. For large datasets, which do not fit in memory, users can choose between one of the following strategies to split the graph into partitions, and the training can be done by loading smaller partitions of the larger graph.
+Ampligraph supports training on partitions of graph. For large datasets, which do not fit in memory, users can choose
+between one of the following strategies to split the graph into partitions, and the training can be done by loading
+smaller partitions of the larger graph.
 
 .. autosummary::
     :toctree: generated
     :template: class.rst
-    
+
     BucketGraphPartitioner
     RandomVerticesGraphPartitioner
     EdgeBasedGraphPartitioner

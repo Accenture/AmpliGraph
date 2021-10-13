@@ -1,4 +1,4 @@
-from ampligraph.datasets.graph_partitioner import PARTITION_ALGO_REGISTRY, AbstractGraphPartitioner
+from .graph_partitioner import PARTITION_ALGO_REGISTRY, AbstractGraphPartitioner
 import numpy as np
 import shelve   
 import tensorflow as tf

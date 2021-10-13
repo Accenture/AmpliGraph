@@ -14,7 +14,7 @@ Attributes
 DEFAULT_CHUNKSIZE: [default 30000] size of data that can be at once loaded to the memory,
                    number of rows, should be set according to available hardware capabilities.
 """
-from ampligraph.datasets import DataIndexer
+from .data_indexer import DataIndexer
 from ampligraph.utils.profiling import get_human_readable_size
 import sqlite3
 from sqlite3 import Error

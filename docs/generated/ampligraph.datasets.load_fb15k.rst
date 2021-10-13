@@ -1,4 +1,4 @@
-load_fb15k
+﻿load_fb15k
 ==============================
 
 .. currentmodule:: ampligraph.datasets

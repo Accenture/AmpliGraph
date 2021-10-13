@@ -1,5 +1,6 @@
 import numpy as np
-from ..datasets import AmpligraphDatasetAdapter, SQLiteAdapter
+from .abstract_dataset_adapter import AmpligraphDatasetAdapter
+from .sqlite_adapter import SQLiteAdapter
 
 
 class NumpyDatasetAdapter(AmpligraphDatasetAdapter):

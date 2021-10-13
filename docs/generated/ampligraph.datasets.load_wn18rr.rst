@@ -1,4 +1,4 @@
-load_wn18rr
+﻿load_wn18rr
 ===============================
 
 .. currentmodule:: ampligraph.datasets

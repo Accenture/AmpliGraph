@@ -1,4 +1,4 @@
-load_yago3_10
+﻿load_yago3_10
 =================================
 
 .. currentmodule:: ampligraph.datasets

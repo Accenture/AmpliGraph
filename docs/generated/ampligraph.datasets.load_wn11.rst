@@ -1,4 +1,4 @@
-load_wn11
+﻿load_wn11
 =============================
 
 .. currentmodule:: ampligraph.datasets

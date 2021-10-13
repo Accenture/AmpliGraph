@@ -16,14 +16,11 @@ PARTITION_ALGO_REGISTRY: dictionary containing strategies' names
 as key and reference to the strategy class as a value.
 """
 import numpy as np
-import time
-import pandas as pd
-from abc import ABC, abstractmethod
+from abc import ABC
 from ampligraph.utils.profiling import timing_and_memory
-from ampligraph.datasets.graph_data_loader import GraphDataLoader
+from .graph_data_loader import GraphDataLoader
 from datetime import datetime
 import shelve
-import csv
 import os
 import logging
 
