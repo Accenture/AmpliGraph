@@ -10,8 +10,9 @@
 This module provides GraphDataLoader class that can be parametrized with a backend
 and in-memory backend (DummyBackend).
 """
-from ampligraph.datasets.source_identifier import DataSourceIdentifier
-from ampligraph.datasets import DataIndexer, SQLiteAdapter
+from .source_identifier import DataSourceIdentifier
+from .data_indexer import DataIndexer
+from .sqlite_adapter import SQLiteAdapter
 from datetime import datetime
 import numpy as np
 import shelve
@@ -163,7 +164,7 @@ class DummyBackend():
             logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
             logger.debug("Recover original indexes.")
-            triples_original_index = self.mapper.get_indexes(xx, order="ind2raw")
+            triples_original_index = self.mapper.get_indexes(triples, order="ind2raw")
 #            with shelve.open(self.mapper.entities_dict) as ents:
 #                with shelve.open(self.mapper.relations_dict) as rels:
 #                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], 
@@ -199,7 +200,7 @@ class DummyBackend():
             logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
             logger.debug("Recover original indexes.")
-            triples_original_index = self.mapper.get_indexes(xx, order="ind2raw")
+            triples_original_index = self.mapper.get_indexes(triples, order="ind2raw")
 
 #            with shelve.open(self.mapper.reversed_entities_dict) as ents:
 #                with shelve.open(self.mapper.reversed_relations_dict) as rels:
@@ -278,7 +279,7 @@ class DummyBackend():
             logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
 
             logger.debug("Recover original indexes.")
-            triples_original_index = self.mapper.get_indexes(xx, order="ind2raw")
+            triples_original_index = self.mapper.get_indexes(triples, order="ind2raw")
 #            with shelve.open(self.mapper.reversed_entities_dict) as ents:
 #                with shelve.open(self.mapper.reversed_relations_dict) as rels:
 #                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], 
@@ -517,10 +518,10 @@ class GraphDataLoader():
             logger.error(msg)
             raise Exception(msg)
         if 's' in sides:
-            subjects = get_complementary_subjects(triples, use_filter=use_filter)
+            subjects = self.get_complementary_subjects(triples, use_filter=use_filter)
 
         if 'o' in sides:
-            objects = get_complementary_objects(triples, use_filter=use_filter)
+            objects = self.get_complementary_objects(triples, use_filter=use_filter)
 
         if sides == 's,o':
             return subjects, objects
