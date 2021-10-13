@@ -1,4 +1,4 @@
-create_tensorboard_visualizations
+﻿create_tensorboard_visualizations
 ==================================================
 
 .. currentmodule:: ampligraph.utils

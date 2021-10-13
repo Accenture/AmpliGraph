@@ -1,4 +1,4 @@
-restore_model
+﻿restore_model
 ==============================
 
 .. currentmodule:: ampligraph.utils

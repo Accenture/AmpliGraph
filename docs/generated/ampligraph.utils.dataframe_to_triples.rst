@@ -1,4 +1,4 @@
-dataframe_to_triples
+﻿dataframe_to_triples
 =====================================
 
 .. currentmodule:: ampligraph.utils
