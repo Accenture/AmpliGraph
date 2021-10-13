@@ -1,11 +1,24 @@
 NLLMulticlass
-==================================
+=======================================================
 
 .. currentmodule:: ampligraph.latent_features.loss_functions
 
 .. autoclass:: NLLMulticlass
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~NLLMulticlass.class_params
+      ~NLLMulticlass.external_params
+      ~NLLMulticlass.metrics
+      ~NLLMulticlass.name
+   
+   
+
+
    
 
    
@@ -18,3 +31,5 @@ NLLMulticlass
    .. automethod:: NLLMulticlass.__init__
    
    
+
+

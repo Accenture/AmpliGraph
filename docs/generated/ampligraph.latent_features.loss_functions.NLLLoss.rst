@@ -1,11 +1,20 @@
 NLLLoss
-==================================
+=================================================
 
 .. currentmodule:: ampligraph.latent_features.loss_functions
 
 .. autoclass:: NLLLoss
 
    
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~NLLLoss.class_params
+      ~NLLLoss.external_params
+      ~NLLLoss.metrics
+      ~NLLLoss.name
    
    
 
@@ -22,3 +31,5 @@ NLLLoss
    .. automethod:: NLLLoss.__init__
    
    
+
+
