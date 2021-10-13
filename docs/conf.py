@@ -42,6 +42,8 @@ extensions = [
     'sphinx.ext.autosummary'
 ]
 
+# New in AmpliGraph 2.x. Required by sphinxcontrib.bibtex >=2.0.0
+bibtex_bibfiles = ['references.bib']
 
 autodoc_mock_imports = ["tensorflow"]
 
