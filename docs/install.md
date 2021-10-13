@@ -1,4 +1,3 @@
-
 # Installation
 
 ## Prerequisites
@@ -6,7 +5,7 @@
 * Linux, macOS, Windows
 * Python ≥ 3.6
 
-#### Provision a Virtual Environment
+### Provision a Virtual Environment
 
 Create and activate a virtual environment (conda)
 
@@ -15,7 +14,7 @@ conda create --name ampligraph python=3.7
 source activate ampligraph
 ```
 
-#### Install TensorFlow
+### Install TensorFlow
 
 AmpliGraph is built on TensorFlow 1.x.
 Install from pip or conda:
