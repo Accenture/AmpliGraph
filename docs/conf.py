@@ -20,7 +20,6 @@
 import os
 import sys
 # sys.path.insert(0, os.path.abspath('.'))
-from recommonmark.parser import CommonMarkParser
 import sphinx_rtd_theme
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import ampligraph
@@ -39,7 +38,8 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinxcontrib.bibtex',
     'sphinx.ext.napoleon',
-    'sphinx.ext.autosummary'
+    'sphinx.ext.autosummary',
+    'myst_parser'
 ]
 
 # New in AmpliGraph 2.x. Required by sphinxcontrib.bibtex >=2.0.0
@@ -50,8 +50,6 @@ autodoc_mock_imports = ["tensorflow"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
-
-source_parsers = {'.md': CommonMarkParser}
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
