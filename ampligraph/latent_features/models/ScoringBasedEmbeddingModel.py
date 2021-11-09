@@ -994,9 +994,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>>                                    'test':'./fb15k-237/test.txt'})
         >>> mr_score(ranks), mrr_score(ranks), hits_at_n_score(ranks, 1), hits_at_n_score(ranks, 10), len(ranks)
         28 triples containing invalid keys skipped!
-
         9 triples containing invalid keys skipped!
-
         28 triples containing invalid keys skipped!
         206/206 [==============================] - 69s 333ms/step
         (428.6952979743615,
@@ -1505,8 +1503,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
     def get_embeddings(self, entities, embedding_type='e'):
         """Get the embeddings of entities or relations.
+        
         .. Note ::
-            Use :meth:`ampligraph.utils.create_tensorboard_visualizations` to visualize the embeddings with TensorBoard.
+        Use :meth:`ampligraph.utils.create_tensorboard_visualizations` to visualize the embeddings with TensorBoard.
+            
         Parameters
         ----------
         entities : array-like, dtype=int, shape=[n]

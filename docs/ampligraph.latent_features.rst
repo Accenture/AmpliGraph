@@ -1,7 +1,24 @@
 Models
 ======
 
+In Ampligraph 2, the models are inherited from the keras `Model` class and is implemented in the `ScoringBasedEmbeddingModel` class. 
 
+.. currentmodule:: ampligraph.latent_features.models
+
+.. automodule:: ampligraph.latent_features.models
+
+.. autosummary::
+    :toctree: generated
+    :template: class.rst
+
+    ScoringBasedEmbeddingModel
+    
+The model consists of following layers:
+    - Encoding Layer
+    - Corruption Generation Layer
+    - Scoring Layer
+    
+The above layers are inherited from keras `Layer` class. The encoding layer looks up the embeddings of input triples, the corruption generation layer generates the corruptions and the Scoring layer uses one of the scoring function described below, to compute the scores of positive triples and their corruptions. The loss is computed using one of the loss function described later.
 
 Scoring functions
 -----------------

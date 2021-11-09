@@ -81,10 +81,9 @@ class Loss(abc.ABC):
             dictionary of hyperparams.
             
             - **'reduction'** : (string). 
-            Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
+                Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
             
             (Other Keys are described in the hyperparameters section)
-            
         """
         self._loss_parameters = {}
         self._loss_parameters['reduction'] = hyperparam_dict.get('reduction', DEFAULT_REDUCTION)
@@ -245,7 +244,7 @@ class PairwiseLoss(Loss):
 
             - **'margin'**: (float). Margin to be used in pairwise loss computation (default: 1)
             - **'reduction'** : (string). 
-            Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
+                Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
 
             Example: ``loss_params={'margin': 1}``
         """
@@ -319,7 +318,7 @@ class NLLLoss(Loss):
             Dictionary of hyperparams. No hyperparameters are required for this loss.
             
             - **'reduction'** : (string). 
-            Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
+                Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
         """
         super().__init__(loss_params, verbose)
 
@@ -395,7 +394,7 @@ class AbsoluteMarginLoss(Loss):
 
             - **'margin'**: float. Margin to be used in pairwise loss computation (default:1)
             - **'reduction'** : (string). 
-            Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
+                Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
 
             Example: ``loss_params={'margin': 1}``
         """
@@ -485,7 +484,7 @@ class SelfAdversarialLoss(Loss):
             - **'margin'**: (float). Margin to be used for loss computation (default: 1)
             - **'alpha'** : (float). Temperature of sampling (default:0.5)
             - **'reduction'** : (string). 
-            Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
+                Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
 
             Example: ``loss_params={'margin': 1, 'alpha': 0.5}``
 
@@ -572,7 +571,7 @@ class NLLMulticlass(Loss):
             Dictionary of loss-specific hyperparams:
             
             - **'reduction'** : (string). 
-            Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
+                Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
 
         """
         super().__init__(loss_params, verbose)

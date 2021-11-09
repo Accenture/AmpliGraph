@@ -14,4 +14,5 @@ entity resolution, and link-based clustering, just to cite a few :cite:`nickel20
 
 """
 from .models import ScoringBasedEmbeddingModel
-__all__ = ['layers', 'models', 'ScoringBasedEmbeddingModel']
+from .optimizers import OptimizerWrapper
+__all__ = ['layers', 'models', 'ScoringBasedEmbeddingModel', 'OptimizerWrapper']
