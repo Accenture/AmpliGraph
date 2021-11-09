@@ -65,7 +65,6 @@ AbstractScoringLayer
       ~AbstractScoringLayer.compute_output_shape
       ~AbstractScoringLayer.compute_output_signature
       ~AbstractScoringLayer.count_params
-      ~AbstractScoringLayer.finalize_state
       ~AbstractScoringLayer.from_config
       ~AbstractScoringLayer.get_config
       ~AbstractScoringLayer.get_input_at
@@ -94,7 +93,6 @@ AbstractScoringLayer
    .. automethod:: AbstractScoringLayer.compute_output_shape
    .. automethod:: AbstractScoringLayer.compute_output_signature
    .. automethod:: AbstractScoringLayer.count_params
-   .. automethod:: AbstractScoringLayer.finalize_state
    .. automethod:: AbstractScoringLayer.from_config
    .. automethod:: AbstractScoringLayer.get_config
    .. automethod:: AbstractScoringLayer.get_input_at
