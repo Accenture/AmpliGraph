@@ -143,7 +143,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
     logger.debug('Evaluating the performance of the embedding model.')
     assert corrupt_side in ['s', 'o', 's+o', 's,o'], 'Invalid value for corrupt_side.'
     
-    model.evaluate(x=X,
+    return model.evaluate(x=X,
                      batch_size=batch_size,
                      verbose=verbose,
                      use_filter={'train': filter_triples},
@@ -151,5 +151,5 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
                      entities_subset=entities_subset,
                      callbacks=None)
     
-    return ranks
+
 
