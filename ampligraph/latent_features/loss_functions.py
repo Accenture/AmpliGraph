@@ -679,7 +679,7 @@ class LossFunctionWrapper(Loss):
         return self._user_losses(scores_pos, scores_neg)
 
     
-def get(identifier):
+def get(identifier, hyperparams={}):
     '''
     Get the loss function specified by the identifier
     
@@ -716,7 +716,7 @@ def get(identifier):
     elif isinstance(identifier, six.string_types):
         if identifier not in LOSS_REGISTRY.keys():
             raise ValueError('Could not interpret loss identifier:', identifier)
-        return LOSS_REGISTRY.get(identifier)()
+        return LOSS_REGISTRY.get(identifier)(hyperparams)
     elif callable(identifier):
         loss_name = identifier.__name__
         wrapped_callable = LossFunctionWrapper(identifier, loss_name)
