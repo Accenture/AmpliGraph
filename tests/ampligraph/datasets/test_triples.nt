@@ -1,3 +1,4 @@
 <e1> <pred1>  <e1>.
-<sub2> <zzz.pred2>     <obj> .
-<sub2> <pred2>     <obj>.
+<sub2> <zzz.pred2>     <obj.com> .
+<sub2> <pred2>     <obj.com>.
+

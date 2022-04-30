@@ -1041,8 +1041,8 @@ def load_from_ntriples(folder_name, file_name, data_home=None, add_reciprocal_re
                      dtype=str,
                      usecols=[0, 1, 2])
 
-    # Remove trailing full stop (if present)
-    df[2] = df[2].apply(lambda x: x.rsplit(".", 1)[0])
+    # Remove ntriples trailing full stop (if present)
+    df[2] = df[2].apply(lambda x: np.char.rstrip(x, chars=' .'))
 
     if add_reciprocal_rels:
         df = _add_reciprocal_relations(df)
