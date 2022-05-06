@@ -25,7 +25,7 @@ from tensorflow.python.keras import callbacks as callbacks_module
 from tensorflow.python.keras.engine import training_utils
 from tensorflow.python.eager import def_function
 from tensorflow.python.keras import metrics as metrics_mod
-
+from tensorflow.python.keras.engine import compile_utils
 
 tf.config.set_soft_device_placement(False)
 tf.debugging.set_log_device_placement(False)
@@ -657,7 +657,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         'is_calibrated': self.is_calibrated
                         }
             
-            metadata.update(self.data_indexer.get_metadata())
+            metadata.update(self.data_indexer.get_metadata(filepath))
             
             if self.is_partitioned_training:
                 metadata['partitioner_k'] = self.partitioner_k
@@ -772,7 +772,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # get the loss
         self.compiled_loss = loss_functions.get(loss)
         # Only metric supported during the training is mean Loss
-        self.compiled_metrics = metrics_mod.Mean(name='loss')  # Total loss.
+        self.compiled_metrics = compile_utils.MetricsContainer(
+          metrics_mod.Mean(name='loss'), None, None)  # Total loss.
         
         # set the initializer and regularizer of the embedding matrices in the encoding layer
         self.encoding_layer.set_initializer(entity_relation_initializer)
