@@ -10,6 +10,7 @@ import copy
 import shelve
 import pickle
 import numpy as np
+import os
 
 from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
 from ampligraph.datasets import data_adapter
@@ -688,6 +689,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         with open(filepath + '.ampkl', "rb") as f:
             metadata = pickle.load(f)
+            metadata['root_directory'] = os.path.dirname(filepath)
+            metadata['root_directory'] = '.' if metadata['root_directory'] == '' else metadata['root_directory']
+            metadata['db_file'] = os.path.basename(metadata['db_file'])
             self.data_indexer = DataIndexer([], 
                                             **metadata)
             self.is_partitioned_training = metadata['is_partitioned_training']

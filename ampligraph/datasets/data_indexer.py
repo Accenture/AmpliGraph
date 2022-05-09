@@ -963,7 +963,7 @@ class SQLite():
         self.data = data
         self.metadata = {}
         if db_file is not None:
-            self.db_file = db_file
+            self.db_file = os.path.join(root_directory, db_file)
             self.mapped = True
         else:
             date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
@@ -1028,7 +1028,7 @@ class SQLite():
         self.db_file = new_file_name
         metadata = {
             'root_directory': self.root_directory, 
-            'db_file': self.db_file,
+            'db_file': os.path.basename(self.db_file),
             'name': self.name
         }
         return metadata
