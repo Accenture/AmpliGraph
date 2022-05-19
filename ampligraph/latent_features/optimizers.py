@@ -147,6 +147,16 @@ class OptimizerWrapper(abc.ABC):
     
     def get_config(self):
         return self.optimizer.get_config()
+    
+    @classmethod
+    def from_config(cls, config):
+        new_config = {}
+        new_config['class_name'] = config['name']
+        
+        del config['name']
+        new_config['config'] = config
+        optimizer = tf.keras.optimizers.get(new_config)
+        return optimizer
         
 
 def get(identifier):

@@ -26,6 +26,10 @@ class TransE(AbstractScoringLayer):
     Such scoring function is then used on positive and negative triples :math:`t^+, t^-` in the loss function.
     
     '''
+    def get_config(self):
+        config = super(TransE, self).get_config()
+        return config
+    
     def __init__(self, k):
         super(TransE, self).__init__(k)
 

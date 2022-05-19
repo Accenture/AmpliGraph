@@ -23,6 +23,10 @@ class DistMult(AbstractScoringLayer):
     where :math:`\mathbf{e}_{s}` is the embedding of the subject, :math:`\mathbf{r}_{p}` the embedding
     of the predicate and :math:`\mathbf{e}_{o}` the embedding of the object.
     """
+    def get_config(self):
+        config = super(DistMult, self).get_config()
+        return config
+    
     def __init__(self, k):
         super(DistMult, self).__init__(k)
 

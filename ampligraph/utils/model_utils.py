@@ -63,101 +63,43 @@ def save_model(model, model_name_path=None):
             and saved to the working directory
 
     """
-
-    logger.debug('Saving model {}.'.format(model.__class__.__name__))
-
-    obj = {
-        'class_name': model.__class__.__name__,
-        'hyperparams': model.all_params,
-        'is_fitted': model.is_fitted,
-        'ent_to_idx': model.ent_to_idx,
-        'rel_to_idx': model.rel_to_idx,
-        'is_calibrated': model.is_calibrated
-    }
-
-    model.get_embedding_model_params(obj)
-
-    logger.debug('Saving hyperparams:{}\n\tis_fitted: \
-                 {}'.format(model.all_params, model.is_fitted))
-
     if model_name_path is None:
-        model_name_path = DEFAULT_MODEL_NAMES.format(strftime("%Y_%m_%d-%H_%M_%S", gmtime()))
-
-    with open(model_name_path, 'wb') as fw:
-        pickle.dump(obj, fw)
-        # dump model tf
-
-
+        model_name_path = "{0}".format(strftime("%Y_%m_%d-%H_%M_%S", gmtime()))
+    tf.keras.models.save_model(model, model_name_path)
+    model.save_metadata(filedir=model_name_path)
+    
+    
 def restore_model(model_name_path=None):
-    """Restore a saved model from disk.
-
-        See also :meth:`save_model`.
-
-        Examples
-        --------
-        >>> from ampligraph.utils import restore_model
-        >>> import numpy as np
-        >>> example_name = 'helloworld.pkl'
-        >>> restored_model = restore_model(model_name_path = example_name)
-        >>> y_pred_after = restored_model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
-        >>> print(y_pred_after)
-        [-0.29721245, 0.07865551]
-
-        Parameters
-        ----------
-        model_name_path: string
-            The name of saved model to be restored. If not specified,
-            the library will try to find the default model in the working directory.
-
-        Returns
-        -------
-        model: EmbeddingModel
-            the neural knowledge graph embedding model restored from disk.
-
-    """
+    from ampligraph.latent_features import OptimizerWrapper, LOSS_REGISTRY
+    from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
+    from ampligraph.latent_features.loss_functions import SelfAdversarialLoss, NLLMulticlass
+    from ampligraph.latent_features import ScoringBasedEmbeddingModel
+    
     if model_name_path is None:
         logger.warning("There is no model name specified. \
                         We will try to lookup \
                         the latest default saved model...")
-        default_models = glob.glob("*.model.pkl")
+        default_models = glob.glob("*.ampkl")
         if len(default_models) == 0:
             raise Exception("No default model found. Please specify \
                              model_name_path...")
-        else:
-            model_name_path = default_models[len(default_models) - 1]
-            logger.info("Will will load the model: {0} in your \
-                         current dir...".format(model_name_path))
-
-    model = None
-    logger.info('Will load model {}.'.format(model_name_path))
-
+            
     try:
-        with open(model_name_path, 'rb') as fr:
-            restored_obj = pickle.load(fr)
-
-        logger.debug('Restoring model ...')
-        module = importlib.import_module("ampligraph.latent_features")
-        class_ = getattr(module, restored_obj['class_name'])
-        model = class_(**restored_obj['hyperparams'])
-        model.is_fitted = restored_obj['is_fitted']
-        model.ent_to_idx = restored_obj['ent_to_idx']
-        model.rel_to_idx = restored_obj['rel_to_idx']
-
-        try:
-            model.is_calibrated = restored_obj['is_calibrated']
-        except KeyError:
-            model.is_calibrated = False
-
-        model.restore_model_params(restored_obj)
+        custom_objects={"ScoringBasedEmbeddingModel": ScoringBasedEmbeddingModel, 
+                                                           'OptimizerWrapper': OptimizerWrapper,
+                                                          'embedding_lookup_layer': EmbeddingLookupLayer}
+        custom_objects.update(LOSS_REGISTRY)
+            
+        model = tf.keras.models.load_model(model_name_path, custom_objects=custom_objects)
+        model.load_metadata(filedir=model_name_path)
     except pickle.UnpicklingError as e:
-        msg = 'Error unpickling model {} : {}.'.format(model_name_path, e)
+        msg = 'Error loading model {} : {}.'.format(model_name_path, e)
         logger.debug(msg)
         raise Exception(msg)
     except (IOError, FileNotFoundError):
         msg = 'No model found: {}.'.format(model_name_path)
         logger.debug(msg)
         raise FileNotFoundError(msg)
-
     return model
 
 

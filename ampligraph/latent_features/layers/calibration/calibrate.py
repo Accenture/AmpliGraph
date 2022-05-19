@@ -9,6 +9,12 @@ import tensorflow as tf
 import numpy as np
 
 class CalibrationLayer(tf.keras.layers.Layer):
+    def get_config(self):
+        config = super(CalibrationLayer, self).get_config()
+        config.update({'pos_size': self.pos_size,
+                       'neg_size': self.neg_size,
+                       'positive_base_rate': self.positive_base_rate})
+        return config
     
     def __init__(self, pos_size=0, neg_size=0, positive_base_rate=None, **kwargs):
         self.pos_size = pos_size

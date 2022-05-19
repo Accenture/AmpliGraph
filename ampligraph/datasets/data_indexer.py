@@ -1024,7 +1024,8 @@ class SQLite():
         self.root_directory = os.path.dirname(new_file_name)
         self.root_directory = '.' if self.root_directory == '' else self.root_directory
         new_file_name = new_file_name + '_' + self.name + '.db'
-        shutil.copyfile(self.db_file, new_file_name)
+        if not os.path.exists(new_file_name):
+            shutil.copyfile(self.db_file, new_file_name)
         self.db_file = new_file_name
         metadata = {
             'root_directory': self.root_directory, 

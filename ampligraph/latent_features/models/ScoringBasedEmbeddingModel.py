@@ -208,7 +208,22 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         (1664.7265143360407, 0.08627483922249177, 0.0, 0.23722967022213523, 20438)
         
     '''
-    def __init__(self, eta, k, scoring_type='DistMult', seed=0):
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
+    
+    def get_config(self):
+        config = super(ScoringBasedEmbeddingModel, self).get_config()
+        config.update({'eta': self.eta,
+                       'k': self.k,
+                       'scoring_type': self.scoring_type,
+                       'seed': self.seed,
+                       'max_ent_size': self.encoding_layer._max_ent_size_internal,
+                       'max_rel_size': self.encoding_layer._max_rel_size_internal})
+
+        return config
+        
+    def __init__(self, eta, k, scoring_type='DistMult', seed=0, max_ent_size=None, max_rel_size=None):
         '''
         Initializes the scoring based embedding model
         
@@ -228,10 +243,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         tf.random.set_seed(seed)
         np.random.seed(seed)
         
-        self.max_ent_size = None
-        self.max_rel_size = None
+        self.max_ent_size = max_ent_size
+        self.max_rel_size = max_rel_size
         
         self.eta = eta
+        self.scoring_type = scoring_type
         
         # get the scoring layer
         self.scoring_layer = SCORING_LAYER_REGISTRY[scoring_type](k)
@@ -632,23 +648,29 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # all the training and validation logs are stored in the history object by keras.Model
             return self.history
         
-    def save_weights(self,
-                     filepath,
-                     overwrite=True,
-                     save_format=None,
-                     options=None):
-        ''' Save the trainable weights and other parameters required to load back the model.
-        '''
-        # TODO: verify other formats
+    def save(self,
+             filepath,
+             overwrite=True,
+             include_optimizer=True,
+             save_format=None,
+             signatures=None,
+             options=None,
+             save_traces=True):
+        super(ScoringBasedEmbeddingModel, self).save(filepath,
+                                                     overwrite,
+                                                     include_optimizer,
+                                                     save_format,
+                                                     signatures,
+                                                     options,
+                                                     save_traces)
+        self.save_metadata(filedir=filepath)
         
-        # call the base class method to save the weights
-        if not self.is_partitioned_training:
-            super(ScoringBasedEmbeddingModel, self).save_weights(filepath, 
-                                                                 overwrite, 
-                                                                 save_format, 
-                                                                 options)
+    def save_metadata(self, filepath=None, filedir=None):
         # store ampligraph specific metadata
-        with open(filepath + '.ampkl', "wb") as f:
+        if filedir is not None:
+            filepath = os.path.join(filedir, os.path.basename(filedir))
+
+        with open(filepath + '_metadata.ampkl', "wb") as f:
             metadata = {'is_partitioned_training': self.is_partitioned_training,
                         'max_ent_size': self.max_ent_size,
                         'max_rel_size': self.max_rel_size,
@@ -671,6 +693,23 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 metadata['positive_base_rate'] = self.calibration_layer.positive_base_rate
 
             pickle.dump(metadata, f)
+            
+    def save_weights(self,
+                     filepath,
+                     overwrite=True,
+                     save_format=None,
+                     options=None):
+        ''' Save the trainable weights and other parameters required to load back the model.
+        '''
+        # TODO: verify other formats
+        
+        # call the base class method to save the weights
+        if not self.is_partitioned_training:
+            super(ScoringBasedEmbeddingModel, self).save_weights(filepath, 
+                                                                 overwrite, 
+                                                                 save_format, 
+                                                                 options)
+        self.save_metadata(filepath)
 
     def build_full_model(self, batch_size=100):
         ''' this method is called while loading the weights to build the model
@@ -679,15 +718,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         for i in range(len(self.layers)):
             self.layers[i].build((batch_size, 3))
             self.layers[i].built = True
+            
 
-    def load_weights(self,
-                     filepath,
-                     by_name=False,
-                     skip_mismatch=False,
-                     options=None):
-        ''' Load the trainable weights and other parameters.
-        '''
-        with open(filepath + '.ampkl', "rb") as f:
+    def load_metadata(self, filepath=None, filedir=None):
+        if filedir is not None:
+            filepath = os.path.join(filedir, os.path.basename(filedir))
+        with open(filepath + '_metadata.ampkl', "rb") as f:
             metadata = pickle.load(f)
             metadata['root_directory'] = os.path.dirname(filepath)
             metadata['root_directory'] = '.' if metadata['root_directory'] == '' else metadata['root_directory']
@@ -708,6 +744,16 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     metadata['positive_base_rate'],
                     calib_w=metadata['calib_w'],
                     calib_b=metadata['calib_b'])
+                
+                
+    def load_weights(self,
+                     filepath,
+                     by_name=False,
+                     skip_mismatch=False,
+                     options=None):
+        ''' Load the trainable weights and other parameters.
+        '''
+        self.load_metadata(filepath)
         self.build_full_model()
         if not self.is_partitioned_training:
             super(ScoringBasedEmbeddingModel, self).load_weights(filepath, 
