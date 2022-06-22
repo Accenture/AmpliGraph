@@ -254,7 +254,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # get the actual k depending on scoring layer 
         # Ex: complex model uses k embeddings for real and k for img side. 
         # so internally it has 2*k. where as transE uses k.
-        self.k = self.scoring_layer.internal_k
+        self.k = k
+        self.internal_k = self.scoring_layer.internal_k
         
         # create the corruption generation layer - generates eta corruptions during training
         self.corruption_layer = CorruptionGenerationLayerTrain()
@@ -266,7 +267,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         
         # Create the embedding lookup layer. 
         # size of entity emb is max_ent_size * k and relation emb is  max_rel_size * k
-        self.encoding_layer = EmbeddingLookupLayer(self.k, self.max_ent_size, self.max_rel_size)
+        self.encoding_layer = EmbeddingLookupLayer(self.internal_k, self.max_ent_size, self.max_rel_size)
         
         # Flag to indicate whether the partitioned training is being done
         self.is_partitioned_training = False

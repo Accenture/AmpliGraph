@@ -23,4 +23,6 @@ def get(identifier, hyperparams={}):
     '''
     if isinstance(identifier, str) and identifier == 'LP':
         identifier = partial(LP_regularizer, regularizer_parameters=hyperparams)
-    return tf.keras.regularizers.get(identifier)
+        identifier = tf.keras.regularizers.get(identifier)
+        identifier.__name__ = 'LP'
+    return identifier
