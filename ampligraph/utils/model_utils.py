@@ -16,6 +16,7 @@ import tensorflow as tf
 from tensorboard.plugins import projector
 import numpy as np
 import pandas as pd
+import shutil
 
 """This module contains utility functions for neural knowledge graph embedding models.
 """
@@ -65,6 +66,10 @@ def save_model(model, model_name_path=None):
     """
     if model_name_path is None:
         model_name_path = "{0}".format(strftime("%Y_%m_%d-%H_%M_%S", gmtime()))
+    if os.path.exists(model_name_path):
+        print("The path {} already exists. This save operation will overwrite the model \
+                at the specified path.".format(model_name_path))
+        shutil.rmtree(model_name_path)
     tf.keras.models.save_model(model, model_name_path)
     model.save_metadata(filedir=model_name_path)
     
