@@ -3,40 +3,29 @@
 ## Prerequisites
 
 * Linux, macOS, Windows
-* Python ≥ 3.6
+* Python ≥ 3.8
 
 ### Provision a Virtual Environment
 
 Create and activate a virtual environment (conda)
 
 ```
-conda create --name ampligraph python=3.7
+conda create --name ampligraph python=3.8
 source activate ampligraph
 ```
 
-### Install TensorFlow
+### Install TensorFlow 2
 
-AmpliGraph is built on TensorFlow 1.x.
+AmpliGraph is built on TensorFlow 2.
+
 Install from pip or conda:
 
-**CPU-only**
-
 ```
-pip install "tensorflow>=1.14.0,<2.0"
+pip install "tensorflow>=2.9"
 
 or 
 
-conda install tensorflow'>=1.14.0,<2.0.0'
-```
-
-**GPU support**
-
-```
-pip install "tensorflow-gpu>=1.14.0,<2.0"
-
-or 
-
-conda install tensorflow-gpu'>=1.14.0,<2.0.0'
+conda install tensorflow'>=2.9'
 ```
 
 
