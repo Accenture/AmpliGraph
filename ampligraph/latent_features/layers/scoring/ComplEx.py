@@ -26,6 +26,10 @@ class ComplEx(AbstractScoringLayer):
         :class:`ampligraph.latent_features.DistMult`.
     """
     
+    def get_config(self):
+        config = super(ComplEx, self).get_config()
+        return config
+    
     def __init__(self, k):
         super(ComplEx, self).__init__(k)
         # internally complex uses k embedddings for real part and k embedddings for img part

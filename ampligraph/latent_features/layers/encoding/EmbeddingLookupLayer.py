@@ -10,7 +10,19 @@ import numpy as np
 
 
 class EmbeddingLookupLayer(tf.keras.layers.Layer):
+    def get_config(self):
+        config = super(EmbeddingLookupLayer, self).get_config()
+        
+        config.update({'k': self.k, 
+                       'max_ent_size': self._max_ent_size_internal,
+                       'max_rel_size': self._max_rel_size_internal,
+                       'entity_kernel_initializer': self.ent_init,
+                       'entity_kernel_regularizer': self.ent_regularizer,
+                       'relation_kernel_initializer': self.rel_init,
+                       'relation_kernel_regularizer': self.rel_regularizer})
 
+        return config
+    
     def __init__(self, k, max_ent_size=None, max_rel_size=None, 
                  entity_kernel_initializer="glorot_uniform", entity_kernel_regularizer=None, 
                  relation_kernel_initializer="glorot_uniform", relation_kernel_regularizer=None, 
@@ -44,10 +56,9 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
             random seed
         '''
         super(EmbeddingLookupLayer, self).__init__(**kwargs)
-        self._has_enough_args_to_build_ent_emb = False
-        self._has_enough_args_to_build_rel_emb = False
-        self._max_ent_size_internal = None
-        self._max_rel_size_internal = None
+        
+        self._max_ent_size_internal = max_ent_size
+        self._max_rel_size_internal = max_rel_size
         self.k = k
 
         self.ent_partition = None
@@ -55,7 +66,16 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
 
         self.max_ent_size = max_ent_size
         self.max_rel_size = max_rel_size
+
+        self._has_enough_args_to_build_ent_emb = True
+        self._has_enough_args_to_build_rel_emb = True
         
+        if self.max_ent_size is None:
+            self._has_enough_args_to_build_ent_emb = False
+            
+        if self.max_rel_size is None:
+            self._has_enough_args_to_build_rel_emb = False
+            
         self.ent_init = entity_kernel_initializer
         self.rel_init = relation_kernel_initializer
         

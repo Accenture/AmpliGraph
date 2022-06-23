@@ -13,6 +13,10 @@ from ampligraph.latent_features.layers.scoring import register_layer, AbstractSc
 class Random(AbstractScoringLayer):
     r''' Random scoring
     '''
+    def get_config(self):
+        config = super(Random, self).get_config()
+        return config
+    
     def __init__(self, k):
         super(Random, self).__init__(k)
 

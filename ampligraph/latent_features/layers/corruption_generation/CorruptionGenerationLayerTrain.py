@@ -9,7 +9,11 @@ import tensorflow as tf
 
 
 class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
-
+    def get_config(self):
+        config = super(CorruptionGenerationLayerTrain, self).get_config()
+        config.update({'seed': self.seed})
+        return config
+    
     def __init__(self, seed=0, **kwargs):
         '''
         Initializes the corruption generation layer

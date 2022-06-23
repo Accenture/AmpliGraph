@@ -34,6 +34,7 @@ import pandas as pd
 import logging
 import tempfile
 import sqlite3
+import shutil
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -95,8 +96,8 @@ class DataIndexer():
         """Update existing mappings with new data."""
         self.backend.update_mappings(X)
         
-    def get_metadata(self):
-        metadata = self.backend.get_metadata()
+    def get_metadata(self, new_file_name=None):
+        metadata = self.backend.get_metadata(new_file_name)
         metadata['backend'] = self.backend_type
         return metadata
 
@@ -295,7 +296,7 @@ class InMemory():
         """Update existing mappings with new data."""
         self.update_dictionary_mappings(new_data)
         
-    def get_metadata(self):
+    def get_metadata(self, new_file_name=None):
         metadata = {
             'entities_dict': self.entities_dict,
             'reversed_entities_dict': self.reversed_entities_dict,
@@ -551,7 +552,7 @@ class Shelves():
         """Returns all the (raw) relations in the dataset"""
         return list(self.relations_dict.values())
         
-    def get_metadata(self):
+    def get_metadata(self, new_file_name=None):
         metadata = {
             'entities_dict': self.entities_dict,
             'reversed_entities_dict': self.reversed_entities_dict,
@@ -962,7 +963,7 @@ class SQLite():
         self.data = data
         self.metadata = {}
         if db_file is not None:
-            self.db_file = db_file
+            self.db_file = os.path.join(root_directory, db_file)
             self.mapped = True
         else:
             date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
@@ -1019,10 +1020,16 @@ class SQLite():
 
         return out_val
         
-    def get_metadata(self):
+    def get_metadata(self, new_file_name=None):
+        self.root_directory = os.path.dirname(new_file_name)
+        self.root_directory = '.' if self.root_directory == '' else self.root_directory
+        new_file_name = new_file_name + '_' + self.name + '.db'
+        if not os.path.exists(new_file_name):
+            shutil.copyfile(self.db_file, new_file_name)
+        self.db_file = new_file_name
         metadata = {
             'root_directory': self.root_directory, 
-            'db_file': self.db_file,
+            'db_file': os.path.basename(self.db_file),
             'name': self.name
         }
         return metadata

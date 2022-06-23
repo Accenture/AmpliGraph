@@ -51,6 +51,11 @@ def register_layer(name, external_params=None, class_params=None):
 class AbstractScoringLayer(tf.keras.layers.Layer):
     ''' Abstract class for scoring layer
     '''
+    def get_config(self):
+        config = super(AbstractScoringLayer, self).get_config()
+        config.update({"k": self.internal_k})
+        return config
+        
     def __init__(self, k):
         '''Initializes the scoring layer
         
@@ -148,20 +153,20 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         '''
         # compute the score of true positives
         triple_score = self._compute_scores(triples)
-        # compute the score by corrupting the subject side of triples by ent_matrix
-        sub_corr_score = self._get_subject_corruption_scores(triples, ent_matrix)
-        # compute the score by corrupting the object side of triples by ent_matrix
-        obj_corr_score = self._get_object_corruption_scores(triples, ent_matrix)
         
         # Handle the floating point comparision by multiplying by reqd precision and casting to int
         # before comparing
-        sub_corr_score = tf.cast(sub_corr_score * COMPARISION_PRECISION, tf.int32)
-        obj_corr_score = tf.cast(obj_corr_score * COMPARISION_PRECISION, tf.int32)
         triple_score = tf.cast(triple_score * COMPARISION_PRECISION, tf.int32)
         
         out_ranks = tf.TensorArray(tf.int32, size=0, dynamic_size=True)
         filter_index = 0
         if tf.strings.regex_full_match(corrupt_side, '.*s.*'):
+            
+            # compute the score by corrupting the subject side of triples by ent_matrix
+            sub_corr_score = self._get_subject_corruption_scores(triples, ent_matrix)
+            # Handle the floating point comparision by multiplying by reqd precision and casting to int
+            # before comparing
+            sub_corr_score = tf.cast(sub_corr_score * COMPARISION_PRECISION, tf.int32)
             
             # compare True positive score against their respective corruptions and get rank.
             sub_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) <= sub_corr_score, tf.int32), 1)
@@ -203,6 +208,12 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
             out_ranks = out_ranks.write(out_ranks.size(), sub_rank)
         
         if tf.strings.regex_full_match(corrupt_side, '.*o.*'):
+            # compute the score by corrupting the object side of triples by ent_matrix
+            obj_corr_score = self._get_object_corruption_scores(triples, ent_matrix)
+
+            # Handle the floating point comparision by multiplying by reqd precision and casting to int
+            # before comparing
+            obj_corr_score = tf.cast(obj_corr_score * COMPARISION_PRECISION, tf.int32)
             obj_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) <= obj_corr_score, tf.int32), 1)
             if filters.shape[0] > 0:
                 for i in tf.range(tf.shape(triple_score)[0]):

@@ -19,7 +19,10 @@ class HolE(ComplEx):
         f_{HolE}= \frac{2}{n} \, f_{ComplEx}
         
     """
-
+    def get_config(self):
+        config = super(HolE, self).get_config()
+        return config
+    
     def __init__(self, k):
         super(HolE, self).__init__(k)
 

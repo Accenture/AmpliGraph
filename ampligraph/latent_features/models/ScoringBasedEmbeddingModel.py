@@ -10,6 +10,7 @@ import copy
 import shelve
 import pickle
 import numpy as np
+import os
 
 from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
 from ampligraph.datasets import data_adapter
@@ -25,7 +26,7 @@ from tensorflow.python.keras import callbacks as callbacks_module
 from tensorflow.python.keras.engine import training_utils
 from tensorflow.python.eager import def_function
 from tensorflow.python.keras import metrics as metrics_mod
-
+from tensorflow.python.keras.engine import compile_utils
 
 tf.config.set_soft_device_placement(False)
 tf.debugging.set_log_device_placement(False)
@@ -207,7 +208,22 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         (1664.7265143360407, 0.08627483922249177, 0.0, 0.23722967022213523, 20438)
         
     '''
-    def __init__(self, eta, k, scoring_type='DistMult', seed=0):
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
+    
+    def get_config(self):
+        config = super(ScoringBasedEmbeddingModel, self).get_config()
+        config.update({'eta': self.eta,
+                       'k': self.k,
+                       'scoring_type': self.scoring_type,
+                       'seed': self.seed,
+                       'max_ent_size': self.encoding_layer._max_ent_size_internal,
+                       'max_rel_size': self.encoding_layer._max_rel_size_internal})
+
+        return config
+        
+    def __init__(self, eta, k, scoring_type='DistMult', seed=0, max_ent_size=None, max_rel_size=None):
         '''
         Initializes the scoring based embedding model
         
@@ -227,17 +243,19 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         tf.random.set_seed(seed)
         np.random.seed(seed)
         
-        self.max_ent_size = None
-        self.max_rel_size = None
+        self.max_ent_size = max_ent_size
+        self.max_rel_size = max_rel_size
         
         self.eta = eta
+        self.scoring_type = scoring_type
         
         # get the scoring layer
         self.scoring_layer = SCORING_LAYER_REGISTRY[scoring_type](k)
         # get the actual k depending on scoring layer 
         # Ex: complex model uses k embeddings for real and k for img side. 
         # so internally it has 2*k. where as transE uses k.
-        self.k = self.scoring_layer.internal_k
+        self.k = k
+        self.internal_k = self.scoring_layer.internal_k
         
         # create the corruption generation layer - generates eta corruptions during training
         self.corruption_layer = CorruptionGenerationLayerTrain()
@@ -249,7 +267,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         
         # Create the embedding lookup layer. 
         # size of entity emb is max_ent_size * k and relation emb is  max_rel_size * k
-        self.encoding_layer = EmbeddingLookupLayer(self.k, self.max_ent_size, self.max_rel_size)
+        self.encoding_layer = EmbeddingLookupLayer(self.internal_k, self.max_ent_size, self.max_rel_size)
         
         # Flag to indicate whether the partitioned training is being done
         self.is_partitioned_training = False
@@ -631,6 +649,52 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # all the training and validation logs are stored in the history object by keras.Model
             return self.history
         
+    def save(self,
+             filepath,
+             overwrite=True,
+             include_optimizer=True,
+             save_format=None,
+             signatures=None,
+             options=None,
+             save_traces=True):
+        super(ScoringBasedEmbeddingModel, self).save(filepath,
+                                                     overwrite,
+                                                     include_optimizer,
+                                                     save_format,
+                                                     signatures,
+                                                     options,
+                                                     save_traces)
+        self.save_metadata(filedir=filepath)
+        
+    def save_metadata(self, filepath=None, filedir=None):
+        # store ampligraph specific metadata
+        if filedir is not None:
+            filepath = os.path.join(filedir, os.path.basename(filedir))
+
+        with open(filepath + '_metadata.ampkl', "wb") as f:
+            metadata = {'is_partitioned_training': self.is_partitioned_training,
+                        'max_ent_size': self.max_ent_size,
+                        'max_rel_size': self.max_rel_size,
+                        'eta': self.eta,
+                        'k': self.k,
+                        'is_fitted': self.is_fitted,
+                        'is_calibrated': self.is_calibrated
+                        }
+            
+            metadata.update(self.data_indexer.get_metadata(filepath))
+            
+            if self.is_partitioned_training:
+                metadata['partitioner_k'] = self.partitioner_k
+                
+            if self.is_calibrated:
+                metadata['calib_w'] = self.calibration_layer.calib_w.numpy()
+                metadata['calib_b'] = self.calibration_layer.calib_b.numpy()
+                metadata['pos_size'] = self.calibration_layer.pos_size
+                metadata['neg_size'] = self.calibration_layer.neg_size
+                metadata['positive_base_rate'] = self.calibration_layer.positive_base_rate
+
+            pickle.dump(metadata, f)
+            
     def save_weights(self,
                      filepath,
                      overwrite=True,
@@ -646,30 +710,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                                  overwrite, 
                                                                  save_format, 
                                                                  options)
-        # store ampligraph specific metadata
-        with open(filepath + '.ampkl', "wb") as f:
-            metadata = {'is_partitioned_training': self.is_partitioned_training,
-                        'max_ent_size': self.max_ent_size,
-                        'max_rel_size': self.max_rel_size,
-                        'eta': self.eta,
-                        'k': self.k,
-                        'is_fitted': self.is_fitted,
-                        'is_calibrated': self.is_calibrated
-                        }
-            
-            metadata.update(self.data_indexer.get_metadata())
-            
-            if self.is_partitioned_training:
-                metadata['partitioner_k'] = self.partitioner_k
-                
-            if self.is_calibrated:
-                metadata['calib_w'] = self.calibration_layer.calib_w.numpy()
-                metadata['calib_b'] = self.calibration_layer.calib_b.numpy()
-                metadata['pos_size'] = self.calibration_layer.pos_size
-                metadata['neg_size'] = self.calibration_layer.neg_size
-                metadata['positive_base_rate'] = self.calibration_layer.positive_base_rate
-
-            pickle.dump(metadata, f)
+        self.save_metadata(filepath)
 
     def build_full_model(self, batch_size=100):
         ''' this method is called while loading the weights to build the model
@@ -678,16 +719,16 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         for i in range(len(self.layers)):
             self.layers[i].build((batch_size, 3))
             self.layers[i].built = True
+            
 
-    def load_weights(self,
-                     filepath,
-                     by_name=False,
-                     skip_mismatch=False,
-                     options=None):
-        ''' Load the trainable weights and other parameters.
-        '''
-        with open(filepath + '.ampkl', "rb") as f:
+    def load_metadata(self, filepath=None, filedir=None):
+        if filedir is not None:
+            filepath = os.path.join(filedir, os.path.basename(filedir))
+        with open(filepath + '_metadata.ampkl', "rb") as f:
             metadata = pickle.load(f)
+            metadata['root_directory'] = os.path.dirname(filepath)
+            metadata['root_directory'] = '.' if metadata['root_directory'] == '' else metadata['root_directory']
+            metadata['db_file'] = os.path.basename(metadata['db_file'])
             self.data_indexer = DataIndexer([], 
                                             **metadata)
             self.is_partitioned_training = metadata['is_partitioned_training']
@@ -704,6 +745,16 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     metadata['positive_base_rate'],
                     calib_w=metadata['calib_w'],
                     calib_b=metadata['calib_b'])
+                
+                
+    def load_weights(self,
+                     filepath,
+                     by_name=False,
+                     skip_mismatch=False,
+                     options=None):
+        ''' Load the trainable weights and other parameters.
+        '''
+        self.load_metadata(filepath)
         self.build_full_model()
         if not self.is_partitioned_training:
             super(ScoringBasedEmbeddingModel, self).load_weights(filepath, 
@@ -772,7 +823,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # get the loss
         self.compiled_loss = loss_functions.get(loss)
         # Only metric supported during the training is mean Loss
-        self.compiled_metrics = metrics_mod.Mean(name='loss')  # Total loss.
+        self.compiled_metrics = compile_utils.MetricsContainer(
+          metrics_mod.Mean(name='loss'), None, None)  # Total loss.
         
         # set the initializer and regularizer of the embedding matrices in the encoding layer
         self.encoding_layer.set_initializer(entity_relation_initializer)

@@ -111,7 +111,7 @@ class OptimizerWrapper(abc.ABC):
         for i in range(1, len(optim_weights), self.num_optimized_vars):
             ent_hyperparams.append(optim_weights[i])
             rel_hyperparams.append(optim_weights[i + 1])
-            
+
         return ent_hyperparams, rel_hyperparams
     
     def set_entity_relation_hyperparams(self, ent_hyperparams, rel_hyperparams):
@@ -144,6 +144,19 @@ class OptimizerWrapper(abc.ABC):
 
     def get_iterations(self):
         return self.optimizer.iterations.numpy()
+    
+    def get_config(self):
+        return self.optimizer.get_config()
+    
+    @classmethod
+    def from_config(cls, config):
+        new_config = {}
+        new_config['class_name'] = config['name']
+        
+        del config['name']
+        new_config['config'] = config
+        optimizer = tf.keras.optimizers.get(new_config)
+        return optimizer
         
 
 def get(identifier):
