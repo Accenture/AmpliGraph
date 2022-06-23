@@ -39,7 +39,6 @@ AmpliGraph models include the following components:
 + :ref:`Regularizer <ref-reg>`
 + :ref:`Initializer <ref-init>`
 + :ref:`Negatives generation strategy <negatives>`
-+ :ref:`Support for Numeric Literals on Edges <edge-literals>`
 
 AmpliGraph comes with a number of such components. They can be used in any combination to come up with a model that
 performs sufficiently well for the dataset of choice.
@@ -124,6 +123,9 @@ AmpliGraph includes a number of loss functions commonly used in literature.
 Each function can be used with any of the implemented models. Loss functions are passed to models as hyperparameter,
 and they can be thus used :ref:`during model selection <eval>`.
 
+.. currentmodule:: ampligraph.latent_features
+
+.. automodule:: ampligraph.latent_features
 
 
 .. autosummary::
@@ -135,7 +137,6 @@ and they can be thus used :ref:`during model selection <eval>`.
     SelfAdversarialLoss
     NLLLoss
     NLLMulticlass
-    BCELoss
 
 .. _ref-reg:
 
@@ -143,13 +144,17 @@ Regularizers
 ^^^^^^^^^^^^
 
 AmpliGraph includes a number of regularizers that can be used with the :ref:`loss function <loss>`.
-:class:`LPRegularizer` supports L1, L2, and L3.
+`LP_regularizer` supports L1, L2, and L3. We also support regularizers defined in tensorflow.
+
+.. currentmodule:: ampligraph.latent_features
+
+.. automodule:: ampligraph.latent_features
 
 .. autosummary::
     :toctree: generated
     :template: class.rst
 
-    LPRegularizer
+    LP_regularizer
 
 
 .. _ref-init:
@@ -158,17 +163,7 @@ Initializers
 ^^^^^^^^^^^^
 
 AmpliGraph includes a number of initializers that can be used to initialize the embeddings. They can be passed as hyperparameter,
-and they can be thus used :ref:`during model selection <eval>`.
-
-.. autosummary::
-    :toctree: generated
-    :template: class.rst
-
-    RandomNormal
-    RandomUniform
-    Xavier
-    Constant
-
+and they can be thus used :ref:`during model selection <eval>`. We support all the initializers defined in tensorflow.
 
 .. _optimizer:
 
@@ -181,41 +176,6 @@ assign high scores to positive statements and low scores to statements unlikely 
 We support SGD-based optimizers provided by TensorFlow, by setting the ``optimizer`` argument in a model initializer.
 Best results are currently obtained with Adam.
 
-.. autosummary::
-    :toctree: generated
-    :template: class.rst
-
-    AdamOptimizer
-    AdagradOptimizer
-    SGDOptimizer
-    MomentumOptimizer
-
-Support for Numeric Literals on Edges
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-.. _edge-literals:
-
-Numeric values associated to edges of a knowledge graph have been used to represent uncertainty, edge importance,
-and even out-of-band knowledge in a growing number of scenarios, ranging from genetic data to social networks.
-
-Nevertheless, traditional knowledge graph embedding models (TransE, DistMult, ComplEx) are not
-designed to capture such information, to the detriment of predictive power.
-
-AmpliGraph includes FocusE :cite:`pai2021learning`, a novel method to inject numeric edge attributes into
-the scoring layer of a traditional knowledge graph embedding architecture.
-
-To process knowledge graphs with numeric-enriched edges, refer to the documentation and examples below:
-
-+ :ref:`FocusE-TransE <focuse_transe>`
-+ :ref:`FocusE-DistMult <focuse_distmult>`
-+ :ref:`FocusE-ComplEx <focuse_complex>`
-
-You can load publicly available benchmark knowledge graphs with numeric-enriched edges
-:ref:`with the dataset loaders <numeric-enriched-edges-loaders>`.
-
-.. Note ::
-
-    `Experiments for the IJCAI-21 FocusE paper are available here
-    <https://github.com/Accenture/AmpliGraph/tree/paper/IJCAI-21/experiments/IJCAI-21>`_ :cite:`pai2021learning`.
 
 Saving/Restoring Models
 ^^^^^^^^^^^^^^^^^^^^^^^

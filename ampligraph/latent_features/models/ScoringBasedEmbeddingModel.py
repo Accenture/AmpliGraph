@@ -629,7 +629,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     # evaluate on the validation
                     ranks = self.evaluate(validation_data,
                                           batch_size=validation_batch_size or batch_size,
-                                          use_filter=validation_filter)
+                                          use_filter=validation_filter,
+                                          dataset_type='valid')
                     # compute all the metrics
                     val_logs = {'val_mrr': mrr_score(ranks), 
                                 'val_mr': mr_score(ranks),
@@ -989,7 +990,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                  use_filter=False,
                  corrupt_side='s,o',
                  entities_subset=None,
-                 callbacks=None):
+                 callbacks=None,
+                 dataset_type='test'):
         '''
         Evaluate the inputs against corruptions and return ranks
 
@@ -1058,7 +1060,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # get teh test set handler
         self.data_handler_test = data_adapter.DataHandler(x,
                                                           batch_size=batch_size,
-                                                          dataset_type='test',
+                                                          dataset_type=dataset_type,
                                                           epochs=1,
                                                           use_filter=use_filter,
                                                           use_indexer=self.data_indexer)
