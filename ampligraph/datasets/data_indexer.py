@@ -602,7 +602,7 @@ class Shelves():
 
            Remember to use mappings for entities with entities and reltions with relations!
         """
-        date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
+        date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p")
         self.entities_dict = os.path.join(self.root_directory, "entities_{}_{}.shf".format(self.name, date))
         self.reversed_entities_dict = os.path.join(self.root_directory, "reversed_entities_{}_{}.shf".format(self.name, date))
         self.relations_dict = os.path.join(self.root_directory, "relations_{}_{}.shf".format(self.name, date))
@@ -700,7 +700,7 @@ class Shelves():
            Remember to use mappings for entities with entities and reltions with relations!
         """
 
-        date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
+        date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p")
         self.entities_dict = os.path.join(self.root_directory, "entities_{}_{}.shf".format(self.name, date))
         self.reversed_entities_dict = os.path.join(self.root_directory, "reversed_entities_{}_{}.shf".format(self.name, date))
         self.relations_dict = os.path.join(self.root_directory, "relations_{}_{}.shf".format(self.name, date))
@@ -966,8 +966,11 @@ class SQLite():
             self.db_file = os.path.join(root_directory, db_file)
             self.mapped = True
         else:
-            date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
+            date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p")
             self.db_file = os.path.join(root_directory, name + date + ".db")
+
+            if os.path.exists(self.db_file):
+                os.remove(self.db_file)
             self.mapped = False
         self.root_directory = root_directory
         self.name = name

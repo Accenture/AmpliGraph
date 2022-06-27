@@ -425,7 +425,7 @@ class GraphDataLoader():
             logger.error(msg)
             raise Exception(msg)
         if isinstance(backend, type) and backend != DummyBackend:
-            self.backend = backend("database_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")),
+            self.backend = backend("database_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p")),
                                    identifier=self.identifier, root_directory=self.root_directory, 
                                    use_indexer=self.use_indexer, remap=self.remap, name=self.name, 
                                    parent=self.parent, in_memory=self.in_memory, verbose=verbose, 
