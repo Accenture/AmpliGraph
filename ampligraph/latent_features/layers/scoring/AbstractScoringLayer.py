@@ -203,7 +203,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                     # ajust the rank of the test triple accordingly
                     sub_rank = tf.tensor_scatter_nd_sub(sub_rank, [[i]], [num_filters_ranked_higher])
                  
-                filter_index = 1
+                filter_index += 1
                 
             out_ranks = out_ranks.write(out_ranks.size(), sub_rank)
         
@@ -218,6 +218,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
             if filters.shape[0] > 0:
                 for i in tf.range(tf.shape(triple_score)[0]):
                     # TODO change the hard coded filter index
+                    filter_index = 1
                     # get the ids of True positives that needs to be filtered
                     filter_ids = filters[filter_index][i]
                     
