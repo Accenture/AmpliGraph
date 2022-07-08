@@ -68,11 +68,34 @@ FB13      316,232   11,816  47,464  75,043        13
     WN11 and FB13 also provide true and negative labels for the triples in the validation and tests sets.
     In both cases the positive base rate is close to 50%.
 
+Loaders for Custom Knowledge Graphs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Functions to load custom knowledge graphs from disk.
+
+.. autosummary::
+    :toctree: generated
+    :template: function.rst
+
+    load_from_csv
+    load_from_ntriples
+    load_from_rdf
+
+
+.. hint::
+    AmpliGraph includes a helper function to split a generic knowledge graphs into **training**,
+    **validation**, and **test** sets. See :meth:`ampligraph.evaluation.train_test_split_no_unseen`.
+
+    
+Advanced Topics
+^^^^^^^^^^^^^^^
 
 Loaders for Custom Knowledge Graphs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Ampligraph provides a dataloader class to load custom datasets. 
+Ampligraph provides a dataloader class to load custom datasets. This API takes in the file path and automatically 
+determines the type of file and tries to load it. This API is quite useful when dealing with large graphs, as we do 
+not want the entire dataset to be in memory.
 
 .. autosummary::
     :toctree: generated
@@ -82,9 +105,6 @@ Ampligraph provides a dataloader class to load custom datasets.
     
 This can be used to load datasets from different file sources.
 
-.. hint::
-    AmpliGraph includes a helper function to split a generic knowledge graphs into **training**,
-    **validation**, and **test** sets. See :meth:`ampligraph.evaluation.train_test_split_no_unseen`.
 
 Graph Partitioning
 ^^^^^^^^^^^^^^^^^^
@@ -104,3 +124,4 @@ smaller partitions of the larger graph.
     NaiveGraphPartitioner
     SortedEdgesGraphPartitioner
     DoubleSortedEdgesGraphPartitioner
+    
