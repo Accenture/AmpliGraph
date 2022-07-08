@@ -172,6 +172,27 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
 
        Example
        -------
+           >>> dataset = load_fb15k_237()
+           >>> dataset_loader = GraphDataLoader(dataset['train'], 
+           >>>                                  backend=SQLiteAdapter, # type of backend to use
+           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
+           >>>                                  dataset_type='train',  # dataset type
+           >>>                                  use_filter=False,      # Whether to use filter or not
+           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
+           >>> partitioner = BucketGraphPartitioner(dataset_loader, k=2)
+           >>> # create and compile a model as usual
+           >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
+           >>>                       k=50, 
+           >>>                       scoring_type='DistMult')
+           >>>
+           >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
+           >>>
+           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
+           >>>                                               # this will generate data for the model during training
+           >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
+           >>>                       epochs=10)              # number
+                      
+                      
            >>> d = np.array([[1,1,2], [1,1,3],[1,1,4],[5,1,3],[5,1,2],[6,1,3],[6,1,2],[6,1,4],[6,1,7]])
            >>> data = GraphDataLoader(d, batch_size=1, dataset_type="test")
            >>> partitioner = BucketGraphPartitioner(data, k=2)
@@ -295,6 +316,28 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
 class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
     """Partitioning strategy that splits vertices into equal
        sized buckets of random entities from the graph.
+       
+       Example
+       -------
+           >>> dataset = load_fb15k_237()
+           >>> dataset_loader = GraphDataLoader(dataset['train'], 
+           >>>                                  backend=SQLiteAdapter, # type of backend to use
+           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
+           >>>                                  dataset_type='train',  # dataset type
+           >>>                                  use_filter=False,      # Whether to use filter or not
+           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
+           >>> partitioner = RandomVerticesGraphPartitioner(dataset_loader, k=2)
+           >>> # create and compile a model as usual
+           >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
+           >>>                       k=50, 
+           >>>                       scoring_type='DistMult')
+           >>>
+           >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
+           >>>
+           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
+           >>>                                               # this will generate data for the model during training
+           >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
+           >>>                       epochs=10)              # number
     """
     def __init__(self, data, k=2, seed=None, **kwargs):
         """Initialiser for RandomVerticesGraphPartitioner.
@@ -349,6 +392,28 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
 class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
     """Template for edge-based partitioning strategy that splits edges
        into partitions, should be inherited to create different edge-based strategy.
+       
+       Example
+       -------
+           >>> dataset = load_fb15k_237()
+           >>> dataset_loader = GraphDataLoader(dataset['train'], 
+           >>>                                  backend=SQLiteAdapter, # type of backend to use
+           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
+           >>>                                  dataset_type='train',  # dataset type
+           >>>                                  use_filter=False,      # Whether to use filter or not
+           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
+           >>> partitioner = EdgeBasedGraphPartitioner(dataset_loader, k=2)
+           >>> # create and compile a model as usual
+           >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
+           >>>                       k=50, 
+           >>>                       scoring_type='DistMult')
+           >>>
+           >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
+           >>>
+           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
+           >>>                                               # this will generate data for the model during training
+           >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
+           >>>                       epochs=10)              # number
     """
     def __init__(self, data, k=2, random=False, index_by="", **kwargs):
         """Initialiser for EdgeBasedGraphPartitioner.
@@ -402,6 +467,28 @@ class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
 class RandomEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
     """Partitioning strategy that splits edges into equal size
        partitions randomly drawing triples from the data.
+       
+       Example
+       -------
+           >>> dataset = load_fb15k_237()
+           >>> dataset_loader = GraphDataLoader(dataset['train'], 
+           >>>                                  backend=SQLiteAdapter, # type of backend to use
+           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
+           >>>                                  dataset_type='train',  # dataset type
+           >>>                                  use_filter=False,      # Whether to use filter or not
+           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
+           >>> partitioner = RandomEdgesGraphPartitioner(dataset_loader, k=2)
+           >>> # create and compile a model as usual
+           >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
+           >>>                       k=50, 
+           >>>                       scoring_type='DistMult')
+           >>>
+           >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
+           >>>
+           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
+           >>>                                               # this will generate data for the model during training
+           >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
+           >>>                       epochs=10)              # number
     """
 
     def __init__(self, data, k=2, **kwargs):
@@ -420,6 +507,28 @@ class RandomEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
 class NaiveGraphPartitioner(EdgeBasedGraphPartitioner):
     """Partitioning strategy that splits edges into equal size
        partitions drawing triples from the data sequentially.
+       
+       Example
+       -------
+           >>> dataset = load_fb15k_237()
+           >>> dataset_loader = GraphDataLoader(dataset['train'], 
+           >>>                                  backend=SQLiteAdapter, # type of backend to use
+           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
+           >>>                                  dataset_type='train',  # dataset type
+           >>>                                  use_filter=False,      # Whether to use filter or not
+           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
+           >>> partitioner = NaiveGraphPartitioner(dataset_loader, k=2)
+           >>> # create and compile a model as usual
+           >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
+           >>>                       k=50, 
+           >>>                       scoring_type='DistMult')
+           >>>
+           >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
+           >>>
+           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
+           >>>                                               # this will generate data for the model during training
+           >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
+           >>>                       epochs=10)              # number
     """
     def __init__(self, data, k=2, **kwargs):
         """Initialiser for NaiveGraphPartitioner.
@@ -435,6 +544,28 @@ class NaiveGraphPartitioner(EdgeBasedGraphPartitioner):
 class SortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
     """Partitioning strategy that splits edges into equal size
        partitions retriving triples from the data ordered by subject.
+       
+       Example
+       -------
+           >>> dataset = load_fb15k_237()
+           >>> dataset_loader = GraphDataLoader(dataset['train'], 
+           >>>                                  backend=SQLiteAdapter, # type of backend to use
+           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
+           >>>                                  dataset_type='train',  # dataset type
+           >>>                                  use_filter=False,      # Whether to use filter or not
+           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
+           >>> partitioner = SortedEdgesGraphPartitioner(dataset_loader, k=2)
+           >>> # create and compile a model as usual
+           >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
+           >>>                       k=50, 
+           >>>                       scoring_type='DistMult')
+           >>>
+           >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
+           >>>
+           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
+           >>>                                               # this will generate data for the model during training
+           >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
+           >>>                       epochs=10)              # number
     """
     def __init__(self, data, k=2, **kwargs):
         """Initialiser for SortedEdgesGraphPartitioner.
@@ -451,6 +582,28 @@ class SortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
 class DoubleSortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
     """Partitioning strategy that splits edges into equal size
        partitions retriving triples from the data ordered by subject and object.
+       
+       Example
+       -------
+           >>> dataset = load_fb15k_237()
+           >>> dataset_loader = GraphDataLoader(dataset['train'], 
+           >>>                                  backend=SQLiteAdapter, # type of backend to use
+           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
+           >>>                                  dataset_type='train',  # dataset type
+           >>>                                  use_filter=False,      # Whether to use filter or not
+           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
+           >>> partitioner = DoubleSortedEdgesGraphPartitioner(dataset_loader, k=2)
+           >>> # create and compile a model as usual
+           >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
+           >>>                       k=50, 
+           >>>                       scoring_type='DistMult')
+           >>>
+           >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
+           >>>
+           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
+           >>>                                               # this will generate data for the model during training
+           >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
+           >>>                       epochs=10)              # number
     """
     def __init__(self, data, k=2, **kwargs):
         """Initialiser for DoubleSortedEdgesGraphPartitioner.
