@@ -9,6 +9,9 @@ import tensorflow as tf
 
 
 class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
+    ''' Generates corruptions during training by corrupting either subject or object using 
+        uniformly randomly sampled entity from the loaded graph.
+    '''
     def get_config(self):
         config = super(CorruptionGenerationLayerTrain, self).get_config()
         config.update({'seed': self.seed})

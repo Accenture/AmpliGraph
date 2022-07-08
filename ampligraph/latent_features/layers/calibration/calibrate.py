@@ -9,6 +9,14 @@ import tensorflow as tf
 import numpy as np
 
 class CalibrationLayer(tf.keras.layers.Layer):
+    ''' Layer to calibrate the model outputs.
+    
+        The class implements the heuristics described in :cite:`calibration`,
+        using Platt scaling :cite:`platt1999probabilistic`.
+        
+        See the docs of model.calibrate() for more details.
+    '''
+    
     def get_config(self):
         config = super(CalibrationLayer, self).get_config()
         config.update({'pos_size': self.pos_size,

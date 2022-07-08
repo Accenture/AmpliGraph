@@ -1330,9 +1330,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         cannot be determined automatically or a priori.
 
         .. Note ::
-            Incompatible with large graph mode (i.e. if ``self.dealing_with_large_graphs=True``).
-
-        .. Note ::
             :cite:`calibration` `calibration experiments available here
             <https://github.com/Accenture/AmpliGraph/tree/paper/ICLR-20/experiments/ICLR-20>`_.
 
