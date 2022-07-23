@@ -12,8 +12,8 @@ NLLMulticlass
    
           ~NLLMulticlass.__init__
           ~NLLMulticlass._init_hyperparams
-          ~NLLMulticlass._apply
+          ~NLLMulticlass._apply_loss
 
        .. automethod:: NLLMulticlass.__init__
        .. automethod:: NLLMulticlass._init_hyperparams
-       .. automethod:: NLLMulticlass._apply
+       .. automethod:: NLLMulticlass._apply_loss

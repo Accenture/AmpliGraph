@@ -28,7 +28,7 @@ at the location set in ``AMPLIGRAPH_DATA_HOME``.
 .. role:: red
 
 .. autosummary::
-    :toctree: generated
+    :toctree:
     :template: function.rst
 
     load_fb15k_237
@@ -68,60 +68,5 @@ FB13      316,232   11,816  47,464  75,043        13
     WN11 and FB13 also provide true and negative labels for the triples in the validation and tests sets.
     In both cases the positive base rate is close to 50%.
 
-Loaders for Custom Knowledge Graphs
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Functions to load custom knowledge graphs from disk.
-
-.. autosummary::
-    :toctree: generated
-    :template: function.rst
-
-    load_from_csv
-    load_from_ntriples
-    load_from_rdf
-
-
-.. hint::
-    AmpliGraph includes a helper function to split a generic knowledge graphs into **training**,
-    **validation**, and **test** sets. See :meth:`ampligraph.evaluation.train_test_split_no_unseen`.
-
-    
-Advanced Topics
-^^^^^^^^^^^^^^^
-
-Loaders for Custom Knowledge Graphs
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Ampligraph provides a dataloader class to load custom datasets. This API takes in the file path and automatically 
-determines the type of file and tries to load it. This API is quite useful when dealing with large graphs, as we do 
-not want the entire dataset to be in memory.
-
-.. autosummary::
-    :toctree: generated
-    :template: class.rst
-
-    GraphDataLoader
-    
-This can be used to load datasets from different file sources.
-
-
-Graph Partitioning
-^^^^^^^^^^^^^^^^^^
-
-Ampligraph supports training on partitions of graph. For large datasets, which do not fit in memory, users can choose
-between one of the following strategies to split the graph into partitions, and the training can be done by loading
-smaller partitions of the larger graph.
-
-.. autosummary::
-    :toctree: generated
-    :template: class.rst
-
-    BucketGraphPartitioner
-    RandomVerticesGraphPartitioner
-    EdgeBasedGraphPartitioner
-    RandomEdgesGraphPartitioner
-    NaiveGraphPartitioner
-    SortedEdgesGraphPartitioner
-    DoubleSortedEdgesGraphPartitioner
     

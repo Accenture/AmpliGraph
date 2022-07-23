@@ -14,7 +14,7 @@ Available Models
 .. automodule:: ampligraph.latent_features.layers.scoring
 
 .. autosummary::
-    :toctree: generated
+    :toctree:
     :template: class.rst
 
     TransE
@@ -51,7 +51,7 @@ and implemented in the ``ScoringBasedEmbeddingModel`` class.
 .. automodule:: ampligraph.latent_features.models
 
 .. autosummary::
-    :toctree: generated
+    :toctree:
     :template: class.rst
 
     ScoringBasedEmbeddingModel
@@ -74,9 +74,10 @@ Scoring functions
 .. currentmodule:: ampligraph.latent_features.layers.scoring
 
 .. automodule:: ampligraph.latent_features.layers.scoring
+    :noindex:
 
 .. autosummary::
-    :toctree: generated
+    :toctree:
     :template: class.rst
 
     TransE
@@ -126,10 +127,10 @@ and they can be thus used :ref:`during model selection <eval>`.
 .. currentmodule:: ampligraph.latent_features
 
 .. automodule:: ampligraph.latent_features
-
+    :noindex:
 
 .. autosummary::
-    :toctree: generated
+    :toctree:
     :template: class.rst
 
     PairwiseLoss
@@ -151,7 +152,7 @@ AmpliGraph includes a number of regularizers that can be used with the :ref:`los
 .. automodule:: ampligraph.latent_features
 
 .. autosummary::
-    :toctree: generated
+    :toctree:
     :template: class.rst
 
     LP_regularizer

@@ -143,7 +143,7 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all', labels=
         `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_ will give a result
         similar to the picture below:
 
-        .. image:: ../img/embeddings_projector.png
+        .. image:: img/embeddings_projector.png
 
     Examples
     --------

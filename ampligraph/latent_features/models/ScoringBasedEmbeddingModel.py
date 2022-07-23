@@ -1409,7 +1409,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         """Get the embeddings of entities or relations.
         
         .. Note ::
-        Use :meth:`ampligraph.utils.create_tensorboard_visualizations` to visualize the embeddings with TensorBoard.
+
+            Use :meth:`ampligraph.utils.create_tensorboard_visualizations` to visualize the embeddings with TensorBoard.
             
         Parameters
         ----------

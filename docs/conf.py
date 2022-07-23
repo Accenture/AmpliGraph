@@ -46,6 +46,7 @@ extensions = [
 bibtex_bibfiles = ['references.bib']
 
 # New in AmpliGraph 2. Introduced in Sphinx 3.0
+autosummary_generate = False
 autosummary_generate_overwrite = False
 
 autodoc_mock_imports = ["tensorflow"]
