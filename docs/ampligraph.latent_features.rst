@@ -1,50 +1,22 @@
 Models
 ======
 
-Knowledge graph embedding models are neural architectures that encode concepts from a knowledge graph
+Knowledge Graph Embedding models (KGE) are neural architectures that encode concepts from a knowledge graph
 (i.e. entities :math:`\mathcal{E}` and relation types :math:`\mathcal{R}`) into low-dimensional,
-continuous vectors :math:`\in \mathcal{R}^k`. Such \textit{knowledge graph embeddings} have applications
+continuous vectors :math:`\in \mathbb{R}^k`.
+
+Such *knowledge graph embeddings* have applications
 in knowledge graph completion, entity resolution, and link-based clustering, just to cite a few :cite:`nickel2016review`.
 
-Available Models
-----------------
-
-.. currentmodule:: ampligraph.latent_features.layers.scoring
-
-.. automodule:: ampligraph.latent_features.layers.scoring
-
-.. autosummary::
-    :toctree:
-    :template: class.rst
-
-    TransE
-    DistMult
-    ComplEx
-    HolE
-
-
-Anatomy of a Model
-------------------
+Anatomy of AmpliGraph 2 Models
+--------------------------------
 
 Knowledge graph embeddings are learned by training a neural architecture over a graph. Although such architectures vary,
 the training phase always consists in minimizing a :ref:`loss function <loss>` :math:`\mathcal{L}` that includes a
 *scoring function* :math:`f_{m}(t)`, i.e. a model-specific function that assigns a score to a triple :math:`t=(sub,pred,obj)`.
 
-
-AmpliGraph models include the following components:
-
-+ :ref:`Scoring function <scoring>` :math:`f(t)`
-+ :ref:`Loss function <loss>` :math:`\mathcal{L}`
-+ :ref:`Optimization algorithm <optimizer>`
-+ :ref:`Regularizer <ref-reg>`
-+ :ref:`Initializer <ref-init>`
-+ :ref:`Negatives generation strategy <negatives>`
-
-AmpliGraph comes with a number of such components. They can be used in any combination to come up with a model that
-performs sufficiently well for the dataset of choice.
-
-In Ampligraph 2, models are inherited from keras ``Model``
-and implemented in the ``ScoringBasedEmbeddingModel`` class.
+In Ampligraph 2, knowledge graph embedding models are implemented as the ``ScoringBasedEmbeddingModel`` class, that
+inherits from `Keras' Model <https://keras.io/api/models/model/>`_:
 
 .. currentmodule:: ampligraph.latent_features.models
 
@@ -56,25 +28,36 @@ and implemented in the ``ScoringBasedEmbeddingModel`` class.
 
     ScoringBasedEmbeddingModel
 
-The model consists of following layers:
-    - Encoding Layer
-    - Corruption Generation Layer
-    - Scoring Layer
+AmpliGraph's ``ScoringBasedEmbeddingModel`` includes the following layers
+(all inherit from `Keras' Layer <https://keras.io/api/layers/>`_):
 
-The above layers are inherited from keras `Layer` class.
-The encoding layer looks up the embeddings of input triples, the corruption generation layer generates the
-corruptions and the Scoring layer uses one of the scoring function described below, to compute the scores of positive
-triples and their corruptions. The loss is computed using one of the loss function described later.
++ :ref:`Encoding Layer <encoding>`
++ :ref:`Scoring Layer <scoring>` :math:`f(t)`
++ :ref:`Negatives Generation Layer <negatives>`
+
+Neural layers aside, a model also requires:
+
++ :ref:`Loss function <loss>` :math:`\mathcal{L}`
++ :ref:`Optimization algorithm <optimizer>`
++ :ref:`Regularizer <ref-reg>`
++ :ref:`Initializer <ref-init>`
+
+.. _encoding:
+
+Encoding Layer
+^^^^^^^^^^^^^^
+The encoding layer consists in a 'shallow' encoding, i.e. a lookup of each the embedding of an input node or edge type
+from the embedding matrix stored within the model.
+
 
 .. _scoring:
 
-Scoring functions
-^^^^^^^^^^^^^^^^^
+Scoring Layer
+^^^^^^^^^^^^^
 
 .. currentmodule:: ampligraph.latent_features.layers.scoring
 
 .. automodule:: ampligraph.latent_features.layers.scoring
-    :noindex:
 
 .. autosummary::
     :toctree:
@@ -111,9 +94,12 @@ and object of a triple :math:`t=(s,p,o)` according to different intuitions:
     f_{HolE}=\mathbf{w}_r \cdot (\mathbf{e}_s \otimes \mathbf{e}_o) = \frac{1}{k}\mathcal{F}(\mathbf{w}_r)\cdot( \overline{\mathcal{F}(\mathbf{e}_s)} \odot \mathcal{F}(\mathbf{e}_o))
 
 
+.. _negatives:
 
+Negatives Generation Layer
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-
+TODO
 
 .. _loss:
 
@@ -162,9 +148,8 @@ AmpliGraph includes a number of regularizers that can be used with the :ref:`los
 
 Initializers
 ^^^^^^^^^^^^
-
-AmpliGraph includes a number of initializers that can be used to initialize the embeddings. They can be passed as hyperparameter,
-and they can be thus used :ref:`during model selection <eval>`. We support all the initializers defined in tensorflow.
+To initialize embeddings, AmpliGraph supports all the initializers defined in TensorFlow.
+The initializer is passed as hyperparameter of the ``model.compile`` method.
 
 .. _optimizer:
 
@@ -175,11 +160,12 @@ The goal of the optimization procedure is learning optimal embeddings, such that
 assign high scores to positive statements and low scores to statements unlikely to be true.
 
 We support SGD-based optimizers provided by TensorFlow, by setting the ``optimizer`` argument in a model initializer.
-Best results are currently obtained with Adam.
+
+Best results are obtained with Adam.
 
 
 Saving/Restoring Models
-^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------
 
 Models can be saved and restored from disk. This is useful to avoid re-training a model.
 

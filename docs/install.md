@@ -28,9 +28,6 @@ or
 conda install tensorflow'>=2.9'
 ```
 
-For TensorFlow 1.x-compatible AmpliGraph, use [AmpliGraph 1.x](https://docs.ampligraph.org/en/1.4.0/).
-
-
 ## Install AmpliGraph
 
 
@@ -58,3 +55,7 @@ pip install -e .
 >> ampligraph.__version__
 '2.0-dev'
 ```
+
+
+## Support for TensorFlow 1.x
+For TensorFlow 1.x-compatible AmpliGraph, use [AmpliGraph 1.x](https://docs.ampligraph.org/en/1.4.0/).
