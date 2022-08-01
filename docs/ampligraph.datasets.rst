@@ -4,20 +4,6 @@ Datasets
 
 .. automodule:: ampligraph.datasets
 
-
-.. note::
-    It is recommended to set the ``AMPLIGRAPH_DATA_HOME`` environment variable::
-
-        export AMPLIGRAPH_DATA_HOME=/YOUR/PATH/TO/datasets
-
-    When attempting to load a dataset, the module will first check if ``AMPLIGRAPH_DATA_HOME`` is set.
-    If it is, it will search this location for the required dataset.
-    If the dataset is not found it will be downloaded and placed in this directory.
-
-    If ``AMPLIGRAPH_DATA_HOME`` has not been set the databases will be saved in the following directory::
-
-        ~/ampligraph_datasets
-
 Loaders for Custom Knowledge Graphs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
