@@ -24,7 +24,7 @@ Loaders for Custom Knowledge Graphs
 Functions to load custom knowledge graphs from disk.
 
 .. autosummary::
-    :toctree: generated
+    :toctree:
     :template: function.rst
 
     load_from_csv
