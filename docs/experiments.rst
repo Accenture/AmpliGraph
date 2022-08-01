@@ -7,11 +7,11 @@ Performance
 Predictive Performance
 ----------------------
 
-We report the filtered MR, MRR, Hits@1,3,10 for the most common datasets used in literature.
+We report AmpliGraph 2 filtered MR, MRR, Hits@1,3,10 results for the most common datasets used in literature.
 
 
-.. note:: **On ConvE Evaluation**.
-    For ConvE, ConvKB implementations and predictive performance results, see AmpliGraph 1.4 documentation.
+.. note:: **AmpliGraph 1.x Benchmarks**.
+    AmpliGraph 1.x predictive power report is available `here <https://docs.ampligraph.org/en/1.4.0/experiments.html>`_.
 
 
 FB15K-237
@@ -401,14 +401,6 @@ To reproduce the above results: ::
     or increase the burn in.
 
 
-.. note:: Due to a combination of model and dataset size it is not possible to evaluate Yago3-10 with ConvKB on the
-    GPU. The fastest way to replicate the results above is to train ConvKB with Yago3-10 on a GPU using the hyper-
-    parameters described above (~15hrs on GTX 1080Ti), and then evaluate the model in CPU only mode (~15 hours on
-    Intel(R) Xeon(R) CPU E5-2620 v4 @ 2.10GHz).
-
-.. note:: ConvKB with early-stopping evaluation protocol does not fit into GPU memory, so instead is just
-    trained for a set number of epochs.
-
 Experiments can be limited to specific models-dataset combinations as follows: ::
 
     $ python predictive_performance.py -h
@@ -435,7 +427,3 @@ TransE      1.22
 DistMult    1.20
 HolE        1.30
 ======== ==============
-
-.. note::
-
-    ConvE is trained with ``bce`` loss instead of ``multiclass_nll``.

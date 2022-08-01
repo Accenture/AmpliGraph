@@ -16,7 +16,7 @@ source activate ampligraph
 
 ### Install TensorFlow 2
 
-AmpliGraph is built on TensorFlow 2.
+AmpliGraph 2.x is built on TensorFlow 2.
 
 Install from pip or conda:
 
@@ -27,6 +27,8 @@ or
 
 conda install tensorflow'>=2.9'
 ```
+
+For TensorFlow 1.x-compatible AmpliGraph, use [AmpliGraph 1.x](https://docs.ampligraph.org/en/1.4.0/).
 
 
 ## Install AmpliGraph
