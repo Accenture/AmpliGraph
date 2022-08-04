@@ -6,9 +6,10 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 import contextlib
-from ampligraph.datasets import GraphDataLoader, DummyBackend, SQLiteAdapter
-from ampligraph.datasets.graph_partitioner import AbstractGraphPartitioner
-import ampligraph.datasets.partitioned_data_manager as partition_manager
+from .graph_data_loader import GraphDataLoader, DummyBackend
+from .sqlite_adapter import SQLiteAdapter
+from .graph_partitioner import AbstractGraphPartitioner
+from .partitioned_data_manager import get_partition_adapter
 from tensorflow.python.framework import errors
 
 
@@ -75,9 +76,9 @@ class DataHandler():
             # partitioned data manager
             assert model is not None, "Please pass the model to datahandler for partitioning!"
 
-            self._adapter = partition_manager.get_partition_adapter(self._adapter,
-                                                                    self._model,
-                                                                    'Bucket')
+            self._adapter = get_partition_adapter(self._adapter,
+                                                  self._model,
+                                                  'Bucket')
 
             self.using_partitioning = True
 

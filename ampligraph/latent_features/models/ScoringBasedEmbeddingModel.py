@@ -14,11 +14,11 @@ import os
 
 from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
 from ampligraph.datasets import data_adapter
-from ampligraph.latent_features.layers.scoring import SCORING_LAYER_REGISTRY
+from ampligraph.latent_features.layers.scoring.AbstractScoringLayer import SCORING_LAYER_REGISTRY
 from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
 from ampligraph.latent_features.layers.calibration import CalibrationLayer
 from ampligraph.latent_features.layers.corruption_generation import CorruptionGenerationLayerTrain
-from ampligraph.datasets import DataIndexer
+from ampligraph.datasets.data_indexer import DataIndexer
 from ampligraph.latent_features import optimizers
 from ampligraph.latent_features import loss_functions
 from ampligraph.evaluation import train_test_split_no_unseen

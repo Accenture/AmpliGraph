@@ -75,9 +75,9 @@ def save_model(model, model_name_path=None):
     
     
 def restore_model(model_name_path=None):
-    from ampligraph.latent_features import OptimizerWrapper, LOSS_REGISTRY
+    from ampligraph.latent_features.optimizers import OptimizerWrapper
+    from ampligraph.latent_features.loss_functions import LOSS_REGISTRY
     from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
-    from ampligraph.latent_features.loss_functions import SelfAdversarialLoss, NLLMulticlass
     from ampligraph.latent_features import ScoringBasedEmbeddingModel
     
     if model_name_path is None:

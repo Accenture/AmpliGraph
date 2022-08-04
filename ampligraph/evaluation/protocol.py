@@ -17,7 +17,6 @@ from tqdm import tqdm
 import tensorflow as tf
 
 from ..evaluation import mrr_score, hits_at_n_score, mr_score
-from ..datasets import AmpligraphDatasetAdapter, NumpyDatasetAdapter, OneToNDatasetAdapter
 # from ampligraph.latent_features.models import ConvE
 
 logger = logging.getLogger(__name__)
@@ -26,7 +25,7 @@ logger.setLevel(logging.DEBUG)
 TOO_MANY_ENTITIES_TH = 50000
 
 
-def _train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False, filtered_test_predicates=None):
+def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False, filtered_test_predicates=None):
     """Split into train and test sets.
      This function carves out a test set that contains only entities
      and relations which also occur in the training set.

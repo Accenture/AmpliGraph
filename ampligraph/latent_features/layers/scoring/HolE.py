@@ -5,7 +5,7 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-from ampligraph.latent_features.layers.scoring import register_layer
+from .AbstractScoringLayer import register_layer
 from .ComplEx import ComplEx
 
 
