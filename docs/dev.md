@@ -34,11 +34,6 @@ You can add your own model by raising a pull request.
 To get started, [read the documentation on how current models have been implemented](ampligraph.latent_features.html#anatomy-of-ampligraph-2-models).
 
 
-## Developer Notes
-
-Additional documentation on data adapters, AmpliGraph support for large graphs, and further technical details 
-[is available here](dev_notes.html).
-
 ## Clone and Install in editable mode
 
 Clone the repository and checkout the `develop` branch.
