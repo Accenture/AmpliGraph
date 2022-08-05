@@ -6,7 +6,7 @@ TransE
 .. autoclass:: TransE
 
    
-   .. rubric:: Methods
+   .. rubric:: Attributes
 
    .. autosummary::
    

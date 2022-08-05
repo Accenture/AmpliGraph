@@ -6,7 +6,7 @@ NLLMulticlass
 .. autoclass:: NLLMulticlass
 
 
-   .. rubric:: Methods
+   .. rubric:: Attributes
 
    .. autosummary::
    
@@ -14,6 +14,6 @@ NLLMulticlass
           ~NLLMulticlass._init_hyperparams
           ~NLLMulticlass._apply_loss
 
-       .. automethod:: NLLMulticlass.__init__
-       .. automethod:: NLLMulticlass._init_hyperparams
-       .. automethod:: NLLMulticlass._apply_loss
+   .. automethod:: NLLMulticlass.__init__
+   .. automethod:: NLLMulticlass._init_hyperparams
+   .. automethod:: NLLMulticlass._apply_loss

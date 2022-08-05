@@ -7,7 +7,7 @@ HolE
 
 
    
-   .. rubric:: Methods
+   .. rubric:: Attributes
 
    .. autosummary::
    

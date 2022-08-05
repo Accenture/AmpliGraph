@@ -215,9 +215,13 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
     """
     def __init__(self, data, k=2, **kwargs):
         """Initialiser for BucketGraphPartitioner.
-
-           data: input data as a GraphDataLoader.
-           k: number of buckets to split entities/vertices into.
+           
+           Parameters
+           ----------
+           data: GraphDataLoader
+               input data as a GraphDataLoader.
+           k: int 
+               number of buckets to split entities/vertices into.
         """
 
         self.partitions = []
@@ -342,8 +346,14 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
     def __init__(self, data, k=2, seed=None, **kwargs):
         """Initialiser for RandomVerticesGraphPartitioner.
 
-           data: input data as a GraphDataLoader.
-           k: number of partitions to split data into.
+           Parameters
+           ----------
+           data: GraphDataLoader
+               input data as a GraphDataLoader.
+           k: int 
+               number of buckets to split entities/vertices into.
+           seed: int
+               seed to be used during partitioning
         """
         self._data = data
         self._k = k
@@ -418,11 +428,16 @@ class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
     def __init__(self, data, k=2, random=False, index_by="", **kwargs):
         """Initialiser for EdgeBasedGraphPartitioner.
 
-           data: input data as a GraphDataLoader.
-           k: number of partitions to split data into.
-           batch_size: size of the batch for partitions data.
-           random: whether to draw edges/triples in random order.
-           index_by: which index to use when returning triples (s,o,so,os).
+           Parameters
+           ----------
+           data: GraphDataLoader
+               input data as a GraphDataLoader.
+           k: int 
+               number of buckets to split entities/vertices into.
+           random: bool
+               whether to draw edges/triples in random order.
+           index_by: string
+               which index to use when returning triples (s,o,so,os).
         """
 
         self.partitions = []
@@ -494,9 +509,12 @@ class RandomEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
     def __init__(self, data, k=2, **kwargs):
         """Initialiser for RandomEdgesGraphPartitioner.
 
-           data: input data as a GraphDataLoader.
-           k: number of partitions to split data into.
-           batch_size: size of a batch.
+           Parameters
+           ----------
+           data: GraphDataLoader
+               input data as a GraphDataLoader.
+           k: int 
+               number of buckets to split entities/vertices into.
         """
         self.partitions = []
         self._data = data
@@ -533,9 +551,12 @@ class NaiveGraphPartitioner(EdgeBasedGraphPartitioner):
     def __init__(self, data, k=2, **kwargs):
         """Initialiser for NaiveGraphPartitioner.
 
-           data: input data as a GraphDataLoader.
-           k: number of partitions to split data into.
-           batch_size: size of a batch.
+           Parameters
+           ----------
+           data: GraphDataLoader
+               input data as a GraphDataLoader.
+           k: int 
+               number of buckets to split entities/vertices into.
         """
         self.partitions = []
         super().__init__(data, k, random=False, index_by="", **kwargs)
@@ -570,9 +591,12 @@ class SortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
     def __init__(self, data, k=2, **kwargs):
         """Initialiser for SortedEdgesGraphPartitioner.
 
-           data: input data as a GraphDataLoader.
-           k: number of partitions to split data into.
-           batch_size: size of a batch.
+           Parameters
+           ----------
+           data: GraphDataLoader
+               input data as a GraphDataLoader.
+           k: int 
+               number of buckets to split entities/vertices into.
         """
 
         self.partitions = []
@@ -608,9 +632,12 @@ class DoubleSortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
     def __init__(self, data, k=2, **kwargs):
         """Initialiser for DoubleSortedEdgesGraphPartitioner.
 
-           data: input data as a GraphDataLoader.
-           k: number of partitions to split data into.
-           batch_size: size of a batch.
+           Parameters
+           ----------
+           data: GraphDataLoader
+               input data as a GraphDataLoader.
+           k: int 
+               number of buckets to split entities/vertices into.
         """
         self.partitions = []
         super().__init__(data, k, random=False, index_by="so", **kwargs)

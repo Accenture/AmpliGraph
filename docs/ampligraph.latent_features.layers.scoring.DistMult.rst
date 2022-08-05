@@ -8,7 +8,7 @@ DistMult
 
 
    
-   .. rubric:: Methods
+   .. rubric:: Attributes
 
    .. autosummary::
    

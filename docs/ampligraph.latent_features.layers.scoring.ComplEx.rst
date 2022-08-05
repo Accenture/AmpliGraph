@@ -7,7 +7,7 @@ ComplEx
 
 
    
-   .. rubric:: Methods
+   .. rubric:: Attributes
 
    .. autosummary::
    

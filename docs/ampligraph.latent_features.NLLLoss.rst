@@ -7,7 +7,7 @@ NLLLoss
 
 
    
-   .. rubric:: Methods
+   .. rubric:: Attributes
 
    .. autosummary::
    
@@ -15,6 +15,6 @@ NLLLoss
           ~NLLLoss._init_hyperparams
           ~NLLLoss._apply_loss
 
-       .. automethod:: NLLLoss.__init__
-       .. automethod:: NLLLoss._init_hyperparams
-       .. automethod:: NLLLoss._apply_loss
+   .. automethod:: NLLLoss.__init__
+   .. automethod:: NLLLoss._init_hyperparams
+   .. automethod:: NLLLoss._apply_loss

@@ -6,7 +6,7 @@ PairwiseLoss
 .. autoclass:: PairwiseLoss
 
 
-    .. rubric:: Methods
+   .. rubric:: Attributes
     
     .. autosummary::
    

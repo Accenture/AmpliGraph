@@ -142,3 +142,22 @@ The users can use ``GraphDataLoader`` class to load the datasets. The API detail
     
     GraphDataLoader
     
+AmpliGraph also has various types of graph partitioners which can be used to partition the data. These can be used by 
+advanced users to see which partitioner performs best on their dataset. By default, AmpliGraph uses the 
+``BucketGraphPartitioner`` since its runtime performance is much better than others.
+
+.. currentmodule:: ampligraph.datasets
+
+.. autosummary::
+    :toctree:
+    :template: class.rst
+
+    
+    RandomVerticesGraphPartitioner
+    RandomEdgesGraphPartitioner
+    SortedEdgesGraphPartitioner
+    NaiveGraphPartitioner
+    DoubleSortedEdgesGraphPartitioner
+    BucketGraphPartitioner
+    EdgeBasedGraphPartitioner
+    
