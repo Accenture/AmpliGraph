@@ -126,3 +126,19 @@ Functions to load custom knowledge graphs from disk.
     AmpliGraph includes a helper function to split a generic knowledge graphs into **training**,
     **validation**, and **test** sets. See :meth:`ampligraph.evaluation.train_test_split_no_unseen`.
     
+    
+Advanced Topics
+^^^^^^^^^^^^^^^
+This section is meant for advanced users who want to train the models on custom datasets which are extremely large.
+
+The users can use ``GraphDataLoader`` class to load the datasets. The API details are described below.
+
+.. currentmodule:: ampligraph.datasets
+
+.. autosummary::
+    :toctree:
+    :template: class.rst
+
+    
+    GraphDataLoader
+    

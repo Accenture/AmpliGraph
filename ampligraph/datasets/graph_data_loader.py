@@ -366,20 +366,45 @@ class DummyBackend():
 
 
 class GraphDataLoader():
-    """Data loader for graphs implemented as a batch iterator
+    """Data loader for models to ingest graph data.
     
-        - graph-specific functions: get complementary entities
-          (previously called "participating entities"),
-        - support for various backends and in-memory processing through dependency injection
-
+       This class is internally used by the model to store the data passed by the user and batch over it during training/eval, 
+       and to obtain filters during evaluation. 
+       It can be used by advanced users to load custom datasets which are large, for performing partitioned training. 
+       The complete dataset wont get loaded in the memory. It will load the data in parts based on which partition is being trained.
+       
        Example
        -------
-       >>> # with a SQLite backend
-       >>> data = GraphDataLoader("./train.csv", backend=SQLiteAdapter, batch_size=4)
-       >>> # with no backend
-       >>> data = GraphDataLoader("./train.csv", batch_size=4)
-       >>> for elem in data:
-       >>>     process(data)
+       >>> # Graph loader - loads the data from the file, numpy array, etc and generates batchs for iterating
+       >>> dataset_loader = GraphDataLoader('train.txt', 
+       >>>                            backend=SQLiteAdapter, # type of backend to use
+       >>>                            batch_size=1000,       # batch size to use while iterating over this dataset
+       >>>                            dataset_type='train',  # dataset type
+       >>>                            use_filter=False,      # Whether to use filter or not
+       >>>                            use_indexer=True)      # indicates that the data needs to be mapped to index
+       >>> # Choose the partitioner - in this case we choose RandomEdges partitioner
+       >>> partitioner = RandomEdges(dataset_loader, k=3)
+       >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
+       >>>                               k=50, 
+       >>>                               scoring_type='DistMult')
+       >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
+       >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
+       >>>                                               # this will generate data for the model during training
+       >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
+       >>>                       epochs=10)              # number of epochs
+       >>> dataset_loader_test = GraphDataLoader('/home/spai/code/ampligraph_projects/dataset/fb15k-237/test.txt', 
+       >>>                                 backend=SQLiteAdapter,     # type of backend to use
+       >>>                                 batch_size=400,            # batch size to use while iterating over this dataset
+       >>>                                 dataset_type='test',       # dataset type
+       >>>                                 use_indexer=
+       >>>            partitioned_model.data_handler.get_mapper())    # get the mapper from the trained model 
+       >>>                                                            # and map the concepts to same indices 
+       >>>                                                            # as used during training
+       >>> ranks = partitioned_model.evaluate(dataset_loader_test, # pass the dataloader object as input to the 
+       >>>                                                  # evaluate function. this will generate data
+       >>>                                                  # for the model during training
+       >>>                                    batch_size=400)
+
     """    
     def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, root_directory=tempfile.gettempdir(),
                  use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=False, use_filter=False):
@@ -387,18 +412,36 @@ class GraphDataLoader():
        
            Parameters
            ----------
-           data_source: file with data (e.g. CSV).
-           batch_size: size of batch,
-           dataset_type: kind of data provided (train | test | validation),
-           backend: name of backend class or, already initialised backend, 
-                    if None, DummyBackend is used (in-memory processing).
-           use_indexer: flag to tell whether data should be indexed.          
-           remap: flag to be used by graph partitioner, indicates whether 
-                     previously indexed data in partition has to be remapped to
-                     new indexes (0, <size_of_partition>), to not be used with 
-                     use_indexer=True, the new remappngs will be persisted.
-           in_memory: persist indexes or not.
-           name: identifying name/id of partition which data loader represents (default main).
+           data_source: numpy array, string, etc
+               File with data (e.g. CSV). Can be a path pointing to the file location, can be data loaded as numpy, etc.
+           batch_size: int
+               Size of batch,
+           dataset_type: string
+               Kind of data provided (train | test | valid),
+           backend: string
+               Name of backend class (DummyBackend, SQLiteAdapter) or, already initialised backend, 
+               If None, DummyBackend is used (in-memory processing).
+           use_indexer: bool, DataIndexer
+               Flag to tell whether data should be indexed.     
+               If the DataIndexer object is passed, the mappings defined in the indexer will be reused 
+               to generate mappings for the current data
+           verbose: bool
+               verbosity
+           remap: bool
+               Flag to be used by graph partitioner, indicates whether 
+               previously indexed data in partition has to be remapped to
+               new indexes (0, <size_of_partition>), to not be used with 
+               use_indexer=True, the new remappngs will be persisted.
+           name: string
+               name of the partition. this is internally used when the data is partitioned.
+           parent: GraphDataLoader
+               Parent dataloader. This is also used internally when the data is partitioned.
+           in_memory: bool
+               Persist indexes or not.
+           use_filter: bool or dict
+               if True, current dataset would be used as filter
+               If dict, the datasets specified in the dict will be used for filtering
+               If False, the true positives will not be filtered from corruptions
         """   
         self.dataset_type = dataset_type
         self.data_source = data_source
@@ -450,10 +493,12 @@ class GraphDataLoader():
     
     @property
     def max_entities(self):
+        ''' Returns the maximum number of entities present in the dataset mapper'''
         return self.backend.mapper.get_entities_count()
 
     @property
     def max_relations(self):
+        ''' Returns the maximum number of relations present in the dataset mapper'''
         return self.backend.mapper.get_relations_count()
     
     def __next__(self):
@@ -594,6 +639,7 @@ class GraphDataLoader():
         return self.backend._get_triples(subjects, objects, entities)
 
     def clean(self):
+        ''' Cleans up the temperory files created for training/eval '''
         self.backend._clean()
         
     def on_epoch_end(self):
