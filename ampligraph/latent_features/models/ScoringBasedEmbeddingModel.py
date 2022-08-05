@@ -78,7 +78,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         
     def __init__(self, eta, k, scoring_type='DistMult', seed=0, max_ent_size=None, max_rel_size=None):
         '''
-        Initializes the scoring based embedding model
+        Initializes the scoring based embedding model. It uses the user specified scoring function.
         
         Parameters
         ----------
@@ -88,6 +88,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             embedding size
         scoring_type: string
             name of the scoring layer to use
+            
+            - ``TransE``  Translating embedding scoring function will be used
+            - ``DistMult`` DistMult embedding scoring function will be used
+            - ``ComplEx`` ComplEx embedding scoring function will be used
+            - ``HolE`` Holograph embedding scoring function will be used
+            
         seed: int 
             random seed
         '''
@@ -368,9 +374,21 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             indicates how often to validate (default: 50)
         validation_filter: bool or dict
             validation filter to be used. 
+            
+            .. Note ::
+            
+                One can perform early stopping using the tensorflow callback ``tf.keras.callbacks.EarlyStopping``
+                as shown in the accompanying example below.
+
         use_partitioning: bool
             flag to indicate whether to use partitioning or not.
             May be overridden if x is an AbstractGraphPartitioner instance
+            
+            .. Note ::
+            
+                This function is quite useful when the size of your dataset is extremely large and cannot fit in memory.
+                Setting this flag will automatically partition the data using ``BucketGraphPartitioner``
+                Kindly checkout the tutorials for usage in Advanced mode.
             
         Returns
         -------
@@ -398,6 +416,30 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         29/29 [==============================] - 1s 20ms/step - loss: 65864.6406
         Epoch 5/5
         29/29 [==============================] - 1s 20ms/step - loss: 63518.3633
+        
+        >>> # Early stopping example
+        >>> dataset = load_fb15k_237()
+        >>> model = ScoringBasedEmbeddingModel(eta=1, 
+        >>>                      k=10,
+        >>>                      scoring_type='TransE')
+        >>> model.compile(optimizer='adam', loss='multiclass_nll')
+        >>> import tensorflow as tf
+        >>> early_stop = tf.keras.callbacks.EarlyStopping(
+        >>>                               monitor="val_mrr", # which metrics to monitor
+        >>>                               patience=3,        # If the monitored metric doesnt improve 
+        >>>                                                  # for these many checks the model early stops
+        >>>                               verbose=1,         # verbosity
+        >>>                               mode="max",        # how to compare the monitored metrics. 
+        >>>                                                  # max - means higher is better
+        >>>                               restore_best_weights=True) # restore the weights with best value
+        >>> # the early stopping instance needs to be passed as callback to fit function
+        >>> model.fit(dataset['train'],
+        >>>              batch_size=10000,
+        >>>              epochs=100,
+        >>>              validation_freq=2,
+        >>>              validation_batch_size=100,
+        >>>              validation_data = dataset['valid'][::100],
+        >>>              callbacks=[checkpoint])     # Pass the early stopping object as a callback 
         '''
         # verifies if compile has been called before calling fit
         self._assert_compile_was_called()
@@ -551,19 +593,28 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
     def save_weights(self,
                      filepath,
-                     overwrite=True,
-                     save_format=None,
-                     options=None):
-        ''' Save the trainable weights and other parameters required to load back the model.
+                     overwrite=True):
+        ''' Save the trainable weights. Use this function if the training process is complete and you want to 
+            use the model only for inference. Use ``load_weights`` to load the model weights back.
+            
+            .. Note ::
+                If you want to continue training, you can use the ``save_model`` and ``load_model`` 
+                function under ``ampligraph.utils`` module. The save_model function saves the entire 
+                state of the graph which allows us to continue from where we left.
+                
+           Parameters
+           ----------
+           filepath: string
+               Path to save the model
+           overwrite: bool
+               Flag which indicates whether the model, if present, needs to be overwritten or not
         '''
         # TODO: verify other formats
         
         # call the base class method to save the weights
         if not self.is_partitioned_training:
             super(ScoringBasedEmbeddingModel, self).save_weights(filepath, 
-                                                                 overwrite, 
-                                                                 save_format, 
-                                                                 options)
+                                                                 overwrite)
         self.save_metadata(filepath)
 
     def build_full_model(self, batch_size=100):
@@ -602,19 +653,24 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 
                 
     def load_weights(self,
-                     filepath,
-                     by_name=False,
-                     skip_mismatch=False,
-                     options=None):
-        ''' Load the trainable weights and other parameters.
+                     filepath):
+        ''' Loads the model weights. 
+            Use this function if ''save_weights`` was used to save the model. 
+            
+            .. Note ::
+                If you want to continue training, you can use the ``save_model`` and ``load_model`` 
+                function under ``ampligraph.utils`` module. The save_model function saves the entire 
+                state of the graph which allows us to continue from where we left.
+                
+           Parameters
+           ----------
+           filepath: string
+               Path to save the model
         '''
         self.load_metadata(filepath)
         self.build_full_model()
         if not self.is_partitioned_training:
-            super(ScoringBasedEmbeddingModel, self).load_weights(filepath, 
-                                                                 by_name, 
-                                                                 skip_mismatch, 
-                                                                 options)
+            super(ScoringBasedEmbeddingModel, self).load_weights(filepath)
 
     def compile(self,
                 optimizer='adam',
@@ -627,11 +683,65 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         Parameters
         ----------
         optimizer: String (name of optimizer) or optimizer instance. 
-            See `tf.keras.optimizers`.
+            The optimizer used to minimize the loss function. Choose between
+            ``sgd``, ``adagrad``, ``adam``, ``rmsprop``, etc.
+            See `tf.keras.optimizers <https://www.tensorflow.org/api_docs/python/tf/keras/optimizers>`_ for up-to-date details.
+            
+            If a string is passed then the default parameters of the optimizer will be used.
+            
+            Examples:
+            ---------
+            >>> model.compile(loss='absolute_margin', optim='adam')
+            
+            If you want to use custom hyperparameters you need to create an instance of the optimizer and 
+            pass the instance to the compile function.
+            
+            Examples
+            --------
+            >>> import tensorflow as tf
+            >>> adam_opt = tf.keras.optimizers.Adam(learning_rate=0.003)
+            >>> model.compile(loss='pairwise', optim=adam_opt)
+            
         loss: String (name of objective function), objective function or
-            `ampligraph.latent_features.losses_function.Loss` instance. 
-            See `ampligraph.latent_features.losses_function`. 
-            An objective function is any callable with the signature `loss = fn(score_true, score_corr, eta)`
+            `ampligraph.latent_features.loss_functions.Loss` instance. 
+
+            If passing a string, you can use one of the following. These losses would be used with their default setting.
+            
+            - ``pairwise``  the model will use pairwise margin-based loss function.
+            - ``nll`` the model will use negative loss likelihood.
+            - ``absolute_margin`` the model will use absolute margin likelihood.
+            - ``self_adversarial`` the model will use adversarial sampling loss function.
+            - ``multiclass_nll`` the model will use multiclass nll loss. 
+            
+            Examples
+            --------
+            >>> model.compile(loss='absolute_margin', optim='adam')
+            
+            If you want to modify the default parameters of the loss function, you need to explictly create an instance 
+            of the loss with required hyperparameters and then pass this instance. 
+            
+            Examples
+            --------
+            >>> from ampligraph.latent_features import AbsoluteMarginLoss
+            >>> ab_loss = AbsoluteMarginLoss(loss_params={'margin': 3})
+            >>> model.compile(loss=ab_loss, optim='adam')
+            
+            An objective function is any callable with the signature 
+            ``loss = fn(score_true, score_corr, eta)``
+            
+            Examples
+            --------
+            >>> # Create a user defined loss function with the above signature
+            >>> def userLoss(scores_pos, scores_neg):
+            >>>    # user defined loss - takes in 2 params and returns loss
+            >>>    neg_exp = tf.exp(scores_neg)
+            >>>    pos_exp = tf.exp(scores_pos)
+            >>>    softmax_score = pos_exp / (tf.reduce_sum(neg_exp, axis=0) + pos_exp)
+            >>>    loss = -tf.math.log(softmax_score)
+            >>>    return loss
+            >>> # pass this loss while compiling the model
+            >>> model.compile(loss=userLoss, optim='adam')
+            
         entity_relation_initializer: String (name of objective function), objective function or 
             `tf.keras.initializers.Initializer` instance
             An objective function is any callable with the signature `init = fn(shape)`
