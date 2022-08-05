@@ -6,7 +6,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 from .datasets import load_from_csv, load_from_rdf, load_fb15k, load_wn18, load_fb15k_237, load_from_ntriples, \
-    load_yago3_10, load_wn18rr, load_wn11, load_fb13
+    load_yago3_10, load_wn18rr, load_wn11, load_fb13, load_onet20k, load_ppi5k, load_nl27k, load_cn15k
 from .graph_data_loader import GraphDataLoader
 from .graph_partitioner import RandomVerticesGraphPartitioner, RandomEdgesGraphPartitioner, \
     SortedEdgesGraphPartitioner, NaiveGraphPartitioner, DoubleSortedEdgesGraphPartitioner, BucketGraphPartitioner, \
@@ -21,6 +21,7 @@ from .graph_partitioner import RandomVerticesGraphPartitioner, RandomEdgesGraphP
 #
 __all__ = ['load_from_csv', 'load_from_rdf', 'load_wn18', 'load_fb15k',
             'load_fb15k_237', 'load_from_ntriples', 'load_yago3_10', 'load_wn18rr', 'load_wn11', 'load_fb13', 
+            'load_onet20k', 'load_ppi5k', 'load_nl27k', 'load_cn15k'
             'GraphDataLoader', 'RandomVerticesGraphPartitioner', 'RandomEdgesGraphPartitioner',
             'SortedEdgesGraphPartitioner', 'NaiveGraphPartitioner', 'DoubleSortedEdgesGraphPartitioner',
             'BucketGraphPartitioner', 'EdgeBasedGraphPartitioner']

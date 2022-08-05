@@ -5,15 +5,15 @@ PairwiseLoss
 
 .. autoclass:: PairwiseLoss
 
-
    .. rubric:: Attributes
-    
-    .. autosummary::
+
+   .. autosummary::
    
-      ~PairwiseLoss.__init__
-      ~PairwiseLoss._init_hyperparams
-      ~PairwiseLoss._apply_loss
-   
+          ~PairwiseLoss.__init__
+          ~PairwiseLoss._init_hyperparams
+          ~PairwiseLoss._apply_loss
+
    .. automethod:: PairwiseLoss.__init__
    .. automethod:: PairwiseLoss._init_hyperparams
    .. automethod:: PairwiseLoss._apply_loss
+

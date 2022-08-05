@@ -73,6 +73,7 @@ FB13      316,232   11,816  47,464  75,043        13
 Benchmark Datasets Loaders (Knowledge Graphs With Numeric Values on Edges)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. _numeric-enriched-edges-loaders:
+
 These helper functions load benchmark datasets **with numeric values on edges**,
 as described in :cite:`pai2021learning` (the figure below shows a toy example).
 
@@ -88,13 +89,14 @@ The functions will **automatically download** the datasets if they are not prese
 at the location set in ``AMPLIGRAPH_DATA_HOME``.
 
 .. autosummary::
-    :toctree: generated
+    :toctree: 
     :template: function.rst
 
     load_onet20k
     load_ppi5k
     load_nl27k
     load_cn15k
+    
 
 **Datasets Summary (KGs with numeric values on edges)**
 
