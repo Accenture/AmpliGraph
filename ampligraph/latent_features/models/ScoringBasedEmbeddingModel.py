@@ -743,18 +743,71 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             >>> model.compile(loss=userLoss, optim='adam')
             
         entity_relation_initializer: String (name of objective function), objective function or 
-            `tf.keras.initializers.Initializer` instance
-            An objective function is any callable with the signature `init = fn(shape)`
+            ``tf.keras.initializers.Initializer`` instance
+            
             Initializer of the entity and relation embeddings. This is either a single value or a list of size 2.
             If it is a single value, then both the entities and relations will be initialized based on 
             the same initializer. if it is a list, the first initializer will be used for entities and second 
             for relations.
+            
+            If a string is passed, then the default parameters will be used. Choose between
+            ``random_normal``, ``random_uniform``, ``glorot_normal``, ``he_normal``, etc.
+
+            See `tf.keras.initializers <https://www.tensorflow.org/api_docs/python/tf/keras/initializers>`_ for up-to-date details.
+            
+            Examples
+            --------
+            >>> model.compile(loss='pairwise', optim='adam', entity_relation_initializer='random_normal')
+            
+            If the user wants to use custom hyperparameters, then an instance of the ``tf.keras.initializers.Initializer``
+            needs to be passed.
+            
+            Examples
+            --------
+            >>> import tensorflow as tf
+            >>> init = tf.keras.initializers.RandomNormal(stddev=0.00003)
+            >>> model.compile(loss='pairwise', optim='adam', entity_relation_initializer=init)
+            
+            If the user wants to define custom initializer it can be any callable with the signature `init = fn(shape)`
+            
+            Examples
+            --------
+            >>> def my_init(shape):
+            >>>     return tf.random.normal(shape)
+            >>> model.compile(loss='pairwise', optim='adam', entity_relation_initializer=my_init)
+            
         entity_relation_regularizer: String (name of objective function), objective function or 
             `tf.keras.regularizers.Regularizer` instance
             Regularizer of entities and relations.
             If it is a single value, then both the entities and relations will be regularized based on 
             the same regularizer. if it is a list, the first regularizer will be used for entities and second 
             for relations.
+            
+            If a string is passed, then the default parameters will be used. Choose between
+            ``l1``, ``l2``, ``l1_l2``, etc.
+
+            See `tf.keras.regularizers <https://www.tensorflow.org/api_docs/python/tf/keras/regularizers>`_ for up-to-date details.
+            
+            Examples
+            --------
+            >>> model.compile(loss='pairwise', optim='adam', entity_relation_regularizer='l2')
+            
+            If the user wants to use custom hyperparameters, then an instance of the ``tf.keras.regularizers.Regularizer``
+            needs to be passed.
+            
+            Examples
+            --------
+            >>> import tensorflow as tf
+            >>> reg = tf.keras.regularizers.L1L2(l1=0.001, l2=0.1)
+            >>> model.compile(loss='pairwise', optim='adam', entity_relation_regularizer=reg)
+            
+            If the user wants to define custom regularizer it can be any callable with the signature `reg = fn(weight_matrix)`
+            
+            Examples
+            --------
+            >>> def my_reg(weight_matrix):
+            >>>       return 0.01 * tf.math.reduce_sum(tf.math.abs(weight_matrix))
+            >>> model.compile(loss='pairwise', optim='adam', entity_relation_regularizer=my_reg)
             
         Examples
         --------
