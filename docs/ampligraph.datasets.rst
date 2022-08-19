@@ -5,6 +5,27 @@ Datasets
 .. automodule:: ampligraph.datasets
 
 
+Loaders for Custom Knowledge Graphs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Functions to load custom knowledge graphs from disk. These functions load the data from the specified files and store as a numpy array. Users can use these loaders to load data when their datasets are small in size (approx 1M entities and millions of triples), as long as it can fit in the memory. In case the dataset is big and doesnt load in memory, the users can use ``GraphDataLoader`` class discussed on this page under advanced topics section.
+
+.. autosummary::
+    :toctree:
+    :template: function.rst
+
+    load_from_csv
+    load_from_ntriples
+    load_from_rdf
+
+.. hint::
+    AmpliGraph includes a helper function to split a generic knowledge graphs into **training**,
+    **validation**, and **test** sets. See :meth:`ampligraph.evaluation.train_test_split_no_unseen`.
+    
+    
+Benchmark Datasets Loaders
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 .. note::
     It is recommended to set the ``AMPLIGRAPH_DATA_HOME`` environment variable::
 
@@ -18,9 +39,6 @@ Datasets
 
         ~/ampligraph_datasets
 
-
-Benchmark Datasets Loaders
-^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Use these helper functions to load datasets used in graph representation learning literature.
 The functions will **automatically download** the datasets if they are not present in ``~/ampligraph_datasets`` or
@@ -109,31 +127,12 @@ NL27K     149,100   12,274   14,026   27,221      405
 CN15K     199,417   16,829   19,224   15,000      36
 ========= ========= ======= ========= =========== =========
 
-
-Loaders for Custom Knowledge Graphs
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Functions to load custom knowledge graphs from disk.
-
-.. autosummary::
-    :toctree:
-    :template: function.rst
-
-    load_from_csv
-    load_from_ntriples
-    load_from_rdf
-
-
-.. hint::
-    AmpliGraph includes a helper function to split a generic knowledge graphs into **training**,
-    **validation**, and **test** sets. See :meth:`ampligraph.evaluation.train_test_split_no_unseen`.
-    
     
 Advanced Topics
 ^^^^^^^^^^^^^^^
-This section is meant for advanced users who want to train the models on custom datasets which are extremely large.
+This section is meant for advanced users who want to train the models on custom datasets which are extremely large and either don't fit on CPU or GPU memory. AmpliGraph has various types of graph partitioners which can be used to partition the data. Partitioning is necessary to split the large datasets into multiple chuncks. During training, the entire dataset is not loaded in memory. Instead, some of the chuncks created earlier would be loaded and the model would train on these chuncks. Once it finishes operating on one chunk, it will unload and load the next chunck. Thus, a partitioned training is performed to overcome the issues related to insufficient memory.  
 
-The users can use ``GraphDataLoader`` class to load the datasets. The API details are described below.
+The users can use ``GraphDataLoader`` class to load these type of datasets. The API details are described below.
 
 .. currentmodule:: ampligraph.datasets
 
@@ -144,9 +143,9 @@ The users can use ``GraphDataLoader`` class to load the datasets. The API detail
     
     GraphDataLoader
     
-AmpliGraph also has various types of graph partitioners which can be used to partition the data. These can be used by 
-advanced users to see which partitioner performs best on their dataset. By default, AmpliGraph uses the 
-``BucketGraphPartitioner`` since its runtime performance is much better than others.
+
+
+Partitioning can be performed using one of the following partitioners. By default, AmpliGraph uses the ``BucketGraphPartitioner`` since its runtime performance is much better than others.
 
 .. currentmodule:: ampligraph.datasets
 
