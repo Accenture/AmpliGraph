@@ -22,8 +22,7 @@ class DataHandler():
                  initial_epoch=0, 
                  use_indexer = True,
                  use_filter=True,
-                 use_partitioning=False,
-                 partitioning_k=3):
+                 partitioning_k=1):
         '''Initializes the DataHandler
         
         Parameters:
@@ -45,11 +44,9 @@ class DataHandler():
         use_filter: bool or dict
             whether to use filter of not. If a dictionary is specified, the data in the dict is concatenated 
             and used as filter 
-        use_partitioning: bool
-            flag to indicate whether to use partitioning or not.
-            May be overridden if x is an AbstractGraphPartitioner instance
         partitioning_k: int
             number of partitions to create
+            May be overridden if x is an AbstractGraphPartitioner instance
         '''
         self._initial_epoch = initial_epoch
         self._epochs = epochs
@@ -57,6 +54,9 @@ class DataHandler():
         self._inferred_steps = None
         self.using_partitioning = False
 
+        if partitioning_k <=0:
+            raise ValueError('Incorrect value specified to partitioning_k')
+            
         if isinstance(x, GraphDataLoader):
             self._adapter = x
             self._parent_adapter = self._adapter
@@ -64,6 +64,8 @@ class DataHandler():
             self._parent_adapter = x._data
             self._adapter = x
             self.using_partitioning = True
+            # override the partitioning_k value using partitioners k
+            partitioning_k = x._k
         else:
             # use graph data loader by default
             self._adapter = GraphDataLoader(x,
@@ -74,11 +76,10 @@ class DataHandler():
                                             use_filter=use_filter)
             self._parent_adapter = self._adapter
 
-        if use_partitioning:
+        if partitioning_k > 1:
             # if use partitioning then pass the graph data loader to partitioner and use
             # partitioned data manager
             assert model is not None, "Please pass the model to datahandler for partitioning!"
-
             self._adapter = get_partition_adapter(self._adapter,
                                                   self._model,
                                                   strategy='Bucket',

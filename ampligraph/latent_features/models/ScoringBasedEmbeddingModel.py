@@ -345,7 +345,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             validation_batch_size=100,
             validation_freq=50,
             validation_filter=False,
-            use_partitioning=False):
+            partitioning_k=1):
         '''Fit the model of the user data.
         
         Parameters
@@ -383,14 +383,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 One can perform early stopping using the tensorflow callback ``tf.keras.callbacks.EarlyStopping``
                 as shown in the accompanying example below.
 
-        use_partitioning: bool
-            flag to indicate whether to use partitioning or not.
-            May be overridden if x is an AbstractGraphPartitioner instance
+        partitioning_k: int
+            No. of partitions to use while training. default is 1. The data is not partitioned when this is set to 1.
+            May be overridden if x is an AbstractGraphPartitioner instance.
             
             .. Note ::
             
                 This function is quite useful when the size of your dataset is extremely large and cannot fit in memory.
-                Setting this flag will automatically partition the data using ``BucketGraphPartitioner``
+                Setting this to a number > 1 will automatically partition the data using ``BucketGraphPartitioner``
                 Kindly checkout the tutorials for usage in Advanced mode.
             
         Returns
@@ -466,7 +466,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                          use_filter=False,
                                                          # if model is already trained use the old indexer
                                                          use_indexer=self.data_indexer,
-                                                         use_partitioning=use_partitioning)
+                                                         partitioning_k=partitioning_k)
             
             self.partitioner_metadata = self.data_handler.get_update_partitioner_metadata(self.base_dir)
             
