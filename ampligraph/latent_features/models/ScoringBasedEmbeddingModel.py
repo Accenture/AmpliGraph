@@ -11,6 +11,7 @@ import shelve
 import pickle
 import numpy as np
 import os
+import tempfile
 
 from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
 from ampligraph.datasets import data_adapter
@@ -137,6 +138,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.is_fitted = False
         
         self.seed = seed
+        self.base_dir = tempfile.gettempdir()
+        self.partitioner_metadata = {}
   
     def compute_output_shape(self, inputShape):
         ''' returns the output shape of outputs of call function
@@ -465,6 +468,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                          use_indexer=self.data_indexer,
                                                          use_partitioning=use_partitioning)
             
+            self.partitioner_metadata = self.data_handler.get_update_partitioner_metadata(self.base_dir)
+            
             # get the mapping details
             self.data_indexer = self.data_handler.get_mapper()
             # get the maximum entities and relations that will be trained (useful during partitioning)
@@ -564,10 +569,17 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         
     def save_metadata(self, filepath=None, filedir=None):
         # store ampligraph specific metadata
+        if filepath is not None:
+            base_dir = os.path.dirname(filedir)
+            base_dir = '.' if base_dir == '' else base_dir
+            filepath = os.path.basename(filepath)
+            
         if filedir is not None:
-            filepath = os.path.join(filedir, os.path.basename(filedir))
+            base_dir = filedir
+            filepath = os.path.basename(filedir)
 
-        with open(filepath + '_metadata.ampkl', "wb") as f:
+        
+        with open(os.path.join(base_dir, filepath + '_metadata.ampkl'), "wb") as f:
             metadata = {'is_partitioned_training': self.is_partitioned_training,
                         'max_ent_size': self.max_ent_size,
                         'max_rel_size': self.max_rel_size,
@@ -577,10 +589,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         'is_calibrated': self.is_calibrated
                         }
             
-            metadata.update(self.data_indexer.get_metadata(filepath))
-            
+            metadata.update(self.data_indexer.get_update_metadata(base_dir))
             if self.is_partitioned_training:
-                metadata['partitioner_k'] = self.partitioner_k
+                self.partitioner_metadata = self.data_handler.get_update_partitioner_metadata(base_dir)
+                metadata.update(self.partitioner_metadata)
                 
             if self.is_calibrated:
                 metadata['calib_w'] = self.calibration_layer.calib_w.numpy()
@@ -588,7 +600,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 metadata['pos_size'] = self.calibration_layer.pos_size
                 metadata['neg_size'] = self.calibration_layer.neg_size
                 metadata['positive_base_rate'] = self.calibration_layer.positive_base_rate
-
             pickle.dump(metadata, f)
             
     def save_weights(self,
@@ -629,10 +640,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def load_metadata(self, filepath=None, filedir=None):
         if filedir is not None:
             filepath = os.path.join(filedir, os.path.basename(filedir))
+            
         with open(filepath + '_metadata.ampkl', "rb") as f:
             metadata = pickle.load(f)
             metadata['root_directory'] = os.path.dirname(filepath)
             metadata['root_directory'] = '.' if metadata['root_directory'] == '' else metadata['root_directory']
+            self.base_dir = metadata['root_directory'] 
             metadata['db_file'] = os.path.basename(metadata['db_file'])
             self.data_indexer = DataIndexer([], 
                                             **metadata)
@@ -642,6 +655,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             self.is_fitted = metadata['is_fitted']
             if self.is_partitioned_training:
                 self.partitioner_k = metadata['partitioner_k']
+                self.partitioner_metadata = {}
+                self.partitioner_metadata['ent_map_fname'] = metadata['ent_map_fname']
+                self.partitioner_metadata['rel_map_fname'] = metadata['rel_map_fname']
+                
             self.is_calibrated = metadata['is_calibrated']
             if self.is_calibrated:
                 self.calibration_layer = CalibrationLayer(
@@ -650,7 +667,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     metadata['positive_base_rate'],
                     calib_w=metadata['calib_w'],
                     calib_b=metadata['calib_b'])
-                
                 
     def load_weights(self,
                      filepath):
@@ -884,7 +900,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 out = self.encoding_layer.ent_emb
             return out, 0, out.shape[0] - 1
         else:
-            with shelve.open('ent_partition') as ent_partition:
+            with shelve.open(self.partitioner_metadata['ent_map_fname']) as ent_partition:
                 batch_size = int(np.ceil(len(ent_partition.keys()) / number_of_parts))
                 indices = np.arange(part_number * batch_size, (part_number + 1) * batch_size).astype(np.str)
                 emb_matrix = []
@@ -985,8 +1001,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             sub_emb_out = []
             obj_emb_out = []
             rel_emb_out = []
-            with shelve.open('ent_partition') as ent_emb:
-                with shelve.open('rel_partition') as rel_emb:
+            with shelve.open(self.partitioner_metadata['ent_map_fname']) as ent_emb:
+                with shelve.open(self.partitioner_metadata['rel_map_fname']) as rel_emb:
                     for triple in np_triples:
                         sub_emb_out.append(ent_emb[str(triple[0])])
                         rel_emb_out.append(rel_emb[str(triple[1])])
@@ -1593,7 +1609,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             lookup_concept = self.data_indexer.get_indexes(entities, 'e')
             if self.is_partitioned_training:
                 emb_out = []
-                with shelve.open('ent_partition') as ent_emb:
+                with shelve.open(self.partitioner_metadata['ent_map_fname']) as ent_emb:
                     for ent_id in lookup_concept:
                         emb_out.append(ent_emb[str(ent_id)])
             else:
@@ -1602,7 +1618,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             lookup_concept = self.data_indexer.get_indexes(entities, 'r')
             if self.is_partitioned_training:
                 emb_out = []
-                with shelve.open('rel_partition') as rel_emb:
+                with shelve.open(self.partitioner_metadata['rel_map_fname']) as rel_emb:
                     for rel_id in lookup_concept:
                         emb_out.append(rel_emb[str(rel_id)])
             else:

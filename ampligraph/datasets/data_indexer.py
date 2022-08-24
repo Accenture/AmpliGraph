@@ -96,8 +96,8 @@ class DataIndexer():
         """Update existing mappings with new data."""
         self.backend.update_mappings(X)
         
-    def get_metadata(self, new_file_name=None):
-        metadata = self.backend.get_metadata(new_file_name)
+    def get_update_metadata(self, new_file_name=None):
+        metadata = self.backend.get_update_metadata(new_file_name)
         metadata['backend'] = self.backend_type
         return metadata
 
@@ -296,7 +296,7 @@ class InMemory():
         """Update existing mappings with new data."""
         self.update_dictionary_mappings(new_data)
         
-    def get_metadata(self, new_file_name=None):
+    def get_update_metadata(self, new_file_name=None):
         metadata = {
             'entities_dict': self.entities_dict,
             'reversed_entities_dict': self.reversed_entities_dict,
@@ -552,7 +552,7 @@ class Shelves():
         """Returns all the (raw) relations in the dataset"""
         return list(self.relations_dict.values())
         
-    def get_metadata(self, new_file_name=None):
+    def get_update_metadata(self, new_file_name=None):
         metadata = {
             'entities_dict': self.entities_dict,
             'reversed_entities_dict': self.reversed_entities_dict,
@@ -1023,10 +1023,10 @@ class SQLite():
 
         return out_val
         
-    def get_metadata(self, new_file_name=None):
-        self.root_directory = os.path.dirname(new_file_name)
+    def get_update_metadata(self, path):
+        self.root_directory = path
         self.root_directory = '.' if self.root_directory == '' else self.root_directory
-        new_file_name = new_file_name + '_' + self.name + '.db'
+        new_file_name = os.path.join(self.root_directory, os.path.basename(self.db_file))
         if not os.path.exists(new_file_name):
             shutil.copyfile(self.db_file, new_file_name)
         self.db_file = new_file_name

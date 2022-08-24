@@ -22,7 +22,8 @@ class DataHandler():
                  initial_epoch=0, 
                  use_indexer = True,
                  use_filter=True,
-                 use_partitioning=False):
+                 use_partitioning=False,
+                 partitioning_k=3):
         '''Initializes the DataHandler
         
         Parameters:
@@ -47,6 +48,8 @@ class DataHandler():
         use_partitioning: bool
             flag to indicate whether to use partitioning or not.
             May be overridden if x is an AbstractGraphPartitioner instance
+        partitioning_k: int
+            number of partitions to create
         '''
         self._initial_epoch = initial_epoch
         self._epochs = epochs
@@ -78,10 +81,11 @@ class DataHandler():
 
             self._adapter = get_partition_adapter(self._adapter,
                                                   self._model,
-                                                  'Bucket')
+                                                  strategy='Bucket',
+                                                  partitioning_k=partitioning_k)
 
             self.using_partitioning = True
-
+            
     @contextlib.contextmanager
     def catch_stop_iteration(self):
         """Catches errors when an iterator runs out of data."""
@@ -115,3 +119,9 @@ class DataHandler():
     def get_mapper(self):
         '''returns the mapper of the main data loader class'''
         return self._parent_adapter.backend.mapper
+    
+    def get_update_partitioner_metadata(self, filepath):
+        out_dict = {}
+        if self.using_partitioning:
+            out_dict = self._adapter.get_update_metadata(filepath)
+        return out_dict

@@ -11,6 +11,12 @@ import shelve
 import tensorflow as tf
 import abc
 import logging
+import tempfile
+import os
+from datetime import datetime
+import shutil
+import glob
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -46,7 +52,8 @@ def register_partitioning_manager(name):
 
 
 class PartitionDataManager(abc.ABC):
-    def __init__(self, dataset_loader, model, strategy='Bucket'):
+    def __init__(self, dataset_loader, model, strategy='Bucket', partitioner_k=3, root_directory=tempfile.gettempdir(),
+                 ent_map_fname=None, ent_meta_fname=None, rel_map_fname=None, rel_meta_fname=None):
         """Initializes the Partitioning Data Manager. 
         Uses/Creates partitioner and generates and manages partition related params.
         This is the base class.
@@ -59,12 +66,28 @@ class PartitionDataManager(abc.ABC):
             The model that is being trained
         strategy: string
             Type of partitioning strategy to use
-        
+        root_directory: string
+            directory where the partition manager files will be stored
         """
         self._model = model
         self.k = self._model.k
         self.eta = self._model.eta
-        self.partitioner_k = 5
+        self.partitioner_k = partitioner_k
+        if ent_map_fname is not None and ent_meta_fname is not None and rel_map_fname is not None and rel_meta_fname is not None:
+            self.root_directory = os.path.dirname(ent_map_fname)
+            self.timestamp = os.path.basename(ent_map_fname).split('_')[-1][:-4]
+            self.ent_map_fname = ent_map_fname
+            self.ent_meta_fname = ent_meta_fname
+            self.rel_map_fname = rel_map_fname
+            self.rel_meta_fname = rel_map_fname
+            
+        else:
+            self.root_directory = root_directory
+            self.timestamp = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p")
+            self.ent_map_fname = os.path.join(self.root_directory, 'ent_partition_{}'.format(self.timestamp))
+            self.ent_meta_fname = os.path.join(self.root_directory, 'ent_metadata_{}'.format(self.timestamp))
+            self.rel_map_fname = os.path.join(self.root_directory, 'rel_partition_{}'.format(self.timestamp))
+            self.rel_meta_fname = os.path.join(self.root_directory, 'rel_metadata_{}'.format(self.timestamp))
         
         if isinstance(dataset_loader, AbstractGraphPartitioner):
             self.partitioner = dataset_loader
@@ -81,6 +104,38 @@ class PartitionDataManager(abc.ABC):
                                     self.partitioner.partitions[i].backend.mapper.backend.ents_length)
         
         self._generate_partition_params()
+    
+    def _copy_files(self, base):
+        for file in glob.glob(base + '*'):
+            shutil.copy(file, self.root_directory)
+            
+    def get_update_metadata(self, filepath):
+        self.root_directory = filepath
+        self.root_directory = '.' if self.root_directory == '' else self.root_directory
+        
+        new_file_name = os.path.join(self.root_directory, '*{}.bak'.format(self.timestamp))
+        try:
+            self._copy_files(self.ent_map_fname)
+            self._copy_files(self.ent_meta_fname)
+            self._copy_files(self.rel_map_fname)
+            self._copy_files(self.rel_meta_fname)
+            self.ent_map_fname = os.path.join(self.root_directory, 'ent_partition_{}'.format(self.timestamp))
+            self.ent_meta_fname = os.path.join(self.root_directory, 'ent_metadata_{}'.format(self.timestamp))
+            self.rel_map_fname = os.path.join(self.root_directory, 'rel_partition_{}'.format(self.timestamp))
+            self.rel_meta_fname = os.path.join(self.root_directory, 'rel_metadata_{}'.format(self.timestamp))
+        except shutil.SameFileError:
+            pass
+            
+        metadata = {
+            'root_directory': self.root_directory, 
+            'partitioner_k': self.partitioner_k,
+            'ent_map_fname': self.ent_map_fname,
+            'ent_meta_fname': self.ent_meta_fname,
+            'rel_map_fname': self.rel_map_fname, 
+            'rel_meta_fname': self.rel_meta_fname
+        }
+        return metadata
+        
         
     @property
     def max_entities(self):
@@ -188,7 +243,7 @@ class GeneralPartitionDataManager(PartitionDataManager):
     ''' Manages the partitioning related controls. 
     Handles data generation and informs model about changes in partition.
     '''
-    def __init__(self, dataset_loader, model, strategy='RandomEdges'):
+    def __init__(self, dataset_loader, model, strategy='RandomEdges', partitioner_k=3, root_directory=tempfile.gettempdir()):
         """Initializes the Partitioning Data Manager. 
         Uses/Creates partitioner and generates partition related params.
         
@@ -200,9 +255,10 @@ class GeneralPartitionDataManager(PartitionDataManager):
             The model that is being trained
         strategy: string
             Type of partitioning strategy to use
-        
+        root_directory: string
+            directory where the partition manager files will be stored
         """
-        super(GeneralPartitionDataManager, self).__init__(dataset_loader, model, strategy)
+        super(GeneralPartitionDataManager, self).__init__(dataset_loader, model, strategy, partitioner_k, root_directory)
         
     def _generate_partition_params(self):
         ''' Generates the metadata needed for persisting and loading partition embeddings and other params
@@ -215,7 +271,7 @@ class GeneralPartitionDataManager(PartitionDataManager):
         num_optimizer_hyperparams = self._model.optimizer.get_hyperparam_count()
         # for each partition
         for part_num in range(self.partitioner_k):
-            with shelve.open('ent_partition', writeback=True) as ent_partition:
+            with shelve.open(self.ent_map_fname, writeback=True) as ent_partition:
                 # create the key (entity index) and value (optim params and embs)
                 for i in range(update_part_size * part_num, 
                                min(update_part_size * (part_num + 1), self.num_ents)):
@@ -229,7 +285,7 @@ class GeneralPartitionDataManager(PartitionDataManager):
 
         # create relation embeddings and optimizer hyperparams for all relations
         # relations are not partitioned
-        with shelve.open('rel_partition', writeback=True) as rel_partition:
+        with shelve.open(self.rel_map_fname, writeback=True) as rel_partition:
             for i in range(self.num_rels):
                 out_dict_key = str(i)
                 # TODO change the hardcoding from 3 to actual hyperparam of optim
@@ -280,7 +336,7 @@ class GeneralPartitionDataManager(PartitionDataManager):
         
         try:
             # persist entity related embs and optim params
-            ent_partition = shelve.open('ent_partition', writeback=True)
+            ent_partition = shelve.open(self.ent_map_fname, writeback=True)
             for i, key in enumerate(self.ent_original_ids):
                 ent_partition[str(key)] = [self.all_ent_opt_params[i:i + 1], self.all_ent_embs[i:i + 1]]
             
@@ -289,7 +345,7 @@ class GeneralPartitionDataManager(PartitionDataManager):
             
         try:
             # persist relation related embs and optim params
-            rel_partition = shelve.open('rel_partition', writeback=True)
+            rel_partition = shelve.open(self.rel_map_fname, writeback=True)
             for i, key in enumerate(self.rel_original_ids):
                 rel_partition[str(key)] = [self.all_rel_opt_params[i:i + 1], self.all_rel_embs[i:i + 1]]
             
@@ -319,7 +375,7 @@ class GeneralPartitionDataManager(PartitionDataManager):
             # get the original key's i.e. original entity ids (between 0 and total entities in dataset)
             self.ent_original_ids = [partition[str(key)] for key in partition_keys]
         '''
-        with shelve.open('ent_partition') as partition:
+        with shelve.open(self.ent_map_fname) as partition:
             self.all_ent_embs = []
             self.all_ent_opt_params = []
             for key in self.ent_original_ids:
@@ -338,7 +394,7 @@ class GeneralPartitionDataManager(PartitionDataManager):
             partition_keys = sorted([int(key) for key in partition.keys()])
             self.rel_original_ids = [partition[str(key)] for key in partition_keys]
         '''
-        with shelve.open('rel_partition') as partition:
+        with shelve.open(self.rel_map_fname) as partition:
             self.all_rel_embs = []
             self.all_rel_opt_params = []
             for key in self.rel_original_ids:
@@ -385,14 +441,14 @@ class GeneralPartitionDataManager(PartitionDataManager):
         '''
         update_part_size = int(np.ceil(self.num_ents / self.partitioner_k))
         for part_num in range(self.partitioner_k):
-            with shelve.open('ent_partition', writeback=True) as ent_partition:
+            with shelve.open(self.ent_map_fname, writeback=True) as ent_partition:
                 for i in range(update_part_size * part_num, 
                                min(update_part_size * (part_num + 1), self.num_ents)):
                     ent_partition[str(i)] = ent_partition[str(i)][1][0]
 
         # create relation embeddings and optimizer hyperparams for all relations
         # relations are not partitioned
-        with shelve.open('rel_partition', writeback=True) as rel_partition:
+        with shelve.open(self.rel_map_fname, writeback=True) as rel_partition:
             for i in range(self.num_rels):
                 rel_partition[str(i)] = rel_partition[str(i)][1][0]
 
@@ -402,7 +458,7 @@ class BucketPartitionDataManager(PartitionDataManager):
     ''' Manages the partitioning related controls. 
     Handles data generation and informs model about changes in partition.
     '''
-    def __init__(self, dataset_loader, model, strategy='Bucket'):
+    def __init__(self, dataset_loader, model, strategy='Bucket', partitioner_k=3, root_directory=tempfile.gettempdir()):
         """Initializes the Partitioning Data Manager. 
         Uses/Creates partitioner and generates partition related params.
         
@@ -414,9 +470,10 @@ class BucketPartitionDataManager(PartitionDataManager):
             The model that is being trained
         strategy: string
             Type of partitioning strategy to use
-        
+        root_directory: string
+            directory where the partition manager files will be stored
         """
-        super(BucketPartitionDataManager, self).__init__(dataset_loader, model, strategy)
+        super(BucketPartitionDataManager, self).__init__(dataset_loader, model, strategy, partitioner_k, root_directory)
         
     def _generate_partition_params(self):
         ''' Generates the metadata needed for persisting and loading partition embeddings and other params
@@ -426,7 +483,7 @@ class BucketPartitionDataManager(PartitionDataManager):
 
         # create entity embeddings and optimizer hyperparams for all entities
         for i in range(self.partitioner_k):
-            with shelve.open('ent_partition', writeback=True) as ent_partition:
+            with shelve.open(self.ent_map_fname, writeback=True) as ent_partition:
                 
                 with shelve.open(self.partitioner.files[i]) as bucket:
     
@@ -442,7 +499,7 @@ class BucketPartitionDataManager(PartitionDataManager):
 
         # create relation embeddings and optimizer hyperparams for all relations
         # relations are not partitioned
-        with shelve.open('rel_partition', writeback=True) as rel_partition:
+        with shelve.open(self.rel_map_fname, writeback=True) as rel_partition:
             out_dict_key = str(0)
             # TODO change the hardcoding from 3 to actual hyperparam of optim
             opt_param = np.zeros(shape=(self.num_rels, num_optimizer_hyperparams, self.k), dtype=np.float32)
@@ -490,7 +547,7 @@ class BucketPartitionDataManager(PartitionDataManager):
                 emb_mat_order.append(merged_bucket_to_ent_mat_mappings[int(val)])
 
             # store it 
-            with shelve.open('ent_partition_metadata', writeback=True) as metadata:
+            with shelve.open(self.ent_meta_fname, writeback=True) as metadata:
                 metadata[str(i)] = emb_mat_order      
                 
             rel_mat_order = []
@@ -504,7 +561,7 @@ class BucketPartitionDataManager(PartitionDataManager):
                 # a->b mapping
                 rel_mat_order.append(int(val))
 
-            with shelve.open('rel_partition_metadata', writeback=True) as metadata:
+            with shelve.open(self.rel_meta_fname, writeback=True) as metadata:
                 metadata[str(i)] = rel_mat_order      
 
     def _update_partion_embeddings(self, graph_data_loader, partition_number):
@@ -552,7 +609,7 @@ class BucketPartitionDataManager(PartitionDataManager):
         
         try:
             # persist entity related embs and optim params
-            s = shelve.open('ent_partition', writeback=True)
+            s = shelve.open(self.ent_map_fname, writeback=True)
 
             # split and save self.all_ent_opt_params and self.all_ent_embs into respective buckets
             opt_params = [self.all_ent_opt_params[:self.split_opt_idx],
@@ -568,7 +625,7 @@ class BucketPartitionDataManager(PartitionDataManager):
             
         try:
             # persist relation related embs and optim params
-            s = shelve.open('rel_partition', writeback=True)
+            s = shelve.open(self.rel_map_fname, writeback=True)
             s['0'] = [self.all_rel_opt_params, self.all_rel_embs]
             
         finally:
@@ -586,14 +643,14 @@ class BucketPartitionDataManager(PartitionDataManager):
         '''
         try:
             # open the meta data related to the partition
-            s = shelve.open('ent_partition_metadata')
+            s = shelve.open(self.ent_meta_fname)
             # entities mapping ids
             self.ent_original_ids = s[str(partition_number)]
         finally:
             s.close()
 
         try:
-            s = shelve.open('rel_partition_metadata')
+            s = shelve.open(self.rel_meta_fname)
             # entities mapping ids
             self.rel_original_ids = s[str(partition_number)]
             
@@ -606,7 +663,7 @@ class BucketPartitionDataManager(PartitionDataManager):
         dest_bucket = splits[1]
         
         try:
-            s = shelve.open('ent_partition')
+            s = shelve.open(self.ent_map_fname)
             source_bucket_params = s[source_bucket]
             dest_source_bucket_params = s[dest_bucket]
             # full ent embs
@@ -623,7 +680,7 @@ class BucketPartitionDataManager(PartitionDataManager):
             s.close()
             
         try:
-            s = shelve.open('rel_partition')
+            s = shelve.open(self.rel_map_fname)
             # full rel embs
             self.all_rel_embs = s['0'][1]
             self.all_rel_opt_params = s['0'][0]
@@ -671,21 +728,22 @@ class BucketPartitionDataManager(PartitionDataManager):
         for i in range(self.partitioner_k - 1, -1, -1):
             with shelve.open(self.partitioner.files[i]) as bucket:
 
-                with shelve.open('ent_partition', writeback=True) as ent_partition:
+                with shelve.open(self.ent_map_fname, writeback=True) as ent_partition:
                     # get the bucket embeddings
                     # split and store separately
                     for key, val in zip(bucket['indexes'], ent_partition[str(i)][1]):
                         ent_partition[str(key)] = val
                     if i != 0:
                         del ent_partition[str(i)]
-        with shelve.open('rel_partition', writeback=True) as rel_partition:
+        with shelve.open(self.rel_map_fname, writeback=True) as rel_partition:
             # get the bucket embeddings
             # split and store separately
             for key in range(rel_partition['0'][1].shape[0] - 1, -1, -1):
                 rel_partition[str(key)] = rel_partition['0'][1][key]
         
 
-def get_partition_adapter(dataset_loader, model, strategy='Bucket'):
+def get_partition_adapter(dataset_loader, model, strategy='Bucket', 
+                          partitioning_k=3, root_directory=tempfile.gettempdir()):
     ''' Returns partition manager depending on the one registered by the partitioning strategy
     
     Parameters
@@ -699,11 +757,11 @@ def get_partition_adapter(dataset_loader, model, strategy='Bucket'):
     '''
     if isinstance(dataset_loader, AbstractGraphPartitioner):
         partitioner_manager = PARTITION_MANAGER_REGISTRY.get(dataset_loader.manager)(
-            dataset_loader, model, dataset_loader.name)
+            dataset_loader, model, dataset_loader.name, dataset_loader._k, root_directory)
 
     else:
-        partitioner = PARTITION_ALGO_REGISTRY.get(strategy)(dataset_loader, k=3)
+        partitioner = PARTITION_ALGO_REGISTRY.get(strategy)(dataset_loader, k=partitioning_k)
         partitioner_manager = PARTITION_MANAGER_REGISTRY.get(partitioner.manager)(
-            partitioner, model, strategy)
+            partitioner, model, strategy, partitioning_k, root_directory)
         
     return partitioner_manager
