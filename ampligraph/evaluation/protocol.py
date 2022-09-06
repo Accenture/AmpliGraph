@@ -97,9 +97,6 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
     array([['b', 'y', 'c'],
        ['b', 'y', 'a']], dtype='<U1')
     """
-    
-    if type(test_size) is float:
-        test_size = int(len(X) * test_size)
 
     np.random.seed(seed)
     if filtered_test_predicates:
@@ -109,6 +106,9 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
     else:
         X_train = None
         X_test_candidates = X
+        
+    if type(test_size) is float:
+        test_size = int(len(X_test_candidates) * test_size)
 
     entities, entity_cnt = np.unique(np.concatenate([X_test_candidates[:, 0], 
                                                      X_test_candidates[:, 2]]), return_counts=True)

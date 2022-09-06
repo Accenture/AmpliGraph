@@ -344,6 +344,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             initial_epoch=0,
             validation_batch_size=100,
             validation_freq=50,
+            validation_burn_in=100,
             validation_filter=False,
             partitioning_k=1):
         '''Fit the model of the user data.
@@ -375,6 +376,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             May be overridden if validation_data is GraphDataLoader or AbstractGraphPartitioner instance
         validation_freq: int
             indicates how often to validate (default: 50)
+        validation_burn_in: int
+            the burn in time after which the validation kicks in
         validation_filter: bool or dict
             validation filter to be used. 
             
@@ -525,7 +528,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 epoch_logs = copy.copy(logs)
 
                 # if validation is enabled
-                if validation_data is not None and self._should_eval(epoch, validation_freq):
+                if epoch >= (validation_burn_in - 1) and validation_data is not None and self._should_eval(epoch, validation_freq):
                     # evaluate on the validation
                     ranks = self.evaluate(validation_data,
                                           batch_size=validation_batch_size or batch_size,
@@ -535,7 +538,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     val_logs = {'val_mrr': mrr_score(ranks), 
                                 'val_mr': mr_score(ranks),
                                 'val_hits@1': hits_at_n_score(ranks, 1),
-                                'val_hits@10': hits_at_n_score(ranks, 10)}
+                                'val_hits@10': hits_at_n_score(ranks, 10),
+                                'val_hits@100': hits_at_n_score(ranks, 100)}
                     # update the epoch logs with validation details
                     epoch_logs.update(val_logs)
 
