@@ -13,12 +13,7 @@ def register_compatibility(name):
         return class_handle
     return insert_in_registry
 
-class ScoringModelBase:
-    def __init__(self, model):
-        self.is_backward = True
-        self.model_name = model.scoring_type
-        self.model = model
-        
+class ScoringModelBase: 
     def __init__(self, k=100, eta=2, epochs=100, 
                   batches_count=100, seed=0, 
                   embedding_model_params={'corrupt_sides': ['s,o'], 
@@ -27,24 +22,30 @@ class ScoringModelBase:
                   
                   optimizer='adam', optimizer_params={'lr': 0.0005}, 
                   loss='nll', loss_params={}, regularizer=None, regularizer_params={}, 
-                  initializer='xavier', initializer_params={'uniform': False}, verbose=False):
-        self.k = k
-        self.eta = eta
-        self.seed = seed
-        
-        self.batches_count = batches_count
-        
-        self.epochs = epochs
-        self.embedding_model_params = embedding_model_params
-        self.optimizer = optimizer
-        self.optimizer_params = optimizer_params
-        self.loss = loss
-        self.loss_params = loss_params
-        self.initializer = initializer
-        self.initializer_params = initializer_params
-        self.regularizer = regularizer
-        self.regularizer_params = regularizer_params
-        self.verbose = verbose
+                  initializer='xavier', initializer_params={'uniform': False}, verbose=False, 
+                  model=None):
+        if model is not None:
+            self.model_name = model.scoring_type
+        else:
+            self.k = k
+            self.eta = eta
+            self.seed = seed
+
+            self.batches_count = batches_count
+
+            self.epochs = epochs
+            self.embedding_model_params = embedding_model_params
+            self.optimizer = optimizer
+            self.optimizer_params = optimizer_params
+            self.loss = loss
+            self.loss_params = loss_params
+            self.initializer = initializer
+            self.initializer_params = initializer_params
+            self.regularizer = regularizer
+            self.regularizer_params = regularizer_params
+            self.verbose = verbose
+            
+        self.model = model
         self.is_backward = True
         
     def _get_optimizer(self, optimizer, optim_params):
@@ -99,10 +100,10 @@ class ScoringModelBase:
             
         initializer = self.initializer
         if initializer is not None:
-            initializer = _get_initializer(initializer, self.initializer_params)
+            initializer = self._get_initializer(initializer, self.initializer_params)
             
         loss = get_loss(self.loss, self.loss_params)
-        optimizer, is_back_compat_optim = _get_optimizer(self.optimizer, self.optimizer_params)
+        optimizer, is_back_compat_optim = self._get_optimizer(self.optimizer, self.optimizer_params)
         
         self.model.compile(optimizer=optimizer,
                             loss=loss,
@@ -121,22 +122,32 @@ class ScoringModelBase:
                             mode='max', 
                             restore_best_weights=True)
             callbacks.append(checkpoint)
+
+        x_filter = early_stopping_params.get('x_filter', None)
+
+        if isinstance(x_filter, np.ndarray) or isinstance(x_filter, list):
+            x_filter = {'test': x_filter}
+        elif x_filter is None or not x_filter:
+            x_filter = False
+        else:
+            raise ValueError('Incorrect type for x_filter')
             
         self.model.fit(X,
                  batch_size=np.ceil(X.shape[0] / self.batches_count),
                  epochs=self.epochs,
                  validation_freq=early_stopping_params.get('check_interval', 10),
                  validation_burn_in=early_stopping_params.get('burn_in', 25),
-                 validation_batch_size=early_stopping_params.get('batch_size', 1),
+                 validation_batch_size=early_stopping_params.get('batch_size', 100),
                  validation_data=early_stopping_params.get('x_valid', None),
-                 validation_filter={'test': early_stopping_params.get('x_filter', None)},
+                 validation_filter=x_filter,
+                 validation_entities_subset=early_stopping_params.get('corruption_entities', None),
                  callbacks=callbacks)
         
     def get_embeddings(self, entities, embedding_type='entity'):
         if embedding_type == 'entity':
-            self.get_embeddings(entities, 'e')
+            return self.model.get_embeddings(entities, 'e')
         elif embedding_type == 'relation':
-            self.get_embeddings(entities, 'r')
+            return self.model.get_embeddings(entities, 'r')
         else:
             raise ValueError('Invalid value for embedding_type!')
     
@@ -189,20 +200,16 @@ class TransE(ScoringModelBase):
                   
                   optimizer='adam', optimizer_params={'lr': 0.0005}, 
                   loss='nll', loss_params={}, regularizer=None, regularizer_params={}, 
-                  initializer='xavier', initializer_params={'uniform': False}, verbose=False):
+                  initializer='xavier', initializer_params={'uniform': False}, verbose=False, model=None):
         super().__init__(k, eta, epochs, 
                           batches_count, seed, 
                           embedding_model_params, 
                           optimizer, optimizer_params, 
                           loss, loss_params, regularizer, regularizer_params, 
-                          initializer, initializer_params, verbose)
+                          initializer, initializer_params, verbose, model)
         
         self.model_name = 'TransE'
-        self.model = None
-        
-    def __init__(self, model):
-         super().__init__(model)
-            
+
 @register_compatibility('DistMult')
 class DistMult(ScoringModelBase):
     def __init__(self, k=100, eta=2, epochs=100, 
@@ -213,19 +220,15 @@ class DistMult(ScoringModelBase):
                   
                   optimizer='adam', optimizer_params={'lr': 0.0005}, 
                   loss='nll', loss_params={}, regularizer=None, regularizer_params={}, 
-                  initializer='xavier', initializer_params={'uniform': False}, verbose=False):
+                  initializer='xavier', initializer_params={'uniform': False}, verbose=False, model=None):
         super().__init__(k, eta, epochs, 
                           batches_count, seed, 
                           embedding_model_params, 
                           optimizer, optimizer_params, 
                           loss, loss_params, regularizer, regularizer_params, 
-                          initializer, initializer_params, verbose)
+                          initializer, initializer_params, verbose, model)
         
         self.model_name = 'DistMult'
-        self.model = None
-    
-    def __init__(self, model):
-         super().__init__(model)
         
 @register_compatibility('ComplEx')
 class ComplEx(ScoringModelBase):
@@ -237,19 +240,15 @@ class ComplEx(ScoringModelBase):
                   
                   optimizer='adam', optimizer_params={'lr': 0.0005}, 
                   loss='nll', loss_params={}, regularizer=None, regularizer_params={}, 
-                  initializer='xavier', initializer_params={'uniform': False}, verbose=False):
+                  initializer='xavier', initializer_params={'uniform': False}, verbose=False, model=None):
         super().__init__(k, eta, epochs, 
                           batches_count, seed, 
                           embedding_model_params, 
                           optimizer, optimizer_params, 
                           loss, loss_params, regularizer, regularizer_params, 
-                          initializer, initializer_params, verbose)
+                          initializer, initializer_params, verbose, model)
         
         self.model_name = 'ComplEx'
-        self.model = None
-        
-    def __init__(self, model):
-         super().__init__(model)
         
 @register_compatibility('HolE')
 class HolE(ScoringModelBase):
@@ -261,18 +260,12 @@ class HolE(ScoringModelBase):
                   
                   optimizer='adam', optimizer_params={'lr': 0.0005}, 
                   loss='nll', loss_params={}, regularizer=None, regularizer_params={}, 
-                  initializer='xavier', initializer_params={'uniform': False}, verbose=False):
+                  initializer='xavier', initializer_params={'uniform': False}, verbose=False, model=None):
         super().__init__(k, eta, epochs, 
                           batches_count, seed, 
                           embedding_model_params, 
                           optimizer, optimizer_params, 
                           loss, loss_params, regularizer, regularizer_params, 
-                          initializer, initializer_params, verbose)
+                          initializer, initializer_params, verbose, model)
         
-        self.model_name = 'HolE'
-        self.model = None
-        
-    def __init__(self, model):
-         super().__init__(model)
-
-                          
+        self.model_name = 'HolE'        

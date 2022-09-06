@@ -143,10 +143,17 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
     logger.debug('Evaluating the performance of the embedding model.')
     assert corrupt_side in ['s', 'o', 's+o', 's,o'], 'Invalid value for corrupt_side.'
     
+    if isinstance(filter_triples, np.ndarray) or isinstance(filter_triples, list):
+        filter_triples = {'valid': filter_triples}
+    elif filter_triples is None or not filter_triples:
+        filter_triples = False
+    else:
+        raise ValueError('Incorrect type for filter_triples')
+    
     return model.evaluate(x=X,
                      batch_size=batch_size,
                      verbose=verbose,
-                     use_filter={'train': filter_triples},
+                     use_filter=filter_triples,
                      corrupt_side=corrupt_side,
                      entities_subset=entities_subset,
                      callbacks=None)

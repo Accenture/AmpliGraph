@@ -145,7 +145,9 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
      array([ 2. , 53. , 73. , 42. , 18. , 59.5, 86. , 76.5, 31. , 60.5, 31.5,
             32. , 24. ]))
     """
-
+    if model.is_backward:
+        model = model.model
+        
     if not model.is_fitted:
         msg = 'Model is not fitted.'
         logger.error(msg)
@@ -575,6 +577,9 @@ ClusteringAndClassificationWithEmbeddings.ipynb
     .. image:: img/clustering/clustered_embeddings_docstring.png
 
     """
+    if model.is_backward:
+        model = model.model
+        
     if not model.is_fitted:
         msg = "Model has not been fitted."
         logger.error(msg)
@@ -773,6 +778,9 @@ def find_duplicates(X, model, mode="e", metric='l2', tolerance='auto',
     3968  Lipstick Camera  1994
     """
 
+    if model.is_backward:
+        model = model.model
+        
     if not model.is_fitted:
         msg = "Model has not been fitted."
         logger.error(msg)
@@ -925,6 +933,9 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
 
     """
 
+    if model.is_backward:
+        model = model.model
+        
     if not model.is_fitted:
         msg = 'Model is not fitted.'
         logger.error(msg)

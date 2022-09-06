@@ -347,6 +347,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             validation_freq=50,
             validation_burn_in=100,
             validation_filter=False,
+            validation_entities_subset=None,
             partitioning_k=1):
         '''Fit the model of the user data.
         
@@ -381,6 +382,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             the burn in time after which the validation kicks in
         validation_filter: bool or dict
             validation filter to be used. 
+        validation_entities_subset: list, nparray
+            Subset of entities to be used for generating corruptions
             
             .. Note ::
             
@@ -505,6 +508,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # before training begins call this callback function
             callbacks.on_train_begin()
 
+            if validation_entities_subset == 'all':
+                # if the subset is set to none, it will use all entities in the graph for generating corruptions
+                validation_entities_subset = None
+                
             # enumerate over the data
             for epoch, iterator in self.data_handler.enumerate_epochs():
                 # current epcoh number
@@ -534,7 +541,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     ranks = self.evaluate(validation_data,
                                           batch_size=validation_batch_size or batch_size,
                                           use_filter=validation_filter,
-                                          dataset_type='valid')
+                                          dataset_type='valid',
+                                          entities_subset=validation_entities_subset)
                     # compute all the metrics
                     val_logs = {'val_mrr': mrr_score(ranks), 
                                 'val_mr': mr_score(ranks),
@@ -1048,6 +1056,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             and used as filter
         corrupt_side: string
             which side to corrupt (can take values: ``s``, ``o``, ``s+o`` or ``s,o``) (default:``s,o``)
+        entities_subset: list, nparray
+            Subset of entities to be used for generating corruptions
         callbacks: keras.callbacks.Callback
             List of `keras.callbacks.Callback` instances. List of callbacks to apply during evaluation.
 
@@ -1620,7 +1630,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     for ent_id in lookup_concept:
                         emb_out.append(ent_emb[str(ent_id)])
             else:
-                return tf.nn.embedding_lookup(self.encoding_layer.ent_emb, lookup_concept)
+                return tf.nn.embedding_lookup(self.encoding_layer.ent_emb, lookup_concept).numpy()
         elif embedding_type == 'r':
             lookup_concept = self.data_indexer.get_indexes(entities, 'r')
             if self.is_partitioned_training:
@@ -1629,7 +1639,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     for rel_id in lookup_concept:
                         emb_out.append(rel_emb[str(rel_id)])
             else:
-                return tf.nn.embedding_lookup(self.encoding_layer.rel_emb, lookup_concept)
+                return tf.nn.embedding_lookup(self.encoding_layer.rel_emb, lookup_concept).numpy()
         else:
             msg = 'Invalid entity type: {}'.format(embedding_type)
             raise ValueError(msg)
