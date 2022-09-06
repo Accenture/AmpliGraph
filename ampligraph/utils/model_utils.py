@@ -70,6 +70,8 @@ def save_model(model, model_name_path=None):
         print("The path {} already exists. This save operation will overwrite the model \
                 at the specified path.".format(model_name_path))
         shutil.rmtree(model_name_path)
+    if model.is_backward:
+        model = model.model
     tf.keras.models.save_model(model, model_name_path)
     model.save_metadata(filedir=model_name_path)
     
@@ -79,6 +81,7 @@ def restore_model(model_name_path=None):
     from ampligraph.latent_features.loss_functions import LOSS_REGISTRY
     from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
     from ampligraph.latent_features import ScoringBasedEmbeddingModel
+    from ampligraph.compat.models import BACK_COMPAT_MODELS
     
     if model_name_path is None:
         logger.warning("There is no model name specified. \
@@ -97,6 +100,8 @@ def restore_model(model_name_path=None):
             
         model = tf.keras.models.load_model(model_name_path, custom_objects=custom_objects)
         model.load_metadata(filedir=model_name_path)
+        if model.is_backward:
+            model = BACK_COMPAT_MODELS.get(model.scoring_type)(model)
     except pickle.UnpicklingError as e:
         msg = 'Error loading model {} : {}.'.format(model_name_path, e)
         logger.debug(msg)

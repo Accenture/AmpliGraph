@@ -136,6 +136,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         
         self.is_calibrated = False
         self.is_fitted = False
+        self.is_backward = False
         
         self.seed = seed
         self.base_dir = tempfile.gettempdir()
@@ -590,7 +591,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         'eta': self.eta,
                         'k': self.k,
                         'is_fitted': self.is_fitted,
-                        'is_calibrated': self.is_calibrated
+                        'is_calibrated': self.is_calibrated,
+                        'is_backward': self.is_backward
                         }
             
             metadata.update(self.data_indexer.get_update_metadata(base_dir))
@@ -657,6 +659,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             self.max_ent_size = metadata['max_ent_size']
             self.max_rel_size = metadata['max_rel_size']
             self.is_fitted = metadata['is_fitted']
+            self.is_backward = metadata.get('is_backward', False)
             if self.is_partitioned_training:
                 self.partitioner_k = metadata['partitioner_k']
                 self.partitioner_metadata = {}

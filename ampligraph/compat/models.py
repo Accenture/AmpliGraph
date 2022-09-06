@@ -2,10 +2,23 @@ import tensorflow as tf
 import numpy as np
 from ampligraph.latent_features.models import ScoringBasedEmbeddingModel
 from ampligraph.latent_features.loss_functions import get as get_loss
-
+from ampligraph.latent_features.optimizers import get as get_optimizer
 from ampligraph.latent_features.regularizers import get as get_regularizer
-     
+
+BACK_COMPAT_MODELS = {}
+
+def register_compatibility(name):
+    def insert_in_registry(class_handle):
+        BACK_COMPAT_MODELS[name] = class_handle
+        return class_handle
+    return insert_in_registry
+
 class ScoringModelBase:
+    def __init__(self, model):
+        self.is_backward = True
+        self.model_name = model.scoring_type
+        self.model = model
+        
     def __init__(self, k=100, eta=2, epochs=100, 
                   batches_count=100, seed=0, 
                   embedding_model_params={'corrupt_sides': ['s,o'], 
@@ -32,14 +45,43 @@ class ScoringModelBase:
         self.regularizer = regularizer
         self.regularizer_params = regularizer_params
         self.verbose = verbose
+        self.is_backward = True
         
-    def _get_optimizer(self, learning_rate):
-        if self.optimizer=='adam':
-            return tf.keras.optimizers.Adam(learning_rate=learning_rate)
-        elif self.optimizer=='adagrad':
-            return tf.keras.optimizers.Adagrad(learning_rate=learning_rate)
-        elif self.optimizer=='sgd':
-            return tf.keras.optimizers.SGD(learning_rate=learning_rate)
+    def _get_optimizer(self, optimizer, optim_params):
+        learning_rate = optim_params.get('lr', 0.001)
+        del optim_params['lr']
+        
+        if optimizer=='adam':
+            return tf.keras.optimizers.Adam(learning_rate=learning_rate, **optim_params), True
+        elif optimizer=='adagrad':
+            return tf.keras.optimizers.Adagrad(learning_rate=learning_rate, **optim_params), True
+        elif optimizer=='sgd':
+            return tf.keras.optimizers.SGD(learning_rate=learning_rate, **optim_params), True
+        else:
+            return get_optimizer(optimizer), False
+        
+    def _get_initializer(self, initializer, initializer_params):
+        if initializer == 'xavier':
+            if initializer_params['uniform']:
+                return tf.keras.initializers.GlorotUniform(seed=self.seed)
+            else:
+                return tf.keras.initializers.GlorotNormal(seed=self.seed)
+        elif initializer == 'uniform':
+            return tf.keras.initializers.RandomUniform(minval=initializer_params.get('low', -0.05), 
+                                                        maxval=initializer_params.get('high', 0.05), 
+                                                        seed=self.seed)
+        elif initializer == 'normal':
+            return tf.keras.initializers.RandomNormal(mean=initializer_params.get('mean', 0.0), 
+                                                       stddev=initializer_params.get('std', 0.05), 
+                                                       seed=self.seed)
+        elif initializer == 'constant':
+            entity_init = initializer_params.get('entity', None)
+            rel_init = initializer_params.get('relation', None)
+            assert entity_init is not None, 'Please pass the `entity` initializer value'
+            assert rel_init is not None, 'Please pass the `relation` initializer value'
+            return [tf.constant_initializer(entity_init), tf.constant_initializer(rel_init)]
+        else:
+            return tf.keras.initializers.get(initializer)
         
     def fit(self, X, 
             early_stopping=False, 
@@ -50,26 +92,32 @@ class ScoringModelBase:
         if tensorboard_logs_path is not None:
             tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_logs_path)
             callbacks.append(tensorboard_callback)
-            
-        
-        optim = self._get_optimizer(self.optimizer_params.get('lr', 0.001))
         
         regularizer = self.regularizer
         if regularizer is not None:
             regularizer = get_regularizer(regularizer, self.regularizer_params)
-        self.model.compile(optimizer=optim,
-                        loss=get_loss(self.loss, self.loss_params),
-                        entity_relation_initializer='glorot_uniform',
-                        entity_relation_regularizer=regularizer)
+            
+        initializer = self.initializer
+        if initializer is not None:
+            initializer = _get_initializer(initializer, self.initializer_params)
+            
+        loss = get_loss(self.loss, self.loss_params)
+        optimizer, is_back_compat_optim = _get_optimizer(self.optimizer, self.optimizer_params)
         
-        
-    
+        self.model.compile(optimizer=optimizer,
+                            loss=loss,
+                            entity_relation_initializer=initializer,
+                            entity_relation_regularizer=regularizer)
+        if not is_back_compat_optim:
+            tf.keras.backend.set_value(self.model.optimizer.learning_rate, 
+                                       self.optimizer_params.get('lr', 0.001))
+
         if len(early_stopping_params) != 0:
             checkpoint = tf.keras.callbacks.EarlyStopping(
-                            monitor='val_{}'.format(early_stopping_params.get('criteria', 10)), 
+                            monitor='val_{}'.format(early_stopping_params.get('criteria', 'mrr')), 
                             min_delta=0, 
                             patience=early_stopping_params.get('stop_interval', 10), 
-                            verbose=0,
+                            verbose=self.verbose,
                             mode='max', 
                             restore_best_weights=True)
             callbacks.append(checkpoint)
@@ -78,6 +126,7 @@ class ScoringModelBase:
                  batch_size=np.ceil(X.shape[0] / self.batches_count),
                  epochs=self.epochs,
                  validation_freq=early_stopping_params.get('check_interval', 10),
+                 validation_burn_in=early_stopping_params.get('burn_in', 25),
                  validation_batch_size=early_stopping_params.get('batch_size', 1),
                  validation_data=early_stopping_params.get('x_valid', None),
                  validation_filter={'test': early_stopping_params.get('x_filter', None)},
@@ -129,7 +178,8 @@ class ScoringModelBase:
                                    corrupt_side, 
                                    entities_subset, 
                                    callbacks)
-        
+
+@register_compatibility('TransE')
 class TransE(ScoringModelBase):
     def __init__(self, k=100, eta=2, epochs=100, 
                   batches_count=100, seed=0, 
@@ -150,6 +200,10 @@ class TransE(ScoringModelBase):
         self.model_name = 'TransE'
         self.model = None
         
+    def __init__(self, model):
+         super().__init__(model)
+            
+@register_compatibility('DistMult')
 class DistMult(ScoringModelBase):
     def __init__(self, k=100, eta=2, epochs=100, 
                   batches_count=100, seed=0, 
@@ -169,7 +223,11 @@ class DistMult(ScoringModelBase):
         
         self.model_name = 'DistMult'
         self.model = None
+    
+    def __init__(self, model):
+         super().__init__(model)
         
+@register_compatibility('ComplEx')
 class ComplEx(ScoringModelBase):
     def __init__(self, k=100, eta=2, epochs=100, 
                   batches_count=100, seed=0, 
@@ -190,6 +248,10 @@ class ComplEx(ScoringModelBase):
         self.model_name = 'ComplEx'
         self.model = None
         
+    def __init__(self, model):
+         super().__init__(model)
+        
+@register_compatibility('HolE')
 class HolE(ScoringModelBase):
     def __init__(self, k=100, eta=2, epochs=100, 
                   batches_count=100, seed=0, 
@@ -209,5 +271,8 @@ class HolE(ScoringModelBase):
         
         self.model_name = 'HolE'
         self.model = None
-    
+        
+    def __init__(self, model):
+         super().__init__(model)
+
                           
