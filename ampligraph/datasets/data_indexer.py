@@ -35,6 +35,7 @@ import logging
 import tempfile
 import sqlite3
 import shutil
+import uuid
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -967,7 +968,7 @@ class SQLite():
             self.mapped = True
         else:
             date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p")
-            self.db_file = os.path.join(root_directory, name + date + ".db")
+            self.db_file = os.path.join(root_directory, name + date + str(uuid.uuid4()) + ".db")
 
             if os.path.exists(self.db_file):
                 os.remove(self.db_file)

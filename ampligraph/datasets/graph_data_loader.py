@@ -19,7 +19,7 @@ import shelve
 import logging
 import tempfile
 import tensorflow as tf
-
+import uuid
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -468,11 +468,11 @@ class GraphDataLoader():
             logger.error(msg)
             raise Exception(msg)
         if isinstance(backend, type) and backend != DummyBackend:
-            self.backend = backend("database_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p")),
-                                   identifier=self.identifier, root_directory=self.root_directory, 
-                                   use_indexer=self.use_indexer, remap=self.remap, name=self.name, 
-                                   parent=self.parent, in_memory=self.in_memory, verbose=verbose, 
-                                   use_filter=self.use_filter)
+            self.backend = backend("database_{}_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p"),
+                                   str(uuid.uuid4())), identifier=self.identifier, 
+                                   root_directory=self.root_directory, use_indexer=self.use_indexer, 
+                                   remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory, 
+                                   verbose=verbose, use_filter=self.use_filter)
             logger.debug("Initialized Backend with database at: {}".format(self.backend.db_path))
             
         elif backend is None or backend == DummyBackend:
