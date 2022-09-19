@@ -14,7 +14,8 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 import copy
 import logging
-
+from .graph_partitioner import RandomVerticesGraphPartitioner
+from .datasets import load_fb15k_237
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -140,8 +141,8 @@ class PartitioningReporter:
             ents_len = partition.backend.mapper.get_entities_count()
             sizes.append(ents_len)
         data_size = ents_len
-        ideal_size = data_size/k
-        percentage_dev = ((np.sum([np.abs(ideal_size - size) for size in sizes])/k)/ideal_size)*100
+        ideal_size = data_size / k
+        percentage_dev = ((np.sum([np.abs(ideal_size - size) for size in sizes]) / k) / ideal_size) * 100
         return percentage_dev
 
     def get_average_deviation_from_ideal_size_edges(self, partitions):
@@ -165,9 +166,9 @@ class PartitioningReporter:
         logger.debug("Parent: {}".format(partition.parent.backend.data))
         data_size = partition.parent.get_data_size()
         logger.debug("Parent data size: {}".format(data_size))
-        ideal_size = data_size/k
+        ideal_size = data_size / k
         logger.debug("Ideal data size: {}".format(ideal_size))
-        percentage_dev = ((np.sum([np.abs(ideal_size - size) for size in sizes])/k)/ideal_size)*100
+        percentage_dev = ((np.sum([np.abs(ideal_size - size) for size in sizes]) / k) / ideal_size) * 100
         return percentage_dev
     
     def get_edges_count(self, partitions):
@@ -273,27 +274,27 @@ class PartitioningReporter:
             for metric in reports[list(reports.keys())[0]]:
                 plot = False
                 dat = []
-                color=iter(cm.PiYG(np.linspace(0,1,len(reports))))
-                colors_aggregate = {r:next(color) for r in reports}
+                color = iter(cm.PiYG(np.linspace(0, 1, len(reports))))
+                colors_aggregate = {r: next(color) for r in reports}
                 for j, report in enumerate(reports):
                     if reports[report][metric] is not None:
                         if type(reports[report][metric]) is list:
                             n = len(reports[report][metric])
-                            color=iter(cm.seismic(np.linspace(0,1,n)))
-                            colors = {'partition {}'.format(i):next(color) for i in range(n)}
-                            width = 0.8/n
+                            color = iter(cm.seismic(np.linspace(0, 1, n)))
+                            colors = {'partition {}'.format(i): next(color) for i in range(n)}
+                            width = 0.8 / n
                             for i, r in enumerate(reports[report][metric]):
                                 label = 'partition {}'.format(i)
-                                dat.append({'y':j + (i*width), 'width': r, "height": width,
-                                            'label':label, 'label2':str(report), "color":colors[label]})
+                                dat.append({'y': j + (i * width), 'width': r, "height": width,
+                                            'label': label, 'label2': str(report), "color": colors[label]})
                         else:
                             colors = colors_aggregate
                             label = str(report)
-                            dat.append({"y":j, "width":reports[report][metric],
-                                        'label2':label, 'color':colors[label]})
+                            dat.append({"y": j, "width": reports[report][metric],
+                                        'label2': label, 'color': colors[label]})
                         plot = True
                 if plot:
-                    plt.subplots_adjust(wspace = 0.1, hspace = 0.4)
+                    plt.subplots_adjust(wspace=0.1, hspace=0.4)
                     plt.subplot(size, row_size, ind)
 
                     if barh:
@@ -305,12 +306,12 @@ class PartitioningReporter:
                         plt.bar(*list(zip(*dat)), edgecolor='white')
 
                     labels = list(colors.keys())
-                    handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
+                    # handles = [plt.Rectangle((0, 0), 1, 1, color=colors[label]) for label in labels]
                     labels = []
                     for elem in data["label2"]:
                         if elem not in labels:
                             labels.append(elem)
-                    #if type(labels) == set:
+                    # if type(labels) == set:
                     if (ind % row_size) == 1:
                         plt.yticks(range(len(list(labels))), list(labels))
                     else:
@@ -321,6 +322,7 @@ class PartitioningReporter:
             plt.show()
 
         return reports                       
+
 
 def compare_partitionings(list_of_partitioners, data, num_partitions=2, visualize=True):
     """Wrapper around PartitioningReporter hiding logging settings.
@@ -344,7 +346,7 @@ def compare_partitionings(list_of_partitioners, data, num_partitions=2, visualiz
        >>>report = compare_partitionings(partitioners)
     """
     if isinstance(num_partitions, int):
-        n_partitions = [num_partitions]*len(list_of_partitioners)
+        n_partitions = [num_partitions] * len(list_of_partitioners)
     else:
         n_partitions = num_partitions
     partitionings = {}
@@ -358,6 +360,7 @@ def compare_partitionings(list_of_partitioners, data, num_partitions=2, visualiz
     reporter = PartitioningReporter(partitionings=partitionings)
     result = reporter.report(visualize=visualize, barh=True)
     return result
+
 
 def main():
     """Main function with example usage."""
@@ -378,6 +381,7 @@ def main():
 #     'EDGES_COUNT': [100848, 42246],
 #     'PERCENTAGE_DEV_EDGES': 47.41414475497492,
 #     'PERCENTAGE_DEV_VERTICES': 3.757325060324026}}
+
 
 if __name__ == "__main__":
     main()

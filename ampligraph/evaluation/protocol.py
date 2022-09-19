@@ -9,15 +9,12 @@
 from collections.abc import Iterable
 from itertools import product, islice
 import logging
-import warnings
-
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-import tensorflow as tf
+
 
 from ..evaluation import mrr_score, hits_at_n_score, mr_score
-# from ampligraph.latent_features.models import ConvE
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -304,7 +301,7 @@ def _get_param_hash(param):
     """
     # Remove parameters that are not used by particular configurations
     # For example, if the regularization is None, there is no need for the regularization lambda
-    flattened_params = _flatten_nested_keys(_remove_unused_params(_unflatten_nested_keys(param)))
+    flattened_params = _flatten_nested_keys(_unflatten_nested_keys(param))
     return hash(frozenset(flattened_params.items()))
 
 
@@ -359,7 +356,7 @@ def _next_hyperparam(param_grid):
         else:
             param_history.add(param)
             # Yields nested configuration (unflattened) without useless parameters
-            yield _remove_unused_params(_unflatten_nested_keys(param))
+            yield _unflatten_nested_keys(param)
 
 
 def _sample_parameters(param_grid):
@@ -423,7 +420,7 @@ def _next_hyperparam_random(param_grid):
             continue
         else:
             param_history.add(param)
-            yield _remove_unused_params(param)
+            yield param
 
 
 def _scalars_into_lists(param_grid):
@@ -632,6 +629,8 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     >>>                           early_stopping=True)
 
     """
+    from ..compat import evaluate_performance
+    
     logger.debug('Starting gridsearch over hyperparameters. {}'.format(param_grid))
     if use_default_protocol:
         logger.warning('DeprecationWarning: use_default_protocol will be removed in future. \
@@ -696,6 +695,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         try:
             model = model_class(**model_params)
             model.fit(X_train, early_stopping, early_stopping_params)
+            
             ranks = evaluate_performance(selection_dataset, model=model,
                                          filter_triples=X_filter, verbose=verbose,
                                          entities_subset=entities_subset,

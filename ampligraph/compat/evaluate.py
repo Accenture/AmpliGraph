@@ -3,6 +3,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+
 def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_unseen=True, entities_subset=None,
                          corrupt_side='s,o', use_default_protocol=False, batch_size=100):
     """Evaluate the performance of an embedding model.
@@ -133,8 +134,6 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
     >>> hits_at_n_score(ranks, n=10)
     0.4
     """
-
-    
     if use_default_protocol:
         logger.warning('DeprecationWarning: use_default_protocol will be removed in future. '
                        'Please use corrupt_side argument instead.')
@@ -151,12 +150,9 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
         raise ValueError('Incorrect type for filter_triples')
     
     return model.evaluate(x=X,
-                     batch_size=batch_size,
-                     verbose=verbose,
-                     use_filter=filter_triples,
-                     corrupt_side=corrupt_side,
-                     entities_subset=entities_subset,
-                     callbacks=None)
-    
-
-
+                          batch_size=batch_size,
+                          verbose=verbose,
+                          use_filter=filter_triples,
+                          corrupt_side=corrupt_side,
+                          entities_subset=entities_subset,
+                          callbacks=None)

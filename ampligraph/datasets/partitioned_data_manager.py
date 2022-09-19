@@ -39,10 +39,9 @@ def register_partitioning_manager(name):
     def insert_in_registry(class_handle):
         """Checks if partition manager already exists and if not registers it."""
         if name in PARTITION_MANAGER_REGISTRY.keys():
-            msg = "Partitioning Manager with name {} "
+            msg = "Partitioning Manager with name {} already exists!".format(name)
             logger.error(msg)
             raise Exception(msg)
-        "already exists!".format(name)
         
         PARTITION_MANAGER_REGISTRY[name] = class_handle
         class_handle.name = name
@@ -73,7 +72,8 @@ class PartitionDataManager(abc.ABC):
         self.k = self._model.k
         self.eta = self._model.eta
         self.partitioner_k = partitioner_k
-        if ent_map_fname is not None and ent_meta_fname is not None and rel_map_fname is not None and rel_meta_fname is not None:
+        if ent_map_fname is not None and ent_meta_fname is not None and \
+                rel_map_fname is not None and rel_meta_fname is not None:
             self.root_directory = os.path.dirname(ent_map_fname)
             self.timestamp = os.path.basename(ent_map_fname).split('_')[-1][:-4]
             self.ent_map_fname = ent_map_fname
@@ -113,7 +113,7 @@ class PartitionDataManager(abc.ABC):
         self.root_directory = filepath
         self.root_directory = '.' if self.root_directory == '' else self.root_directory
         
-        new_file_name = os.path.join(self.root_directory, '*{}.bak'.format(self.timestamp))
+        # new_file_name = os.path.join(self.root_directory, '*{}.bak'.format(self.timestamp))
         try:
             self._copy_files(self.ent_map_fname)
             self._copy_files(self.ent_meta_fname)
@@ -135,7 +135,6 @@ class PartitionDataManager(abc.ABC):
             'rel_meta_fname': self.rel_meta_fname
         }
         return metadata
-        
         
     @property
     def max_entities(self):
@@ -243,7 +242,8 @@ class GeneralPartitionDataManager(PartitionDataManager):
     ''' Manages the partitioning related controls. 
     Handles data generation and informs model about changes in partition.
     '''
-    def __init__(self, dataset_loader, model, strategy='RandomEdges', partitioner_k=3, root_directory=tempfile.gettempdir()):
+    def __init__(self, dataset_loader, model, strategy='RandomEdges', partitioner_k=3, 
+                 root_directory=tempfile.gettempdir()):
         """Initializes the Partitioning Data Manager. 
         Uses/Creates partitioner and generates partition related params.
         
@@ -258,7 +258,8 @@ class GeneralPartitionDataManager(PartitionDataManager):
         root_directory: string
             directory where the partition manager files will be stored
         """
-        super(GeneralPartitionDataManager, self).__init__(dataset_loader, model, strategy, partitioner_k, root_directory)
+        super(GeneralPartitionDataManager, self).__init__(dataset_loader, model, 
+                                                          strategy, partitioner_k, root_directory)
         
     def _generate_partition_params(self):
         ''' Generates the metadata needed for persisting and loading partition embeddings and other params
@@ -366,7 +367,7 @@ class GeneralPartitionDataManager(PartitionDataManager):
         ent_count_in_partition = graph_data_loader.backend.mapper.get_entities_count()
         self.ent_original_ids = graph_data_loader.backend.mapper.get_indexes(
             np.arange(ent_count_in_partition),
-            type_of = 'e',
+            type_of='e',
             order="ind2raw")
         '''
         with shelve.open(graph_data_loader.backend.mapper.entities_dict) as partition:
@@ -387,13 +388,15 @@ class GeneralPartitionDataManager(PartitionDataManager):
         rel_count_in_partition = graph_data_loader.backend.mapper.get_relations_count()
         self.rel_original_ids = graph_data_loader.backend.mapper.get_indexes(
             np.arange(rel_count_in_partition),
-            type_of = 'r',
+            type_of='r',
             order="ind2raw")
+        
         '''
         with shelve.open(graph_data_loader.backend.mapper.relations_dict) as partition:
             partition_keys = sorted([int(key) for key in partition.keys()])
             self.rel_original_ids = [partition[str(key)] for key in partition_keys]
         '''
+        
         with shelve.open(self.rel_map_fname) as partition:
             self.all_rel_embs = []
             self.all_rel_opt_params = []
@@ -489,7 +492,7 @@ class BucketPartitionDataManager(PartitionDataManager):
     
                     out_dict_key = str(i)
                     num_ents_bucket = bucket['indexes'].shape[0]
-                    #print(num_ents_bucket)
+                    # print(num_ents_bucket)
                     # TODO change the hardcoding from 3 to actual hyperparam of optim
                     opt_param = np.zeros(shape=(num_ents_bucket, num_optimizer_hyperparams, self.k), dtype=np.float32)
                     ent_emb = self._model.encoding_layer.ent_init(
@@ -511,7 +514,7 @@ class BucketPartitionDataManager(PartitionDataManager):
         # for every partition
         for i in range(len(self.partitioner.partitions)):
             # get the source and dest bucket
-            #print(self.partitioner.partitions[i].backend.mapper.metadata['name'])
+            # print(self.partitioner.partitions[i].backend.mapper.metadata['name'])
             splits = self.partitioner.partitions[i].backend.mapper.metadata['name'].split('-')
             source_bucket = splits[0][-1]
             dest_bucket = splits[1]
@@ -551,7 +554,7 @@ class BucketPartitionDataManager(PartitionDataManager):
                 metadata[str(i)] = emb_mat_order      
                 
             rel_mat_order = []
-            #with shelve.open(self.partitioner.partitions[i].backend.mapper.metadata['relations']) as rel_sh:
+            # with shelve.open(self.partitioner.partitions[i].backend.mapper.metadata['relations']) as rel_sh:
             num_rels_bucket = self.partitioner.partitions[i].backend.mapper.get_relations_count()
             sorted_partition_keys = np.arange(num_rels_bucket)
             sorted_partition_values = self.partitioner.partitions[i].backend.mapper.get_indexes(

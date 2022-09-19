@@ -48,7 +48,8 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         # size and reshape the dataset to sample corruptions
         dataset = tf.reshape(tf.tile(tf.reshape(pos, [-1]), [eta]), [tf.shape(input=pos)[0] * eta, 3])
         # generate a mask which will tell which subject needs to be corrupted (random uniform sampling)
-        keep_subj_mask = tf.cast(tf.random.uniform([tf.shape(input=dataset)[0]], 0, 2, dtype=tf.int32, seed=self.seed), tf.bool)
+        keep_subj_mask = tf.cast(tf.random.uniform([tf.shape(input=dataset)[0]], 
+                                                   0, 2, dtype=tf.int32, seed=self.seed), tf.bool)
         # If we are not corrupting the subject then corrupt the object
         keep_obj_mask = tf.logical_not(keep_subj_mask)
         

@@ -6,7 +6,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 import contextlib
-from .graph_data_loader import GraphDataLoader, DummyBackend
+from .graph_data_loader import GraphDataLoader  # , DummyBackend
 from .sqlite_adapter import SQLiteAdapter
 from .graph_partitioner import AbstractGraphPartitioner
 from .partitioned_data_manager import get_partition_adapter
@@ -20,7 +20,7 @@ class DataHandler():
                  dataset_type="train", 
                  epochs=1, 
                  initial_epoch=0, 
-                 use_indexer = True,
+                 use_indexer=True,
                  use_filter=True,
                  partitioning_k=1):
         '''Initializes the DataHandler
@@ -54,7 +54,7 @@ class DataHandler():
         self._inferred_steps = None
         self.using_partitioning = False
 
-        if partitioning_k <=0:
+        if partitioning_k <= 0:
             raise ValueError('Incorrect value specified to partitioning_k')
             
         if isinstance(x, GraphDataLoader):
@@ -99,7 +99,7 @@ class DataHandler():
     def steps(self):
         '''Counts the number of steps in an epoch'''
         self._current_iter = 0
-        while self._inferred_steps is None or self._current_iter<self._inferred_steps:
+        while self._inferred_steps is None or self._current_iter < self._inferred_steps:
             self._current_iter += 1
             yield self._current_iter
             

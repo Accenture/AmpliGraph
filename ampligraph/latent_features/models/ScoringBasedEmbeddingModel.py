@@ -38,7 +38,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     
         Examples
         --------
-        >>> # create model and compile using user defined optimizer settings and user defined settings of an existing loss
+        >>> # create model and compile using user defined optimizer settings and 
+        >>> # user defined settings of an existing loss
         >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
         >>> from ampligraph.latent_features.loss_functions import SelfAdversarialLoss
         >>> import tensorflow as tf
@@ -536,7 +537,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 epoch_logs = copy.copy(logs)
 
                 # if validation is enabled
-                if epoch >= (validation_burn_in - 1) and validation_data is not None and self._should_eval(epoch, validation_freq):
+                if epoch >= (validation_burn_in - 1) and validation_data is not None and self._should_eval(
+                        epoch, validation_freq):
                     # evaluate on the validation
                     ranks = self.evaluate(validation_data,
                                           batch_size=validation_batch_size or batch_size,
@@ -591,7 +593,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             base_dir = filedir
             filepath = os.path.basename(filedir)
 
-        
         with open(os.path.join(base_dir, filepath + '_metadata.ampkl'), "wb") as f:
             metadata = {'is_partitioned_training': self.is_partitioned_training,
                         'max_ent_size': self.max_ent_size,
@@ -650,7 +651,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             self.layers[i].build((batch_size, 3))
             self.layers[i].built = True
             
-
     def load_metadata(self, filepath=None, filedir=None):
         if filedir is not None:
             filepath = os.path.join(filedir, os.path.basename(filedir))
@@ -716,7 +716,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         optimizer: String (name of optimizer) or optimizer instance. 
             The optimizer used to minimize the loss function. Choose between
             ``sgd``, ``adagrad``, ``adam``, ``rmsprop``, etc.
-            See `tf.keras.optimizers <https://www.tensorflow.org/api_docs/python/tf/keras/optimizers>`_ for up-to-date details.
+            See `tf.keras.optimizers <https://www.tensorflow.org/api_docs/python/tf/keras/optimizers>`_ 
+            for up-to-date details.
             
             If a string is passed then the default parameters of the optimizer will be used.
             
@@ -736,7 +737,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         loss: String (name of objective function), objective function or
             `ampligraph.latent_features.loss_functions.Loss` instance. 
 
-            If passing a string, you can use one of the following. These losses would be used with their default setting.
+            If passing a string, you can use one of the following. These losses would be used with their 
+            default setting.
             
             - ``pairwise``  the model will use pairwise margin-based loss function.
             - ``nll`` the model will use negative loss likelihood.
@@ -784,14 +786,15 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             If a string is passed, then the default parameters will be used. Choose between
             ``random_normal``, ``random_uniform``, ``glorot_normal``, ``he_normal``, etc.
 
-            See `tf.keras.initializers <https://www.tensorflow.org/api_docs/python/tf/keras/initializers>`_ for up-to-date details.
+            See `tf.keras.initializers <https://www.tensorflow.org/api_docs/python/tf/keras/initializers>`_ 
+            for up-to-date details.
             
             Examples
             --------
             >>> model.compile(loss='pairwise', optim='adam', entity_relation_initializer='random_normal')
             
-            If the user wants to use custom hyperparameters, then an instance of the ``tf.keras.initializers.Initializer``
-            needs to be passed.
+            If the user wants to use custom hyperparameters, then an instance of the 
+            ``tf.keras.initializers.Initializer`` needs to be passed.
             
             Examples
             --------
@@ -817,14 +820,15 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             If a string is passed, then the default parameters will be used. Choose between
             ``l1``, ``l2``, ``l1_l2``, etc.
 
-            See `tf.keras.regularizers <https://www.tensorflow.org/api_docs/python/tf/keras/regularizers>`_ for up-to-date details.
+            See `tf.keras.regularizers <https://www.tensorflow.org/api_docs/python/tf/keras/regularizers>`_ 
+            for up-to-date details.
             
             Examples
             --------
             >>> model.compile(loss='pairwise', optim='adam', entity_relation_regularizer='l2')
             
-            If the user wants to use custom hyperparameters, then an instance of the ``tf.keras.regularizers.Regularizer``
-            needs to be passed.
+            If the user wants to use custom hyperparameters, then an instance of the 
+            ``tf.keras.regularizers.Regularizer`` needs to be passed.
             
             Examples
             --------
@@ -832,7 +836,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             >>> reg = tf.keras.regularizers.L1L2(l1=0.001, l2=0.1)
             >>> model.compile(loss='pairwise', optim='adam', entity_relation_regularizer=reg)
             
-            If the user wants to define custom regularizer it can be any callable with the signature `reg = fn(weight_matrix)`
+            If the user wants to define custom regularizer it can be any callable with the signature 
+            `reg = fn(weight_matrix)`
             
             Examples
             --------
@@ -872,7 +877,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.compiled_loss = loss_functions.get(loss)
         # Only metric supported during the training is mean Loss
         self.compiled_metrics = compile_utils.MetricsContainer(
-          metrics_mod.Mean(name='loss'), None, None)  # Total loss.
+            metrics_mod.Mean(name='loss'), None, None)  # Total loss.
         
         # set the initializer and regularizer of the embedding matrices in the encoding layer
         self.encoding_layer.set_initializer(entity_relation_initializer)
@@ -935,7 +940,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         out: Function handle.
               Handle to the test step function  
         '''
-        #if self.test_function is not None:
+        # if self.test_function is not None:
         #    return self.test_function
 
         def test_function(iterator):
@@ -1117,7 +1122,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         assert corrupt_side in ['s', 'o', 's,o', 's+o'], 'Invalid value for corrupt_side'
 
         self.corrupt_side = corrupt_side
-        
         
         self.entities_subset = tf.constant([])
         self.mapping_dict = tf.lookup.experimental.DenseHashTable(tf.int32, tf.int32, -1, -1, -2)
@@ -1451,7 +1455,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         else:
             self.is_calibrate_with_corruption = False
             
-            pos_batch_count = int(np.ceil(pos_size/batch_size))
+            pos_batch_count = int(np.ceil(pos_size / batch_size))
             
             data_handler_calibrate_neg = data_adapter.DataHandler(X_neg,
                                                                   batch_size=batch_size,
@@ -1461,17 +1465,16 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                                   use_indexer=self.data_indexer)
 
             neg_size = data_handler_calibrate_neg._parent_adapter.get_data_size()
-            neg_batch_count = int(np.ceil(neg_size/batch_size))
+            neg_batch_count = int(np.ceil(neg_size / batch_size))
             
             if pos_batch_count != neg_batch_count:
-                batch_size_neg = int(np.ceil(neg_size/pos_batch_count))
+                batch_size_neg = int(np.ceil(neg_size / pos_batch_count))
                 data_handler_calibrate_neg = data_adapter.DataHandler(X_neg,
                                                                       batch_size=batch_size_neg,
                                                                       dataset_type='test',
                                                                       epochs=epochs,
                                                                       use_filter=False,
                                                                       use_indexer=self.data_indexer)
-            
             
             if positive_base_rate is None:
                 positive_base_rate = pos_size / (pos_size + neg_size)
@@ -1483,12 +1486,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         calibrate_function = self.make_calibrate_function()
         
         optimizer = tf.keras.optimizers.Adam()
-        
-        pos_outputs = []
-        neg_outputs = []
-        
+
         if not self.is_calibrate_with_corruption:
-             negative_iterator = iter(data_handler_calibrate_neg.enumerate_epochs())
+            negative_iterator = iter(data_handler_calibrate_neg.enumerate_epochs())
                 
         for _, iterator in data_handler_calibrate_pos.enumerate_epochs():
             if not self.is_calibrate_with_corruption:
@@ -1504,8 +1504,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         with data_handler_calibrate_neg.catch_stop_iteration():
                             scores_neg = calibrate_function(neg_handle)
                             
-                    
-                    
                     with tf.GradientTape() as tape:
                         out = self.calibration_layer(scores_pos, scores_neg, 1)
 
@@ -1514,12 +1512,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     optimizer.apply_gradients(zip(gradients, self.calibration_layer._trainable_weights))
         self.is_calibrated = True
         
-        
     def predict_proba(self,
-                        x,
-                        batch_size=32,
-                        verbose=0,
-                        callbacks=None):
+                      x,
+                      batch_size=32,
+                      verbose=0,
+                      callbacks=None):
         '''
         Compute calibrated scores (0 <= score <= 1) of the input triples 
 
@@ -1643,6 +1640,3 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         else:
             msg = 'Invalid entity type: {}'.format(embedding_type)
             raise ValueError(msg)
-
-        
-         

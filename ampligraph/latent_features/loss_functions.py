@@ -90,7 +90,7 @@ class Loss(abc.ABC):
         assert self._loss_parameters['reduction'] in ['sum', 'mean'], 'Invalid value for reduction!'
         self._dependencies = []
         self._user_losses = self.name
-        self._user_loss_weights=None
+        self._user_loss_weights = None
         
         self._loss_metric = metrics_mod.Mean(name='loss')  # Total loss.
 
@@ -687,8 +687,9 @@ def get(identifier, hyperparams={}):
     Parameters
     ----------
     identifier: instance of Loss class, string, function handle
-        Instance of Loss class (Pairwise, NLLLoss, etc), name of the (existing) loss function to be used (will use default
-        parameters) or handle of the function which takes in two params(signature: def loss_fn(scores_pos, scores_neg))
+        Instance of Loss class (Pairwise, NLLLoss, etc), name of the (existing) loss function to be used 
+        (will use default parameters) or handle of the function which takes in two params(signature: 
+        def loss_fn(scores_pos, scores_neg))
         
     Returns
     -------

@@ -12,10 +12,8 @@ and in-memory backend (DummyBackend).
 """
 from .source_identifier import DataSourceIdentifier
 from .data_indexer import DataIndexer
-from .sqlite_adapter import SQLiteAdapter
 from datetime import datetime
 import numpy as np
-import shelve
 import logging
 import tempfile
 import tensorflow as tf
@@ -83,7 +81,7 @@ class DummyBackend():
         self.data_source = data_source
         self.dataset_type = dataset_type
         if isinstance(self.data_source, np.ndarray):
-            if self.use_indexer == True:
+            if self.use_indexer is True:
                 self.mapper = DataIndexer(self.data_source, backend="in_memory" if self.in_memory else "sqlite", 
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(self.data_source)
@@ -99,11 +97,11 @@ class DummyBackend():
         else:
             loader = self.identifier.fetch_loader()
             raw_data = loader(self.data_source)
-            if self.use_indexer == True:
+            if self.use_indexer is True:
                 self.mapper = DataIndexer(raw_data, backend="in_memory" if self.in_memory else "sqlite", 
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(raw_data)
-            elif self.use_indexer == False:
+            elif self.use_indexer is False:
                 if self.remap:
                     # create a special mapping for partitions, persistent mapping from 
                     # main indexes to partition indexes
@@ -173,7 +171,8 @@ class DummyBackend():
             logger.debug("Original index: {}".format(triples_original_index))
             subjects = self.parent.get_complementary_subjects(triples_original_index, use_filter=use_filter)
             objects = self.parent.get_complementary_objects(triples_original_index, use_filter=use_filter)
-            logger.debug("What to do with this new indexes? Evaluation should happen in the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
+            logger.debug("What to do with this new indexes? Evaluation should happen in the original space, \
+            shouldn't it? I'm assuming it does so returning in parent indexing.")
             return subjects, objects
         else:
             subjects = self._get_complementary_subjects(triples, use_filter=use_filter)
@@ -213,7 +212,7 @@ class DummyBackend():
             logger.debug("What to do with this new indexes? Evaluation should happen in the \
             original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
             return subjects
-        elif self.use_filter == False or self.use_filter is None:
+        elif self.use_filter is False or self.use_filter is None:
             self.use_filter = {'train-org': self.data}
 
         filtered = []
@@ -289,7 +288,7 @@ class DummyBackend():
             logger.debug("What to do with this new indexes? Evaluation should happen in \
             the original space, shouldn't it? I'm assuming it does so returning in parent indexing.")
             return objects
-        elif self.use_filter == False or self.use_filter is None:
+        elif self.use_filter is False or self.use_filter is None:
             self.use_filter = {'train-org': self.data}
         filtered = []
         for filter_name, filter_source in self.use_filter.items():
@@ -368,10 +367,11 @@ class DummyBackend():
 class GraphDataLoader():
     """Data loader for models to ingest graph data.
     
-       This class is internally used by the model to store the data passed by the user and batch over it during training/eval, 
-       and to obtain filters during evaluation. 
+       This class is internally used by the model to store the data passed by the user and batch over it during 
+       training/eval, and to obtain filters during evaluation. 
        It can be used by advanced users to load custom datasets which are large, for performing partitioned training. 
-       The complete dataset wont get loaded in the memory. It will load the data in parts based on which partition is being trained.
+       The complete dataset wont get loaded in the memory. It will load the data in parts based on which partition 
+       is being trained.
        
        Example
        -------
@@ -394,7 +394,8 @@ class GraphDataLoader():
        >>>                       epochs=10)              # number of epochs
        >>> dataset_loader_test = GraphDataLoader('/home/spai/code/ampligraph_projects/dataset/fb15k-237/test.txt', 
        >>>                                 backend=SQLiteAdapter,     # type of backend to use
-       >>>                                 batch_size=400,            # batch size to use while iterating over this dataset
+       >>>                                 batch_size=400,            # batch size to use while iterating 
+       >>>                                                            # over this dataset
        >>>                                 dataset_type='test',       # dataset type
        >>>                                 use_indexer=
        >>>            partitioned_model.data_handler.get_mapper())    # get the mapper from the trained model 
@@ -406,8 +407,10 @@ class GraphDataLoader():
        >>>                                    batch_size=400)
 
     """    
-    def __init__(self, data_source, batch_size=1, dataset_type="train", backend=None, root_directory=tempfile.gettempdir(),
-                 use_indexer=True, verbose=False, remap=False, name="main_partition", parent=None, in_memory=False, use_filter=False):
+    def __init__(self, data_source, batch_size=1, dataset_type="train", 
+                 backend=None, root_directory=tempfile.gettempdir(),
+                 use_indexer=True, verbose=False, remap=False, name="main_partition", 
+                 parent=None, in_memory=False, use_filter=False):
         """Initialise persistent/in-memory data storage.
        
            Parameters
@@ -453,10 +456,10 @@ class GraphDataLoader():
         self.in_memory = in_memory
         self.name = name
         self.parent = parent
-        if use_filter is None or use_filter == True:
+        if use_filter is None or use_filter is True:
             self.use_filter = {'train': data_source}
         else:
-            if isinstance(use_filter, dict) or use_filter == False:
+            if isinstance(use_filter, dict) or use_filter is False:
                 self.use_filter = use_filter 
             else:
                 msg = "use_filter should be a dictionary with keys as names of filters and \

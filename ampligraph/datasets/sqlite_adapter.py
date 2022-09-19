@@ -102,7 +102,6 @@ class SQLiteAdapter():
         else:
             self.chunk_size = chunk_size
             
-            
     def get_output_signature(self):
         if self.use_filter:
             return (tf.TensorSpec(shape=(None, 3), dtype=tf.int32), 
@@ -306,9 +305,11 @@ class SQLiteAdapter():
     def index_entities(self):
         """Index data. It reloads data before as it is an iterator."""
         self.reload_data()
-        if self.use_indexer == True:
-            self.mapper = DataIndexer(self.data, backend='in_memory' if self.in_memory else 'sqlite', root_directory=self.root_directory)
-        elif self.use_indexer == False:
+        if self.use_indexer is True:
+            self.mapper = DataIndexer(self.data, 
+                                      backend='in_memory' if self.in_memory else 'sqlite', 
+                                      root_directory=self.root_directory)
+        elif self.use_indexer is False:
             logger.debug("Data won't be indexed")
         elif isinstance(self.use_indexer, DataIndexer):
             self.mapper = self.use_indexer
@@ -346,7 +347,7 @@ class SQLiteAdapter():
         self.loader = loader
         if loader is None:
             self.loader = self.identifier.fetch_loader()
-        if not self.is_indexed() and self.use_indexer != False:
+        if not self.is_indexed() and self.use_indexer is not False:
             if self.verbose:
                 logger.debug("indexing...")
             self.index_entities()
@@ -364,7 +365,7 @@ class SQLiteAdapter():
             logger.debug("data is populated")
         
         query = "SELECT count(*) from triples_table;"
-        count = self._execute_query(query)
+        _ = self._execute_query(query)
         
         if isinstance(self.use_filter, dict):
             for key in self.use_filter:
@@ -373,9 +374,7 @@ class SQLiteAdapter():
                     self.populate(self.use_filter[key], key)
             
         query = "SELECT count(*) from triples_table;"
-        count = self._execute_query(query)
-        
-        
+        _ = self._execute_query(query)
     
     def get_data_size(self, table="triples_table", condition=""):
         """Gets the size of the given table [with specified condition].
@@ -420,7 +419,7 @@ class SQLiteAdapter():
            result of a query, list of objects.
         """
         results = []
-        if self.use_filter == False or self.use_filter is None:
+        if self.use_filter is False or self.use_filter is None:
             self.use_filter = {'train': self.data}
         filtered = []
         valid_filters = [x[0] for x in self._execute_query("SELECT DISTINCT dataset_type FROM triples_table")]
@@ -434,7 +433,7 @@ class SQLiteAdapter():
 
                     query = query.format(triple[0], triple[1], filter_name)
                     q = self._execute_query(query)
-                    tmp = list(set([y for x in q for y in x ]))
+                    tmp = list(set([y for x in q for y in x]))
                     tmp_filter.append(tmp)
                 filtered.append(tmp_filter)
         # Unpack data into one  list per triple no matter what filter it comes from
@@ -457,7 +456,7 @@ class SQLiteAdapter():
            result of a query, list of subjects.
         """
         results = []
-        if self.use_filter == False or self.use_filter is None:
+        if self.use_filter is False or self.use_filter is None:
             self.use_filter = {'train': self.data}
 
         filtered = []

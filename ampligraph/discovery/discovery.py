@@ -153,7 +153,7 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
         logger.error(msg)
         raise ValueError(msg)
 
-    #if not model.is_fitted_on(X):
+    # if not model.is_fitted_on(X):
     #    msg = 'Model might not be fitted on this data.'
     #    logger.warning(msg)
         # raise ValueError(msg)
@@ -197,7 +197,7 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
     np.random.seed(seed)
 
     # Remove unseen entities
-    #X_filtered = filter_unseen_entities(X, model)
+    # X_filtered = filter_unseen_entities(X, model)
 
     discoveries = []
     discovery_ranks = []
@@ -212,7 +212,7 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
         logger.debug('Generated %d candidate statements.' % len(candidates))
 
         # Get ranks of candidate statements
-        #ranks = evaluate_performance(candidates, model=model, filter_triples=X, use_default_protocol=True,
+        # ranks = evaluate_performance(candidates, model=model, filter_triples=X, use_default_protocol=True,
         #                             verbose=False)
         
         ranks = model.evaluate(candidates, use_filter={'test': X}, corrupt_side='s,o', verbose=False)

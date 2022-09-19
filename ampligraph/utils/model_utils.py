@@ -7,7 +7,6 @@
 #
 import os
 import pickle
-import importlib
 from time import gmtime, strftime
 import glob
 import logging
@@ -93,9 +92,9 @@ def restore_model(model_name_path=None):
                              model_name_path...")
             
     try:
-        custom_objects={"ScoringBasedEmbeddingModel": ScoringBasedEmbeddingModel, 
-                                                           'OptimizerWrapper': OptimizerWrapper,
-                                                          'embedding_lookup_layer': EmbeddingLookupLayer}
+        custom_objects = {"ScoringBasedEmbeddingModel": ScoringBasedEmbeddingModel, 
+                          'OptimizerWrapper': OptimizerWrapper,
+                          'embedding_lookup_layer': EmbeddingLookupLayer}
         custom_objects.update(LOSS_REGISTRY)
             
         model = tf.keras.models.load_model(model_name_path, custom_objects=custom_objects)
@@ -113,7 +112,8 @@ def restore_model(model_name_path=None):
     return model
 
 
-def create_tensorboard_visualizations(model, loc, entities_subset='all', labels=None, write_metadata=True, export_tsv_embeddings=True):
+def create_tensorboard_visualizations(model, loc, entities_subset='all', 
+                                      labels=None, write_metadata=True, export_tsv_embeddings=True):
     """Export embeddings to Tensorboard.
 
     This function exports embeddings to disk in a format used by
@@ -219,17 +219,16 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all', labels=
         entities_index = np.arange(model.data_indexer.get_entities_count())
         
         entities_label = list(model.data_indexer.get_indexes(
-                                                entities_index,
-                                                type_of='e',
-                                                order='ind2raw'))
+            entities_index,
+            type_of='e',
+            order='ind2raw'))
     else:
         entities_index = model.data_indexer.get_indexes(
-                                            entities_subset,
-                                            type_of='e',
-                                            order='raw2ind')
+            entities_subset,
+            type_of='e',
+            order='raw2ind')
         entities_label = entities_subset
         
-    
     if labels is not None:
         # Check if the lengths of the supplied labels is equal to the number of embeddings retrieved
         if len(labels) != len(entities_label):
@@ -261,8 +260,7 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all', labels=
     embedding.metadata_path = 'metadata.tsv'
     projector.visualize_embeddings(loc, config)
 
-
-
+    
 def write_metadata_tsv(loc, data):
     """Write Tensorboard metadata.tsv file.
 

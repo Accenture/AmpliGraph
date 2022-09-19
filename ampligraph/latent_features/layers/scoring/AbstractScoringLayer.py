@@ -31,8 +31,8 @@ def register_layer(name, external_params=None, class_params=None):
         class_params = {}
 
     def insert_in_registry(class_handle):
-        assert name not in SCORING_LAYER_REGISTRY.keys(), "Scoring Layer with name {} "
-        "already exists!".format(name)
+        assert name not in SCORING_LAYER_REGISTRY.keys(), "Scoring Layer with name {} \
+        already exists!".format(name)
         
         # store the class handle in the registry with name as key
         SCORING_LAYER_REGISTRY[name] = class_handle
@@ -268,4 +268,3 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         assert isinstance(input_shape, list)
         batch_size, _ = input_shape
         return [batch_size, 1]
-

@@ -45,19 +45,23 @@ def load_csv(data_source, chunk_size=None, sep='\t', verbose=False, **kwargs):
     else:
         return data
 
+
 def chunks(iterable, chunk_size=1):
     """Chunkls genertaor"""
     iterator = iter(iterable)
     for first in iterator:
         yield np.array(list(chain([first], islice(iterator, chunk_size - 1))))
 
+
 def load_gz(data_source, chunk_size=None, verbose=False):
     """Gz data loader. Reads compressed file."""
     raise NotImplementedError
     
+
 def load_tar(data_source, chunk_size=None, verbose=False):
     """Tar data loader. Reads compressed file."""
     raise NotImplementedError
+
 
 class DataSourceIdentifier():
     """Class that recognizes the type of given file and provides with an
@@ -89,8 +93,7 @@ class DataSourceIdentifier():
                                 "txt": load_csv, 
                                 "gz": load_csv, 
                                 "tar": load_tar,
-                                "iter": chunks
-                               }
+                                "iter": chunks}
         self._identify()
                 
     def fetch_loader(self):
@@ -105,7 +108,7 @@ class DataSourceIdentifier():
     def _identify(self):
         """Identifies the data file type based on the file name."""
         if isinstance(self.data_source, str):
-            self.src =  self.data_source.split(".")[-1] if "." in self.data_source else None           
+            self.src = self.data_source.split(".")[-1] if "." in self.data_source else None           
             if self.src is not None and self.src not in self.supported_types:
                 logger.debug("File type not supported! Supported types: {}".format(", ".join(self.supported_types)))
                 self.src = None
@@ -116,4 +119,3 @@ class DataSourceIdentifier():
                 logger.debug("data_source is an iterable")
             else:
                 logger.error("Object type not supported")
-
