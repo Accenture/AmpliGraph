@@ -246,7 +246,7 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all',
     if export_tsv_embeddings:
         tsv_filename = "embeddings_projector.tsv"
         logger.info('Writing embeddings tsv to: %s' % os.path.join(loc, tsv_filename))
-        np.savetxt(os.path.join(loc, tsv_filename), embeddings.numpy(), delimiter='\t')
+        np.savetxt(os.path.join(loc, tsv_filename), embeddings, delimiter='\t')
     
     # Create a checkpoint with the embeddings only
     embeddings = tf.Variable(embeddings, name='graph_embeddings')

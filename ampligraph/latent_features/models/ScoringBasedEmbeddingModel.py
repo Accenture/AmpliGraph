@@ -217,7 +217,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             return inp_score
 
     @tf.function(experimental_relax_shapes=True)
-    def _get_ranks(self, inputs, ent_embs, start_id, end_id, filters, mapping_dict, corrupt_side='s,o'):
+    def _get_ranks(self, inputs, ent_embs, start_id, end_id, filters, mapping_dict, 
+                   corrupt_side='s,o', comparision_type='worst'):
         '''
         Evaluate the inputs against corruptions and return ranks
         
@@ -238,6 +239,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             corresponding triple in inputs. 
         corrupt_side: string
             which side to corrupt during evaluation
+        comparision_type: string
+            indicates how to break ties. default `worst` i.e. assigns the worst rank to the test triple.
+            Can be passed one of the three types `best`, `middle`, `worst`
             
         Returns
         -------
@@ -250,7 +254,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                       tf.nn.embedding_lookup(self.encoding_layer.rel_emb, inputs[:, 1]),
                       tf.nn.embedding_lookup(self.encoding_layer.ent_emb, inputs[:, 2])]
             
-        return self.scoring_layer.get_ranks(inputs, ent_embs, start_id, end_id, filters, mapping_dict, corrupt_side)
+        return self.scoring_layer.get_ranks(inputs, ent_embs, start_id, end_id, filters, mapping_dict, 
+                                            corrupt_side, comparision_type)
     
     def build(self, input_shape):
         ''' Overide the build function of the Model class. This is called on the first cal; to __call__
@@ -345,6 +350,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             shuffle=True,
             initial_epoch=0,
             validation_batch_size=100,
+            validation_corrupt_side='s,o',
             validation_freq=50,
             validation_burn_in=100,
             validation_filter=False,
@@ -509,7 +515,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # before training begins call this callback function
             callbacks.on_train_begin()
 
-            if validation_entities_subset == 'all':
+            if isinstance(validation_entities_subset, str) and validation_entities_subset == 'all':
                 # if the subset is set to none, it will use all entities in the graph for generating corruptions
                 validation_entities_subset = None
                 
@@ -544,6 +550,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                           batch_size=validation_batch_size or batch_size,
                                           use_filter=validation_filter,
                                           dataset_type='valid',
+                                          corrupt_side=validation_corrupt_side,
                                           entities_subset=validation_entities_subset)
                     # compute all the metrics
                     val_logs = {'val_mrr': mrr_score(ranks), 
@@ -985,7 +992,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 # compute the rank
                 ranks = self._get_ranks(inputs, emb_mat, 
                                         start_ent_id, end_ent_id, 
-                                        filters, self.mapping_dict, self.corrupt_side)
+                                        filters, self.mapping_dict, 
+                                        self.corrupt_side, self.comparision_type)
                 # store it in the output
                 for i in tf.range(output_shape):
                     overall_rank = tf.tensor_scatter_nd_add(overall_rank, [[i]], [ranks[i, :]])
@@ -1042,6 +1050,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                  use_filter=False,
                  corrupt_side='s,o',
                  entities_subset=None,
+                 comparision_type='worst',
                  callbacks=None,
                  dataset_type='test'):
         '''
@@ -1061,6 +1070,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             and used as filter
         corrupt_side: string
             which side to corrupt (can take values: ``s``, ``o``, ``s+o`` or ``s,o``) (default:``s,o``)
+        comparision_type: string
+            indicates how to break ties. default ``worst`` i.e. assigns the worst rank to the test triple.
+            Can be passed one of the three types ``best``, ``middle``, ``worst``
         entities_subset: list, nparray
             Subset of entities to be used for generating corruptions
         callbacks: keras.callbacks.Callback
@@ -1120,8 +1132,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                           use_indexer=self.data_indexer)
         
         assert corrupt_side in ['s', 'o', 's,o', 's+o'], 'Invalid value for corrupt_side'
+        assert comparision_type in ['best', 'middle', 'worst'], 'Invalid value for comparision_type'
 
         self.corrupt_side = corrupt_side
+        self.comparision_type = comparision_type
         
         self.entities_subset = tf.constant([])
         self.mapping_dict = tf.lookup.experimental.DenseHashTable(tf.int32, tf.int32, -1, -1, -2)

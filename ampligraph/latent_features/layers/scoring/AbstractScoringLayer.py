@@ -135,7 +135,8 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         '''
         raise NotImplementedError('Abstract method not implemented!')
 
-    def get_ranks(self, triples, ent_matrix, start_ent_id, end_ent_id, filters, mapping_dict, corrupt_side='s,o'):
+    def get_ranks(self, triples, ent_matrix, start_ent_id, end_ent_id, filters, mapping_dict, 
+                  corrupt_side='s,o', comparision_type='worst'):
         ''' Computes the ranks of triples against their corruptions. 
         Ranks are computed by corruptiong triple s and o side by embeddings in ent_matrix.
         
@@ -145,7 +146,21 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
             batch of input embeddings
         ent_matrix: (m, k)
             slice of embedding matrix (corruptions)
-        
+        start_ent_id: int
+            original id of the first row of embedding matrix (used during partitioned approach)
+        end_ent_id: int 
+            original id of the last row of embedding matrix (used during partitioned approach)
+        filters: list of lists 
+            size of list is either 1 or 2 depending on the corrupt_side. 
+            size of the internal list is equal to the size of the input triples.
+            Each list contains array of filters(True Positives) related to the specified side for the 
+            corresponding triple in inputs. 
+        corrupt_side: string
+            which side to corrupt during evaluation
+        comparision_type: string
+            indicates how to break ties. default `worst` i.e. assigns the worst rank to the test triple.
+            Can be passed one of the three types `best`, `middle`, `worst`
+            
         Returns
         --------
         ranks: tf.Tensor (n,2)
@@ -168,8 +183,23 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
             # before comparing
             sub_corr_score = tf.cast(sub_corr_score * COMPARISION_PRECISION, tf.int32)
             
-            # compare True positive score against their respective corruptions and get rank.
-            sub_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) <= sub_corr_score, tf.int32), 1)
+            # if pos score: 0.5, corr_score: 0.5, 0.5, 0.3, 0.6, 0.5, 0.5
+            if comparision_type == 'best':
+                # returns: 1 i.e. only. 1 corruption is having score greater than positive (optimistic)
+                sub_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) < sub_corr_score, tf.int32), 1)
+            elif comparision_type == 'middle':
+
+                # returns: 3 i.e. 1 + (4/2) i.e. only 1  corruption is having score greater than positive
+                # and 4 corruptions are having same (middle rank is 4/2 = 1), so 1+2=3
+                sub_rank = tf.reduce_sum(tf.cast(tf.expand_dims(
+                    triple_score, 1) < sub_corr_score, tf.int32), 1) + tf.cast(tf.math.ceil(tf.reduce_sum(
+                    tf.cast(tf.expand_dims(triple_score, 1) == sub_corr_score, tf.int32), 1) / 2), tf.int32)
+            else:
+                # returns: 5 i.e. 5 corruptions are having score >= positive
+                # as you can see this strategy returns the worst rank (pessimistic)
+                
+                # compare True positive score against their respective corruptions and get rank.
+                sub_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) <= sub_corr_score, tf.int32), 1)
 
             if filters.shape[0] > 0:
                 # tf.print(tf.shape(triple_score)[0])
@@ -214,7 +244,26 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
             # Handle the floating point comparision by multiplying by reqd precision and casting to int
             # before comparing
             obj_corr_score = tf.cast(obj_corr_score * COMPARISION_PRECISION, tf.int32)
-            obj_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) <= obj_corr_score, tf.int32), 1)
+            
+            # if pos score: 0.5, corr_score: 0.5, 0.5, 0.3, 0.6, 0.5, 0.5
+            if comparision_type == 'best':
+                # returns: 1 i.e. only. 1 corruption is having score greater than positive (optimistic)
+                obj_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) < obj_corr_score, tf.int32), 1)
+            elif comparision_type == 'middle':
+                print('middle')
+                # returns: 3 i.e. 1 + (4/2) i.e. only 1  corruption is having score greater than positive
+                # and 4 corruptions are having same (middle rank is 4/2 = 1), so 1+2=3
+                obj_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) < obj_corr_score, tf.int32), 1) + \
+                    tf.cast(tf.math.ceil(tf.reduce_sum(tf.cast(tf.expand_dims(
+                    triple_score, 1) == obj_corr_score, tf.int32), 1) / 2), tf.int32)
+            else:
+                # returns: 5 i.e. 5 corruptions are having score >= positive
+                # as you can see this strategy returns the worst rank (pessimistic)
+                
+                # compare True positive score against their respective corruptions and get rank.
+                obj_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) <= obj_corr_score, tf.int32), 1)
+                
+            
             if filters.shape[0] > 0:
                 for i in tf.range(tf.shape(triple_score)[0]):
                     # TODO change the hard coded filter index
