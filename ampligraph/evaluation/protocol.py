@@ -206,50 +206,6 @@ def filter_unseen_entities(X, model, verbose=False):
     return X
 
 
-def _remove_unused_params(params):
-    """
-    Removed unused parameters considering the registries.
-
-    For example, if the regularization is None, there is no need for the regularization parameter lambda.
-
-    Parameters
-    ----------
-    params: dict
-        Dictionary with parameters.
-
-    Returns
-    -------
-    params: dict
-        Param dict without unused parameters.
-    """
-    from ..latent_features import LOSS_REGISTRY, REGULARIZER_REGISTRY, MODEL_REGISTRY, \
-        OPTIMIZER_REGISTRY, INITIALIZER_REGISTRY
-
-    def _param_without_unused(param, registry, category_type, category_type_params):
-        """Remove one particular nested param (if unused) given a registry"""
-        if category_type_params in param and category_type in registry:
-            expected_params = registry[category_type].external_params
-            params[category_type_params] = {k: v for k, v in param[category_type_params].items() if
-                                            k in expected_params}
-        else:
-            params[category_type_params] = {}
-
-    params = params.copy()
-
-    if "loss" in params and "loss_params" in params:
-        _param_without_unused(params, LOSS_REGISTRY, params["loss"], "loss_params")
-    if "regularizer" in params and "regularizer_params" in params:
-        _param_without_unused(params, REGULARIZER_REGISTRY, params["regularizer"], "regularizer_params")
-    if "optimizer" in params and "optimizer_params" in params:
-        _param_without_unused(params, OPTIMIZER_REGISTRY, params["optimizer"], "optimizer_params")
-    if "initializer" in params and "initializer_params" in params:
-        _param_without_unused(params, INITIALIZER_REGISTRY, params["initializer"], "initializer_params")
-    if "embedding_model_params" in params and "model_name" in params:
-        _param_without_unused(params, MODEL_REGISTRY, params["model_name"], "embedding_model_params")
-
-    return params
-
-
 def _flatten_nested_keys(dictionary):
     """
     Flatten the nested values of a dictionary into tuple keys
@@ -302,6 +258,7 @@ def _get_param_hash(param):
     # Remove parameters that are not used by particular configurations
     # For example, if the regularization is None, there is no need for the regularization lambda
     flattened_params = _flatten_nested_keys(_unflatten_nested_keys(param))
+
     return hash(frozenset(flattened_params.items()))
 
 

@@ -56,13 +56,20 @@ class ScoringModelBase:
         del optim_params['lr']
         
         if optimizer == 'adam':
-            return tf.keras.optimizers.Adam(learning_rate=learning_rate, **optim_params), True
+            optim = tf.keras.optimizers.Adam(learning_rate=learning_rate, **optim_params)
+            status = True
         elif optimizer == 'adagrad':
-            return tf.keras.optimizers.Adagrad(learning_rate=learning_rate, **optim_params), True
+            optim = tf.keras.optimizers.Adagrad(learning_rate=learning_rate, **optim_params)
+            status = True
         elif optimizer == 'sgd':
-            return tf.keras.optimizers.SGD(learning_rate=learning_rate, **optim_params), True
+            optim = tf.keras.optimizers.SGD(learning_rate=learning_rate, **optim_params)
+            status = True
         else:
-            return get_optimizer(optimizer), False
+            optim = get_optimizer(optimizer)
+            status = False
+
+        optim_params['lr'] = learning_rate
+        return optim, status
         
     def _get_initializer(self, initializer, initializer_params):
         if initializer == 'xavier':
