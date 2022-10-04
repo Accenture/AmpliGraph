@@ -146,6 +146,8 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
         filter_triples = {'valid': filter_triples}
     elif filter_triples is None or not filter_triples:
         filter_triples = False
+    elif isinstance(filter_triples, dict):
+        pass
     else:
         raise ValueError('Incorrect type for filter_triples')
     

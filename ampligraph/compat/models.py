@@ -185,12 +185,12 @@ class ScoringModelBase:
                  entities_subset=None,
                  callbacks=None):
         return self.model.evaluate(x, 
-                                   batch_size, 
-                                   verbose, 
-                                   use_filter, 
-                                   corrupt_side, 
-                                   entities_subset, 
-                                   callbacks)
+                                   batch_size=batch_size, 
+                                   verbose=verbose, 
+                                   use_filter=use_filter, 
+                                   corrupt_side=corrupt_side, 
+                                   entities_subset=entities_subset, 
+                                   callbacks=callbacks)
 
     
 @register_compatibility('TransE')

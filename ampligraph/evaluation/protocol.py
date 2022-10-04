@@ -667,7 +667,9 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
             early_stopping_params['x_valid'] = X_valid
 
     if use_filter:
-        X_filter = np.concatenate((X_train, X_valid, X_test))
+        X_filter = {'train': X_train, 
+                    'valid': X_valid, 
+                    'test': X_test}
     else:
         X_filter = None
 

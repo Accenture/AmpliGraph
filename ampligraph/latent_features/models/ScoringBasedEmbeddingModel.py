@@ -218,7 +218,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
     @tf.function(experimental_relax_shapes=True)
     def _get_ranks(self, inputs, ent_embs, start_id, end_id, filters, mapping_dict, 
-                   corrupt_side='s,o', comparision_type='worst'):
+                   corrupt_side='s,o', ranking_strategy='worst'):
         '''
         Evaluate the inputs against corruptions and return ranks
         
@@ -239,7 +239,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             corresponding triple in inputs. 
         corrupt_side: string
             which side to corrupt during evaluation
-        comparision_type: string
+        ranking_strategy: string
             indicates how to break ties. default `worst` i.e. assigns the worst rank to the test triple.
             Can be passed one of the three types `best`, `middle`, `worst`
             
@@ -255,7 +255,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                       tf.nn.embedding_lookup(self.encoding_layer.ent_emb, inputs[:, 2])]
             
         return self.scoring_layer.get_ranks(inputs, ent_embs, start_id, end_id, filters, mapping_dict, 
-                                            corrupt_side, comparision_type)
+                                            corrupt_side, ranking_strategy)
     
     def build(self, input_shape):
         ''' Overide the build function of the Model class. This is called on the first cal; to __call__
@@ -571,6 +571,36 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             self.is_fitted = True
             # all the training and validation logs are stored in the history object by keras.Model
             return self.history
+        
+    def get_count(self, concept_type='e'):
+        ''' Returns the count of entities and relations that were present during training.
+        
+            Parameters
+            ----------
+            concept_type: str
+                Indicates whether it is entity 'e' or relation 'r'. Default is 'e'
+                
+            Returns
+            -------
+            count: int
+                count of the entities or relations
+        '''
+        assert self.is_fitted, 'Model is not fit on the data yet!'
+        if concept_type == 'e':
+            return self.data_indexer.get_entities_count()
+        elif concept_type == 'r':
+            return self.data_indexer.get_entities_count()
+        else:
+            raise ValueError("Invalid Concept Type (expected 'e' or 'r')")
+        
+    def get_train_embedding_matrix_size(self):
+        ''' Returns the embedding matrix size used for training. 
+            This may not be same as n, k during partitioned training.
+        '''
+        assert self.is_fitted, 'Model is not fit on the data yet!'
+        return {'e': self.encoding_layer.ent_emb.shape,
+                'r': self.encoding_layer.rel_emb.shape,
+               }
         
     def save(self,
              filepath,
@@ -993,7 +1023,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 ranks = self._get_ranks(inputs, emb_mat, 
                                         start_ent_id, end_ent_id, 
                                         filters, self.mapping_dict, 
-                                        self.corrupt_side, self.comparision_type)
+                                        self.corrupt_side, self.ranking_strategy)
                 # store it in the output
                 for i in tf.range(output_shape):
                     overall_rank = tf.tensor_scatter_nd_add(overall_rank, [[i]], [ranks[i, :]])
@@ -1050,7 +1080,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                  use_filter=False,
                  corrupt_side='s,o',
                  entities_subset=None,
-                 comparision_type='worst',
+                 ranking_strategy='worst',
                  callbacks=None,
                  dataset_type='test'):
         '''
@@ -1070,7 +1100,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             and used as filter
         corrupt_side: string
             which side to corrupt (can take values: ``s``, ``o``, ``s+o`` or ``s,o``) (default:``s,o``)
-        comparision_type: string
+        ranking_strategy: string
             indicates how to break ties. default ``worst`` i.e. assigns the worst rank to the test triple.
             Can be passed one of the three types ``best``, ``middle``, ``worst``
         entities_subset: list, nparray
@@ -1132,10 +1162,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                           use_indexer=self.data_indexer)
         
         assert corrupt_side in ['s', 'o', 's,o', 's+o'], 'Invalid value for corrupt_side'
-        assert comparision_type in ['best', 'middle', 'worst'], 'Invalid value for comparision_type'
+        assert ranking_strategy in ['best', 'middle', 'worst'], 'Invalid value for ranking_strategy'
 
         self.corrupt_side = corrupt_side
-        self.comparision_type = comparision_type
+        self.ranking_strategy = ranking_strategy
         
         self.entities_subset = tf.constant([])
         self.mapping_dict = tf.lookup.experimental.DenseHashTable(tf.int32, tf.int32, -1, -1, -2)
