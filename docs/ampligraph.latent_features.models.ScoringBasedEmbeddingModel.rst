@@ -15,6 +15,8 @@ ScoringBasedEmbeddingModel
       ~ScoringBasedEmbeddingModel.evaluate
       ~ScoringBasedEmbeddingModel.predict
       ~ScoringBasedEmbeddingModel.get_embeddings
+      ~ScoringBasedEmbeddingModel.get_indexes
+      ~ScoringBasedEmbeddingModel.get_count
       ~ScoringBasedEmbeddingModel.calibrate
       ~ScoringBasedEmbeddingModel.predict_proba
       ~ScoringBasedEmbeddingModel.save_weights
@@ -26,6 +28,8 @@ ScoringBasedEmbeddingModel
    .. automethod:: ScoringBasedEmbeddingModel.evaluate
    .. automethod:: ScoringBasedEmbeddingModel.predict
    .. automethod:: ScoringBasedEmbeddingModel.get_embeddings
+   .. automethod:: ScoringBasedEmbeddingModel.get_indexes
+   .. automethod:: ScoringBasedEmbeddingModel.get_count
    .. automethod:: ScoringBasedEmbeddingModel.calibrate
    .. automethod:: ScoringBasedEmbeddingModel.predict_proba
    .. automethod:: ScoringBasedEmbeddingModel.save_weights

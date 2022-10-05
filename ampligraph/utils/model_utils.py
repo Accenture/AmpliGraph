@@ -209,21 +209,21 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all',
         logger.debug('Creating Tensorboard visualization directory: %s' % loc)
         os.mkdir(loc)
 
-    if not model.is_fitted:
+    if not model.is_fitted():
         raise ValueError('Cannot write embeddings if model is not fitted.')
 
     if entities_subset != "all":
         assert isinstance(entities_subset, list), "Please pass a list of entities of entities_subset!"
             
     if entities_subset == "all":
-        entities_index = np.arange(model.data_indexer.get_entities_count())
+        entities_index = np.arange(model.get_count('e'))
         
-        entities_label = list(model.data_indexer.get_indexes(
+        entities_label = list(model.get_indexes(
             entities_index,
             type_of='e',
             order='ind2raw'))
     else:
-        entities_index = model.data_indexer.get_indexes(
+        entities_index = model.get_indexes(
             entities_subset,
             type_of='e',
             order='raw2ind')

@@ -71,6 +71,9 @@ class ScoringModelBase:
         optim_params['lr'] = learning_rate
         return optim, status
         
+    def is_fitted(self):
+        return self.model.is_fitted()
+        
     def _get_initializer(self, initializer, initializer_params):
         if initializer == 'xavier':
             if initializer_params['uniform']:
@@ -154,10 +157,69 @@ class ScoringModelBase:
                        validation_entities_subset=early_stopping_params.get('corruption_entities', None),
                        callbacks=callbacks)
         
+    def get_indexes(self, X, type_of='t', order="raw2ind"):
+        """Converts given data to indexes or to raw data (according to order), works for 
+           both triples (type_of='t'), entities (type_of='e'), and relations (type_of='r').
+           
+           Parameters
+           ----------
+           X: np.array
+               data to be indexed.
+           type_of: str
+               one of ['e', 't', 'r']
+           order: str 
+               one of ['raw2ind', 'ind2raw']
+
+           Returns
+           -------
+           Y: np.array
+               indexed data
+        """
+        return self.model.get_indexes(X, type_of, order)
+        
+    def get_count(self, concept_type='e'):
+        ''' Returns the count of entities and relations that were present during training.
+        
+            Parameters
+            ----------
+            concept_type: str
+                Indicates whether it is entity 'e' or relation 'r'. Default is 'e'
+                
+            Returns
+            -------
+            count: int
+                count of the entities or relations
+        '''
+        if embedding_type == 'entity' or embedding_type == 'e':
+            return self.model.get_count('e')
+        elif embedding_type == 'relation' or embedding_type == 'r':
+            return self.model.get_count('r')
+        else:
+            raise ValueError('Invalid value for concept_type!')
+        
     def get_embeddings(self, entities, embedding_type='entity'):
-        if embedding_type == 'entity':
+        """Get the embeddings of entities or relations.
+        
+        .. Note ::
+
+            Use :meth:`ampligraph.utils.create_tensorboard_visualizations` to visualize the embeddings with TensorBoard.
+            
+        Parameters
+        ----------
+        entities : array-like, dtype=int, shape=[n]
+            The entities (or relations) of interest. Element of the vector must be the original string literals, and
+            not internal IDs.
+        embedding_type : string
+            If 'e' or 'entities', ``entities`` argument will be considered as a list of knowledge graph entities (i.e. nodes).
+            If set to 'r' or 'relation', they will be treated as relation types instead (i.e. predicates).
+        Returns
+        -------
+        embeddings : ndarray, shape [n, k]
+            An array of k-dimensional embeddings.
+        """
+        if embedding_type == 'entity' or embedding_type == 'e':
             return self.model.get_embeddings(entities, 'e')
-        elif embedding_type == 'relation':
+        elif embedding_type == 'relation' or embedding_type == 'r':
             return self.model.get_embeddings(entities, 'r')
         else:
             raise ValueError('Invalid value for embedding_type!')

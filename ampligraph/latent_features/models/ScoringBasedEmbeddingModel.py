@@ -53,15 +53,15 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>>           batch_size=10000,
         >>>           epochs=5)
         Epoch 1/5
-        29/29 [==============================] - 2s 67ms/step - loss: 13101.9443
+        29/29 [==============================] - 3s 87ms/step - loss: 13496.5752
         Epoch 2/5
-        29/29 [==============================] - 1s 20ms/step - loss: 11907.5771
+        29/29 [==============================] - 1s 36ms/step - loss: 13488.8682
         Epoch 3/5
-        29/29 [==============================] - 1s 21ms/step - loss: 10890.3447
+        29/29 [==============================] - 1s 35ms/step - loss: 13436.2725
         Epoch 4/5
-        29/29 [==============================] - 1s 20ms/step - loss: 9520.3994
+        29/29 [==============================] - 1s 35ms/step - loss: 13259.0840
         Epoch 5/5
-        29/29 [==============================] - 1s 20ms/step - loss: 8314.7529
+        29/29 [==============================] - 1s 34ms/step - loss: 12977.0117
     '''
     @classmethod
     def from_config(cls, config):
@@ -142,6 +142,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.seed = seed
         self.base_dir = tempfile.gettempdir()
         self.partitioner_metadata = {}
+        
+    def is_fitted(self):
+        return self.is_fitted
   
     def compute_output_shape(self, inputShape):
         ''' returns the output shape of outputs of call function
@@ -424,17 +427,19 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>>           batch_size=10000,
         >>>           epochs=5)
         Epoch 1/5
-        29/29 [==============================] - 1s 45ms/step - loss: 67361.3203
+        29/29 [==============================] - 2s 71ms/step - loss: 67361.3047
         Epoch 2/5
-        29/29 [==============================] - 1s 21ms/step - loss: 67318.1172
+        29/29 [==============================] - 1s 35ms/step - loss: 67318.6094
         Epoch 3/5
-        29/29 [==============================] - 1s 21ms/step - loss: 67017.7266
+        29/29 [==============================] - 1s 37ms/step - loss: 67020.0703
         Epoch 4/5
-        29/29 [==============================] - 1s 20ms/step - loss: 65864.6406
+        29/29 [==============================] - 1s 35ms/step - loss: 65867.3750
         Epoch 5/5
-        29/29 [==============================] - 1s 20ms/step - loss: 63518.3633
+        29/29 [==============================] - 1s 35ms/step - loss: 63517.9062
         
         >>> # Early stopping example
+        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> from ampligraph.datasets import load_fb15k_237
         >>> dataset = load_fb15k_237()
         >>> model = ScoringBasedEmbeddingModel(eta=1, 
         >>>                      k=10,
@@ -452,11 +457,29 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>> # the early stopping instance needs to be passed as callback to fit function
         >>> model.fit(dataset['train'],
         >>>              batch_size=10000,
-        >>>              epochs=100,
-        >>>              validation_freq=2,
-        >>>              validation_batch_size=100,
-        >>>              validation_data = dataset['valid'][::100],
-        >>>              callbacks=[checkpoint])     # Pass the early stopping object as a callback 
+        >>>              epochs=5,
+        >>>              validation_freq=1,                       # validation frequency
+        >>>              validation_batch_size=100,               # validation batch size
+        >>>              validation_burn_in=3,                    # burn in time
+        >>>              validation_corrupt_side='s,o',           # which side to corrupt
+        >>>              validation_data=dataset['valid'][::100], # Validation data
+        >>>              callbacks=[early_stop])                  # Pass the early stopping object as a callback 
+        Epoch 1/5
+        29/29 [==============================] - 2s 82ms/step - loss: 6698.2188
+        Epoch 2/5
+        29/29 [==============================] - 1s 34ms/step - loss: 6648.8862
+        Epoch 3/5
+        3/3 [==============================] - 1s 446ms/steposs: 6652.895
+        29/29 [==============================] - 2s 84ms/step - loss: 6590.2842 - val_mrr: 0.0811 - 
+        val_mr: 1776.4545 - val_hits@1: 0.0000e+00 - val_hits@10: 0.2301 - val_hits@100: 0.4148
+        Epoch 4/5
+        3/3 [==============================] - 0s 102ms/steposs: 6564.021
+        29/29 [==============================] - 1s 47ms/step - loss: 6517.4517 - val_mrr: 0.0918 - 
+        val_mr: 1316.6335 - val_hits@1: 0.0000e+00 - val_hits@10: 0.2528 - val_hits@100: 0.4716
+        Epoch 5/5
+        3/3 [==============================] - 1s 177ms/steposs: 6468.798
+        29/29 [==============================] - 2s 62ms/step - loss: 6431.8696 - val_mrr: 0.0901 - 
+        val_mr: 1074.8920 - val_hits@1: 0.0000e+00 - val_hits@10: 0.2386 - val_hits@100: 0.4773
         '''
         # verifies if compile has been called before calling fit
         self._assert_compile_was_called()
@@ -572,6 +595,44 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # all the training and validation logs are stored in the history object by keras.Model
             return self.history
         
+    def get_indexes(self, X, type_of='t', order="raw2ind"):
+        """Converts given data to indexes or to raw data (according to order), works for 
+           both triples (type_of='t'), entities (type_of='e'), and relations (type_of='r').
+           
+           Parameters
+           ----------
+           X: np.array
+               data to be indexed.
+           type_of: str
+               one of ['e', 't', 'r']
+           order: str 
+               one of ['raw2ind', 'ind2raw']
+
+           Returns
+           -------
+           Y: np.array
+               indexed data
+               
+           Examples
+           --------
+           >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+           >>> model = ScoringBasedEmbeddingModel(eta=5, 
+           >>>                                      k=300,
+           >>>                                      scoring_type='ComplEx',
+           >>>                                      seed=0)
+           >>> model.compile(optimizer='adam', loss='nll')
+           >>> model.fit('./fb15k-237/train.txt',
+           >>>           batch_size=10000,
+           >>>           epochs=5,
+           >>>           verbose=False)
+           >>> print(model.get_indexes(['/m/027rn', '/m/06v8s0'], 'e', 'raw2ind'))
+           >>> print(model.get_indexes([3877, 0], 'e', 'ind2raw'))
+           [0, 3877]
+           ['/m/06v8s0', '/m/027rn']
+        """
+        return self.data_indexer.get_indexes(X, type_of, order)
+        
+        
     def get_count(self, concept_type='e'):
         ''' Returns the count of entities and relations that were present during training.
         
@@ -584,12 +645,29 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             -------
             count: int
                 count of the entities or relations
+            
+            Examples
+            --------
+            >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+            >>> model = ScoringBasedEmbeddingModel(eta=5, 
+            >>>                                      k=300,
+            >>>                                      scoring_type='ComplEx',
+            >>>                                      seed=0)
+            >>> model.compile(optimizer='adam', loss='nll')
+            >>> model.fit('./fb15k-237/train.txt',
+            >>>           batch_size=10000,
+            >>>           epochs=5,
+            >>>           verbose=False)
+            >>> print('Entities:', model.get_count('e'))
+            >>> print('Relations:', model.get_count('r'))
+            Entities: 14505
+            Relations: 237
         '''
         assert self.is_fitted, 'Model is not fit on the data yet!'
         if concept_type == 'e':
             return self.data_indexer.get_entities_count()
         elif concept_type == 'r':
-            return self.data_indexer.get_entities_count()
+            return self.data_indexer.get_relations_count()
         else:
             raise ValueError("Invalid Concept Type (expected 'e' or 'r')")
         
@@ -894,15 +972,15 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>>           batch_size=10000,
         >>>           epochs=5)
         Epoch 1/5
-        29/29 [==============================] - 1s 45ms/step - loss: 67361.3203
+        29/29 [==============================] - 2s 61ms/step - loss: 67361.3047
         Epoch 2/5
-        29/29 [==============================] - 1s 21ms/step - loss: 67318.1172
+        29/29 [==============================] - 1s 35ms/step - loss: 67318.6094
         Epoch 3/5
-        29/29 [==============================] - 1s 21ms/step - loss: 67017.7266
+        29/29 [==============================] - 1s 34ms/step - loss: 67020.0703
         Epoch 4/5
-        29/29 [==============================] - 1s 20ms/step - loss: 65864.6406
+        29/29 [==============================] - 1s 34ms/step - loss: 65867.3750
         Epoch 5/5
-        29/29 [==============================] - 1s 20ms/step - loss: 63518.3633
+        29/29 [==============================] - 1s 34ms/step - loss: 63517.9062
         '''
         # get the optimizer
         self.optimizer = optimizers.get(optimizer)
@@ -1127,15 +1205,15 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>>           batch_size=10000,
         >>>           epochs=5)
         Epoch 1/5
-        29/29 [==============================] - 1s 45ms/step - loss: 67361.3203
+        29/29 [==============================] - 2s 71ms/step - loss: 67361.3047
         Epoch 2/5
-        29/29 [==============================] - 1s 21ms/step - loss: 67318.1172
+        29/29 [==============================] - 1s 35ms/step - loss: 67318.6094
         Epoch 3/5
-        29/29 [==============================] - 1s 21ms/step - loss: 67017.7266
+        29/29 [==============================] - 1s 35ms/step - loss: 67020.0703
         Epoch 4/5
-        29/29 [==============================] - 1s 20ms/step - loss: 65864.6406
+        29/29 [==============================] - 1s 33ms/step - loss: 65867.3750
         Epoch 5/5
-        29/29 [==============================] - 1s 20ms/step - loss: 63518.3633
+        29/29 [==============================] - 1s 34ms/step - loss: 63517.9062
         >>> ranks = model.evaluate('./fb15k-237/test.txt', 
         >>>                        batch_size=100,
         >>>                        corrupt_side='s,o',
@@ -1145,12 +1223,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>> mr_score(ranks), mrr_score(ranks), hits_at_n_score(ranks, 1), hits_at_n_score(ranks, 10), len(ranks)
         28 triples containing invalid keys skipped!
         9 triples containing invalid keys skipped!
-        28 triples containing invalid keys skipped!
-        206/206 [==============================] - 69s 333ms/step
-        (428.6952979743615,
-         0.25894770022882885,
-         0.1915304824346805,
-         0.39155005382131325,
+        2045/2045 [==============================] - 149s 73ms/step
+        (428.44671689989235,
+         0.25761041025282316,
+         0.1898179861043155,
+         0.391965945787259,
          20438)
         '''
         # get teh test set handler
@@ -1661,6 +1738,25 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         -------
         embeddings : ndarray, shape [n, k]
             An array of k-dimensional embeddings.
+            
+        Example
+        -------
+        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
+        >>> model = ScoringBasedEmbeddingModel(eta=5, 
+        >>>                                      k=300,
+        >>>                                      scoring_type='ComplEx',
+        >>>                                      seed=0)
+        >>> model.compile(optimizer='adam', loss='nll')
+        >>> model.fit('./fb15k-237/train.txt',
+        >>>           batch_size=10000,
+        >>>           epochs=5,
+        >>>           verbose=False)
+        >>> model.get_embeddings(['/m/027rn', '/m/06v8s0'], 'e')
+        array([[ 0.09800743,  0.12193961, -0.06898162, ...,  0.12019662,
+         -0.11576499,  0.08774101],
+        [ 0.04332181, -0.08408434,  0.07138592, ..., -0.00679277,
+         -0.05230478,  0.07487527]], dtype=float32)
         """
 
         if embedding_type == 'e':
