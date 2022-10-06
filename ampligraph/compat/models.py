@@ -71,8 +71,8 @@ class ScoringModelBase:
         optim_params['lr'] = learning_rate
         return optim, status
         
-    def is_fitted(self):
-        return self.model.is_fitted()
+    def is_fit(self):
+        return self.model.is_fit()
         
     def _get_initializer(self, initializer, initializer_params):
         if initializer == 'xavier':

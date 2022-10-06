@@ -143,7 +143,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.base_dir = tempfile.gettempdir()
         self.partitioner_metadata = {}
         
-    def is_fitted(self):
+    def is_fit(self):
         return self.is_fitted
   
     def compute_output_shape(self, inputShape):

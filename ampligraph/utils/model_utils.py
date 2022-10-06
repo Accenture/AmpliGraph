@@ -209,7 +209,7 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all',
         logger.debug('Creating Tensorboard visualization directory: %s' % loc)
         os.mkdir(loc)
 
-    if not model.is_fitted():
+    if not model.is_fit():
         raise ValueError('Cannot write embeddings if model is not fitted.')
 
     if entities_subset != "all":
