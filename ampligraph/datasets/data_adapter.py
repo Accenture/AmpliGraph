@@ -11,6 +11,7 @@ from .sqlite_adapter import SQLiteAdapter
 from .graph_partitioner import AbstractGraphPartitioner
 from .partitioned_data_manager import get_partition_adapter
 from tensorflow.python.framework import errors
+import tqdm
 
 
 class DataHandler():
@@ -108,9 +109,9 @@ class DataHandler():
         '''Returns the number of steps in the batch'''
         return self._inferred_steps
     
-    def enumerate_epochs(self):
+    def enumerate_epochs(self, use_tqdm=False):
         '''Manages the (reloading) data adapter before epoch starts'''
-        for epoch in range(self._initial_epoch, self._epochs):
+        for epoch in tqdm.tqdm(range(self._initial_epoch, self._epochs), disable=not use_tqdm):
             self._adapter.reload()   
             yield epoch, iter(self._adapter.get_tf_generator())
             self._adapter.on_epoch_end()

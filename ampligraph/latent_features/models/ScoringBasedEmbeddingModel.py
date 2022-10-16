@@ -1611,7 +1611,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         if not self.is_calibrate_with_corruption:
             negative_iterator = iter(data_handler_calibrate_neg.enumerate_epochs())
                 
-        for _, iterator in data_handler_calibrate_pos.enumerate_epochs():
+        for _, iterator in data_handler_calibrate_pos.enumerate_epochs(True):
             if not self.is_calibrate_with_corruption:
                 _, neg_handle = next(negative_iterator)
             
