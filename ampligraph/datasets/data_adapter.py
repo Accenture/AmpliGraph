@@ -74,7 +74,8 @@ class DataHandler():
                                             batch_size=batch_size,
                                             dataset_type=dataset_type,
                                             use_indexer=use_indexer,
-                                            use_filter=use_filter)
+                                            use_filter=use_filter,
+                                            in_memory=True)
             self._parent_adapter = self._adapter
 
         if partitioning_k > 1:

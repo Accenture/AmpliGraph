@@ -38,7 +38,7 @@ class DummyBackend():
            parent: parent data loader that persists data.
            name: identifying name of files for indexer, partition name/id.
         """
-        in_memory = False
+        # in_memory = False
         self.verbose = verbose
         self.identifier = identifier
         self.use_indexer = use_indexer
