@@ -775,7 +775,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             metadata['root_directory'] = os.path.dirname(filepath)
             metadata['root_directory'] = '.' if metadata['root_directory'] == '' else metadata['root_directory']
             self.base_dir = metadata['root_directory'] 
-            metadata['db_file'] = os.path.basename(metadata['db_file'])
+            try:
+                metadata['db_file'] = os.path.basename(metadata['db_file'])
+            except KeyError:
+                print('Saved model does not include a db file. Skippping.')
+
             self.data_indexer = DataIndexer([], 
                                             **metadata)
             self.is_partitioned_training = metadata['is_partitioned_training']
