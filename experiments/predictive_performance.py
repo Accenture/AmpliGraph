@@ -6,8 +6,8 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 import ampligraph.datasets
-import ampligraph.latent_features
-from ampligraph.evaluation import hits_at_n_score, mr_score, evaluate_performance, mrr_score
+from ampligraph.evaluation import hits_at_n_score, mr_score, mrr_score
+from ampligraph.compat import evaluate_performance
 
 import argparse
 import json
@@ -24,7 +24,7 @@ import warnings
 import os
 import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-tf.logging.set_verbosity(tf.logging.ERROR)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 SUPPORT_DATASETS = ["fb15k", "fb15k-237", "wn18", "wn18rr", "yago310"]
 SUPPORT_MODELS = ["complex", "transe", "distmult", "hole", "convkb", "conve"]
@@ -96,7 +96,7 @@ def run_single_exp(config, dataset, model):
     # logging.debug("Loaded...{0}...".format(dataset))
 
     # load model
-    model_class = getattr(ampligraph.latent_features,
+    model_class = getattr(ampligraph.compat,
                           config["model_name_map"][model])
     model = model_class(**hyperparams)
     # Fit the model on training and validation set

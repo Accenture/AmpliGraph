@@ -344,6 +344,8 @@ class DummyBackend():
            --------
            ndarray(batch_size, 3)
         """
+        if not isinstance(batch_size, int):
+            batch_size = int(batch_size)
         length = len(self.data)
         triples = range(0, length, batch_size)
         for start_index in triples:
