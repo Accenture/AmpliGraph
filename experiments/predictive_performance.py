@@ -1,13 +1,18 @@
 """
 Train KGE model on benchmark datasets:
 Usage:
-  predictive_performance.py <fb15k,fb15k-237,wn18,wn18rr,yago310>  <complex,transe,distmult,hole,convkb,conve> <config> <gpu> --save <root>
+  predictive_performance.py [-m <model> -d <dataset>] [--save <root>] [--gpu <gpu>] [--cfg <config>]
   predictive_performance.py -h | --help
   predictive_performance.py --version
 
 Options:
-  -h --help     Show this screen.
-  --version     Show version.
+  -m --model <model>     Specify which model/s to train, for multiple models list them separated by comma. e.g.: -m transe,complex  [default: complex,transe,distmult,hole,convkb,conve].
+  -d --dataset <dataset> Specify which dataset to train on, for multiple datasets list them  separated by comma. e.g.: -d fb15k-237,wn18rr  [default: fb15k,fb15k-237,wn18,wn18rr,yago310].
+  --gpu <gpu>            Specify which GPU to use for training models. e.g. --gpu 0, [default: 0].
+  --cfg <config>         Specify file with hyper parameters configuration for the models, [default: ./config.json].
+  -s --save <root>       Specify whether and where to save the models and results.
+  -h --help              Show this screen.
+  --version              Show version.
 """
 # Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
 #
@@ -20,8 +25,10 @@ from docopt import docopt
 import ampligraph.datasets
 from ampligraph.evaluation import hits_at_n_score, mr_score, mrr_score
 from ampligraph.compat import evaluate_performance
+from ampligraph.utils import save_model
 from schema import Schema, And, Use
 import argparse
+import itertools
 import json
 import sys
 import yaml
@@ -81,9 +88,9 @@ def display_scores(scores, root=None):
     if root is not None:
         fmt='%Y-%m-%d-%H-%M-%S'
         date = datetime.datetime.now().strftime(fmt)
-        name = os.path.join(root, "results_{}.json".format(date))
+        name = os.path.join(root, f"result_{obj['model']}_{obj['dataset']}_{date}_rst.json")
         out = {str(x):str(y) for x, y in output_rst.items()}
-        with open(os.path.join("output.rst"), "w") as f:
+        with open(os.path.join(root,  f"result_{obj['model']}_{obj['dataset']}_{date}.rst"), "w") as f:
             f.write(str(output_rst))
         with open(name, "w") as f:
             f.write(json.dumps(out))
@@ -145,10 +152,10 @@ def run_single_exp(config, dataset, model, root=None):
                       'check_interval': 50
                   })
 
-    if not hasattr(model, 'early_stopping_epoch') or model.early_stopping_epoch is None:
+    if not hasattr(model.model, 'early_stopping_epoch') or model.model.early_stopping_epoch is None:
         early_stopping_epoch = np.nan
     else:
-        early_stopping_epoch = model.early_stopping_epoch
+        early_stopping_epoch = model.model.early_stopping_epoch
 
     if root is not None: 
         fmt='%Y-%m-%d-%H-%M-%S'
@@ -191,47 +198,7 @@ def run_single_exp(config, dataset, model, root=None):
     return result 
 
 
-def run_all(config, root=None):
-    obj = []
-    for dataset in tqdm(config["hyperparams"].keys(),
-                        desc="evaluation done: "):
-        for model in config["hyperparams"][dataset].keys():
-            result = run_single_exp(config, dataset, model, root=root)
-            obj.append({
-                **result,
-                "dataset": dataset,
-                "model": config["model_name_map"][model]
-            })
-    return obj
-
-
-def run_single_dataset(config, dataset, root=None):
-    obj = []
-    for model in tqdm(config["hyperparams"][dataset].keys(),
-                      desc="evaluation done: "):
-        result = run_single_exp(config, dataset, model, root=root)
-        obj.append({
-            **result,
-            "dataset": dataset,
-            "model": config["model_name_map"][model]
-        })
-    return obj
-
-
-def run_single_model(config, model, root=None):
-    obj = []
-    for dataset in tqdm(config["hyperparams"].keys(),
-                        desc="evaluation done: "):
-        result = run_single_exp(config, dataset, model, root=root)
-        obj.append({
-            **result,
-            "dataset": dataset,
-            "model": config["model_name_map"][model]
-        })
-    return obj
-
-
-def train_model(dataset, model, config, gpu, save, root):
+def train_model(dataset, model, config, gpu, root):
     if gpu is not None:
         # set GPU id to run
         os.environ["CUDA_VISIBLE_DEVICES"] = gpu
@@ -241,55 +208,47 @@ def train_model(dataset, model, config, gpu, save, root):
                   .format(dataset, model))
 
     if dataset is None:
-        if model is None:
-            display_scores(run_all(config, save=save, root=root), root=root)
-        else:
-            if model.upper() not in config["model_name_map"]:
-                sys.exit("Input model is not valid...")
-            display_scores(run_single_model(config, model.upper(), root=root), root=root)
-    else:
-        if model is not None:
-            if model.upper() not in config["model_name_map"] \
-                    or dataset.upper() \
-                            not in config["load_function_map"]:
-                sys.exit("Input model or dataset is not valid...")
+        dataset = 'fb15k,fb15k-237,wn18,wn18rr,yago310'
+    if model is None:
+        model = 'complex,transe,distmult,hole,convkb,conve'
 
-            result = run_single_exp(config,
-                                    dataset.upper(),
-                                    model.upper(),
-                                    root=root)
-            display_scores([{
-                **result,
-                "dataset": dataset,
-                "model": config["model_name_map"][model.upper()]
-            }], root=root)
-        else:
-            if dataset.upper() not in config["load_function_map"]:
-                sys.exit("Input dataset is not supported yet...")
-            display_scores(run_single_dataset(config,
-                                              dataset.upper(), root=root),
-                                              root=root)
+    models = model.split(',')
+    datasets = dataset.split(',')
+    for model_, dataset_ in tqdm(itertools.product(models, datasets), desc='Evaluation done...'):
+        if model_.upper() not in config["model_name_map"] \
+                or dataset_.upper() \
+                        not in config["load_function_map"]:
+            sys.exit(f"Input model or dataset is not valid... {model} {dataset}")
+
+        result = run_single_exp(config,
+                                dataset_.upper(),
+                                model_.upper(),
+                                root=root)
+        display_scores([{
+            **result,
+            "dataset": dataset_,
+            "model": config["model_name_map"][model_.upper()]
+        }], root=root)
 
 
 if __name__ == "__main__":
     arguments = docopt(__doc__, version='Train KGE model on benchamark data') 
-    schema = Schema({'<fb15k,fb15k-237,wn18,wn18rr,yago310>': And(Use(lambda s: s.split(',')),
+    schema = Schema({'--dataset': And(Use(lambda s: s.split(',')),
                                                               lambda l: all([1 if elem.lower() in SUPPORT_DATASETS else 0 for elem in l])),
-                     '<complex,transe,distmult,hole,convkb,conve>': And(Use(lambda s: s.split(',')),
+                     '--model': And(Use(lambda s: s.split(',')),
                                                               lambda l: all([1 if elem.lower() in SUPPORT_MODELS else 0 for elem in l])),
                          object: object})  # don't validate other keys
     
     schema.validate(arguments)
 
 
-    dataset = arguments['<fb15k,fb15k-237,wn18,wn18rr,yago310>'] 
-    config = arguments['<config>'] 
-    model = arguments['<complex,transe,distmult,hole,convkb,conve>']
-    gpu = arguments['<gpu>'] 
-    save = arguments['--save'] 
-    root = arguments['<root>']
-    if not os.path.exists(root):
+    dataset = arguments['--dataset'] 
+    config = arguments['--cfg'] 
+    model = arguments['--model']
+    gpu = arguments['--gpu'] 
+    root = arguments['--save']
+    if root is not None and not os.path.exists(root):
         os.mkdir(root)
     with open(config) as f:
         conf = json.loads(f.read())
-    train_model(dataset, model, conf, gpu, save, root)
+    train_model(dataset, model, conf, gpu, root)
