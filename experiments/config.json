@@ -56,5 +56,5 @@
             "CONVE": {"batches_count":300,"seed":22,"epochs":500,"k":200,"eta":10,"loss": "bce","regularizer": "LP", "regularizer_params": {"lambda": 0.0001, "p":3},"optimizer":"adam","optimizer_params":{"lr":0.0001},"verbose":false}
         }
     },
-    "no_early_stopping": []
+    "no_early_stopping": ["YAGO310_TRANSE", "YAGO310_COMPLEX", "YAGO310_DISTMULT", "YAGO310_HOLE"]
 }
