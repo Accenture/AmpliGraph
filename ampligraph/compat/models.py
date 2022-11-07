@@ -100,9 +100,10 @@ class ScoringModelBase:
     def fit(self, X, 
             early_stopping=False, 
             early_stopping_params={}, 
-            tensorboard_logs_path=None):
+            tensorboard_logs_path=None, callbacks=None):
         self.model = ScoringBasedEmbeddingModel(self.eta, self.k, scoring_type=self.model_name, seed=self.seed)
-        callbacks = []
+        if callbacks is None:
+            callbacks = []
         if tensorboard_logs_path is not None:
             tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_logs_path)
             callbacks.append(tensorboard_callback)
