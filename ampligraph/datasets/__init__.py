@@ -7,10 +7,10 @@
 #
 from .datasets import load_from_csv, load_from_rdf, load_fb15k, load_wn18, load_fb15k_237, load_from_ntriples, \
     load_yago3_10, load_wn18rr, load_wn11, load_fb13, load_onet20k, load_ppi5k, load_nl27k, load_cn15k
-from .graph_data_loader import GraphDataLoader, DummyBackend
+from .graph_data_loader import GraphDataLoader, DummyBackend, DataIndexer
 from .graph_partitioner import RandomVerticesGraphPartitioner, RandomEdgesGraphPartitioner, \
     SortedEdgesGraphPartitioner, NaiveGraphPartitioner, DoubleSortedEdgesGraphPartitioner, BucketGraphPartitioner, \
-    EdgeBasedGraphPartitioner, AbstractGraphPartitioner, get_number_of_partitions
+    EdgeBasedGraphPartitioner, AbstractGraphPartitioner, get_number_of_partitions, PARTITION_ALGO_REGISTRY
 from .sqlite_adapter import SQLiteAdapter
 # from .partitioning_reporter import PartitioningReporter, compare_partitionings
 

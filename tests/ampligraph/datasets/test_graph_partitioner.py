@@ -203,6 +203,7 @@ def test_random_vertices_graph_partitioner(data, k):
     for partition in partitioner:
         actual = partition.backend.mapper.get_entities_count()
         accept_range = [x for y in [(n_nodes - i, n_nodes + i) for i in range(k)] for x in y]
+        print(accept_range)
         assert actual in accept_range, "Nodes in a bucket not equal to expected, got {}, expected {} +- (0, {}).".format(actual, k, n_nodes)
     partitioner.clean()
 
