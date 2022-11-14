@@ -18,7 +18,12 @@ from collections import namedtuple
 AMPLIGRAPH_ENV_NAME = 'AMPLIGRAPH_DATA_HOME'
 
 DatasetMetadata = namedtuple('DatasetMetadata', ['dataset_name', 'filename', 'url', 'train_name', 'valid_name',
-                                                 'test_name', 'train_checksum', 'valid_checksum', 'test_checksum'])
+                                                 'test_name', 'train_checksum', 'valid_checksum', 'test_checksum', 
+                                                 'test_human_name', 'test_human_checksum', 'test_human_ids_name', 
+                                                 'test_human_ids_checksum', 'mapper_name', 'mapper_checksum',
+                                                 'valid_negatives_name', 'valid_negatives_checksum', 'test_negatives_name',
+                                                 'test_negatives_checksum'],
+                                                 defaults=(None, None, None, None, None, None, None, None, None, None))
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -51,27 +56,41 @@ def _clean_data(X, return_idx=False):
         Indices of the remaining rows of the test dataset (with respect to the original test ndarray).
 
     """
+    filtered_X = {}
     train = pd.DataFrame(X["train"], columns=['s', 'p', 'o'])
+    filtered_X['train'] = train.values
+
     valid = pd.DataFrame(X["valid"], columns=['s', 'p', 'o'])
     test = pd.DataFrame(X["test"], columns=['s', 'p', 'o'])
 
     train_ent = np.unique(np.concatenate((train.s, train.o)))
     train_rel = train.p.unique()
 
+    if 'valid_negatives' in X:
+        valid_negatives = pd.DataFrame(X["valid_negatives"], columns=['s', 'p', 'o'])
+        valid_negatives_idx = valid_negatives.s.isin(train_ent) & valid_negatives.o.isin(train_ent) & valid_negatives.p.isin(train_rel)    
+        filtered_valid_negatives = valid_negatives[valid_negatives_idx].values
+        filtered_X['valid_negatives'] = filtered_valid_negatives
+    if 'test_negatives' in X:
+        test_negatives = pd.DataFrame(X["test_negatives"], columns=['s', 'p', 'o'])
+        test_negatives_idx = test_negatives.s.isin(train_ent) & test_negatives.o.isin(train_ent) & test_negatives.p.isin(train_rel)
+        filtered_test_negatives = test[test_negatives_idx].values    
+        filtered_X['test_negatives'] = filtered_test_negatives
+
     valid_idx = valid.s.isin(train_ent) & valid.o.isin(train_ent) & valid.p.isin(train_rel)
     test_idx = test.s.isin(train_ent) & test.o.isin(train_ent) & test.p.isin(train_rel)
 
     filtered_valid = valid[valid_idx].values
     filtered_test = test[test_idx].values
+
+    filtered_X['valid'] = filtered_valid
+    filtered_X['test'] = filtered_test
+
     if 'mapper' in X:
-        if 'test-human' in X and 'test-human-ids' in X:
-            filtered_X = {'train': train.values, 'valid': filtered_valid, 'test': filtered_test, 
-                          'test-human':X['test-human'], 'test-human-ids':X['test-human-ids'], 'mapper':X['mapper']}
-        else:
-            filtered_X = {'train': train.values, 'valid': filtered_valid, 'test': filtered_test, 
-                          'mapper':X['mapper']}
-    else:
-        filtered_X = {'train': train.values, 'valid': filtered_valid, 'test': filtered_test}
+        filtered_X['mapper'] = X['mapper']
+    if 'test-human' in X and 'test-human-ids' in X:
+        filtered_X['test-human'] = X['test-human']
+        filtered_X['test-human-ids'] = X['test-human-ids']
        
     if return_idx:
         return filtered_X, valid_idx, test_idx
@@ -142,7 +161,13 @@ def _unzip_dataset(remote, source, destination, check_md5hash=False):
     if check_md5hash:
         for file_name, remote_checksum in [[remote.train_name, remote.train_checksum],
                                            [remote.valid_name, remote.valid_checksum],
-                                           [remote.test_name, remote.test_checksum]]:
+                                           [remote.test_name, remote.test_checksum],
+                                           [remote.test_human_name, remote.test_human_checksum],
+                                           [remote.test_human_ids_name, remote.test_human_ids_checksum],
+                                           [remote.mapper_name, remote.mapper_checksum],
+                                           [remote.valid_negatives_name, remote.valid_negatives_checksum],
+                                           [remote.test_negatives_name, remote.test_negatives_checksum],
+                                           ]:
             file_path = os.path.join(destination, remote.dataset_name, file_name)
             checksum = _md5(file_path)
             if checksum != remote_checksum:
@@ -336,7 +361,7 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
     """
-
+    dataset = {}
     if dataset_metadata.dataset_name is None:
         if dataset_metadata.url is None:
             raise ValueError('The dataset name or url must be provided to load a dataset.')
@@ -347,26 +372,35 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
     train = load_from_csv(dataset_path,
                           dataset_metadata.train_name,
                           add_reciprocal_rels=add_reciprocal_rels)
+    dataset['train'] = train
     valid = load_from_csv(dataset_path,
                           dataset_metadata.valid_name,
                           add_reciprocal_rels=add_reciprocal_rels)
+    dataset['valid'] = valid
     test = load_from_csv(dataset_path,
                          dataset_metadata.test_name,
                          add_reciprocal_rels=add_reciprocal_rels)
-    if dataset_metadata.mapper_name is None:
-        return {'train': train, 'valid': valid, 'test': test}
-    else:
-        if dataset_metadata.test_human_checksum is not None and dataset_metadata.test_human_ids_checksum is not None:
-            test_human = load_from_csv(dataset_path, dataset_metadata.test_human_name)
-            test_human_ids = load_from_csv(dataset_path, dataset_metadata.test_human_ids_name)
-            if return_mapper:
-                mapper = load_mapper_from_json(dataset_path, dataset_metadata.mapper_name)
-                return {'train': train, 'valid': valid, 'test': test, 'test-human':test_human, 'test-human-ids':test_human_ids, 'mapper': mapper}
-            else:
-                 return {'train': train, 'valid': valid, 'test': test, 'test-human':test_human, 'test-human-ids':test_human_ids}          
-        else:
-            mapper = load_mapper_from_json(dataset_path, dataset_metadata.mapper_name)
-            return {'train': train, 'valid': valid, 'test': test, 'mapper': mapper}
+    dataset['test'] = test
+    if dataset_metadata.valid_negatives_name is not None:
+        valid_negatives = load_from_csv(dataset_path,
+                              dataset_metadata.valid_negatives_name,
+                              add_reciprocal_rels=add_reciprocal_rels)
+        dataset['valid_negatives'] = valid_negatives
+    if dataset_metadata.test_negatives_name is not None:
+        test_negatives = load_from_csv(dataset_path,
+                             dataset_metadata.test_negatives_name,
+                             add_reciprocal_rels=add_reciprocal_rels)
+        dataset['test_negatives'] = test_negatives
+
+    if dataset_metadata.test_human_checksum is not None and dataset_metadata.test_human_ids_checksum is not None:
+        test_human = load_from_csv(dataset_path, dataset_metadata.test_human_name)
+        dataset['test-human'] = test_human
+        test_human_ids = load_from_csv(dataset_path, dataset_metadata.test_human_ids_name)
+        dataset['test-human-ids'] = test_human_ids
+    if return_mapper:
+        mapper = load_mapper_from_json(dataset_path, dataset_metadata.mapper_name)
+        dataset['mapper'] = mapper
+    return dataset
 
 
 def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
@@ -1557,7 +1591,7 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
 
 
 def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False, return_mapper=False):
-    """Load the CoDEx dataset
+    """Load the CoDEx-M dataset
 
     The dataset is described in :cite:`safavi_codex_2020`.
 
@@ -1574,11 +1608,11 @@ def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False
     - ``valid``
     - ``test``
 
-    ========= ========= ======= ======= ============ ===========
-     Dataset  Train     Valid   Test    Entities     Relations
-    ========= ========= ======= ======= ============ ===========
-     CoDEx-M  185,584   10,310  10311   17,050        51
-    ========= ========= ======= ======= ============ ===========
+    ========= ========= ======= ================ ======= =============== ============ ===========
+     Dataset  Train     Valid   Valid-negatives   Test    Test-negatives    Entities   Relations
+    ========= ========= ======= ================ ======= =============== ============ ===========
+     CoDEx-M  185,584   10,310    10,310          10311     10311           17,050      51
+    ========= ========= ======= ================ ======= =============== ============ ===========
 
 
     Parameters
@@ -1617,11 +1651,15 @@ def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False
         train_name='train.txt',
         valid_name='valid.txt',
         test_name='test.txt',
+        valid_negatives_name='valid_negatives.txt',
+        test_negatives_name='test_negatives.txt',
         mapper_name='mapper.json' if return_mapper else None,
         train_checksum='d507616dd7b9f6ddbacf83766efaa1dd',
         valid_checksum='0fd5e85f41e0ba3ef6c10093cbe2a435',
         test_checksum='7186374c5ca7075d268ccf316927041d',
         mapper_checksum='9cf7209df69562dff36ae94f95f67e82' if return_mapper else None,
+        test_negatives_checksum = '2dc6755e9cc54145e782480c5bb2ef44',
+        valid_negatives_checksum = '381300fbd297df9db2fd05bb6cfc1f2d'
     )
 
     if clean_unseen:
