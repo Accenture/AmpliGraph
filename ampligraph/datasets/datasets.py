@@ -1618,10 +1618,10 @@ def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False
         valid_name='valid.txt',
         test_name='test.txt',
         mapper_name='mapper.json' if return_mapper else None,
-        train_checksum='',
-        valid_checksum='',
-        test_checksum='',
-        mapper_checksum='' if return_mapper else None,
+        train_checksum='d507616dd7b9f6ddbacf83766efaa1dd',
+        valid_checksum='0fd5e85f41e0ba3ef6c10093cbe2a435',
+        test_checksum='7186374c5ca7075d268ccf316927041d',
+        mapper_checksum='9cf7209df69562dff36ae94f95f67e82' if return_mapper else None,
     )
 
     if clean_unseen:
