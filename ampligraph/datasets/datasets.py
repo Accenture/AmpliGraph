@@ -1647,7 +1647,7 @@ def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False
     codex = DatasetMetadata(
         dataset_name='codex',
         filename='codex.zip',
-        url='',
+        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/codex.zip',
         train_name='train.txt',
         valid_name='valid.txt',
         test_name='test.txt',
