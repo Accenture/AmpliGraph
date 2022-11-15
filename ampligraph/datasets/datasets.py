@@ -7,6 +7,7 @@
 #
 import pandas as pd
 import os
+import json
 import numpy as np
 import logging
 import urllib
@@ -397,10 +398,53 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
         dataset['test-human'] = test_human
         test_human_ids = load_from_csv(dataset_path, dataset_metadata.test_human_ids_name)
         dataset['test-human-ids'] = test_human_ids
-    if return_mapper:
+    if dataset_metadata.mapper_checksum is not None:
         mapper = load_mapper_from_json(dataset_path, dataset_metadata.mapper_name)
         dataset['mapper'] = mapper
     return dataset
+
+
+def load_mapper_from_json(directory_path, file_name):
+    """Load a mapper from a json file
+    
+    Loads a mapper for a graph serialized in a json file as:
+    
+    .. code-block:: text
+    
+       subj1: human_labeled_subj1    
+       relationX: human_labeled_relationX
+       obj1: human_labeled_obj1
+       human_labeled_relationX: description_of_relationX
+    
+       ...
+    
+    Parameters
+    ----------
+    
+    directory_path: str
+        Folder where the input file is stored.
+    file_name : str
+        File name.
+    
+    Returns
+    -------
+    
+    mapper: dictionary of mappings between graph entities and predicates and
+            human readable version of them.
+    
+    Examples
+    --------
+    
+    >>> from ampligraph.datasets import load_mapper_from_json
+    >>> mapper = load_mapper_from_json('folder', 'mapper.json')
+    >>> mapper['/m/234fsd/']
+    'Dog'
+    """
+    
+    logger.debug('Loading mapper from {}.'.format(file_name))
+    with open(os.path.join(directory_path, file_name)) as f:
+            mapper = json.loads(f.read())
+    return mapper
 
 
 def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
@@ -1666,11 +1710,9 @@ def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False
         return _clean_data(_load_dataset(codex,
                                          data_home=None,
                                          check_md5hash=check_md5hash,
-                                         add_reciprocal_rels=add_reciprocal_rels,
-                                         return_mapper=return_mapper))
+                                         add_reciprocal_rels=add_reciprocal_rels))
     else:
         return _load_dataset(codex,
                              data_home=None,
                              check_md5hash=check_md5hash,
-                             add_reciprocal_rels=add_reciprocal_rels,
-                             return_mapper=return_mapper)
+                             add_reciprocal_rels=add_reciprocal_rels)
