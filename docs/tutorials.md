@@ -1,6 +1,9 @@
 Tutorials
 =========
 
+For a comprehensive theoretical and hands-on overview of KGE models and hands-on AmpliGraph, check out our tutorials:
+[COLING-22 KGE4NLP Tutorial (Slides + Colab Notebook)](https://kge4nlp-coling22.github.io/) and [ECAI-20 Tutorial (Slides + Recording + Colab Notebook)](https://kge-tutorial-ecai2020.github.io/). 
+
 The following Jupyter notebooks will guide you through the most important features of AmpliGraph:
 
 + [AmpliGraph basics](tutorials/AmpliGraphBasicsTutorial.md): training, saving and restoring a model, evaluating a model, 
