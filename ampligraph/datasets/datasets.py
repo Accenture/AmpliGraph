@@ -1659,7 +1659,7 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
 
 
 def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False, return_mapper=False):
-    """Load the CoDEx-M dataset
+    """Load the CoDEx-M dataset.
 
     The dataset is described in :cite:`safavi_codex_2020`.
 
@@ -1674,6 +1674,8 @@ def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False
 
     - ``train``
     - ``valid``
+    - ``valid_negatives``
+    - ``test_negatives``
     - ``test``
 
     ========= ========= ======= ================ ======= =============== ============ ===========
@@ -1700,7 +1702,7 @@ def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False
     -------
 
     splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
+        The dataset splits: {'train': train, 'valid': valid, 'valid_negatives': valid_negatives', 'test': test, 'test_negatives': test_negatives}. Each split is an ndarray of shape [n, 3].
 
     Examples
     -------
@@ -1708,7 +1710,10 @@ def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False
     >>> from ampligraph.datasets import load_codex
     >>> X = load_codex()
     >>> X["valid"][0]
-    array(['02174461', '_hypernym', '02176268'], dtype=object)
+    array(['Q60684', 'P106', 'Q4964182'], dtype=object)
+    >>> X = load_codex(return_mapper=True)
+    >>> [X['mapper'][elem]['label'] for elem in X['valid'][0]]
+    ['Novalis', 'occupation', 'philosopher']
 
     """
 
