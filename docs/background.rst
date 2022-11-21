@@ -37,3 +37,33 @@ Such scoring function is then used on positive and negative triples :math:`t^+, 
 	\mathcal{L}(\Theta) = \sum_{t^+ \in \mathcal{G}}\sum_{t^- \in \mathcal{N}}max(0, [\gamma + f_{m}(t^-;\Theta) - f_{m}(t^+;\Theta)])
 
 where :math:`\Theta` are the embeddings learned by the model, :math:`f_{m}` is the model-specific scoring function, :math:`\gamma \in \mathcal{R}` is the margin and :math:`\mathcal{N}` is a set of negative triples generated with a corruption heuristic :cite:`bordes2013translating`.
+
+
+If you reuse materials presented in the tutorials, cite as:
+
+.. code-block:: bibtex
+
+    @misc{kge4nlp_tutorial_coling22,
+    	title = {Knowledge Graph Embeddings for NLP: From Theory to Practice},
+    	url = {https://kge4nlp-coling22.github.io/},
+            author= {Adrianna Janik and
+                     Eda Bayram and
+                     Luca Costabello and
+                     Sumit Pai},
+    	date = {2022-16-10},
+            note = {COLING 2022 Tutorials}
+    }
+
+.. code-block:: bibtex
+
+    @misc{kge_tutorial_ecai20,
+    	title = {Knowledge Graph Embeddings Tutorial: From Theory to Practice},
+    	url = {http://kge-tutorial-ecai-2020.github.io/},
+            author= {Luca Costabello and
+                     Sumit Pai and
+                     Adrianna Janik and
+                     Nick McCarthy},
+    	shorttitle = {Knowledge Graph Embeddings Tutorial},
+    	date = {2020-09-04},
+            note = {ECAI 2020 Tutorials}
+    }
