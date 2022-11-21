@@ -57,6 +57,7 @@ at the location set in ``AMPLIGRAPH_DATA_HOME``.
     load_wn18
     load_wn11
     load_fb13
+    load_codex
 
 
 **Datasets Summary**
@@ -71,8 +72,11 @@ WN18      141,442   5,000   5,000   40,943        18
 YAGO3-10  1,079,040 5,000   5,000   123,182       37
 WN11      110,361   5,215   21,035  38,194        11
 FB13      316,232   11,816  47,464  75,043        13
+CODEX-M   185,584   10,310  10,311  17,050        51
 ========= ========= ======= ======= ============ ===========
 
+.. note::
+CODEX-M contains also ground truths negative triples for test and validations sets. More information about the dataset in :cite:`safavi_codex_2020`.
 
 .. warning::
     WN18 and FB15k include a large number of inverse relations, and its use in experiments has been deprecated.
