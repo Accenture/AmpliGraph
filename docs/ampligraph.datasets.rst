@@ -76,7 +76,7 @@ CODEX-M   185,584   10,310  10,311  17,050        51
 ========= ========= ======= ======= ============ ===========
 
 .. note::
-CODEX-M contains also ground truths negative triples for test and validations sets. More information about the dataset in :cite:`safavi_codex_2020`.
+    CODEX-M contains also ground truths negative triples for test and validation sets. More information about the dataset in :cite:`safavi_codex_2020`.
 
 .. warning::
     WN18 and FB15k include a large number of inverse relations, and its use in experiments has been deprecated.
