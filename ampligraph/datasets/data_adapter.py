@@ -77,11 +77,10 @@ class DataHandler():
                                             use_filter=use_filter,
                                             in_memory=True)
             self._parent_adapter = self._adapter
-
         if partitioning_k > 1:
             # if use partitioning then pass the graph data loader to partitioner and use
             # partitioned data manager
-            assert model is not None, "Please pass the model to datahandler for partitioning!"
+            assert model is not None, "Please pass the model to data_handler for partitioning!"
             self._adapter = get_partition_adapter(self._adapter,
                                                   self._model,
                                                   strategy='Bucket',

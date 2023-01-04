@@ -34,7 +34,7 @@ class TransE(AbstractScoringLayer):
         super(TransE, self).__init__(k)
 
     def _compute_scores(self, triples):
-        ''' compute scores using transe scoring function.
+        ''' compute scores using transE scoring function.
         
         Parameters
         ----------

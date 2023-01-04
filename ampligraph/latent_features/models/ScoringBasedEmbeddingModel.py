@@ -12,6 +12,7 @@ import pickle
 import numpy as np
 import os
 import tempfile
+import logging
 
 from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
 from ampligraph.datasets import data_adapter
@@ -31,6 +32,9 @@ from tensorflow.python.keras.engine import compile_utils
 
 tf.config.set_soft_device_placement(False)
 tf.debugging.set_log_device_placement(False)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 class ScoringBasedEmbeddingModel(tf.keras.Model):
@@ -95,7 +99,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             - ``DistMult`` DistMult embedding scoring function will be used
             - ``ComplEx`` ComplEx embedding scoring function will be used
             - ``HolE`` Holograph embedding scoring function will be used
-            
+
         seed: int 
             random seed
         '''
@@ -134,7 +138,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.is_partitioned_training = False
         # Variable related to data indexing (entity to idx mapping)
         self.data_indexer = True
-        
+
+        # Flag to indicate whether to include FocusE layer
+        self.use_focusE = False
+        self.focusE_params = {}
+
         self.is_calibrated = False
         self.is_fitted = False
         self.is_backward = False
@@ -261,7 +269,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                             corrupt_side, ranking_strategy)
     
     def build(self, input_shape):
-        ''' Overide the build function of the Model class. This is called on the first cal; to __call__
+        ''' Override the build function of the Model class. This is called on the first call to __call__
         In this function we set some internal parameters of the encoding layers (which are needed to build that layer)
         based on the input data supplied by the user while calling the fit function
         '''
@@ -272,24 +280,74 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.encoding_layer.max_rel_size = self.max_rel_size
         self.num_ents = self.max_ent_size
         self.built = True
-        
+
+    def compute_focusE_weights(self, weights):
+        '''Compute positive and negative weights to scale scores if use_focusE=True
+
+        Parameters
+        ----------
+        weights: (n, m)
+            batch of weights associated with true positives
+
+        Returns
+        -------
+        out: tuple
+            tuple where the first elements is a tensor containing the positive weights
+            and the second is a tensor containing the negative weights
+        '''
+
+        # focusE parameters
+        structure_weight = self.focusE_params['structural_wt']
+        # print('Copmute_focusE_weights - Structural weights', self.focusE_params['structural_wt'])
+
+        # Weights computation
+        weights = tf.reduce_mean(weights, 1)
+        # print('compute_focusE_weights - after reduce_mean weights: ', weights)
+        weights_pos = structure_weight + (1 - structure_weight) * (1 - weights)
+        weights_neg = structure_weight + (1 - structure_weight) * (
+            tf.reshape(tf.tile(weights, [self.eta]), [tf.shape(weights)[0] * self.eta]))
+
+        return weights_pos, weights_neg
+
     def train_step(self, data):
         '''
         Training step
         
         Parameters
         ----------
-        data: (n, 3)
-            batch of input triples (true positives)
+        data: (n, m)
+            batch of input triples (true positives) with weights associated if m>3
         
         Returns
         -------
         out: dict
             dictionary of metrics computed on the outputs (eg: loss)
         '''
+        if self.data_shape > 3:
+            triples = data[0]
+            if self.data_handler._adapter.use_filter:
+                weights = data[2]
+            else:
+                weights = data[1]
+        else:
+            triples = data
         with tf.GradientTape() as tape:
             # get the model predictions
-            score_pos, score_neg = self(tf.cast(data, tf.int32), training=1)
+            score_pos, score_neg = self(tf.cast(triples, tf.int32), training=1)
+            # print('score_pos, score_neg before focusE')
+            # print(score_pos)
+            # print(score_neg)
+            # focusE layer
+            if self.use_focusE:
+                logger.debug("Using FocusE")
+                non_linearity = self.focusE_params['non_linearity']
+
+                weights_pos, weights_neg = self.compute_focusE_weights(weights=weights)
+
+                # Computation of scores
+                score_pos = non_linearity(score_pos) * weights_pos
+                score_neg = non_linearity(score_neg) * weights_neg
+
             # compute the loss
             loss = self.compiled_loss(score_pos, score_neg, self.eta, regularization_losses=self.losses)
         try:
@@ -341,7 +399,64 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
         self.train_function = train_function
         return self.train_function
-    
+
+    def get_focusE_params(self, dict_params={}):
+        '''Get parameters for focusE
+
+        Parameters
+        ----------
+        dict_params: dict
+            The following hyper-params can be passed:
+
+            - **'non_linearity'**: can be one of the following values ``linear``, ``softplus``, ``sigmoid``, ``tanh``.
+            - **'stop_epoch'**: specifies how long to decay (linearly) the numeric values from 1 to original value
+            until it reaches original value.
+            - **'structural_wt'**: structural influence hyperparameter [0, 1] that modulates the influence of graph
+            topology.
+
+            if the respective key is missing, ``linear``, ``251`` and ``0.001`` are passed.                             # 251 + how to write better the documentation
+
+        Returns
+        -------
+            non_linearity, stop_epoch, structural_wt
+        '''
+        # Get the non-linearity function
+        non_linearity = dict_params.get('non_linearity', 'linear')
+        if non_linearity == 'linear':
+            non_linearity = tf.identity
+        elif non_linearity == 'tanh':
+            non_linearity = tf.tanh
+        elif non_linearity == 'sigmoid':
+            non_linearity = tf.sigmoid
+        elif non_linearity == 'softplus':
+            non_linearity = tf.math.softplus
+        else:
+            raise ValueError('Invalid focusE non-linearity')
+
+        # Get the stop_epoch for the decay
+        stop_epoch = dict_params.get('stop_epoch', 251)                                                             # Why is this default value picked?
+        assert stop_epoch >= 0,\
+                "Invalid value for focusE stop_epoch: expected a value >=0 but got {}".format(stop_epoch)
+
+        # Get structural_wt
+        structure_weight = dict_params.get('structural_wt', 0.001)
+        assert (structure_weight <= 1) and (structure_weight >= 0), "Invalid focusE 'structural_wt' passed!"
+        if stop_epoch == 0:
+            # use fixed structural weight
+            structure_weight = 0.001
+        else:
+            # linear decay of numeric values
+            structure_weight = tf.maximum(1 - self.current_epoch / stop_epoch, 0.001)
+
+        return non_linearity, stop_epoch, structure_weight
+
+    def update_focusE_params(self):
+        '''Update the structural weight after decay
+        '''
+        if self.focusE_params['structural_wt'] != 0.001:
+            stop_epoch = self.focusE_params['stop_epoch']
+            self.focusE_params['structural_wt'] = tf.maximum(1 - self.current_epoch / stop_epoch, 0.001)
+
     def fit(self,
             x=None,
             batch_size=None,
@@ -358,12 +473,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             validation_burn_in=100,
             validation_filter=False,
             validation_entities_subset=None,
-            partitioning_k=1):
+            partitioning_k=1,
+            focusE=False,
+            focusE_params={}):
         '''Fit the model of the user data.
         
         Parameters
         ----------
-        x: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
+        x: np.array(n, 3), string, GraphDataLoader instance, AbstractGraphPartitioner instance                          # How to specify that the second dimension could be >=3?
             Data OR Filename of the data file OR Data Handle - that would be used for training
         batch_size: int
             batch size to use during training. 
@@ -377,7 +494,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         validation_split: float
             validation split that would be carved out from x (default: 0.0)
             (currently supported only when x is numpy array)
-        validation_data: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
+        validation_data: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance             # Same as above
             Data OR Filename of the data file OR Data Handle - that would be used for validation
         shuffle: bool
             indicates whether to shuffle the data after every epoch during training (default: True)
@@ -394,11 +511,32 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             validation filter to be used. 
         validation_entities_subset: list, nparray
             Subset of entities to be used for generating corruptions
-            
+
             .. Note ::
-            
+
                 One can perform early stopping using the tensorflow callback ``tf.keras.callbacks.EarlyStopping``
                 as shown in the accompanying example below.
+
+        focusE: bool
+            Specify whether to include the FocusE layer
+
+            The FocusE layer :cite:`pai2021learning` allows to inject numeric edge attributes into the scoring layer
+            of a traditional knowledge graph embedding architecture.
+            Semantically, the numeric value can signify importance, uncertainity, significance, confidence, etc.
+        focusE_params: dict
+            If FocusE layer is included, specify its hyper-parameters
+
+            The following hyper-params can be passed:
+
+            - **'non_linearity'**: can be one of the following values ``linear``, ``softplus``, ``sigmoid``, ``tanh``
+            - **'stop_epoch'**: specifies how long to decay (linearly) the numeric values from 1 to original value
+            until it reachs original value.
+            - **'structural_wt'**: structural influence hyperparameter [0, 1] that modulates the influence of graph
+            topology.
+
+            If focusE==True and focusE_params==dict(), then the default values are passed.
+            
+
 
         partitioning_k: int
             No. of partitions to use while training. default is 1. The data is not partitioned when this is set to 1.
@@ -483,7 +621,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         # verifies if compile has been called before calling fit
         self._assert_compile_was_called()
-        
+        # focusE
+        self.current_epoch = 0
+        self.use_focusE = focusE
+
         # use train test unseen to split training set
         if validation_split:
             assert isinstance(x, np.ndarray), 'Validation split supported for numpy arrays only!'
@@ -491,7 +632,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                             test_size=validation_split, 
                                                             seed=self.seed, 
                                                             allow_duplication=False)
-            
+
         with training_utils.RespectCompiledTrainableState(self):
             # create data handler for the data
             self.data_handler = data_adapter.DataHandler(x,
@@ -506,12 +647,29 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                                          partitioning_k=partitioning_k)
             
             self.partitioner_metadata = self.data_handler.get_update_partitioner_metadata(self.base_dir)
-            
             # get the mapping details
             self.data_indexer = self.data_handler.get_mapper()
             # get the maximum entities and relations that will be trained (useful during partitioning)
             self.max_ent_size = self.data_handler._adapter.max_entities  
             self.max_rel_size = self.data_handler._adapter.max_relations
+            # Number of columns (i.e., only triples or also weights?)
+            self.data_shape = self.data_handler._adapter.backend.data_shape
+
+            # FocusE
+            if self.data_shape < 4:
+                self.use_focusE = False
+            else:
+                if self.use_focusE:
+                    assert isinstance(focusE_params, dict), 'focusE parameters need to be in a dict!'
+                    # Define FocusE params
+                    non_linearity, stop_epoch, structure_weight = self.get_focusE_params(focusE_params)
+                    self.focusE_params = {'non_linearity': non_linearity,
+                                          'stop_epoch': stop_epoch,
+                                          'structural_wt': structure_weight
+                                          }
+                else:
+                    print("Data shape is {}: not only triples were given, but focusE is not active!". \
+                          format(self.data_shape))
 
             # Container that configures and calls `tf.keras.Callback`s.
             if not isinstance(callbacks, callbacks_module.CallbackList):
@@ -544,11 +702,13 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 
             # enumerate over the data
             for epoch, iterator in self.data_handler.enumerate_epochs():
-                # current epcoh number
+                # current epoch number
                 self.current_epoch = epoch
                 # before epoch begins call this callback function
                 callbacks.on_epoch_begin(epoch)
-                
+                # Update focusE parameter
+                if self.use_focusE:
+                    self.update_focusE_params()
                 # handle the stop iteration of data iterator in this scope
                 with self.data_handler.catch_stop_iteration():
                     # iterate over the dataset
@@ -558,13 +718,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         callbacks.on_train_batch_begin(step)
 
                         # process this batch
-                        logs = train_function(iterator) 
+                        logs = train_function(iterator)
                         # after a batch is processed call this callback function
                         callbacks.on_train_batch_end(step, logs)
 
                 # store the logs of the last batch of the epoch
                 epoch_logs = copy.copy(logs)
-
                 # if validation is enabled
                 if epoch >= (validation_burn_in - 1) and validation_data is not None and self._should_eval(
                         epoch, validation_freq):
@@ -778,7 +937,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             try:
                 metadata['db_file'] = os.path.basename(metadata['db_file'])
             except KeyError:
-                print('Saved model does not include a db file. Skippping.')
+                print('Saved model does not include a db file. Skipping.')
 
             self.data_indexer = DataIndexer([], 
                                             **metadata)
@@ -1064,23 +1223,22 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         def test_function(iterator):
             # total number of parts in which to split the embedding matrix 
-            # (default 1 ie. use full matrix as it is)
+            # (default 1, i.e., use full matrix as it is)
             number_of_parts = 1
             
             # if it is partitioned training 
             if self.is_partitioned_training:
                 # split the emb matrix based on number of buckets
                 number_of_parts = self.partitioner_k
-                
-            # if we are using filters then the iterator return 2 outputs
+
+            data = next(iterator)
             if self.use_filter:
-                # Filters used - batch of test set data and corresponding True positives (filters)
-                inputs, filters = next(iterator)
+                inputs, filters = data[0], data[1]
             else:
-                # No filter - so just the batch of test set data
-                inputs = next(iterator)
-                # set the filter to empty
-                filters = tf.RaggedTensor.from_row_lengths([], [])
+                if self.data_shape > 3:
+                    inputs, filters = data[0], tf.RaggedTensor.from_row_lengths([], [])
+                else:
+                    inputs, filters = data, tf.RaggedTensor.from_row_lengths([], [])
 
             # compute the output shape based on the type of corruptions to be used
             output_shape = 0
@@ -1234,7 +1392,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
          0.391965945787259,
          20438)
         '''
-        # get teh test set handler
+        # get the test set handler
         self.data_handler_test = data_adapter.DataHandler(x,
                                                           batch_size=batch_size,
                                                           dataset_type=dataset_type,
@@ -1279,7 +1437,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.all_ranks = []
 
         # enumerate over the data
-        for _, iterator in self.data_handler_test.enumerate_epochs(): 
+        for _, iterator in self.data_handler_test.enumerate_epochs():
             # handle the stop iteration of data iterator in this scope
             with self.data_handler_test.catch_stop_iteration():
                 # iterate over the dataset

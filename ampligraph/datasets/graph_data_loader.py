@@ -12,6 +12,7 @@ and in-memory backend (DummyBackend).
 """
 from .source_identifier import DataSourceIdentifier
 from .data_indexer import DataIndexer
+from ampligraph.utils.model_utils import preprocess_focusE_weights
 from datetime import datetime
 import numpy as np
 import logging
@@ -50,6 +51,7 @@ class DummyBackend():
         self.use_filter = use_filter
         self.sources = {}
 
+
     def _add_dataset(self, data_source, dataset_type):
         msg = "Adding datasets to DummyBackend not possible."
         raise NotImplementedError(msg)
@@ -63,11 +65,19 @@ class DummyBackend():
         pass
         
     def get_output_signature(self):
+        triple_tensor = tf.TensorSpec(shape=(None, 3), dtype=tf.int32)
+        if self.data_shape > 3:
+            weights_tensor = tf.TensorSpec(shape=(None, self.data_shape - 3), dtype=tf.float32)
+            if self.use_filter:
+                return (triple_tensor,
+                        tf.RaggedTensorSpec(shape=(2, None, None), dtype=tf.int32),
+                        weights_tensor)
+            else:
+                return (triple_tensor, weights_tensor)
         if self.use_filter:
-            return (tf.TensorSpec(shape=(None, 3), dtype=tf.int32), 
+            return (triple_tensor,
                     tf.RaggedTensorSpec(shape=(2, None, None), dtype=tf.int32))
-        else:
-            return (tf.TensorSpec(shape=(None, 3), dtype=tf.int32))
+        return (triple_tensor)
     
     def _load(self, data_source, dataset_type):
         """Loads data into self.data.
@@ -114,10 +124,11 @@ class DummyBackend():
             elif isinstance(self.use_indexer, DataIndexer):
                 self.mapper = self.use_indexer
                 self.data = self.mapper.get_indexes(raw_data)
+        self.data_shape = self.mapper.backend.data_shape
 
     def _get_triples(self, subjects=None, objects=None, entities=None):
         """Get triples that objects belongs to objects and subjects to subjects,
-           or if not provided either object or subjet belongs to entities.
+           or if not provided either object or subject belongs to entities.
         """
         if subjects is None and objects is None:
             if entities is None:
@@ -143,9 +154,9 @@ class DummyBackend():
     def _get_complementary_entities(self, triples, use_filter=None):
         """Get subjects and objects complementary to a triple (?,p,?).
            Returns the participating entities in the relation ?-p-o and s-p-?.
-           Function used duriing evaluation.
+           Function used during evaluation.
 
-           WARNING: If the parent is set the triples returened are coming with parent indexing.
+           WARNING: If the parent is set the triples returned are coming with parent indexing.
            Parameters
            ----------
            x_triple: nd-array (N,3,) of N
@@ -159,7 +170,7 @@ class DummyBackend():
         logger.debug("Getting complementary entities")
 
         if self.parent is not None:
-            logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
+            logger.debug("Parent is set, WARNING: The triples returned are coming with parent indexing.")
 
             logger.debug("Recover original indexes.")
             triples_original_index = self.mapper.get_indexes(triples, order="ind2raw")
@@ -181,22 +192,23 @@ class DummyBackend():
 
     def _get_complementary_subjects(self, triples, use_filter=False):
         """Get subjects complementary to triples (?,p,o).
-           For a given triple retrive all triples whith same objects and predicates.
-           Function used duriing evaluation.
+           For a given triple retrieve all subjects coming from triples with same objects and predicates.
 
            Parameters
            ----------
-           triple: list or array with 3 elements (subject, predicate, object).
+           triples : list or array
+                List or array of arrays with 3 elements (subject, predicate, object).
 
            Returns
            -------
-           result of a query, list of subjects per triple.
+           subjects : list
+                Subjects present in the input triples
         """
 
         logger.debug("Getting complementary subjects")
 
         if self.parent is not None:
-            logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
+            logger.debug("Parent is set, WARNING: The triples returned are coming with parent indexing.")
 
             logger.debug("Recover original indexes.")
             triples_original_index = self.mapper.get_indexes(triples, order="ind2raw")
@@ -221,11 +233,11 @@ class DummyBackend():
 
             tmp_filter = []
             for triple in triples:
-                tmp = source[source[:, 2] == triple[2]]
-                tmp_filter.append(list(set(tmp[tmp[:, 1] == triple[1]][:, 0])))
+                tmp = source[source[:, 2] == triple[2]]                                                                 # extract filter triples where the object is the one specified
+                tmp_filter.append(list(set(tmp[tmp[:, 1] == triple[1]][:, 0])))                                         # check that the relation is the one specified and add subjects
             filtered.append(tmp_filter)
-        # Unpack data into one  list per triple no matter what filter it comes from
-        unpacked = list(zip(*filtered))
+        # Unpack data into one list per triple no matter what filter it comes from
+        unpacked = list(zip(*filtered))                                                                                 # list of all subjects that are considered
         subjects = []
         for k in unpacked:
             lst = [j for i in k for j in i]
@@ -261,21 +273,23 @@ class DummyBackend():
 
     def _get_complementary_objects(self, triples, use_filter=False):
         """Get objects complementary to  triples (s,p,?).
-           For a given triple retrive all triples whith same subjects and predicates.
-           Function used duriing evaluation.
+           For a given triple retrieve all triples with same subjects and predicates.
+           Function used during evaluation.
 
            Parameters
            ----------
-           triples: list or array with 3 elements (subject, predicate, object).
+           triples : list or array
+                List or array of arrays with 3 elements (subject, predicate, object).
 
            Returns
            -------
-           result of a query, list of objects, per triple
+           subjects : list
+                Objects present in the input triples
         """
         logger.debug("Getting complementary objects")
        
         if self.parent is not None:
-            logger.debug("Parent is set, WARNING: The triples returened are coming with parent indexing.")
+            logger.debug("Parent is set, WARNING: The triples returned are coming with parent indexing.")
 
             logger.debug("Recover original indexes.")
             triples_original_index = self.mapper.get_indexes(triples, order="ind2raw")
@@ -352,14 +366,26 @@ class DummyBackend():
             # if the last batch is smaller than the batch_size
             if start_index + batch_size >= length: 
                 batch_size = length - start_index
-            out = self.data[start_index:start_index + batch_size]
-            
+            out = self.data[start_index:start_index + batch_size, :3]
             if self.use_filter:
                 # get the filter values
                 participating_entities = self._get_complementary_entities(out, self.use_filter)
-                yield out, tf.ragged.constant(participating_entities, dtype=tf.int32)
+
+            # focusE
+            if self.data_shape > 3:
+                weights = self.data[start_index:start_index + batch_size, 3:]
+                weights = preprocess_focusE_weights(data=out,
+                                                    weights=weights)
+                if self.use_filter:
+                    yield out, tf.ragged.constant(participating_entities, dtype=tf.int32), weights
+                else:
+                    yield out, weights
+
             else:
-                yield out
+                if self.use_filter:
+                    yield out, tf.ragged.constant(participating_entities, dtype=tf.int32)
+                else:
+                    yield out
 
     def _clean(self):
         del self.data
@@ -417,7 +443,7 @@ class GraphDataLoader():
        
            Parameters
            ----------
-           data_source: numpy array, string, etc
+           data_source: numpy array, string, etc.
                File with data (e.g. CSV). Can be a path pointing to the file location, can be data loaded as numpy, etc.
            batch_size: int
                Size of batch,
@@ -436,7 +462,7 @@ class GraphDataLoader():
                Flag to be used by graph partitioner, indicates whether 
                previously indexed data in partition has to be remapped to
                new indexes (0, <size_of_partition>), to not be used with 
-               use_indexer=True, the new remappngs will be persisted.
+               use_indexer=True, the new remappings will be persisted.
            name: string
                name of the partition. this is internally used when the data is partitioned.
            parent: GraphDataLoader
@@ -462,14 +488,14 @@ class GraphDataLoader():
             self.use_filter = {'train': data_source}
         else:
             if isinstance(use_filter, dict) or use_filter is False:
-                self.use_filter = use_filter 
+                self.use_filter = use_filter
             else:
                 msg = "use_filter should be a dictionary with keys as names of filters and \
                 values as data sources, instead got {}".format(use_filter)
                 logger.error(msg)
                 raise Exception(msg)
         if bool(use_indexer) != (not remap):
-            msg = "Either remap or Indexer should be speciferd at the same time."
+            msg = "Either remap or Indexer should be specified at the same time."
             logger.error(msg)
             raise Exception(msg)
         if isinstance(backend, type) and backend != DummyBackend:
@@ -479,7 +505,7 @@ class GraphDataLoader():
                                    remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory, 
                                    verbose=verbose, use_filter=self.use_filter)
             logger.debug("Initialized Backend with database at: {}".format(self.backend.db_path))
-            
+
         elif backend is None or backend == DummyBackend:
             self.backend = DummyBackend(self.identifier, use_indexer=self.use_indexer, remap=self.remap, 
                                         name=self.name, parent=self.parent, in_memory=self.in_memory, 
@@ -487,13 +513,13 @@ class GraphDataLoader():
         else:
             self.backend = backend
 
-        self.backend._load(self.data_source, dataset_type=self.dataset_type)  
-        
+        self.backend._load(self.data_source, dataset_type=self.dataset_type)
+        self.data_shape = self.backend.data_shape
         self.batch_iterator = self.get_batch_generator(use_filter=self.use_filter, dataset_type=self.dataset_type)
         self.metadata = self.backend.mapper.metadata
-      
+
     def __iter__(self):
-        """Function needed to be used as an itertor."""
+        """Function needed to be used as an iterator."""
         return self
     
     @property
@@ -516,6 +542,7 @@ class GraphDataLoader():
  
     def get_batch_generator(self, use_filter=False, dataset_type='train'):
         """Get batch generator from the backend.
+
            Parameters
            ----------
            use_filter: filter out true positives
@@ -528,6 +555,13 @@ class GraphDataLoader():
             output_signature=self.backend.get_output_signature(),
             args=(self.batch_size, self.dataset_type, False, "")
         ).prefetch(2)
+        # else:
+        #     return tf.data.Dataset.from_generator(
+        #         self.backend._get_batch_generator,
+        #         output_signature=self.backend.get_output_signature(),
+        #         args=(self.batch_size, self.dataset_type, False, "")
+        #     ).map(preprocess_focusE_weights)\
+        #         .prefetch(2)
 
     def add_dataset(self, data_source, dataset_type):
         self.backend._add_dataset(data_source, dataset_type=dataset_type)  
@@ -551,17 +585,36 @@ class GraphDataLoader():
         return self.backend._intersect(dataloader)
 
     def get_participating_entities(self, triples, sides="s,o", use_filter=False):
-        """Get entities from triples with fixed subjects, objects or both.
+        """Get entities from triples with fixed subjects ("s"), objects ("o") or both ("s,o" or "o,s").
+
            Parameters
            ----------
-           triples: list or array with 3 elements each (subject, predicate, object)
-           sides: what entities to retrive: 's' - subjects, 'o' - objects, 's,o' - subjects and objects, 
-           'o,s' - objects and subjects.
+           triples: list, array
+                List or array of arrays with 3 elements (subject, predicate, object).
+           sides : str
+                String specifying what entities to retrieve: "s" - subjects, "o" - objects,
+                "s,o" - subjects and objects, "o,s" - objects and subjects.
 
            Returns
            -------
-           list of subjects or objects or two lists with both.
+           entities : list
+                List of subjects (if sides="s") or objects (if sides="o") or two lists with both (if sides="s,o"
+                or sides="o,s").
         """
+        """Get objects complementary to  triples (s,p,?).
+                   For a given triple retrieve all triples with same subjects and predicates.
+                   Function used during evaluation.
+
+                   Parameters
+                   ----------
+                   triples : list or array
+                        
+
+                   Returns
+                   -------
+                   subjects : list
+                        Objects present in the input triples
+                """
         if sides not in ['s', 'o', 's,o', 'o,s']:
             msg = "Sides should be either s (subject), o (object), or s,o/o,s (subject, object/object, subject), \
             instead got {}".format(sides)
@@ -584,34 +637,40 @@ class GraphDataLoader():
 
     def get_complementary_subjects(self, triples, use_filter=False):
         """Get subjects complementary to triples (?,p,o).
-           For a given triple retrive all subjects coming from triples whith same objects and predicates.
+           For a given triple retrieve all subjects coming from triples with same objects and predicates.
 
            Parameters
            ----------
-           triple: list or array with 3 elements (subject, predicate, object).
+           triples : list or array
+                List or array of arrays with 3 elements (subject, predicate, object).
 
            Returns
            -------
-           result of a query, list of subjects per triple.
+           subjects : list
+                Subjects present in the input triples
         """
         return self.backend._get_complementary_subjects(triples, use_filter=use_filter)
 
     def get_complementary_objects(self, triples, use_filter=False):
-        """Get objects complementary to triples (s,p,?).
-           For a given triple retrive all objects coming from triples whith same subjects and predicates.
+        """Get objects complementary to  triples (s,p,?).
+           For a given triple retrieve all triples with same subjects and predicates.
+           Function used during evaluation.
 
            Parameters
            ----------
-           triple: list or array with 3 elements (subject, predicate, object).
+           triples : list or array
+                List or array of arrays with 3 elements (subject, predicate, object).
 
            Returns
            -------
-           result of a query, list of objects per triple.
+           subjects : list
+                Objects present in the input triples
         """
         return self.backend._get_complementary_objects(triples, use_filter=use_filter)        
     
     def get_complementary_entities(self, triples, use_filter=False):
         """Get subjects and objects complementary to triples (?,p,?).
+
            Returns the participating entities in the relation ?-p-o and s-p-?.
 
            Parameters

@@ -16,13 +16,13 @@ class ComplEx(AbstractScoringLayer):
     The ComplEx model :cite:`trouillon2016complex` is an extension of
     the :class:`ampligraph.latent_features.DistMult` bilinear diagonal model
     
-    . ComplEx scoring function is based on the trilinear Hermitian dot product in :math:`\mathcal{C}`:
+    ComplEx scoring function is based on the trilinear Hermitian dot product in :math:`\mathbb{C}`:
     
     .. math::
         f_{ComplEx}=Re(\langle \mathbf{r}_p, \mathbf{e}_s, \overline{\mathbf{e}_o}  \rangle)
         
     .. note::
-        Since ComplEx embeddings belong to :math:`\mathcal{C}`, this model uses twice as many parameters as
+        Since ComplEx embeddings belong to :math:`\mathbb{C}`, this model uses twice as many parameters as
         :class:`ampligraph.latent_features.DistMult`.
     """
     
@@ -37,17 +37,17 @@ class ComplEx(AbstractScoringLayer):
         self.internal_k = 2 * k
 
     def _compute_scores(self, triples):
-        ''' compute scores using ComplEx scoring function.
+        ''' Compute scores using ComplEx scoring function.
         
         Parameters
         ----------
-        triples: (n, 3)
-            batch of input triples
+        triples: array of size (n, 3)
+            Batch of input triples
         
         Returns
         -------
         scores: 
-            tensor of scores of inputs
+            Tensor of scores of inputs
         '''
         # split the embeddings of s, p, o into 2 parts (real and img part)
         e_s_real, e_s_img = tf.split(triples[0], 2, axis=1)

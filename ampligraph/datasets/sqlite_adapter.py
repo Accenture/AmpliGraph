@@ -16,6 +16,7 @@ DEFAULT_CHUNKSIZE: [default 30000] size of data that can be at once loaded to th
 """
 from .data_indexer import DataIndexer
 from ampligraph.utils.profiling import get_human_readable_size
+from ampligraph.utils.model_utils import preprocess_focusE_weights
 import sqlite3
 from sqlite3 import Error
 import numpy as np
@@ -67,7 +68,7 @@ class SQLiteAdapter():
             root_directory: directory where data will be stored - database created and mappings.
             use_indexer: object of type DataIndexer with predifined mapping or bool flag to tell whether data 
             should be indexed.
-            remap: wether to remap or not (shouldn't be used here) - NotImplemented here.
+            remap: whether to remap or not (shouldn't be used here) - NotImplemented here.
             parent: Not Implemented.
             verbose: print status messages.
         """
@@ -103,11 +104,19 @@ class SQLiteAdapter():
             self.chunk_size = chunk_size
             
     def get_output_signature(self):
+        triple_tensor = tf.TensorSpec(shape=(None, 3), dtype=tf.int32)
+
+        # focusE
+        if self.data_shape > 3:
+            weights_tensor = tf.TensorSpec(shape=(None, self.data_shape - 3), dtype=tf.float32)
+            if self.use_filter:
+                return (triple_tensor,
+                        tf.RaggedTensorSpec(shape=(2, None, None), dtype=tf.int32),
+                        weights_tensor)
+            return (triple_tensor, weights_tensor)
         if self.use_filter:
-            return (tf.TensorSpec(shape=(None, 3), dtype=tf.int32), 
-                    tf.RaggedTensorSpec(shape=(2, None, None), dtype=tf.int32))
-        else:
-            return (tf.TensorSpec(shape=(None, 3), dtype=tf.int32))
+            return (triple_tensor, tf.RaggedTensorSpec(shape=(2, None, None), dtype=tf.int32))
+        return (triple_tensor)
         
     def open_db(self):
         db_uri = 'file:{}?mode=rw'.format(pathname2url(self.db_path))
@@ -157,23 +166,39 @@ class SQLiteAdapter():
            -------
            db_schema: list of SQL commands to create tables and indexes.
         """
-        db_schema = [
-            """CREATE TABLE triples_table (subject integer,
-                                    predicate integer,
-                                    object integer,
-                                    dataset_type text(50)
-                                    );""",
-            "CREATE INDEX triples_table_sp_idx ON triples_table (subject, predicate);",
-            "CREATE INDEX triples_table_po_idx ON triples_table (predicate, object);",
-            "CREATE INDEX triples_table_type_idx ON triples_table (dataset_type);",
-            "CREATE INDEX triples_table_sub_obj_idx ON triples_table (subject, object);",
-            "CREATE INDEX triples_table_subject_idx ON triples_table (subject);",
-            "CREATE INDEX triples_table_object_idx ON triples_table (object);"
-        ]
+        if self.data_shape < 4:
+            db_schema = [
+                """CREATE TABLE triples_table (subject integer,
+                                        predicate integer,
+                                        object integer,
+                                        dataset_type text(50)
+                                        );""",
+                "CREATE INDEX triples_table_sp_idx ON triples_table (subject, predicate);",
+                "CREATE INDEX triples_table_po_idx ON triples_table (predicate, object);",
+                "CREATE INDEX triples_table_type_idx ON triples_table (dataset_type);",
+                "CREATE INDEX triples_table_sub_obj_idx ON triples_table (subject, object);",
+                "CREATE INDEX triples_table_subject_idx ON triples_table (subject);",
+                "CREATE INDEX triples_table_object_idx ON triples_table (object);"
+            ]
+        else: # focusE
+            db_schema = [
+                """CREATE TABLE triples_table (subject integer,
+                                        predicate integer,
+                                        object integer,
+                                        weight float,
+                                        dataset_type text(50)
+                                        );""",
+                "CREATE INDEX triples_table_sp_idx ON triples_table (subject, predicate);",
+                "CREATE INDEX triples_table_po_idx ON triples_table (predicate, object);",
+                "CREATE INDEX triples_table_type_idx ON triples_table (dataset_type);",
+                "CREATE INDEX triples_table_sub_obj_idx ON triples_table (subject, object);",
+                "CREATE INDEX triples_table_subject_idx ON triples_table (subject);",
+                "CREATE INDEX triples_table_object_idx ON triples_table (object);"
+            ]
         return db_schema
 
     def _get_clean_up(self):
-        """Defines SQL commands to clean the databse (tables and indexes).
+        """Defines SQL commands to clean the database (tables and indexes).
     
            Returns
            -------
@@ -230,8 +255,9 @@ class SQLiteAdapter():
            Parameters
            ----------
            table: table where to input data.
-           values: array of data with shape (N,3) to be written to the database, 
-                   where N is a number of entries.      
+           values: array of data with shape (N,m) to be written to the database,
+                   where N is a number of entries, m=3 if we only have triples and                                      # How to write documentation?
+                   m>3 if we have numerical weights associated with each triple.
         """
         with self:
             if self.verbose:
@@ -259,7 +285,7 @@ class SQLiteAdapter():
 
     def _get_triples(self, subjects=None, objects=None, entities=None):
         """Get triples that objects belongs to objects and subjects to subjects,
-           or if not provided either object or subjet belongs to entities.
+           or if not provided either object or subject belongs to entities.
         """
         if subjects is None and objects is None:
             if entities is None:
@@ -277,7 +303,7 @@ class SQLiteAdapter():
         triples = np.append(triples[:, :3].astype('int'), triples[:, 3].reshape(-1, 1), axis=1)
         return triples 
 
-    def get_indexed_triples(self, chunk, dataset_type="train"): 
+    def get_indexed_triples(self, chunk, dataset_type="train"):
         """Get indexed triples.
     
            Parameters
@@ -297,10 +323,15 @@ class SQLiteAdapter():
             chunk = chunk.values
         if self.use_indexer:
             # logger.debug(chunk)
-            triples = self.mapper.get_indexes(chunk)
+            triples = self.mapper.get_indexes(chunk[:, :3])
+            if self.data_shape > 3:
+                weights = chunk[:, 3:]
+                weights = preprocess_focusE_weights(data=triples,
+                                                    weights=weights)
+                return np.hstack([triples, weights, np.array(len(triples) * [dataset_type]).reshape(-1, 1)])            # focusE
             return np.append(triples, np.array(len(triples) * [dataset_type]).reshape(-1, 1), axis=1)
         else:
-            return np.append(chunk, np.array(len(chunk) * [dataset_type]).reshape(-1, 1), axis=1)
+            return np.append(chunk, np.array(len(chunk) * [dataset_type]).reshape(-1, 1), axis=1)                       # focusE already OK because chunk includes the 4-th dim
 
     def index_entities(self):
         """Index data. It reloads data before as it is an iterator."""
@@ -346,7 +377,7 @@ class SQLiteAdapter():
         self.data_source = data_source        
         self.loader = loader
         if loader is None:
-            self.loader = self.identifier.fetch_loader()
+            self.loader = self.identifier.fetch_loader()                                                                # Return a function like read_csv
         if not self.is_indexed() and self.use_indexer is not False:
             if self.verbose:
                 logger.debug("indexing...")
@@ -355,12 +386,13 @@ class SQLiteAdapter():
             logger.debug("Data is already indexed or no indexing is required.")
         if get_indexed_triples is None:
             get_indexed_triples = self.get_indexed_triples
-        data = self.loader(data_source, chunk_size=self.chunk_size)
+        data = self.loader(data_source, chunk_size=self.chunk_size)                                                     # Here triples are actually retrieved
 
         self.reload_data()
-        for chunk in data:
-            values_triples = get_indexed_triples(chunk, dataset_type=dataset_type)
-            self._insert_values_to_a_table("triples_table", values_triples)  
+        for chunk in data: # chunk is a numpy array of size (n,m) with m=3/4
+            self.data_shape = chunk.shape[1]
+            values_triples = get_indexed_triples(chunk, dataset_type=dataset_type)                                      # take a subset of a chunk (if needed)
+            self._insert_values_to_a_table("triples_table", values_triples)
         if self.verbose:
             logger.debug("data is populated")
         
@@ -372,7 +404,6 @@ class SQLiteAdapter():
                 present_filters = [x[0] for x in self._execute_query("SELECT DISTINCT dataset_type FROM triples_table")]
                 if key not in present_filters:
                     self.populate(self.use_filter[key], key)
-            
         query = "SELECT count(*) from triples_table;"
         _ = self._execute_query(query)
     
@@ -408,7 +439,7 @@ class SQLiteAdapter():
         logger.debug("Database removed.")
 
     def _get_complementary_objects(self, triples, use_filter=None):
-        """For a given triple retrive all triples whith same subjects and predicates.
+        """For a given triple retrieve all triples with same subjects and predicates.
 
            Parameters
            ----------
@@ -445,7 +476,7 @@ class SQLiteAdapter():
         return results
 
     def _get_complementary_subjects(self, triples, use_filter=None):
-        """For a given triple retrive all triples whith same objects and predicates.
+        """For a given triple retrieve all triples with same objects and predicates.
 
            Parameters
            ----------
@@ -504,7 +535,7 @@ class SQLiteAdapter():
             indicates which dataset to use (train | test | validation).
         batch_size: int
             number of elements in a batch (default: 1).
-        use_filter : bool
+        use_filter : bool                                                                                               # This argument is not given!
             Flag to indicate whether to return the concepts that need to be filtered
         index_by: possible values:  {"", so, os, s, o}, indicates whether to use index and which to use,
                                    index by subject, object or both. Indexes were created for the fields so 
@@ -523,9 +554,8 @@ class SQLiteAdapter():
                                  This is returned only if use_filter is set to true.
         """
         if not isinstance(dataset_type, str):
-            dataset_type = dataset_type.decode("utf-8") 
-        size = self.get_data_size(condition="where dataset_type ='{}'".format(dataset_type))
-
+            dataset_type = dataset_type.decode("utf-8")
+        size = self.get_data_size(condition="where dataset_type ='{}'".format(dataset_type))                            # focusE: size ppi55k = 230929
         self.batches_count = int(np.ceil(size / batch_size))
         logger.debug("batches count: {}".format(self.batches_count))
         logger.debug("size of data: {}".format(size))
@@ -556,17 +586,30 @@ class SQLiteAdapter():
             out = self._execute_query(query)
             # logger.debug(out)
             if out:
-                out = np.array(out)[:, :3] .astype(np.int32)
-                
-            if self.use_filter:
-                # get the filter values
-                participating_entities = self._get_complementary_entities(out)
-                yield out, tf.ragged.constant(participating_entities)
+                triples = np.array(out)[:, :3] .astype(np.int32)
+                # focusE
+                if self.data_shape > 3:
+                    weights = np.array(out)[:, 3:-1]
+                    weights = preprocess_focusE_weights(data=triples,
+                                                        weights=weights)
 
             else:
-                yield out                    
+                weights = np.array([])
+
+            if self.use_filter:
+                # get the filter values
+                participating_entities = self._get_complementary_entities(triples)
+                if self.data_shape > 3:
+                    yield triples, tf.ragged.constant(participating_entities), weights
+                else:
+                    yield triples, tf.ragged.constant(participating_entities)
+            else:
+                if self.data_shape > 3:
+                    yield triples, weights
+                else:
+                    yield triples
                     
-    def summary(self, count=True):
+    def summary(self, count=True):                                                                                      # FocusE fix types
         """Prints summary of the database, whether it exists, what
            tables does it have and how many records (count=True),
            what are fields held and their types with an example record.
@@ -601,10 +644,10 @@ class SQLiteAdapter():
             tables = self._execute_query("SELECT name FROM sqlite_master WHERE type='table';")
             tables_names = ", ".join(table[0] for table in tables)
             print(summary.format(*get_human_readable_size(file_size), tables_names))            
-            types = {"integer": "int", "string": "str"}
+            types = {"integer": "int", "float":"float", "string": "str"}                                                # float aggiunto per focusE
             for table_name in tables:
                 result = self._execute_query("PRAGMA table_info('%s')" % table_name)
-                cols_name_type = ["{} ({}):".format(x[1], types[x[2]] if x[2] in types else x[2]) for x in result]
+                cols_name_type = ["{} ({}):".format(x[1], types[x[2]] if x[2] in types else x[2]) for x in result]      # FocusE
                 length = len(cols_name_type)
                 print("-------------\n|" + table_name[0].upper() + "|\n-------------\n")
                 formatted_record = "{:7s}{}\n{:7s}{}".format(" ", "{:25s}" * length, "e.g.", "{:<25s}" * length)
