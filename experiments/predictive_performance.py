@@ -45,7 +45,7 @@ import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-SUPPORT_DATASETS = ["fb15k", "fb15k-237", "wn18", "wn18rr", "yago310"]
+SUPPORT_DATASETS = ["fb15k", "fb15k-237", "wn18", "wn18rr", "yago310", "ppi5k"]                                         # FocusE
 SUPPORT_MODELS = ["complex", "transe", "distmult", "hole", "convkb", "conve"]
 
 
@@ -125,7 +125,7 @@ def run_single_exp(config, dataset, model, root=None):
 
     load_func = getattr(ampligraph.datasets,
                         config["load_function_map"][dataset])
-    X = load_func()
+    X = load_func()                                                                                                     # The numeric values are stored in train/valid/test_numeric_values -> separate vector
     # logging.debug("Loaded...{0}...".format(dataset))
     model_name = model
     # load model
@@ -133,8 +133,22 @@ def run_single_exp(config, dataset, model, root=None):
                           config["model_name_map"][model])
     model = model_class(**hyperparams)
     # Fit the model on training and validation set
+
+    # focusE
+    focusE_weights_train = X.get('train_numeric_values', None)
+    focusE_weights_valid = X.get('valid_numeric_values', None)
+    focusE_weights_test = X.get('test_numeric_values', None)
+
+    if focusE_weights_train is not None:
+        X["train"] = np.concatenate([X["train"], focusE_weights_train], axis=1)
+    if focusE_weights_valid is not None:
+        X["valid"] = np.concatenate([X["valid"], focusE_weights_valid], axis=1)
+    if focusE_weights_test is not None:
+        X["test"] = np.concatenate([X["test"], focusE_weights_test], axis=1)
+
     # The entire dataset will be used to filter out false positives statements
     # created by the corruption procedure:
+
     filter = np.concatenate((X['train'], X['valid'], X['test']))
 
     if es_code in config["no_early_stopping"]:
@@ -171,6 +185,7 @@ def run_single_exp(config, dataset, model, root=None):
                                  model,
                                  filter,
                                  verbose=False)
+
 
     # compute and print metrics:
     mr = mr_score(ranks)

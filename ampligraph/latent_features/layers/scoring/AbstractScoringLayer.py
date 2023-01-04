@@ -6,7 +6,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 import tensorflow as tf
-# Precision for floating point comparision
+# Precision for floating point comparison
 COMPARISION_PRECISION = 1e3
 
 # Scoring layer registry. Every scoring function must be registered in this registry.
@@ -136,9 +136,9 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         raise NotImplementedError('Abstract method not implemented!')
 
     def get_ranks(self, triples, ent_matrix, start_ent_id, end_ent_id, filters, mapping_dict, 
-                  corrupt_side='s,o', comparision_type='worst'):
+                  corrupt_side='s,o', comparison_type='worst'):
         ''' Computes the ranks of triples against their corruptions. 
-        Ranks are computed by corruptiong triple s and o side by embeddings in ent_matrix.
+        Ranks are computed by corrupting triple s and o side by embeddings in ent_matrix.
         
         Parameters
         -----------
@@ -157,7 +157,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
             corresponding triple in inputs. 
         corrupt_side: string
             which side to corrupt during evaluation
-        comparision_type: string
+        comparison_type: string
             indicates how to break ties. default `worst` i.e. assigns the worst rank to the test triple.
             Can be passed one of the three types `best`, `middle`, `worst`
             
@@ -169,7 +169,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         # compute the score of true positives
         triple_score = self._compute_scores(triples)
         
-        # Handle the floating point comparision by multiplying by reqd precision and casting to int
+        # Handle the floating point comparison by multiplying by reqd precision and casting to int
         # before comparing
         triple_score = tf.cast(triple_score * COMPARISION_PRECISION, tf.int32)
         
@@ -179,15 +179,15 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
             
             # compute the score by corrupting the subject side of triples by ent_matrix
             sub_corr_score = self._get_subject_corruption_scores(triples, ent_matrix)
-            # Handle the floating point comparision by multiplying by reqd precision and casting to int
+            # Handle the floating point comparison by multiplying by reqd precision and casting to int
             # before comparing
             sub_corr_score = tf.cast(sub_corr_score * COMPARISION_PRECISION, tf.int32)
             
             # if pos score: 0.5, corr_score: 0.5, 0.5, 0.3, 0.6, 0.5, 0.5
-            if comparision_type == 'best':
+            if comparison_type == 'best':
                 # returns: 1 i.e. only. 1 corruption is having score greater than positive (optimistic)
                 sub_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) < sub_corr_score, tf.int32), 1)
-            elif comparision_type == 'middle':
+            elif comparison_type == 'middle':
 
                 # returns: 3 i.e. 1 + (4/2) i.e. only 1  corruption is having score greater than positive
                 # and 4 corruptions are having same (middle rank is 4/2 = 1), so 1+2=3
@@ -216,7 +216,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                                                      filter_ids_selector, 
                                                      axis=0)
                         
-                    # This is done for patritioning (where the full emb matrix is not used)
+                    # This is done for partitioning (where the full emb matrix is not used)
                     # this gets only the filter ids of the current partition being used for generating corruption
                     filter_ids_selector = tf.logical_and(filter_ids >= start_ent_id, 
                                                          filter_ids <= end_ent_id)
@@ -230,7 +230,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                     # check how many of those were ranked higher than the test triple
                     num_filters_ranked_higher = tf.reduce_sum(
                         tf.cast(tf.gather(triple_score, [i]) <= score_filter, tf.int32))
-                    # ajust the rank of the test triple accordingly
+                    # adjust the rank of the test triple accordingly
                     sub_rank = tf.tensor_scatter_nd_sub(sub_rank, [[i]], [num_filters_ranked_higher])
                  
                 filter_index += 1
@@ -241,15 +241,15 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
             # compute the score by corrupting the object side of triples by ent_matrix
             obj_corr_score = self._get_object_corruption_scores(triples, ent_matrix)
 
-            # Handle the floating point comparision by multiplying by reqd precision and casting to int
+            # Handle the floating point comparison by multiplying by reqd precision and casting to int
             # before comparing
             obj_corr_score = tf.cast(obj_corr_score * COMPARISION_PRECISION, tf.int32)
             
             # if pos score: 0.5, corr_score: 0.5, 0.5, 0.3, 0.6, 0.5, 0.5
-            if comparision_type == 'best':
+            if comparison_type == 'best':
                 # returns: 1 i.e. only. 1 corruption is having score greater than positive (optimistic)
                 obj_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) < obj_corr_score, tf.int32), 1)
-            elif comparision_type == 'middle':
+            elif comparison_type == 'middle':
                 print('middle')
                 # returns: 3 i.e. 1 + (4/2) i.e. only 1  corruption is having score greater than positive
                 # and 4 corruptions are having same (middle rank is 4/2 = 1), so 1+2=3

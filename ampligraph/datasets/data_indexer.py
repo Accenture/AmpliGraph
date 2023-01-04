@@ -84,6 +84,7 @@ class DataIndexer():
         logger.debug("Initialisation of DataIndexer.")
         self.backend_type = backend
         self.data = X
+        # print(X)
 #        if len(kwargs) == 0:
 #            self.backend = INDEXER_BACKEND_REGISTRY.get(backend)(X)
 #        else:
@@ -123,11 +124,11 @@ class DataIndexer():
         return self.backend.get_entities_count()
        
     def clean(self):
-        """Remove persisted and in-memor objects."""
+        """Remove persisted and in-memory objects."""
         return self.backend.clean()
        
     def get_entities_in_batches(self, batch_size=-1, random=False, seed=None):
-        """Generator that retrives entities and return them in batches.
+        """Generator that retrieves entities and return them in batches.
            
            Parameters
            ----------
@@ -310,7 +311,7 @@ class InMemory():
         """Index entities and relations. Creates shelves for mappings between
            entities and relations to indexes and reverse mapping.
 
-           Remember to use mappings for entities with entities and reltions with relations!
+           Remember to use mappings for entities with entities and relations with relations!
         """
         if sample is None:
             sample = self.data
@@ -376,9 +377,9 @@ class InMemory():
            ----------
            sample: numpy array with raw data, that was previously indexed.
            type_of: type of provided sample, one of the following values: {"t", "e", "r"}, indicates whether provided
-                 sample is an array of triples ("t"), list of entities ("e") or list of
-                 relations ("r").
-           order: raw2ind or ind2raw, should it convert raw data to indexes or indexes to raw data?
+                 sample is an array of triples (`"t"`), list of entities (`"e"`) or list of
+                 relations (`"r"`).
+           order: `"raw2ind"` or `"ind2raw"`, should it convert raw data to indexes or indexes to raw data?
            Returns
            -------
            array of same size as sample but with indexes of elements instead
@@ -391,9 +392,15 @@ class InMemory():
 
         if type_of == "t":
             if isinstance(sample, pd.DataFrame):
-                return self.get_indexes_from_a_dictionary(sample.values, order=order)
+                sample = sample.values
+            self.data_shape = sample.shape[1]
+            indexed_data = self.get_indexes_from_a_dictionary(sample[:,:3], order=order)
+            # focusE
+            if sample.shape[1] > 3:
+                    weights = sample[:,3:]
+                    return np.concatenate([indexed_data, weights], axis=1)
             else:
-                return self.get_indexes_from_a_dictionary(sample, order=order)
+                return indexed_data
         else:
             return self.get_indexes_from_a_dictionary_single(sample, type_of=type_of, order=order)
 
@@ -455,7 +462,7 @@ class InMemory():
         return merged            
 
     def get_indexes_from_a_dictionary_single(self, sample, type_of="e", order="raw2ind"):
-        """Get indexed elements (entities, relatiosn) from an in-memory dictionary.
+        """Get indexed elements (entities, relations) from an in-memory dictionary.
 
            Parameters
            ----------
@@ -626,11 +633,11 @@ class Shelves():
 
         for chunk in self.data:
             if isinstance(chunk, pd.DataFrame):
-                self.update_shelves(chunk.values, rough=True)
+                self.update_shelves(chunk.iloc[:,:3].values, rough=True)
             else:
-                self.update_shelves(chunk, rough=True)
+                self.update_shelves(chunk[:,:3], rough=True)
 
-        logger.debug("We need to reindex all the data now so the indexes are continous among chunks")
+        logger.debug("We need to reindex all the data now so the indexes are continuous among chunks")
         self.reindex()
 
         self.files_id = "_{}_{}.shf".format(self.name, date)
@@ -644,10 +651,10 @@ class Shelves():
                               "name": self.name})            
  
     def reindex(self):
-        """Reindex the data to continous values from 0 to <MAX UNIQUE ENTIITES/RELATIONS>.
+        """Reindex the data to continuous values from 0 to <MAX UNIQUE ENTITIES/RELATIONS>.
            This is needed where data is provided in chunks as we don't know the overlap
-           between chunks upfront ant indexes are not coninous.
-           This guarantees that entities and relations have a continous index.
+           between chunks upfront ant indexes are not continuous.
+           This guarantees that entities and relations have a continuous index.
         """
         logger.debug("starting reindexing...")
         remapped_ents_file = "remapped_ents.shf"
@@ -866,7 +873,12 @@ class Shelves():
             raise Exception(msg)
 
         if type_of == "t":
-            return self.get_indexes_from_shelves(sample, order=order)
+            self.data_shape = sample.shape[1]
+            indexed_data = self.get_indexes_from_shelves(sample[:, :3], order=order)
+            if sample.shape[1] > 3:
+                weights = sample[:, 3:]
+                return np.concatenate([indexed_data, weights], axis=1)
+            return indexed_data
         else:
             return self.get_indexes_from_shelves_single(sample, type_of=type_of, order=order)
 
@@ -1085,6 +1097,7 @@ class SQLite():
         logger.debug("Update db with data.")
         if sample is None:
             sample = self.data
+        logger.debug("sample = {}".format(sample))
         subjects = sample[:, 0]
         objects = sample[:, 2]
         relations = sample[:, 1]
@@ -1172,10 +1185,10 @@ class SQLite():
         """
         for chunk in self.data:
             if isinstance(chunk, pd.DataFrame):
-                self.update_db(sample=chunk.values)
+                self.update_db(sample=chunk.iloc[:,:3].values)
             else:
-                self.update_db(chunk)
-        logger.debug("We need to reindex all the data now so the indexes are continous among chunks")
+                self.update_db(chunk[:,:3])
+        logger.debug("We need to reindex all the data now so the indexes are continuous among chunks")
         self.index_data('entities')
         self.index_data('relations')
                     
@@ -1205,7 +1218,13 @@ class SQLite():
             raise Exception(msg)
 
         if type_of == "t":
-            return self.get_indexes_from_db(sample, order=order)
+            self.data_shape = sample.shape[1]
+            indexed_data = self.get_indexes_from_db(sample[:,:3], order=order)
+            # focusE
+            if sample.shape[1] > 3:
+                weights = sample[:,3:]
+                return np.concatenate([indexed_data, weights], axis=1)
+            return indexed_data
         else:
             out, _ = self.get_indexes_from_db_single(sample, type_of=type_of, order=order)
             return out

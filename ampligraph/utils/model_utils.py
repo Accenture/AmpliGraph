@@ -319,3 +319,46 @@ def dataframe_to_triples(X, schema):
     for s, p, o in schema:
         triples.extend([[si, p, oi] for si, oi in zip(X[s], X[o])])
     return np.array(triples)
+
+def preprocess_focusE_weights(data, weights, normalize=True):
+    '''Preprocessing of focusE weights.
+
+    Extract weights from data, remove NaNs, average weights and normalize them
+    if **self.focusE_params['normalize_numeric_values']==True**                                                         # Check how to write documentation
+
+    Parameters
+    ----------
+    data: array
+        array of shape (n,m) with m>2. If weights argument is None, data contains triples
+        and weights (m>3). If weight is passed, data only contains triples (m=3).
+    weights: array
+        If not None, weights has shape (n, l), with l>0.
+    normalize : bool
+        Specify whether to normalize the weights into the [0,1] range.
+
+    Returns
+    -------
+        an array of weights properly normalized
+    '''
+    if weights.ndim == 1:
+        weights = weights.reshape(-1, 1)
+    logger.debug("focusE normalizing weights")
+    unique_relations = np.unique(data[:, 1])
+    for reln in unique_relations:
+        for col_idx in range(weights.shape[1]):
+            # here nans signify unknown numeric values
+            if np.sum(
+                    pd.isna(weights[data[:, 1] == reln,col_idx])
+                    ) != weights[data[:, 1] == reln, col_idx].shape[0]:
+                min_val = np.nanmin(weights[data[:, 1] == reln, col_idx].astype(np.float32))
+                max_val = np.nanmax(weights[data[:, 1] == reln, col_idx].astype(np.float32))
+                if min_val == max_val:
+                    weights[data[:, 1] == reln, col_idx] = 1.0
+                    continue
+                # Normalization of the weights
+                if normalize:
+                    weights[data[:, 1] == reln, col_idx] = \
+                            (weights[data[:, 1] == reln, col_idx].astype(float) - min_val) / (max_val - min_val)
+            else:
+                pass  # all the weights are nans
+    return weights

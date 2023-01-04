@@ -47,7 +47,7 @@ def load_csv(data_source, chunk_size=None, sep='\t', verbose=False, **kwargs):
 
 
 def chunks(iterable, chunk_size=1):
-    """Chunkls genertaor"""
+    """Chunks generator"""
     iterator = iter(iterable)
     for first in iterator:
         yield np.array(list(chain([first], islice(iterator, chunk_size - 1))))
@@ -97,7 +97,7 @@ class DataSourceIdentifier():
         self._identify()
                 
     def fetch_loader(self):
-        """Returns adequate loader required to read  identified file."""
+        """Returns adequate loader required to read identified file."""
         logger.debug("Return adequate loader that provides loading of data source.")
         return self.supported_types[self.src]
    

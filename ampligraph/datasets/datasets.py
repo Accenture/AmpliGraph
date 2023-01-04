@@ -37,8 +37,9 @@ def _clean_data(X, return_idx=False):
     Parameters
     ----------
     X: dict
-        Dicionary containing the following keys: train, valid, test.
-        Each key should contain an ndarray of shape [n, 3].
+        Dictionary containing the following keys: train, valid, test.
+        Each key should contain a ndarray of shape [n, m] with m >= 3
+        (> if weights are included in the array).
 
     return_idx: bool
         Whether to return the indices of the remaining rows in valid and test respectively.
@@ -46,8 +47,8 @@ def _clean_data(X, return_idx=False):
     Returns
     -------
     filtered_X: dict
-        Dicionary containing the following keys: train, valid, test.
-        Each key contains an ndarray of shape [n, 3].
+        Dictionary containing the following keys: train, valid, test.
+        Each key contains a ndarray of shape [n, m].
         Valid and test do not contain entities or relations that are not present in train.
 
     valid_idx: ndarray
@@ -58,22 +59,22 @@ def _clean_data(X, return_idx=False):
 
     """
     filtered_X = {}
-    train = pd.DataFrame(X["train"], columns=['s', 'p', 'o'])
-    filtered_X['train'] = train.values
+    train = pd.DataFrame(X["train"][:,:3], columns=['s', 'p', 'o'])
+    filtered_X['train'] = X["train"]
 
-    valid = pd.DataFrame(X["valid"], columns=['s', 'p', 'o'])
-    test = pd.DataFrame(X["test"], columns=['s', 'p', 'o'])
+    valid = pd.DataFrame(X["valid"][:,:3], columns=['s', 'p', 'o'])
+    test = pd.DataFrame(X["test"][:,:3], columns=['s', 'p', 'o'])
 
     train_ent = np.unique(np.concatenate((train.s, train.o)))
     train_rel = train.p.unique()
 
     if 'valid_negatives' in X:
-        valid_negatives = pd.DataFrame(X["valid_negatives"], columns=['s', 'p', 'o'])
+        valid_negatives = pd.DataFrame(X["valid_negatives"][:, :3], columns=['s', 'p', 'o'])
         valid_negatives_idx = valid_negatives.s.isin(train_ent) & valid_negatives.o.isin(train_ent) & valid_negatives.p.isin(train_rel)    
         filtered_valid_negatives = valid_negatives[valid_negatives_idx].values
         filtered_X['valid_negatives'] = filtered_valid_negatives
     if 'test_negatives' in X:
-        test_negatives = pd.DataFrame(X["test_negatives"], columns=['s', 'p', 'o'])
+        test_negatives = pd.DataFrame(X["test_negatives"][:, :3], columns=['s', 'p', 'o'])
         test_negatives_idx = test_negatives.s.isin(train_ent) & test_negatives.o.isin(train_ent) & test_negatives.p.isin(train_rel)
         filtered_test_negatives = test[test_negatives_idx].values    
         filtered_X['test_negatives'] = filtered_test_negatives
@@ -81,8 +82,10 @@ def _clean_data(X, return_idx=False):
     valid_idx = valid.s.isin(train_ent) & valid.o.isin(train_ent) & valid.p.isin(train_rel)
     test_idx = test.s.isin(train_ent) & test.o.isin(train_ent) & test.p.isin(train_rel)
 
-    filtered_valid = valid[valid_idx].values
-    filtered_test = test[test_idx].values
+    # filtered_valid = valid[valid_idx].values
+    # filtered_test = test[test_idx].values
+    filtered_valid = X["valid"][valid_idx]
+    filtered_test = X["test"][test_idx]
 
     filtered_X['valid'] = filtered_valid
     filtered_X['test'] = filtered_test
@@ -106,7 +109,7 @@ def _get_data_home(data_home=None):
     If data_home is provided this location a check is
     performed to see if the path exists and creates one if it does not.
     If data_home is None the AMPLIGRAPH_ENV_NAME dataset is used.
-    If AMPLIGRAPH_ENV_NAME is not set the a default environment ``~/ampligraph_datasets`` is used.
+    If AMPLIGRAPH_ENV_NAME is not set the default environment ``~/ampligraph_datasets`` is used.
 
     Parameters
     ----------
@@ -860,7 +863,7 @@ def load_wn11(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
     WordNet was originally proposed in `WordNet: a lexical database for English` :cite:`miller1995wordnet`.
 
     WN11 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
 
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
@@ -1162,18 +1165,18 @@ def load_from_ntriples(folder_name, file_name, data_home=None, add_reciprocal_re
     return df.values
 
 
-def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, split_threshold=0.1):
+def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, split_threshold=0.1):                      # FocusE
     """ Creates the dataset splits for training models with FocusE layers
     
     Parameters
     ----------
     dataset : dict
-        dictionary of train, test, valid datasets of size (n,4) - where the first 3 cols are s, p, o and 
-        4th is the numeric value associated with the triple
+        dictionary of train, test, valid datasets of size (n,m) - where m>3. The first 3 cols are s, p, o and
+        afterwards is the numeric values associated with the triple, that can be potentially multiple
     
     split_test_into_top_bottom: bool
         Splits the test set by numeric values and returns test_top_split and test_bottom_split by splitting 
-        based on sorted numeric values and returning top and bottom k% triples, where k is specified by 
+        based on sorted numeric values and returning top and bottom k*100% triples, where k is specified by
         `split_threshold` argument
         
     split_threshold: float
@@ -1197,15 +1200,15 @@ def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, spl
         Each dataset split is a ndarray of shape [n,3]
         The topk and bottomk splits are only returned when split_test_into_top_bottom is set to True
     """
-    dataset['train_numeric_values'] = dataset['train'][:, 3].astype(np.float32)
-    dataset['valid_numeric_values'] = dataset['valid'][:, 3].astype(np.float32)
-    dataset['test_numeric_values'] = dataset['test'][:, 3].astype(np.float32)
+    dataset['train_numeric_values'] = dataset['train'][:, 3:].astype(np.float32)
+    dataset['valid_numeric_values'] = dataset['valid'][:, 3:].astype(np.float32)
+    dataset['test_numeric_values'] = dataset['test'][:, 3:].astype(np.float32)
     
     dataset['train'] = dataset['train'][:, 0:3]
     dataset['valid'] = dataset['valid'][:, 0:3]
     dataset['test'] = dataset['test'][:, 0:3]
-        
-    sorted_indices = np.argsort(dataset['test_numeric_values'])
+
+    sorted_indices = np.squeeze(np.argsort(dataset['test_numeric_values']))
     dataset['test'] = dataset['test'][sorted_indices]
     dataset['test_numeric_values'] = dataset['test_numeric_values'][sorted_indices]
     
@@ -1380,7 +1383,7 @@ def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
 
     dataset = _load_dataset(ppi5k, data_home=None,
                             check_md5hash=check_md5hash)
-    
+
     if clean_unseen:
         dataset = _clean_data(dataset)
 
@@ -1626,6 +1629,7 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
 1 	/film/film/edited_by 	                Edited by 	        NaN 	                                        /m/0cc5qkt 	War Horse 	Michael Kahn 	/m/03q8ch
 
     """
+    import requests
     url = 'https://ampgraphenc.s3-eu-west-1.amazonaws.com/datasets/xai_fb15k_237.csv'
 
     r = requests.get(url, allow_redirects=True)
