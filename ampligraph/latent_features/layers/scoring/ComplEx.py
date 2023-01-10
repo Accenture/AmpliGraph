@@ -11,10 +11,10 @@ from .AbstractScoringLayer import register_layer, AbstractScoringLayer
 
 @register_layer('ComplEx')
 class ComplEx(AbstractScoringLayer):
-    r"""Complex embeddings (ComplEx) Layer class
+    r"""Complex Embeddings (ComplEx) scoring layer.
     
     The ComplEx model :cite:`trouillon2016complex` is an extension of
-    the :class:`ampligraph.latent_features.DistMult` bilinear diagonal model
+    the :class:`ampligraph.latent_features.DistMult` bilinear diagonal model.
     
     ComplEx scoring function is based on the trilinear Hermitian dot product in :math:`\mathbb{C}`:
     
@@ -37,17 +37,17 @@ class ComplEx(AbstractScoringLayer):
         self.internal_k = 2 * k
 
     def _compute_scores(self, triples):
-        ''' Compute scores using ComplEx scoring function.
+        ''' Compute scores using the ComplEx scoring function.
         
         Parameters
         ----------
-        triples: array of size (n, 3)
-            Batch of input triples
+        triples: array, shape (n, 3)
+            Batch of input triples.
         
         Returns
         -------
-        scores: 
-            Tensor of scores of inputs
+        scores: tf.Tensor
+            Tensor with scores of the inputs.
         '''
         # split the embeddings of s, p, o into 2 parts (real and img part)
         e_s_real, e_s_img = tf.split(triples[0], 2, axis=1)
@@ -61,19 +61,20 @@ class ComplEx(AbstractScoringLayer):
 
     def _get_subject_corruption_scores(self, triples, ent_matrix):
         ''' Compute subject corruption scores.
+
         Evaluate the inputs against subject corruptions and scores of the corruptions.
         
         Parameters
         ----------
-        triples: (n, k)
-            batch of input embeddings
-        ent_matrix: (m, k)
-            slice of embedding matrix (corruptions)
+        triples: array-like, shape (n, k)
+            Batch of input embeddings.
+        ent_matrix: array-like, shape (m, k)
+            Slice of embedding matrix (corruptions).
         
         Returns
         -------
-        scores: (n, 1)
-            scores of subject corruptions (corruptions defined by ent_embs matrix)
+        scores: tf.Tensor, shape (n, 1)
+            Scores of subject corruptions (corruptions defined by `ent_embs` matrix).
         '''
         # split the embeddings of s, p, o into 2 parts (real and img part)
         e_s_real, e_s_img = tf.split(triples[0], 2, axis=1)
@@ -93,19 +94,20 @@ class ComplEx(AbstractScoringLayer):
 
     def _get_object_corruption_scores(self, triples, ent_matrix):
         ''' Compute object corruption scores.
+
         Evaluate the inputs against object corruptions and scores of the corruptions.
         
         Parameters
         ----------
-        triples: (n, k)
-            batch of input embeddings
-        ent_matrix: (m, k)
-            slice of embedding matrix (corruptions)
+        triples: array-like, shape (n, k)
+            Batch of input embeddings.
+        ent_matrix: array-like, shape (m, k)
+            Slice of embedding matrix (corruptions).
         
         Returns
         -------
-        scores: (n, 1)
-            scores of object corruptions (corruptions defined by ent_embs matrix)
+        scores: tf.Tensor, shape (n, 1)
+            Scores of object corruptions (corruptions defined by `ent_embs` matrix).
         '''
         # split the embeddings of s, p, o into 2 parts (real and img part)
         e_s_real, e_s_img = tf.split(triples[0], 2, axis=1)

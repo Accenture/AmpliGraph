@@ -57,7 +57,7 @@ def register_loss(name, external_params=None):
 
 
 def clip_before_exp(value):
-    """Clip the value for stability of exponential
+    """Clip the value for stability of exponential.
     """
     return tf.clip_by_value(value,
                             clip_value_min=DEFAULT_CLIP_EXP_LOWER,
@@ -65,7 +65,7 @@ def clip_before_exp(value):
 
 
 class Loss(abc.ABC):
-    """Abstract class for loss function.
+    """Abstract class for the loss function.
     """
 
     name = ""
@@ -73,17 +73,17 @@ class Loss(abc.ABC):
     class_params = {}
 
     def __init__(self, hyperparam_dict={}, verbose=False):
-        """Initialize Loss.
+        """Initialize the loss..
 
         Parameters
         ----------
         hyperparam_dict : dict
-            dictionary of hyperparams.
+            Dictionary of hyperparams.
             
-            - **'reduction'** : (string). 
-                Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
+            - `"reduction"`: (str) - Specifies whether to `"sum"` or take the `"mean"` of loss per sample w.r.t. \
+                 corruptions (default: `"sum"`).
             
-            (Other Keys are described in the hyperparameters section)
+            Other Keys are described in the `hyperparameters` section.
         """
         self._loss_parameters = {}
         self._loss_parameters['reduction'] = hyperparam_dict.get('reduction', DEFAULT_REDUCTION)
@@ -113,7 +113,7 @@ class Loss(abc.ABC):
         return [self._loss_metric]
     
     def _reduce_sample_loss(self, loss):
-        ''' aggregates the per sample loss either by adding or taking mean wrt number of corruptions'''
+        ''' Aggregates the loss of each sample either by adding or taking the mean w.r.t. the number of corruptions.'''
         if self._loss_parameters['reduction'] == 'sum':
             return tf.reduce_sum(loss, 0)
         else:
@@ -124,8 +124,8 @@ class Loss(abc.ABC):
 
         Parameters
         ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The Loss will check the keys to get the corresponding params.
+        hyperparam_dict : dict
+            The Loss will check the keys to get the corresponding parameters.
         """
         msg = 'This function is a placeholder in an abstract class.'
         logger.error(msg)
@@ -133,7 +133,8 @@ class Loss(abc.ABC):
 
     @tf.function(experimental_relax_shapes=True)
     def _apply_loss(self, scores_pos, scores_neg):
-        """Interface to external world.
+        """Interface to the external world.
+
         This function does the input checks, preprocesses input and finally applies loss function.
 
         Parameters
@@ -153,25 +154,26 @@ class Loss(abc.ABC):
         raise NotImplementedError(msg)
         
     def _broadcast_score_pos(self, scores_pos, eta):
-        """Broadcast the score_pos to be as same size as the number of corruptions
+        """Broadcast the ``score_pos`` to be of size equal to the number of corruptions.
         
         Parameters
         ----------
         scores_pos : tf.Tensor
             A tensor of scores assigned to positive statements.
         eta : tf.Tensor
-            Number of corruptions
+            Number of corruptions.
 
         Returns
         -------
         scores_pos : tf.Tensor
-            Broadcasted score_pos
+            Broadcasted `score_pos`.
         """
         scores_pos = tf.reshape(tf.tile(scores_pos, [eta]), [eta, tf.shape(scores_pos)[0]])
         return scores_pos
 
     def __call__(self, scores_pos, scores_neg, eta, regularization_losses=None):
         """Interface to external world.
+
         This function does the input checks, preprocesses input and finally applies loss function.
 
         Parameters
@@ -181,9 +183,9 @@ class Loss(abc.ABC):
         scores_neg : tf.Tensor
             A tensor of scores assigned to negative statements.
         eta: tf.Tensor
-           number of synthetic corruptions per positive
+           Number of synthetic corruptions per positive.
         regularization_losses: list   
-           List of all regularization related losses defined in the layers
+           List of all regularization related losses defined in the layers.
 
         Returns
         -------
@@ -236,18 +238,18 @@ class PairwiseLoss(Loss):
     """
 
     def __init__(self, loss_params={}, verbose=False):
-        """Initialize Loss.
+        """Initialize the loss.
 
         Parameters
         ----------
         loss_params : dict
             Dictionary of loss-specific hyperparams:
 
-            - **'margin'**: (float). Margin to be used in pairwise loss computation (default: 1)
-            - **'reduction'** : (string). 
-                Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
+            - `"margin"`: (float) - Margin to be used in pairwise loss computation (default: 1).
+            - `"reduction"`: (str) - Specifies whether to `"sum"` or take the `"mean"` of loss per sample \
+                w.r.t. corruptions (default: `"sum"`).
 
-            Example: ``loss_params={'margin': 1}``
+            Example: `loss_params={'margin': 1}`.
         """
         super().__init__(loss_params, verbose)
 
@@ -256,10 +258,10 @@ class PairwiseLoss(Loss):
 
         Parameters
         ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The Loss will check the keys to get the corresponding params
+        hyperparam_dict : dict
+            The Loss will check the keys to get the corresponding parameter.
 
-            - **margin** - Margin to be used in pairwise loss computation(default:1)
+            - `"margin"`: (str) - Margin to be used in pairwise loss computation (default: 1).
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
 
@@ -269,9 +271,9 @@ class PairwiseLoss(Loss):
 
         Parameters
         ----------
-        scores_pos : tf.Tensor, shape [n, 1]
+        scores_pos : tf.Tensor, shape (n, 1)
             A tensor of scores assigned to positive statements.
-        scores_neg : tf.Tensor, shape [n, 1]
+        scores_neg : tf.Tensor, shape (n, 1)
             A tensor of scores assigned to negative statements.
 
         Returns
@@ -287,7 +289,7 @@ class PairwiseLoss(Loss):
 
 @register_loss("nll")
 class NLLLoss(Loss):
-    r"""Negative log-likelihood loss.
+    r"""Negative Log-Likelihood loss.
 
     As described in :cite:`trouillon2016complex`.
 
@@ -295,8 +297,8 @@ class NLLLoss(Loss):
 
         \mathcal{L}(\Theta) = \sum_{t \in \mathcal{G} \cup \mathcal{C}}log(1 + exp(-y \, f_{model}(t;\Theta)))
 
-    where :math:`y \in {-1, 1}` is the label of the statement, :math:`\mathcal{G}` is the set of positives,
-    :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
+    where :math:`y \in \{-1, 1\}` is the label of the statement, :math:`\mathcal{G}` is the set of positives,
+    :math:`\mathcal{C}` is the set of corruptions and :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
     Examples
     --------
@@ -311,15 +313,15 @@ class NLLLoss(Loss):
     """
 
     def __init__(self, loss_params={}, verbose=False):
-        """Initialize Loss.
+        """Initialize the loss..
 
         Parameters
         ----------
         loss_params : dict
-            Dictionary of hyperparams. No hyperparameters are required for this loss.
+            Dictionary of hyperparams. No hyperparameters are required for this loss except for `"reduction"`.
             
-            - **'reduction'** : (string). 
-                Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
+            - `"reduction"`: (str) - Specifies whether to `"sum"` or take `"mean"` of loss per sample w.r.t. \
+            corruption (default:`"sum"`).
         """
         super().__init__(loss_params, verbose)
 
@@ -329,7 +331,7 @@ class NLLLoss(Loss):
         Parameters
         ----------
         hyperparam_dict : dictionary
-            Consists of key value pairs. The Loss will check the keys to get the corresponding params.
+            The Loss will check the keys to get the corresponding parameters.
         """
         return
 
@@ -339,9 +341,9 @@ class NLLLoss(Loss):
 
         Parameters
         ----------
-        scores_pos : tf.Tensor, shape [n, 1]
+        scores_pos : tf.Tensor, shape (n, 1)
             A tensor of scores assigned to positive statements.
-        scores_neg : tf.Tensor, shape [n, 1]
+        scores_neg : tf.Tensor, shape (n, 1)
             A tensor of scores assigned to negative statements.
 
         Returns
@@ -361,14 +363,14 @@ class NLLLoss(Loss):
 
 @register_loss("absolute_margin", ['margin'])
 class AbsoluteMarginLoss(Loss):
-    r"""Absolute margin , max-margin loss.
+    r"""Absolute margin, max-margin loss.
 
     Introduced in :cite:`Hamaguchi2017`.
 
     .. math::
 
-        \mathcal{L}(\Theta) = \sum_{t^+ \in \mathcal{G}}\sum_{t^- \in \mathcal{C}} f_{model}(t^-;\Theta)
-        - max(0, [\gamma - f_{model}(t^+;\Theta)])
+        \mathcal{L}(\Theta) = \sum_{t^+ \in \mathcal{G}}\sum_{t^- \in \mathcal{C}}
+        max(0, [\gamma - f_{model}(t^-;\Theta)]) - f_{model}(t^+;\Theta)
 
     where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives, :math:`\mathcal{C}` is the
     set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
@@ -386,18 +388,18 @@ class AbsoluteMarginLoss(Loss):
     """
 
     def __init__(self, loss_params={}, verbose=False):
-        """Initialize Loss
+        """Initialize the loss.
 
         Parameters
         ----------
         loss_params : dict
             Dictionary of loss-specific hyperparams:
 
-            - **'margin'**: float. Margin to be used in pairwise loss computation (default:1)
-            - **'reduction'** : (string). 
-                Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
+            - `"margin"`: (float) - Margin to be used in pairwise loss computation (default: 1).
+            - `"reduction"`: (str) - Specifies whether to `"sum"` or take `"mean"` of loss per sample w.r.t.\
+            corruption (default: `"sum"`).
 
-            Example: ``loss_params={'margin': 1}``
+            Example: ``loss_params={'margin': 1}``.
         """
         super().__init__(loss_params, verbose)
 
@@ -407,12 +409,9 @@ class AbsoluteMarginLoss(Loss):
         Parameters
         ----------
         hyperparam_dict : dict
-           Consists of key value pairs. The Loss will check the keys to get the corresponding params.
+           The Loss will check the keys to get the corresponding params.
 
-           **margin** - Margin to be used in loss computation(default:1)
-
-        Returns
-        -------
+           `"margin"`: (str) - Margin to be used in loss computation (default: 1).
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN)
 
@@ -422,9 +421,9 @@ class AbsoluteMarginLoss(Loss):
 
         Parameters
         ----------
-        scores_pos : tf.Tensor, shape [n, 1]
+        scores_pos : tf.Tensor, shape (n, 1)
            A tensor of scores assigned to positive statements.
-        scores_neg : tf.Tensor, shape [n, 1]
+        scores_neg : tf.Tensor, shape (n, 1)
            A tensor of scores assigned to negative statements.
 
         Returns
@@ -440,27 +439,27 @@ class AbsoluteMarginLoss(Loss):
 
 @register_loss("self_adversarial", ['margin', 'alpha'])
 class SelfAdversarialLoss(Loss):
-    r"""Self adversarial sampling loss.
+    r"""Self Adversarial Sampling loss.
 
     Introduced in :cite:`sun2018rotate`.
 
     .. math::
 
-        \mathcal{L} = -log\, \sigma(\gamma + f_{model} (\mathbf{s},\mathbf{o}))
-        - \sum_{i=1}^{n} p(h_{i}^{'}, r, t_{i}^{'} ) \ log \
-        \sigma(-f_{model}(\mathbf{s}_{i}^{'},\mathbf{o}_{i}^{'}) - \gamma)
+        \mathcal{L} = -log \left( \sigma(\gamma + f_{model} (\mathbf{s},\mathbf{o})) \right)
+        - \sum_{i=1}^{n} p(h'_{i}, r, t'_{i} ) \cdot log
+        \left( \sigma(-f_{model}(\mathbf{s}'_{i},\mathbf{o}'_{i}) - \gamma) \right)
 
     where :math:`\mathbf{s}, \mathbf{o} \in \mathcal{R}^k` are the embeddings of the subject
-    and object of a triple :math:`t=(s,r,o)`, :math:`\gamma` is the margin, :math:`\sigma` the sigmoid function,
-    and :math:`p(s_{i}^{'}, r, o_{i}^{'} )` is the negatives sampling distribution which is defined as:
+    and object of a triple :math:`t=(s,r,o)`, :math:`\gamma \in \mathbb{R}` is the margin, :math:`\sigma` the sigmoid
+    function, and :math:`p(s'_{i}, r, o'_{i})` is the negatives sampling distribution which is defined as:
 
     .. math::
 
-        p(s'_j, r, o'_j | \{(s_i, r_i, o_i)\}) = \frac{\exp \alpha \, f_{model}(\mathbf{s'_j}, \mathbf{o'_j})}
-        {\sum_i \exp \alpha \, f_{model}(\mathbf{s'_i}, \mathbf{o'_i})}
+        p(s'_j, r, o'_j | \{(s_i, r_i, o_i)\}) = \frac{\exp \left( \alpha \, f_{model}(\mathbf{s'_j}, \mathbf{o'_j}) \right)}
+        {\sum_i \exp \left( \alpha \, f_{model}(\mathbf{s'_i}, \mathbf{o'_i}) \right)}
 
-    where :math:`\alpha` is the temperature of sampling, :math:`f_{model}` is the scoring function of
-    the desired embeddings model.
+    where :math:`\alpha` is the temperature of sampling and :math:`f_{model}` is the scoring function of
+    the desired embedding model.
 
     Examples
     --------
@@ -468,26 +467,26 @@ class SelfAdversarialLoss(Loss):
     >>> loss = lfs.SelfAdversarialLoss({'margin': 1, 'alpha': 0.1, 'reduction': 'mean'})
     >>> isinstance(loss, lfs.SelfAdversarialLoss)
     True
-    
+
     >>> loss = lfs.get('self_adversarial')
     >>> isinstance(loss, lfs.SelfAdversarialLoss)
     True
     """
 
     def __init__(self, loss_params={}, verbose=False):
-        """Initialize Loss
+        """Initialize the loss.
 
         Parameters
         ----------
         loss_params : dict
             Dictionary of loss-specific hyperparams:
 
-            - **'margin'**: (float). Margin to be used for loss computation (default: 1)
-            - **'alpha'** : (float). Temperature of sampling (default:0.5)
-            - **'reduction'** : (string). 
-                Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
+            - `"margin"`: (float) - Margin to be used for loss computation (default: 1).
+            - `"alpha"`: (float) - Temperature of sampling (default: 0.5).
+            - `"reduction"`: (str) - Specifies whether to `"sum"` or take the `"mean"` of the loss per sample w.r.t. \
+                corruption (default: `"sum"`).
 
-            Example: ``loss_params={'margin': 1, 'alpha': 0.5}``
+            Example: `loss_params={'margin': 1, 'alpha': 0.5}`.
 
         """
         super().__init__(loss_params, verbose)
@@ -497,12 +496,11 @@ class SelfAdversarialLoss(Loss):
 
         Parameters
         ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The Loss will check the keys to get the corresponding params
+        hyperparam_dict : dict
+            The Loss will check the keys to get the corresponding parameters.
 
-            - **margin** - Margin to be used in adversarial loss computation (default:3)
-
-            - **alpha** - Temperature of sampling (default:0.5)
+            - `"margin"`` (int) - Margin to be used in adversarial loss computation (default: 3).
+            - `"alpha"`: (float) - Temperature of sampling (default: 0.5).
         """
         self._loss_parameters['margin'] = hyperparam_dict.get('margin', DEFAULT_MARGIN_ADVERSARIAL)
         self._loss_parameters['alpha'] = hyperparam_dict.get('alpha', DEFAULT_ALPHA_ADVERSARIAL)
@@ -513,9 +511,9 @@ class SelfAdversarialLoss(Loss):
 
        Parameters
        ----------
-       scores_pos : tf.Tensor, shape [n, 1]
+       scores_pos : tf.Tensor, shape (n, 1)
            A tensor of scores assigned to positive statements.
-       scores_neg : tf.Tensor, shape [n*negative_count, 1]
+       scores_neg : tf.Tensor, shape (n*negative_count, 1)
            A tensor of scores assigned to negative statements.
 
        Returns
@@ -538,13 +536,13 @@ class SelfAdversarialLoss(Loss):
 
 @register_loss("multiclass_nll", [])
 class NLLMulticlass(Loss):
-    r"""Multiclass NLL Loss.
+    r"""Multiclass Negative Log-Likelihood loss.
 
-    Introduced in :cite:`chen2015` where both the subject and objects are corrupted (to use it in this way pass
-    corrupt_sides = ['s', 'o'] to embedding_model_params) .
+    Introduced in :cite:`chen2015`, this loss can be used when both the subject and objects are corrupted
+    (to use it, pass ``corrupt_sides=['s,o']`` in the embedding model parameters).
 
     This loss was re-engineered in :cite:`kadlecBK17` where only the object was corrupted to get improved
-    performance (to use it in this way pass corrupt_sides = 'o' to embedding_model_params).
+    performance (to use it in this way pass ``corrupt_sides ='o'`` in the embedding model parameters).
 
     .. math::
 
@@ -564,15 +562,15 @@ class NLLMulticlass(Loss):
 
     """
     def __init__(self, loss_params={}, verbose=False):
-        """Initialize Loss
+        """Initialize the loss.
 
         Parameters
         ----------
         loss_params : dict
             Dictionary of loss-specific hyperparams:
             
-            - **'reduction'** : (string). 
-                Specifies whether to ``sum`` or take ``mean`` of loss per sample wrt corruption (default:``sum``)
+            - `"reduction"`: (str) - Specifies whether to `"sum"` or take the `"mean"` of loss per sample w.r.t. \
+             corruption (default: `"sum"`).
 
         """
         super().__init__(loss_params, verbose)
@@ -582,8 +580,8 @@ class NLLMulticlass(Loss):
 
         Parameters
         ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The Loss will check the keys to get the corresponding params
+        hyperparam_dict : dict
+            The Loss will check the keys to get the corresponding parameters.
         """
         pass
 
@@ -593,7 +591,7 @@ class NLLMulticlass(Loss):
 
        Parameters
        ----------
-       scores_pos : tf.Tensor, shape [n, 1]
+       scores_pos : tf.Tensor, shape (n, 1)
            A tensor of scores assigned to positive statements.
        scores_neg : tf.Tensor, shape [n*negative_count, 1]
            A tensor of scores assigned to negative statements.
@@ -642,9 +640,9 @@ class LossFunctionWrapper(Loss):
         Parameters
         ----------
         user_defined_loss : function_handle
-            Handle to loss function (should take 2 parameters as input)
-        name: string
-            name of the loss function
+            Handle to loss function (should take 2 parameters as input).
+        name: str
+            Name of the loss function.
         '''
         super(LossFunctionWrapper, self).__init__()
         self._user_losses = user_defined_loss
@@ -655,8 +653,8 @@ class LossFunctionWrapper(Loss):
 
         Parameters
         ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The Loss will check the keys to get the corresponding params
+        hyperparam_dict : dict
+            The Loss will check the keys to get the corresponding parameters.
         """
         pass
     
@@ -666,7 +664,7 @@ class LossFunctionWrapper(Loss):
 
        Parameters
        ----------
-       scores_pos : tf.Tensor, shape [n, 1]
+       scores_pos : tf.Tensor, shape (n, 1)
            A tensor of scores assigned to positive statements.
        scores_neg : tf.Tensor, shape [n*negative_count, 1]
            A tensor of scores assigned to negative statements.
@@ -682,19 +680,19 @@ class LossFunctionWrapper(Loss):
     
 def get(identifier, hyperparams={}):
     '''
-    Get the loss function specified by the identifier
+    Get the loss function specified by the identifier.
     
     Parameters
     ----------
-    identifier: instance of Loss class, string, function handle
-        Instance of Loss class (Pairwise, NLLLoss, etc), name of the (existing) loss function to be used 
-        (will use default parameters) or handle of the function which takes in two params(signature: 
-        def loss_fn(scores_pos, scores_neg))
+    identifier: Loss class instance or str or function handle
+        Instance of Loss class (Pairwise, NLLLoss, etc.), name of the (existing) loss function to be used
+        (with default parameters) or handle to the function which takes in two parameters (signature:
+        def loss_fn(scores_pos, scores_neg)).
         
     Returns
     -------
-    loss: instance of Loss
-        loss function
+    loss: Loss class instance
+        Loss function.
         
     Examples
     --------

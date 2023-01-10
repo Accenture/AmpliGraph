@@ -32,12 +32,12 @@ logger.setLevel(logging.DEBUG)
 
 def _clean_data(X, return_idx=False):
     """
-    Clean dataset X by removing unseen entities and relations from valid and test sets.
+    Clean dataset **X** by removing unseen entities and relations from valid and test sets.
 
     Parameters
     ----------
     X: dict
-        Dictionary containing the following keys: train, valid, test.
+        Dictionary containing the following keys: `train`, `valid`, `test`.
         Each key should contain a ndarray of shape [n, m] with m >= 3
         (> if weights are included in the array).
 
@@ -47,23 +47,23 @@ def _clean_data(X, return_idx=False):
     Returns
     -------
     filtered_X: dict
-        Dictionary containing the following keys: train, valid, test.
+        Dictionary containing the following keys: `train`, `valid`, `test`.
         Each key contains a ndarray of shape [n, m].
         Valid and test do not contain entities or relations that are not present in train.
 
     valid_idx: ndarray
-        Indices of the remaining rows of the valid dataset (with respect to the original valid ndarray).
+        Indices of the remaining rows of the `valid` dataset (with respect to the original `valid` ndarray).
 
     test_idx: ndarray
-        Indices of the remaining rows of the test dataset (with respect to the original test ndarray).
+        Indices of the remaining rows of the `test` dataset (with respect to the original `test` ndarray).
 
     """
     filtered_X = {}
-    train = pd.DataFrame(X["train"][:,:3], columns=['s', 'p', 'o'])
+    train = pd.DataFrame(X["train"][:, :3], columns=['s', 'p', 'o'])
     filtered_X['train'] = X["train"]
 
-    valid = pd.DataFrame(X["valid"][:,:3], columns=['s', 'p', 'o'])
-    test = pd.DataFrame(X["test"][:,:3], columns=['s', 'p', 'o'])
+    valid = pd.DataFrame(X["valid"][:, :3], columns=['s', 'p', 'o'])
+    test = pd.DataFrame(X["test"][:, :3], columns=['s', 'p', 'o'])
 
     train_ent = np.unique(np.concatenate((train.s, train.o)))
     train_rel = train.p.unique()
@@ -103,13 +103,12 @@ def _clean_data(X, return_idx=False):
 
 
 def _get_data_home(data_home=None):
-    """Get to location of the dataset folder to use.
+    """Get the location of the dataset folder to use.
 
     Automatically determine the dataset folder to use.
-    If data_home is provided this location a check is
-    performed to see if the path exists and creates one if it does not.
-    If data_home is None the AMPLIGRAPH_ENV_NAME dataset is used.
-    If AMPLIGRAPH_ENV_NAME is not set the default environment ``~/ampligraph_datasets`` is used.
+    If ``data_home`` is provided, a check is performed to see if the path exists and creates one if it does not.
+    If ``data_home`` is `None` the ``AMPLIGRAPH_ENV_NAME`` dataset is used.
+    If ``AMPLIGRAPH_ENV_NAME`` is not set, the default environment ``~/ampligraph_datasets`` is used.
 
     Parameters
     ----------
@@ -184,13 +183,13 @@ def _unzip_dataset(remote, source, destination, check_md5hash=False):
 
 
 def _fetch_remote_data(remote, download_dir, data_home, check_md5hash=False):
-    """Download a remote datasets.
+    """Download a remote dataset.
 
     Parameters
     ----------
 
     remote : DatasetMetadata
-        Named tuple containing remote datasets meta information: dataset name, dataset filename,
+        Named tuple containing remote dataset meta information: dataset name, dataset filename,
         url, train filename, validation filename, test filename, train checksum, valid checksum, test checksum.
     download_dir : str
         The location to download the file to.
@@ -249,12 +248,12 @@ def _add_reciprocal_relations(triples_df):
     ----------
 
     triples_df : Dataframe
-        Dataframe of triples
+        Dataframe of triples.
 
     Returns
     -------
     triples_df : Dataframe
-        Dataframe of triples and their reciprocals
+        Dataframe of triples and their reciprocals.
     """
     # create a copy of the original triples to add reciprocal relations
     df_reciprocal = triples_df.copy()
@@ -273,9 +272,9 @@ def _add_reciprocal_relations(triples_df):
 
 
 def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciprocal_rels=False):
-    """Load a knowledge graph from a csv file
+    """Load a knowledge graph from a .csv file.
 
-    Loads a knowledge graph serialized in a csv file as:
+    Loads a knowledge graph serialized in a .csv file as:
 
     .. code-block:: text
 
@@ -290,8 +289,8 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciproc
 
     .. note::
         It is recommended to use :meth:`ampligraph.evaluation.train_test_split_no_unseen` to split custom
-        knowledge graphs into train, validation, and test sets. Using this function will lead to validation, test sets
-        that do not include triples with entities that do not occur in the training set.
+        knowledge graphs into train, validation, and test sets, since it will lead to validation and test
+        sets that do not include triples with entities that do not occur in the training set.
 
 
     Parameters
@@ -302,18 +301,18 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciproc
     file_name : str
         File name.
     sep : str
-        The subject-predicate-object separator (default \t).
-    header : int, None
+        The subject-predicate-object separator (default: `"\t"`).
+    header : int or None
         The row of the header of the csv file. Same as pandas.read_csv header param.
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
-        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False)
+        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
 
     Returns
     -------
 
-    triples : ndarray , shape [n, 3]
+    triples : ndarray, shape (n, 3)
         The actual triples of the file.
 
     Examples
@@ -356,14 +355,14 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
         url, train filename, validation filename, test filename, train checksum, valid checksum, test checksum.
 
     data_home : str
-        The location to save the dataset to (default: None).
+        The location to save the dataset to (default: `None`).
 
-    check_md5hash : boolean
-        If True, check the md5hash of the files after they are downloaded (default: False).
+    check_md5hash : bool
+        If True, check the md5hash of the files after they are downloaded (default: `False`).
 
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
-        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
+        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
     """
     dataset = {}
     if dataset_metadata.dataset_name is None:
@@ -407,9 +406,9 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
 
 
 def load_mapper_from_json(directory_path, file_name):
-    """Load a mapper from a json file
+    """Load a mapper from a .json file.
     
-    Loads a mapper for a graph serialized in a json file as:
+    Loads a mapper for a graph serialized in a .json file as:
     
     .. code-block:: text
     
@@ -431,8 +430,8 @@ def load_mapper_from_json(directory_path, file_name):
     Returns
     -------
     
-    mapper: dictionary of mappings between graph entities and predicates and
-            human readable version of them.
+    mapper : dict
+        Dictionary of mappings between graph entities and predicates and human-readable version of them.
     
     Examples
     --------
@@ -450,7 +449,7 @@ def load_mapper_from_json(directory_path, file_name):
 
 
 def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
-    """Load the WN18 dataset
+    """Load the WN18 dataset.
 
     .. warning::
         The dataset includes a large number of inverse relations that spilled to the test set, and its use in
@@ -459,16 +458,15 @@ def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
     WN18 is a subset of Wordnet. It was first presented by :cite:`bordes2013translating`.
 
     The WN18 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
-
-    If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
+    If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
     The dataset is divided in three splits:
 
-    - ``train``: 141,442 triples
-    - ``valid`` 5,000 triples
-    - ``test`` 5,000 triples
+    - `train`: 141,442 triples
+    - `valid` 5,000 triples
+    - `test` 5,000 triples
 
     ========= ========= ======= ======= ============ ===========
      Dataset  Train     Valid   Test    Entities     Relations
@@ -479,17 +477,17 @@ def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
     Parameters
     ----------
     check_md5hash : bool
-        If ``True`` check the md5hash of the files. Defaults to ``False``.
+        If `True` check the md5hash of the files (default: `False`).
 
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
-        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
+        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
     Returns
     -------
 
     splits : dict
-        The dataset splits {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
+        The dataset splits `{'train': train, 'valid': valid, 'test': test}`. Each split is a ndarray of shape (n, 3).
 
     Examples
     --------
@@ -521,22 +519,21 @@ def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
 
 
 def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False):
-    """Load the WN18RR dataset
+    """Load the WN18RR dataset.
 
     The dataset is described in :cite:`DettmersMS018`.
 
     The WN18RR dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
-
-    If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
+    If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
 
     It is divided in three splits:
 
-    - ``train``
-    - ``valid``
-    - ``test``
+    - `train`: 86,835 triples
+    - `valid`: 3,034 triples
+    - `test`: 3,134 triples
 
     ========= ========= ======= ======= ============ ===========
      Dataset  Train     Valid   Test    Entities     Relations
@@ -550,20 +547,20 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fals
     Parameters
     ----------
     clean_unseen : bool
-        If ``True``, filters triples in validation and test sets that include entities not present in the training set.
+        If `True`, filters triples in validation and test sets that include entities not present in the training set.
 
     check_md5hash : bool
-        If ``True`` check the md5hash of the datset files. Defaults to ``False``.
+        If `True` check the md5hash of the datset files (default: `False`).
 
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
-        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
+        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
     Returns
     -------
 
     splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
+        The dataset splits: `{'train': train, 'valid': valid, 'test': test}`. Each split is a ndarray of shape (n, 3).
 
     Examples
     -------
@@ -600,7 +597,7 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fals
 
 
 def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
-    """Load the FB15k dataset
+    """Load the FB15k dataset.
 
     .. warning::
         The dataset includes a large number of inverse relations that spilled to the test set, and its use in
@@ -609,16 +606,15 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
     FB15k is a split of Freebase, first proposed by :cite:`bordes2013translating`.
 
     The FB15k dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
-
-    If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
+    If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
     The dataset is divided in three splits:
 
-    - ``train``
-    - ``valid``
-    - ``test``
+    - `train`: 483,142 triples
+    - `valid`: 50,000 triples
+    - `test`: 59,071 triples
 
     ========= ========= ======= ======= ============ ===========
      Dataset  Train     Valid   Test    Entities     Relations
@@ -628,19 +624,19 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
 
     Parameters
     ----------
-    check_md5hash : boolean
-        If ``True`` check the md5hash of the files. Defaults to ``False``.
+    check_md5hash : bool
+        If `True` check the md5hash of the files (default: `False`).
 
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
-        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
+        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
 
     Returns
     -------
 
     splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
+        The dataset splits: `{'train': train, 'valid': valid, 'test': test}`. Each split is a ndarray of shape (n, 3).
 
     Examples
     --------
@@ -682,26 +678,26 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=F
    FB15k-237 is a reduced version of FB15K. It was first proposed by :cite:`toutanova2015representing`.
 
    The FB15k-237 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-   If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
-
-   If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+   If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
+   If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
    or ``~/ampligraph_datasets``.
 
    The dataset is divided in three splits:
 
-   - ``train``
-   - ``valid``
-   - ``test``
+   - `train`: 272,115 triples
+   - `valid`: 17,535 triples
+   - `test`: 20,466 triples
 
-   It also contains subset of test set with human readable labels, available here:
-   - ``test-human``
-   - ``test-human-ids``
+   It also contains a subset of the test set with human-readable labels, available here:
 
-   ========= ========= ======= ======= ============ ===========
+   - `test-human`
+   - `test-human-ids`
+
+   ========= ========= ======= ======= ==========  ========  =========
     Dataset  Train     Valid   Test    Test-Human  Entities  Relations
    ========= ========= ======= ======= ==========  ========  =========
    FB15K-237 272,115   17,535  20,466   273        14,541    237
-   ========= ========= ======= ======= ==========  ========  ==========
+   ========= ========= ======= ======= ==========  ========  =========
 
 
    .. warning::
@@ -710,23 +706,25 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=F
 
    Parameters
    ----------
-   check_md5hash : boolean
-       If ``True`` check the md5hash of the files. Defaults to ``False``.
+   check_md5hash : bool
+       If `True` check the md5hash of the files (default: `False`).
 
    clean_unseen : bool
-       If ``True``, filters triples in validation and test sets that include entities not present in the training set.
+       If `True`, filters triples in validation and test sets that include entities not present in the training set.
 
    add_reciprocal_rels : bool
-   Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
-   this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False)
+        Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
+        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
-   return_mapper [False]: wether to return human readable labels in a form of dictionary in X['mapper'] field.
+   return_mapper : bool
+        Whether to return human-readable labels in a form of dictionary in ``X["mapper"]`` field (default: `False`).
 
    Returns
    -------
 
    splits : dict
-       The dataset splits: {'train': train, 'valid': valid, 'test': test, 'test-human':test_human, 'test-human-ids': test_human_ids}. Each split is an ndarray of shape [n, 3].
+       The dataset splits: `{'train': train, 'valid': valid, 'test': test, 'test-human':test_human, 'test-human-ids': test_human_ids}`.
+       Each split is a ndarray of shape (n, 3).
 
    Examples
    --------
@@ -783,22 +781,21 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=F
 
 
 def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False):
-    """Load the YAGO3-10 dataset
+    """Load the YAGO3-10 dataset.
 
     The dataset is a split of YAGO3 :cite:`mahdisoltani2013yago3`,
     and has been first presented in :cite:`DettmersMS018`.
 
     The YAGO3-10 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
-
+    If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
     If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
     It is divided in three splits:
 
-    - ``train``
-    - ``valid``
-    - ``test``
+    - `train`: 1,079,040 triples
+    - `valid`: 5,000 triples
+    - `test`: 5,000 triples
 
     ========= ========= ======= ======= ============ ===========
      Dataset  Train     Valid   Test    Entities     Relations
@@ -808,21 +805,21 @@ def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fa
 
     Parameters
     ----------
-    check_md5hash : boolean
-        If ``True`` check the md5hash of the files. Defaults to ``False``.
+    check_md5hash : bool
+        If `True` check the md5hash of the files (default: `False`).
 
     clean_unseen : bool
-        If ``True``, filters triples in validation and test sets that include entities not present in the training set.
+        If `True`, filters triples in validation and test sets that include entities not present in the training set.
 
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
-        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
+        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default:`False`).
 
     Returns
     -------
 
     splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'test': test}. Each split is an ndarray of shape [n, 3].
+        The dataset splits: `{'train': train, 'valid': valid, 'test': test}`. Each split is a ndarray of shape (n, 3).
 
     Examples
     -------
@@ -858,27 +855,26 @@ def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fa
 
 
 def load_wn11(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False):
-    """Load the WordNet11 (WN11) dataset
+    """Load the WordNet11 (WN11) dataset.
 
     WordNet was originally proposed in `WordNet: a lexical database for English` :cite:`miller1995wordnet`.
 
     WN11 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
     If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
-
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
     It is divided in three splits:
 
-    - ``train``
-    - ``valid``
-    - ``test``
+    - `train`: 110361 triples
+    - `valid`: 5215 triples
+    - `test`: 21035 triples
 
     Both the validation and test splits are associated with labels (binary ndarrays),
     with `True` for positive statements and `False` for  negatives:
 
-    - ``valid_labels``
-    - ``test_labels``
+    - `valid_labels`
+    - `test_labels`
 
     ========= ========= ========== ========== ======== ======== ============ ===========
      Dataset  Train     Valid Pos  Valid Neg  Test Pos Test Neg Entities     Relations
@@ -888,24 +884,24 @@ def load_wn11(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
 
     Parameters
     ----------
-    check_md5hash : boolean
-        If ``True`` check the md5hash of the files. Defaults to ``False``.
+    check_md5hash : bool
+        If `True` check the md5hash of the files (default: `False`).
 
     clean_unseen : bool
-        If ``True``, filters triples in validation and test sets that include entities not present in the training set.
+        If `True`, filters triples in validation and test sets that include entities not present in the training set.
 
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
-        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
+        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
     Returns
     -------
 
     splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'valid_labels': valid_labels,
-        'test': test, 'test_labels': test_labels}.
-        Each split containing a dataset is an ndarray of shape [n, 3].
-        The labels are ndarray of shape [n].
+        The dataset splits: `{'train': train, 'valid': valid, 'valid_labels': valid_labels,
+        'test': test, 'test_labels': test_labels}`.
+        Each split containing a dataset is a ndarray of shape (n, 3).
+        The labels are a ndarray of shape (n).
 
     Examples
     -------
@@ -953,29 +949,28 @@ def load_wn11(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
 
 
 def load_fb13(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False):
-    """Load the Freebase13 (FB13) dataset
+    """Load the Freebase13 (FB13) dataset.
 
     FB13 is a subset of Freebase :cite:`bollacker2008freebase`
     and was initially presented in
     `Reasoning With Neural Tensor Networks for Knowledge Base Completion` :cite:`socher2013reasoning`.
 
     FB13 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
-
+    If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
     It is divided in three splits:
 
-    - ``train``
-    - ``valid``
-    - ``test``
+    - `train`: 316232 triples
+    - `valid`: 11816 triples
+    - `test`: 47464 triples
 
     Both the validation and test splits are associated with labels (binary ndarrays),
     with `True` for positive statements and `False` for  negatives:
 
-    - ``valid_labels``
-    - ``test_labels``
+    - `valid_labels`
+    - `test_labels`
 
     ========= ========= ========== ========== ======== ======== ============ ===========
      Dataset  Train     Valid Pos  Valid Neg  Test Pos Test Neg Entities     Relations
@@ -985,15 +980,15 @@ def load_fb13(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
 
     Parameters
     ----------
-    check_md5hash : boolean
-        If ``True`` check the md5hash of the files. Defaults to ``False``.
+    check_md5hash : bool
+        If `True` check the md5hash of the files (default: `False`).
 
     clean_unseen : bool
-        If ``True``, filters triples in validation and test sets that include entities not present in the training set.
+        If `True`, filters triples in validation and test sets that include entities not present in the training set.
 
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
-        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
+        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: False).
 
     Returns
     -------
@@ -1001,8 +996,8 @@ def load_fb13(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
     splits : dict
         The dataset splits: {'train': train, 'valid': valid, 'valid_labels': valid_labels,
         'test': test, 'test_labels': test_labels}.
-        Each split containing a dataset is an ndarray of shape [n, 3].
-        The labels are ndarray of shape [n].
+        Each split containing a dataset is a ndarray of shape (n, 3).
+        The labels are ndarray of shape (n).
 
     Examples
     -------
@@ -1061,21 +1056,22 @@ def load_all_datasets(check_md5hash=False):
 
 
 def load_from_rdf(folder_name, file_name, rdf_format='nt', data_home=None, add_reciprocal_rels=False):
-    """Load an RDF file
+    """Load an RDF file.
 
     Loads an RDF knowledge graph using rdflib_ APIs.
-    Multiple RDF serialization formats are supported (nt, ttl, rdf/xml, etc).
+    Multiple RDF serialization formats are supported (`nt`, `ttl`, `rdf`/`xml`, etc).
     The entire graph will be loaded in memory, and converted into an rdflib `Graph` object.
 
     .. _rdflib: https://rdflib.readthedocs.io/
 
     .. warning::
         Large RDF graphs should be serialized to ntriples beforehand and loaded with ``load_from_ntriples()`` instead.
+        This function, indeed, is faster by orders of magnitude.
 
     .. note::
         It is recommended to use :meth:`ampligraph.evaluation.train_test_split_no_unseen` to split custom
-        knowledge graphs into train, validation, and test sets. Using this function will lead to validation, test sets
-        that do not include triples with entities that do not occur in the training set.
+        knowledge graphs into train, validation, and test sets, since using this function will lead to validation and
+        test sets that do not include triples with entities that do not occur in the training set.
 
 
     Parameters
@@ -1085,17 +1081,17 @@ def load_from_rdf(folder_name, file_name, rdf_format='nt', data_home=None, add_r
     file_name : str
         File name.
     rdf_format : str
-        The RDF serialization format (nt, ttl, rdf/xml - see rdflib documentation).
+        The RDF serialization format (`nt`, `ttl`, `rdf`/`xml` - see rdflib documentation).
     data_home : str
        The path to the folder that contains the datasets.
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
-        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
+        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
     Returns
     -------
-        triples : ndarray , shape [n, 3]
-            the actual triples of the file.
+        triples : ndarray of shape (n, 3)
+            The actual triples of the file.
     """
 
     logger.debug('Loading rdf data from {}.'.format(file_name))
@@ -1112,11 +1108,11 @@ def load_from_rdf(folder_name, file_name, rdf_format='nt', data_home=None, add_r
 
 
 def load_from_ntriples(folder_name, file_name, data_home=None, add_reciprocal_rels=False):
-    """Load RDF ntriples
+    """Load a dataset of RDF ntriples.
 
     Loads an RDF knowledge graph serialized as ntriples, without building an RDF graph in memory.
-    This function should be preferred over ``load_from_rdf()``,
-    since it does not load the graph into an rdflib model (and it is therefore faster by order of magnitudes).
+    This function should be preferred over ``load_from_rdf()``, since it does not load the graph into an rdflib
+    model (and it is therefore faster by order of magnitudes).
     Nevertheless, it requires a ntriples_ serialization as in the example below:
 
     .. _ntriples: https://www.w3.org/TR/n-triples/.
@@ -1128,26 +1124,26 @@ def load_from_ntriples(folder_name, file_name, data_home=None, add_reciprocal_re
 
     .. note::
         It is recommended to use :meth:`ampligraph.evaluation.train_test_split_no_unseen` to split custom
-        knowledge graphs into train, validation, and test sets. Using this function will lead to validation, test sets
-        that do not include triples with entities that do not occur in the training set.
+        knowledge graphs into train, validation, and test sets, since using this function will lead to validation and
+        test sets that do not include triples with entities that do not occur in the training set.
 
 
     Parameters
     ----------
     folder_name: str
-        base folder where the file is stored.
+        Base folder where the file is stored.
     file_name : str
-        file name
+        File name.
     data_home : str
        The path to the folder that contains the datasets.
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
-        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
+        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
     Returns
     -------
-        triples : ndarray , shape [n, 3]
-            the actual triples of the file.
+        triples : ndarray, shape (n, 3)
+            The actual triples of the file.
     """
 
     logger.debug('Loading rdf ntriples from {}.'.format(file_name))
@@ -1166,26 +1162,26 @@ def load_from_ntriples(folder_name, file_name, data_home=None, add_reciprocal_re
 
 
 def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, split_threshold=0.1):                      # FocusE
-    """ Creates the dataset splits for training models with FocusE layers
+    """Creates the dataset splits for training models with FocusE layers
     
     Parameters
     ----------
     dataset : dict
-        dictionary of train, test, valid datasets of size (n,m) - where m>3. The first 3 cols are s, p, o and
-        afterwards is the numeric values associated with the triple, that can be potentially multiple
+        Dictionary of train, test, valid datasets of size (n,m) - where m>3. The first 3 cols are `subject`,
+        `predicate`, and `object`. Afterwards, is the numeric values (potentially multiple) associated with each triple.
     
     split_test_into_top_bottom: bool
-        Splits the test set by numeric values and returns test_top_split and test_bottom_split by splitting 
-        based on sorted numeric values and returning top and bottom k*100% triples, where k is specified by
-        `split_threshold` argument
+        Splits the test set by numeric values and returns `test_top_split` and `test_bottom_split` by splitting
+        based on sorted numeric values and returning top and bottom k*100% triples, where `k` is specified by
+        `split_threshold` argument.
         
     split_threshold: float
-        specifies the top and bottom percentage of triples to return
+        Specifies the top and bottom percentage of triples to return.
         
     Returns
     -------
     splits : dict
-        The dataset splits: {'train': train, 
+        The dataset splits: `{'train': train,
                              'train_numeric_values': train_numeric_values, 
                              'valid': valid, 
                              'valid_numeric_values': valid_numeric_values,
@@ -1194,11 +1190,11 @@ def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, spl
                              'test_topk': test_topk, 
                              'test_topk_numeric_values': test_topk_numeric_values,
                              'test_bottomk': test_bottomk, 
-                             'test_bottomk_numeric_values': test_bottomk_numeric_values}.
-        Each numeric value split contains numeric values associated with corresponding dataset split and 
-        is a ndarray of shape [n, 1].
-        Each dataset split is a ndarray of shape [n,3]
-        The topk and bottomk splits are only returned when split_test_into_top_bottom is set to True
+                             'test_bottomk_numeric_values': test_bottomk_numeric_values}`.
+        Each numeric value split contains numeric values associated with the corresponding dataset split and
+        is a ndarray of shape (n, 1).
+        Each dataset split is a ndarray of shape (n,3).
+        The `topk` and `bottomk` splits are only returned when `split_test_into_top_bottom` is set to `True`.
     """
     dataset['train_numeric_values'] = dataset['train'][:, 3:].astype(np.float32)
     dataset['valid_numeric_values'] = dataset['valid'][:, 3:].astype(np.float32)
@@ -1225,21 +1221,27 @@ def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, spl
 
 
 def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
-    """Load the O*NET20K dataset
+    """Load the O*NET20K dataset.
+
     O*NET20K was originally proposed in :cite:`pai2021learning`.
-    It a  subset  of `O*NET <https://www.onetonline.org/>`_, a dataset that includes job descriptions, skills
+    It is a subset  of `O*NET <https://www.onetonline.org/>`_, a dataset that includes job descriptions, skills
     and labeled, binary relations between such concepts. Each triple is labeled with a numeric value that 
-    indicates the importance of that link. 
-    ONET*20K dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+    indicates the importance of that link.
+
+    O*NET20K dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
+
     It is divided in three splits:
-    - ``train``
-    - ``valid``
-    - ``test``
+
+    - `train`: 461,932 triples
+    - `valid`: 850 triples
+    - `test`: 2,000 triples
+
     Each triple in these splits is associated to a numeric value which represents the importance/relevance of
     the link.
+
     ========= ========= ======== =========== ========== ===========
     Dataset   Train     Valid    Test        Entities   Relations
     ========= ========= ======== =========== ========== ===========
@@ -1248,24 +1250,24 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
     
     Parameters
     ----------
-    check_md5hash : boolean
-        If ``True`` check the md5hash of the files. Defaults to ``False``.
+    check_md5hash : bool
+        If `True` check the md5hash of the files (default: `False`).
     clean_unseen : bool
-        If ``True``, filters triples in validation and test sets that include entities not present in the training 
+        If `True`, filters triples in validation and test sets that include entities not present in the training
         set.
         
     split_test_into_top_bottom: bool
-        Splits the test set by numeric values and returns test_top_split and test_bottom_split by splitting based 
-        on sorted numeric values and returning top and bottom k% triples, where k is specified by `split_threshold` 
-        argument
+        Splits the test set by numeric values and returns `test_top_split` and `test_bottom_split` by splitting based
+        on sorted numeric values and returning top and bottom k% triples, where `k` is specified by `split_threshold`
+        argument.
         
     split_threshold: float
-        specifies the top and bottom percentage of triples to return
+        Specifies the top and bottom percentage of triples to return.
         
     Returns
     -------
     splits : dict
-        The dataset splits: {'train': train,
+        The dataset splits: `{'train': train,
         'valid': valid,
         'test': test,
         'test_topk': test_topk,
@@ -1274,16 +1276,20 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
         'valid_numeric_values':valid_numeric_values,
         'test_numeric_values': test_numeric_values,
         'test_topk_numeric_values': test_topk_numeric_values,
-        'test_bottomk_numeric_values': test_bottomk_numeric_values}.
+        'test_bottomk_numeric_values': test_bottomk_numeric_values}`.
         Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
-        is a ndarray of shape [n].
-        Each dataset split is a ndarray of shape [n,3].
+        is a ndarray of shape (n).
+        Each dataset split is a ndarray of shape (n,3).
         The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
         
     Examples
     -------
     >>> from ampligraph.datasets import load_onet20k
     >>> X = load_onet20k()
+    >>> X["train"][0]
+    ['Job_27-1021.00' 'has_ability_LV' '1.A.1.b.2']
+    >>> X['train_numeric_values'][0]
+    [0.6257143]
     """
     onet20k = DatasetMetadata(
         dataset_name='onet20k',
@@ -1307,20 +1313,26 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
 
 
 def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
-    """Load the PPI5K dataset
+    """Load the PPI5K dataset.
+
     Originally proposed in :cite:`chen2019embedding`, PPI5K is a subset of the protein-protein
     interactions (PPI) knowledge graph :cite:`PPI`. Numeric values represent the confidence of the link
     based on existing scientific literature evidence.
+
     PPI5K is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
+
     It is divided into three splits:
-    - ``train``
-    - ``valid``
-    - ``test``
+
+    - `train`: 230,929 triples
+    - `valid`: 19,017 triples
+    - `test`: 21,720 triples
+
     Each triple in these splits is associated to a numeric value which models additional information on the
     fact (importance, relevance of the link).
+
     ========= ========= ======== =========== ========== ===========
     Dataset   Train     Valid    Test        Entities   Relations
     ========= ========= ======== =========== ========== ===========
@@ -1329,27 +1341,26 @@ def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
     
     Parameters
     ----------
-    check_md5hash : boolean
-        If ``True`` check the md5hash of the files. Defaults to ``False``.
+    check_md5hash : bool
+        If `True` check the md5hash of the files (default: `False`).
     clean_unseen : bool
-        If ``True``, filters triples in validation and test sets that include entities not present in the training 
+        If `True`, filters triples in validation and test sets that include entities not present in the training
         set.
         
     split_test_into_top_bottom: bool
-        When set to ``True``, the function also returns subsets of the test set that includes only the top-k or
-        bottom-k numeric-enriched triples. splits ``test_topk``, ``test_bottomk`` and their
+        When set to `True`, the function also returns subsets of the test set that includes only the top-k or
+        bottom-k numeric-enriched triples. Splits `test_topk`, `test_bottomk` and their
         numeric values. Such splits are generated by sorting Splits the test set by numeric values and returns
-        test_top_split and test_bottom_split by splitting based
-        on sorted numeric values and returning top and bottom k% triples, where 'k' is specified by the
-        ``split_threshold`` argument.
+        `test_top_split` and `test_bottom_split` by splitting based on sorted numeric values and returning top
+        and bottom k% triples, where `k` is specified by the ``split_threshold`` argument.
         
     split_threshold: float
-        specifies the top and bottom percentage of triples to return
+        Specifies the top and bottom percentage of triples to return.
         
     Returns
     -------
     splits : dict
-        The dataset splits: {'train': train,
+        The dataset splits: `{'train': train,
         'valid': valid,
         'test': test,
         'test_topk': test_topk,
@@ -1358,16 +1369,20 @@ def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
         'valid_numeric_values':valid_numeric_values,
         'test_numeric_values': test_numeric_values,
         'test_topk_numeric_values': test_topk_numeric_values,
-        'test_bottomk_numeric_values': test_bottomk_numeric_values}.
+        'test_bottomk_numeric_values': test_bottomk_numeric_values}`.
         Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
-        is a ndarray of shape [n].
-        Each dataset split is a ndarray of shape [n,3].
+        is a ndarray of shape (n).
+        Each dataset split is a ndarray of shape (n,3).
         The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
         
     Examples
     -------
     >>> from ampligraph.datasets import load_ppi5k
     >>> X = load_ppi5k()
+    >>> X["train"][0]
+    ['4001' '5' '4176']
+    >>> X['train_numeric_values'][0]
+    [0.329]
     """
     ppi5k = DatasetMetadata(
         dataset_name='ppi5k',
@@ -1391,46 +1406,52 @@ def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
 
 
 def load_nl27k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
-    """Load the NL27K dataset
+    """Load the NL27K dataset.
+
     NL27K was originally proposed in :cite:`chen2019embedding`. It is a subset of the Never Ending Language
     Learning (NELL) dataset :cite:`mitchell2018never`, which collects data from web pages.
     Numeric values on triples represent link uncertainty.
+
     NL27K is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
+
     It is divided into three splits:
-    - ``train``
-    - ``valid``
-    - ``test``
+
+    - `train`: 149,100 triples
+    - `valid`: 12,274 triples
+    - `test`: 14,026 triples
+
     Each triple in these splits is associated to a numeric value which represents the importance/relevance of
     the link.
+
     ========= ========= ======== =========== ========== ===========
     Dataset   Train     Valid    Test        Entities   Relations
     ========= ========= ======== =========== ========== ===========
-    NL27K     149100    12274    14026       27221      405    
+    NL27K     149,100    12,274    14,026       27,221      405
     ========= ========= ======== =========== ========== ===========
     
     Parameters
     ----------
-    check_md5hash : boolean
-        If ``True`` check the md5hash of the files. Defaults to ``False``.
+    check_md5hash : bool
+        If `True` check the md5hash of the files (default: `False`).
     clean_unseen : bool
-        If ``True``, filters triples in validation and test sets that include entities not present in the training 
+        If `True`, filters triples in validation and test sets that include entities not present in the training
         set.
         
     split_test_into_top_bottom: bool
-        Splits the test set by numeric values and returns test_top_split and test_bottom_split by splitting based 
-        on sorted numeric values and returning top and bottom k% triples, where k is specified by `split_threshold` 
-        argument
+        Splits the test set by numeric values and returns `test_top_split` and `test_bottom_split` by splitting based
+        on sorted numeric values and returning top and bottom k% triples, where `k` is specified by `split_threshold`
+        argument.
         
     split_threshold: float
-        specifies the top and bottom percentage of triples to return
+        Specifies the top and bottom percentage of triples to return.
         
     Returns
     -------
     splits : dict
-        The dataset splits: {'train': train,
+        The dataset splits: `{'train': train,
         'valid': valid,
         'test': test,
         'test_topk': test_topk,
@@ -1439,16 +1460,20 @@ def load_nl27k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
         'valid_numeric_values':valid_numeric_values,
         'test_numeric_values': test_numeric_values,
         'test_topk_numeric_values': test_topk_numeric_values,
-        'test_bottomk_numeric_values': test_bottomk_numeric_values}.
+        'test_bottomk_numeric_values': test_bottomk_numeric_values}`.
         Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
-        is a ndarray of shape [n].
-        Each dataset split is a ndarray of shape [n,3].
+        is a ndarray of shape (n).
+        Each dataset split is a ndarray of shape (n,3).
         The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
         
     Examples
     -------
     >>> from ampligraph.datasets import load_nl27k
     >>> X = load_nl27k()
+    >>> X["train"][0]
+    ['concept:company:business_review' 'concept:competeswith' 'concept:company:miami_herald001']
+    >>> X['train_numeric_values'][0]
+    [0.859375]
     """
     nl27k = DatasetMetadata(
         dataset_name='nl27k',
@@ -1472,46 +1497,52 @@ def load_nl27k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
 
 
 def load_cn15k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
-    """Load the CN15K dataset
+    """Load the CN15K dataset.
+
     CN15K was originally proposed in :cite:`chen2019embedding`, it is a subset of ConceptNet :cite:`CN`,
     a common-sense knowledge graph built to represent general human knowledge.
     Numeric values on triples represent uncertainty.
+
     CN15k dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
+
     It is divided into three splits:
-    - ``train``
-    - ``valid``
-    - ``test``
+
+    - `train`: 199,417 triples
+    - `valid`: 16,829 triples
+    - `test`: 19,224 triples
+
     Each triple in these splits is associated to a numeric value which represents the importance/relevance of
     the link.
+
     ========= ========= ======== =========== ========== ===========
     Dataset   Train     Valid    Test        Entities   Relations
     ========= ========= ======== =========== ========== ===========
-    CN15K     199417    16829    19224       15000      36    
+    CN15K     199,417    16,829    19,224       15,000      36
     ========= ========= ======== =========== ========== ===========
     
     Parameters
     ----------
-    check_md5hash : boolean
-        If ``True`` check the md5hash of the files. Defaults to ``False``.
+    check_md5hash : bool
+        If `True`, check the md5hash of the files (default: `False`).
     clean_unseen : bool
-        If ``True``, filters triples in validation and test sets that include entities not present in the training 
+        If `True`, filters triples in validation and test sets that include entities not present in the training
         set.
         
     split_test_into_top_bottom: bool
-        Splits the test set by numeric values and returns test_top_split and test_bottom_split by splitting based 
-        on sorted numeric values and returning top and bottom k% triples, where k is specified by `split_threshold` 
-        argument
+        Splits the test set by numeric values and returns `test_top_split` and `test_bottom_split` by splitting based
+        on sorted numeric values and returning top and bottom k% triples, where `k` is specified by `split_threshold`
+        argument.
         
     split_threshold: float
-        specifies the top and bottom percentage of triples to return
+        Specifies the top and bottom percentage of triples to return.
         
     Returns
     -------
     splits : dict
-        The dataset splits: {'train': train,
+        The dataset splits: `{'train': train,
         'valid': valid,
         'test': test,
         'test_topk': test_topk,
@@ -1520,15 +1551,19 @@ def load_cn15k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
         'valid_numeric_values':valid_numeric_values,
         'test_numeric_values': test_numeric_values,
         'test_topk_numeric_values': test_topk_numeric_values,
-        'test_bottomk_numeric_values': test_bottomk_numeric_values}.
+        'test_bottomk_numeric_values': test_bottomk_numeric_values}`.
         Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
-        is a ndarray of shape [n].
-        Each dataset split is a ndarray of shape [n,3].
+        is a ndarray of shape (n).
+        Each dataset split is a ndarray of shape (n,3).
         The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
     Examples
     -------
     >>> from ampligraph.datasets import load_cn15k
     >>> X = load_cn15k()
+    >>> X["train"][0]
+    ['260' '2' '13895']
+    >>> X['train_numeric_values'][0]
+    [0.8927088]
     """
     cn15k = DatasetMetadata(
         dataset_name='cn15k',
@@ -1554,12 +1589,13 @@ def load_cn15k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
 def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
     """Load the XAI FB15k-237 experiment log
 
-    XAI-FB15k-237 is a reduced version of FB15K-237 containing human readable triples.
+    XAI-FB15k-237 is a reduced version of FB15K-237 containing human-readable triples.
 
     The dataset contains several fields, by default the returned data frame contains only triples, when 
-    option full is equal to True (full=True) the full data is returned (it reflects filtering protocol).
+    option full is equal to True (``full=True``) the full data is returned (it reflects filtering protocol).
 
-    Fileds:
+    Fields:
+
     - predicate,
     - predicate label,
     - predicates_description,
@@ -1668,45 +1704,50 @@ def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False
     The dataset is described in :cite:`safavi_codex_2020`.
 
     The CodDEx dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-    If ``AMPLIGRAPH_DATA_HOME`` is not set the the default  ``~/ampligraph_datasets`` is checked.
-
-    If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
+    If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
 
     It is divided in three splits:
 
-    - ``train``
-    - ``valid``
-    - ``valid_negatives``
-    - ``test_negatives``
-    - ``test``
+    - `train`: 185,584 triples
+    - `valid`: 10,310 triples
+    - `test`: 10,310 triples
+
+    Both the validation and test splits are associated with labels (binary ndarrays),
+    with `True` for positive statements and `False` for  negatives:
+
+    - `valid_labels`
+    - `test_labels`
 
     ========= ========= ======= ================ ======= =============== ============ ===========
-     Dataset  Train     Valid   Valid-negatives   Test    Test-negatives    Entities   Relations
+    Dataset   Train      Valid  Valid-negatives  Test    Test-negatives  Entities     Relations
     ========= ========= ======= ================ ======= =============== ============ ===========
-     CoDEx-M  185,584   10,310    10,310          10311     10311           17,050      51
+    CoDEx-M   185,584   10,310  10,310           10311   10311           17,050       51
     ========= ========= ======= ================ ======= =============== ============ ===========
 
 
     Parameters
     ----------
     clean_unseen : bool
-        If ``True``, filters triples in validation and test sets that include entities not present in the training set.
+        If `True`, filters triples in validation and test sets that include entities not present in the training set.
 
     check_md5hash : bool
-        If ``True`` check the md5hash of the datset files. Defaults to ``False``.
+        If `True`, check the `md5hash` of the datset files (default: `False`).
 
     add_reciprocal_rels : bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
-        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s>. (default: False).
-    return_mapper [False]: wether to return human readable labels in a form of dictionary in X['mapper'] field.
+        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
+    return_mapper : bool
+        Whether to return human-readable labels in a form of dictionary in ``X["mapper"]`` field (default: `False`).
 
     Returns
     -------
 
     splits : dict
-        The dataset splits: {'train': train, 'valid': valid, 'valid_negatives': valid_negatives', 'test': test, 'test_negatives': test_negatives}. Each split is an ndarray of shape [n, 3].
+        The dataset splits: `{'train': train, 'valid': valid, 'valid_negatives': valid_negatives', 'test': test, 'test_negatives': test_negatives}`.
+        Each split is a ndarray of shape (n, 3).
 
     Examples
     -------

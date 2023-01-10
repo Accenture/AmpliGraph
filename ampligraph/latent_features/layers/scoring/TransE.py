@@ -11,17 +11,17 @@ from .AbstractScoringLayer import register_layer, AbstractScoringLayer
 
 @register_layer('TransE')
 class TransE(AbstractScoringLayer):
-    r''' Translating Embeddings (TransE)
+    r''' Translating Embeddings (TransE) scoring layer.
     
     The model as described in :cite:`bordes2013translating`.
     
     The scoring function of TransE computes a similarity between the embedding of the subject
-    :math:`\mathbf{e}_{sub}` translated by the embedding of the predicate :math:`\mathbf{e}_{pred}`
+    :math:`\mathbf{e}_{sub}` translated by the embedding of the predicate :math:`\mathbf{e}_{pred}`,
     and the embedding of the object :math:`\mathbf{e}_{obj}`,
     using the :math:`L_1` or :math:`L_2` norm :math:`||\cdot||`:
     
     .. math::
-        f_{TransE}=-||\mathbf{e}_{sub} + \mathbf{e}_{pred} - \mathbf{e}_{obj}||_n
+        f_{TransE}=-||\mathbf{e}_{sub} + \mathbf{e}_{pred} - \mathbf{e}_{obj}||
         
     Such scoring function is then used on positive and negative triples :math:`t^+, t^-` in the loss function.
     
@@ -34,17 +34,17 @@ class TransE(AbstractScoringLayer):
         super(TransE, self).__init__(k)
 
     def _compute_scores(self, triples):
-        ''' compute scores using transE scoring function.
+        ''' Compute scores using transE scoring function.
         
         Parameters
         ----------
-        triples: (n, 3)
-            batch of input triples
+        triples: array-like, (n, 3)
+            Batch of input triples.
         
         Returns
         -------
-        scores: tf.Tensor(n,1)
-            tensor of scores of inputs
+        scores: tf.Tensor, shape (n,1)
+            Tensor of scores of inputs.
         '''
         # compute scores as -|| s + p - o|| 
         scores = tf.negative(tf.norm(triples[0] + triples[1] - triples[2], axis=1))
@@ -52,19 +52,20 @@ class TransE(AbstractScoringLayer):
 
     def _get_subject_corruption_scores(self, triples, ent_matrix):
         ''' Compute subject corruption scores.
+
         Evaluate the inputs against subject corruptions and scores of the corruptions.
         
         Parameters
         ----------
-        triples: (n, k)
-            batch of input embeddings
-        ent_matrix: (m, k)
-            slice of embedding matrix (corruptions)
+        triples: array-like, shape (n, k)
+            Batch of input embeddings.
+        ent_matrix: array-like, shape (m, k)
+            Slice of embedding matrix (corruptions).
         
         Returns
         -------
-        scores: tf.Tensor(n, 1)
-            scores of subject corruptions (corruptions defined by ent_embs matrix)
+        scores: tf.Tensor, shape (n, 1)
+            Scores of subject corruptions (corruptions defined by `ent_embs` matrix).
         '''
         # get the subject, predicate and object embeddings of True positives
         rel_emb, obj_emb = triples[1], triples[2]
@@ -75,19 +76,20 @@ class TransE(AbstractScoringLayer):
 
     def _get_object_corruption_scores(self, triples, ent_matrix):
         ''' Compute object corruption scores.
+
         Evaluate the inputs against object corruptions and scores of the corruptions.
         
         Parameters
         ----------
-        triples: (n, k)
-            batch of input embeddings
-        ent_matrix: (m, k)
-            slice of embedding matrix (corruptions)
+        triples: array-like, shape (n, k)
+            Batch of input embeddings.
+        ent_matrix: array-like, shape (m, k)
+            Slice of embedding matrix (corruptions).
         
         Returns
         -------
-        scores: tf.Tensor(n, 1)
-            scores of object corruptions (corruptions defined by ent_embs matrix)
+        scores: tf.Tensor, shape (n, 1)
+            Scores of object corruptions (corruptions defined by `ent_embs` matrix).
         '''
         # get the subject, predicate and object embeddings of True positives:
         sub_emb, rel_emb = triples[0], triples[1]

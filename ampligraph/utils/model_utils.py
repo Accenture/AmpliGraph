@@ -46,21 +46,19 @@ def save_model(model, model_name_path=None):
         >>> model.fit(X)
         >>> y_pred_before = model.predict(np.array([['f', 'y', 'e'], ['b', 'y', 'd']]))
         >>> example_name = 'helloworld.pkl'
-        >>> save_model(model, model_name_path = example_name)
+        >>> save_model(model, model_name_path=example_name)
         >>> print(y_pred_before)
         [-0.29721245, 0.07865551]
 
         Parameters
         ----------
         model: EmbeddingModel
-            A trained neural knowledge graph embedding model,
-            the model must be an instance of TransE,
-            DistMult, ComplEx, or HolE.
-        model_name_path: string
+            A trained neural knowledge graph embedding model.
+            The model must be an instance of TransE, DistMult, ComplEx, or HolE.
+        model_name_path: str
             The name of the model to be saved.
-            If not specified, a default name model
-            with current datetime is named
-            and saved to the working directory
+            If not specified, a default name with current datetime is selected and the model is saved
+            to the working directory.
 
     """
     if model_name_path is None:
@@ -76,6 +74,13 @@ def save_model(model, model_name_path=None):
     
     
 def restore_model(model_name_path=None):
+    '''Restore a trained model from disk.
+
+    Parameters
+    ==========
+    model_name_path : str
+        Name of the path to the model.
+    '''
     from ampligraph.latent_features.optimizers import OptimizerWrapper
     from ampligraph.latent_features.loss_functions import LOSS_REGISTRY
     from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
@@ -122,12 +127,12 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all',
     The function exports:
 
     * A number of checkpoint and graph embedding files in the provided location that will allow
-      you to visualize embeddings using Tensorboard. This is generally for use with a
+      the visualization of the embeddings using Tensorboard. This is generally for use with a
       `local Tensorboard instance <https://www.tensorflow.org/tensorboard/r1/overview>`_.
-    * a tab-separated file of embeddings ``embeddings_projector.tsv``. This is generally used to
+    * A tab-separated file of embeddings named `embeddings_projector.tsv`. This is generally used to
       visualize embeddings by uploading to `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_.
-    * embeddings metadata (i.e. the embeddings labels from the original knowledge graph), saved to ``metadata.tsv``.
-      Such file can be used in TensorBoard or uploaded to TensorBoard Embedding Projector.
+    * Embeddings metadata (i.e., the embedding labels from the original knowledge graph) saved to in a file named
+        `metadata.tsv``. Such file can be used in TensorBoard or uploaded to TensorBoard Embedding Projector.
 
     The content of ``loc`` will look like: ::
 
@@ -141,10 +146,10 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all',
             └── projector_config.pbtxt
 
     .. Note ::
-        A TensorBoard guide is available at `this address <https://www.tensorflow.org/tensorboard/r1/overview>`_.
+        A TensorBoard guide is available `here <https://www.tensorflow.org/tensorboard/r1/overview>`_.
 
     .. Note ::
-        Uploading ``embeddings_projector.tsv`` and ``metadata.tsv`` to
+        Uploading `embeddings_projector.tsv` and `metadata.tsv` to
         `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_ will give a result
         similar to the picture below:
 
@@ -159,9 +164,9 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all',
     >>> optim = tf.optimizers.Adam(learning_rate=0.01)
     >>> loss = SelfAdversarialLoss({'margin': 0.1, 'alpha': 5, 'reduction': 'sum'})
     >>> model = ScoringBasedEmbeddingModel(eta=5, 
-    >>>                                      k=300,
-    >>>                                      scoring_type='ComplEx',
-    >>>                                      seed=0)
+    >>>                                    k=300,
+    >>>                                    scoring_type='ComplEx',
+    >>>                                    seed=0)
     >>> model.compile(optimizer=optim, loss=loss)
     >>> model.fit('./fb15k-237/train.txt',
     >>>           batch_size=10000,
@@ -189,18 +194,19 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all',
     model: EmbeddingModel
         A trained neural knowledge graph embedding model, the model must be an instance of TransE,
         DistMult, ComplEx, or HolE.
-    loc: string
+    loc: str
         Directory where the files are written.
     entities_subset: list
-        list of entities whose embeddings have to be visualized
+        List of entities whose embeddings have to be visualized.
     labels: pd.DataFrame
         Label(s) for each embedding point in the Tensorboard visualization.
-        Default behaviour is to use the embeddings labels included in the model.
-    export_tsv_embeddings: bool (Default: True
-         If True, will generate a tab-separated file of embeddings at the given path. This is generally used to
-         visualize embeddings by uploading to `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_.
-    write_metadata: bool (Default: True)
-        If True will write a file named 'metadata.tsv' in the same directory as path.
+        Default behaviour is to use the embedding labels included in the model.
+    export_tsv_embeddings: bool
+         If `True` (default), will generate a tab-separated file of embeddings at the given path.
+         This is generally used to visualize embeddings by uploading to
+         `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_.
+    write_metadata: bool
+        If `True` (default), will write a file named `'metadata.tsv'` in the same directory as path.
 
     """
 
@@ -262,16 +268,16 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all',
 
     
 def write_metadata_tsv(loc, data):
-    """Write Tensorboard metadata.tsv file.
+    """Write Tensorboard `"metadata.tsv"` file.
 
     Parameters
     ----------
-    loc: string
+    loc: str
         Directory where the file is written.
-    data: list of strings, or pd.DataFrame
+    data: list of strings or pd.DataFrame
         Label(s) for each embedding point in the Tensorboard visualization.
-        If data is a list of strings then no header will be written. If it is a pandas DataFrame with multiple
-        columns then headers will be written.
+        If ``data`` is a list of strings then no header will be written. If it is a `pandas DataFrame` with multiple
+        columns, then the headers will be written.
     """
 
     # Write metadata.tsv
@@ -294,9 +300,9 @@ def dataframe_to_triples(X, schema):
 
     Parameters
     ----------
-    X: pandas DataFrame with headers
-    schema: List of (subject, relation_name, object) tuples
-            where subject and object are in the headers of the data frame
+    X: pd.DataFrame with headers
+    schema: list of tuples
+        List of (subject, relation_name, object) tuples where subject and object are in the headers of the data frame.
 
     Examples
     --------
@@ -323,22 +329,23 @@ def dataframe_to_triples(X, schema):
 def preprocess_focusE_weights(data, weights, normalize=True):
     '''Preprocessing of focusE weights.
 
-    Extract weights from data, remove NaNs, average weights and normalize them
-    if **self.focusE_params['normalize_numeric_values']==True**                                                         # Check how to write documentation
+    Extract weights from data, remove `NaNs`, average weights and normalize them
+    if ``self.focusE_params['normalize_numeric_values']==True``.
 
     Parameters
     ----------
-    data: array
-        array of shape (n,m) with m>2. If weights argument is None, data contains triples
-        and weights (m>3). If weight is passed, data only contains triples (m=3).
-    weights: array
-        If not None, weights has shape (n, l), with l>0.
+    data: array-like, shape (n,m)
+        Array of shape (n,m) with :math:`m>=3`. If ``weights=None``, data contains triples
+        and weights (:math:`m>3`). If ``weights`` is passed, data only contains triples (:math:`m=3`).
+    weights: array-like
+        If not `None`, ``weights`` has shape (n, l), with l>0.
     normalize : bool
-        Specify whether to normalize the weights into the [0,1] range.
+        Specify whether to normalize the weights into the [0,1] range (default: `True`).
 
     Returns
     -------
-        an array of weights properly normalized
+    processed_weights: np.array, shape (n, m)
+        An array of weights properly preprocessed.
     '''
     if weights.ndim == 1:
         weights = weights.reshape(-1, 1)
@@ -348,7 +355,7 @@ def preprocess_focusE_weights(data, weights, normalize=True):
         for col_idx in range(weights.shape[1]):
             # here nans signify unknown numeric values
             if np.sum(
-                    pd.isna(weights[data[:, 1] == reln,col_idx])
+                    pd.isna(weights[data[:, 1] == reln, col_idx])
                     ) != weights[data[:, 1] == reln, col_idx].shape[0]:
                 min_val = np.nanmin(weights[data[:, 1] == reln, col_idx].astype(np.float32))
                 max_val = np.nanmax(weights[data[:, 1] == reln, col_idx].astype(np.float32))

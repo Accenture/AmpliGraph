@@ -1,3 +1,11 @@
+# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+
 import tensorflow as tf
 import numpy as np
 from ampligraph.latent_features.models import ScoringBasedEmbeddingModel
@@ -100,7 +108,9 @@ class ScoringModelBase:
     def fit(self, X, 
             early_stopping=False, 
             early_stopping_params={}, 
-            tensorboard_logs_path=None, callbacks=None):
+            tensorboard_logs_path=None, callbacks=None,
+            focusE=False,
+            focusE_params={}):
         self.model = ScoringBasedEmbeddingModel(self.eta, self.k, scoring_type=self.model_name, seed=self.seed)
         if callbacks is None:
             callbacks = []
@@ -156,25 +166,28 @@ class ScoringModelBase:
                        validation_data=early_stopping_params.get('x_valid', None),
                        validation_filter=x_filter,
                        validation_entities_subset=early_stopping_params.get('corruption_entities', None),
-                       callbacks=callbacks)
+                       callbacks=callbacks,
+                       focusE=focusE,
+                       focusE_params=focusE_params)
         
     def get_indexes(self, X, type_of='t', order="raw2ind"):
-        """Converts given data to indexes or to raw data (according to order), works for 
-           both triples (type_of='t'), entities (type_of='e'), and relations (type_of='r').
+        """Converts given data to indexes or to raw data (according to order).
+
+           It works for both triples (``type_of='t'``), entities (``type_of='e'``), and relations (``type_of='r'``).
            
            Parameters
            ----------
            X: np.array
-               data to be indexed.
+               Data to be indexed.
            type_of: str
-               one of ['e', 't', 'r']
+               One of `['e', 't', 'r']` to specify which type of data is to be indexed or converted to raw data.
            order: str 
-               one of ['raw2ind', 'ind2raw']
+               One of `['raw2ind', 'ind2raw']` to specify whether to convert raw data to indexes or vice versa.
 
            Returns
            -------
            Y: np.array
-               indexed data
+               Indexed data or raw data.
         """
         return self.model.get_indexes(X, type_of, order)
         
@@ -184,12 +197,13 @@ class ScoringModelBase:
             Parameters
             ----------
             concept_type: str
-                Indicates whether it is entity 'e' or relation 'r'. Default is 'e'
+                Indicates whether to count entities (``concept_type='e'``) or relations (``concept_type='r'``).
+                Default is ``concept_type='e'``.
                 
             Returns
             -------
             count: int
-                count of the entities or relations
+                Count of the entities or relations.
         '''
         if embedding_type == 'entity' or embedding_type == 'e':
             return self.model.get_count('e')
@@ -208,11 +222,12 @@ class ScoringModelBase:
         Parameters
         ----------
         entities : array-like, dtype=int, shape=[n]
-            The entities (or relations) of interest. Element of the vector must be the original string literals, and
+            The entities (or relations) of interest. Elements of the vector must be the original string literals, and
             not internal IDs.
-        embedding_type : string
-            If 'e' or 'entities', ``entities`` argument will be considered as a list of knowledge graph entities (i.e. nodes).
-            If set to 'r' or 'relation', they will be treated as relation types instead (i.e. predicates).
+        embedding_type : str
+            If `'e'` or `'entities'`, ``entities`` argument will be considered as a list of knowledge graph entities
+            (i.e. nodes). If set to `'r'` or `'relation'`, they will be treated as relation types instead
+            (i.e. predicates).
         Returns
         -------
         embeddings : ndarray, shape [n, k]

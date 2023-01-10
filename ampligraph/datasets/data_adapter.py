@@ -29,25 +29,25 @@ class DataHandler():
         Parameters:
         -----------
         model: tf.keras.Model
-            Model instance
+            Model instance.
         batch_size: int
-            batch size to use during training. 
-            May be overridden if x is GraphDataLoader or AbstractGraphPartitioner instance
+            Batch size to use during training.
+            May be overridden if `x` is ``GraphDataLoader`` or ``AbstractGraphPartitioner`` instance.
         dataset_type: string
-            dataset type that is being passed
+            Dataset type that is being passed.
         epochs: int
             Number of epochs to train (default: 1)
         initial epoch: int
-            initial epoch number (default: 1)
+            Initial epoch number (default: 1)
         use_indexer: bool or Mapper
-            whether the data needs to be indexed or whether we need to use pre-defined indexer to map 
-            the data to index
+            Whether the data needs to be indexed or whether we need to use pre-defined indexer to map
+            the data to index.
         use_filter: bool or dict
-            whether to use filter of not. If a dictionary is specified, the data in the dict is concatenated 
-            and used as filter 
+            Whether to use filter of not. If a dictionary is specified, the data in the dict is concatenated
+            and used as filter.
         partitioning_k: int
-            number of partitions to create
-            May be overridden if x is an AbstractGraphPartitioner instance
+            Number of partitions to create.
+            May be overridden if `x` is an ``AbstractGraphPartitioner`` instance
         '''
         self._initial_epoch = initial_epoch
         self._epochs = epochs
@@ -70,7 +70,7 @@ class DataHandler():
         else:
             # use graph data loader by default
             self._adapter = GraphDataLoader(x,
-                                            backend=DummyBackend,
+                                            backend=SQLiteAdapter,
                                             batch_size=batch_size,
                                             dataset_type=dataset_type,
                                             use_indexer=use_indexer,
@@ -98,7 +98,7 @@ class DataHandler():
                 self._inferred_steps = self._current_iter
             
     def steps(self):
-        '''Counts the number of steps in an epoch'''
+        '''Counts the number of steps in an epoch.'''
         self._current_iter = 0
         while self._inferred_steps is None or self._current_iter < self._inferred_steps:
             self._current_iter += 1
@@ -106,11 +106,11 @@ class DataHandler():
             
     @property
     def inferred_steps(self):
-        '''Returns the number of steps in the batch'''
+        '''Returns the number of steps in the batch.'''
         return self._inferred_steps
     
     def enumerate_epochs(self, use_tqdm=False):
-        '''Manages the (reloading) data adapter before epoch starts'''
+        '''Manages the (reloading) data adapter before epoch starts.'''
         for epoch in tqdm.tqdm(range(self._initial_epoch, self._epochs), disable=not use_tqdm):
             self._adapter.reload()   
             yield epoch, iter(self._adapter.get_tf_generator())
@@ -119,7 +119,7 @@ class DataHandler():
         self._adapter.on_complete()
         
     def get_mapper(self):
-        '''returns the mapper of the main data loader class'''
+        '''Returns the mapper of the main data loader class.'''
         return self._parent_adapter.backend.mapper
     
     def get_update_partitioner_metadata(self, filepath):

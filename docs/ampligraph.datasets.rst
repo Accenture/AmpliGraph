@@ -8,7 +8,10 @@ Datasets
 Loaders for Custom Knowledge Graphs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Functions to load custom knowledge graphs from disk. These functions load the data from the specified files and store as a numpy array. Users can use these loaders to load data when their datasets are small in size (approx 1M entities and millions of triples), as long as it can fit in the memory. In case the dataset is big and doesnt load in memory, the users can use ``GraphDataLoader`` class discussed on this page under advanced topics section.
+These are functions to load custom knowledge graphs from disk. They load the data from the specified files and store it
+as a numpy array. These loaders are recommended when the datasets to load are small in size (approx 1M entities and
+millions of triples), i.e., as long as they can be stored in memory. In case the dataset is too big to fit in memory,
+use the ``GraphDataLoader`` class instead (see the `Advanced Topics` section).
 
 .. autosummary::
     :toctree:
@@ -78,6 +81,10 @@ CODEX-M   185,584   10,310  10,311  17,050        51
 .. note::
     CODEX-M contains also ground truths negative triples for test and validation sets. More information about the dataset in :cite:`safavi_codex_2020`.
 
+.. note::
+    WN11 and FB13 also provide true and negative labels for the triples in the validation and tests sets.
+    In both cases the positive base rate is close to 50%.
+
 .. warning::
     WN18 and FB15k include a large number of inverse relations, and its use in experiments has been deprecated.
     **Use WN18RR and FB15K-237 instead**.
@@ -87,28 +94,22 @@ CODEX-M   185,584   10,310  10,311  17,050        51
         distributed over 28 triples. WN18RR's validation set contains 198 unseen entities over 210 triples. The test set
         has 209 unseen entities, distributed over 210 triples.
 
-.. note::
-    WN11 and FB13 also provide true and negative labels for the triples in the validation and tests sets.
-    In both cases the positive base rate is close to 50%.
-
 
 Benchmark Datasets Loaders (Knowledge Graphs With Numeric Values on Edges)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. _numeric-enriched-edges-loaders:
 
-These helper functions load benchmark datasets **with numeric values on edges**,
-as described in :cite:`pai2021learning` (the figure below shows a toy example).
+These helper functions load benchmark datasets **with numeric values on edges** (the figure below shows a toy example).
 
 .. image:: img/kg_eg.png
     :scale: 50 %
 
 .. hint::
     To process a knowledge graphs with numeric values associated to edges, enable the
-    :ref:`FocusE layer <edge-literals>`
-    when training a knowledge graph embedding model :cite:`pai2021learning`.
+    FocusE layer :cite:`pai2021learning` when training a knowledge graph embedding model.
 
 The functions will **automatically download** the datasets if they are not present in ``~/ampligraph_datasets`` or
-at the location set in ``AMPLIGRAPH_DATA_HOME``.
+at the location set in the ``AMPLIGRAPH_DATA_HOME``.
 
 .. autosummary::
     :toctree: 
@@ -134,9 +135,16 @@ CN15K     199,417   16,829   19,224   15,000      36
     
 Advanced Topics
 ^^^^^^^^^^^^^^^
-This section is meant for advanced users who want to train the models on custom datasets which are extremely large and either don't fit on CPU or GPU memory. AmpliGraph has various types of graph partitioners which can be used to partition the data. Partitioning is necessary to split the large datasets into multiple chuncks. During training, the entire dataset is not loaded in memory. Instead, some of the chuncks created earlier would be loaded and the model would train on these chuncks. Once it finishes operating on one chunk, it will unload and load the next chunck. Thus, a partitioned training is performed to overcome the issues related to insufficient memory.  
+This section is meant for advanced users who want to train the models on custom datasets which are extremely large and
+either do not fit on CPU or GPU memory.
 
-The users can use ``GraphDataLoader`` class to load these type of datasets. The API details are described below.
+AmpliGraph has various types of graph partitioners which can be used to partition the data. Partitioning is necessary
+to split large datasets into multiple chunks that singularly fits in memory, thus overcoming the issue of handling huge
+amounts of data that would not fit in memory otherwise. During training, the entire dataset is not loaded in memory.
+Instead, a single chunk is created, loaded in memory and the model is trained on it. Once the model finishes operating
+on one chunk, it unloads it and loads the next one.
+
+The users can use ``GraphDataLoader`` class to load large datasets. The API details are described below.
 
 .. currentmodule:: ampligraph.datasets
 
@@ -149,7 +157,8 @@ The users can use ``GraphDataLoader`` class to load these type of datasets. The 
     
 
 
-Partitioning can be performed using one of the following partitioners. By default, AmpliGraph uses the ``BucketGraphPartitioner`` since its runtime performance is much better than others.
+Partitioning can be performed using one of the following options. By default, AmpliGraph uses the
+``BucketGraphPartitioner``, since its runtime performance is much better than the others.
 
 .. currentmodule:: ampligraph.datasets
 

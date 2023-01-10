@@ -24,32 +24,33 @@ TOO_MANY_ENTITIES_TH = 50000
 
 def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False, filtered_test_predicates=None):
     """Split into train and test sets.
+
      This function carves out a test set that contains only entities
      and relations which also occur in the training set.
      
-     This is an improved version which is much faster - since this doesnt sample like earlier approach but rather 
-     shuffles indices and gets the test set of required size by selecting from the shuffled indices only triples 
+     This is an improved version which is much faster - since this does not sample like in the earlier approach but
+     rather shuffles indices and gets the test set of required size by selecting from the shuffled indices only triples
      which do not disconnect entities/relations.
     Parameters
     ----------
-    X : ndarray, size[n, 3]
+    X : ndarray, shape (n, 3)
         The dataset to split.
     test_size : int, float
-        If int, the number of triples in the test set.
-        If float, the percentage of total triples.
+        If `int`, the number of triples in the test set.
+        If `float`, the percentage of total triples.
     seed : int
         A random seed used to split the dataset.
-    allow_duplication: boolean
+    allow_duplication: bool
         Flag to indicate if the test set can contain duplicated triples.
     filtered_test_predicates: None, list
-        If None, all predicate types will be considered for the test set.
-        If list, only the predicate types in the list will be considered for
+        If `None`, all predicate types will be considered for the test set.
+        If `list`, only the predicate types in the list will be considered for
         the test set.
     Returns
     -------
-    X_train : ndarray, size[n, 3]
+    X_train : ndarray, shape (n, 3)
         The training set.
-    X_test : ndarray, size[n, 3]
+    X_test : ndarray, shape (n, 3)
         The test set.
     Examples
     --------
@@ -180,7 +181,7 @@ def filter_unseen_entities(X, model, verbose=False):
 
     Parameters
     ----------
-    X : ndarray, shape [n, 3]
+    X : ndarray, shape (n, 3)
         An array of test triples.
     model : ampligraph.latent_features.EmbeddingModel
         A knowledge graph embedding model.
@@ -189,7 +190,7 @@ def filter_unseen_entities(X, model, verbose=False):
 
     Returns
     -------
-    filtered X : ndarray, shape [n, 3]
+    filtered X : ndarray, shape (n, 3)
         An array of test triples containing no unseen entities.
     """
     logger.debug('Finding entities in the dataset that are not previously seen by model')
@@ -208,8 +209,9 @@ def filter_unseen_entities(X, model, verbose=False):
 
 def _flatten_nested_keys(dictionary):
     """
-    Flatten the nested values of a dictionary into tuple keys
-    E.g. {"a": {"b": [1], "c": [2]}} becomes {("a", "b"): [1], ("a", "c"): [2]}
+    Flatten the nested values of a dictionary into tuple keys.
+
+    E.g., {"a": {"b": [1], "c": [2]}} becomes {("a", "b"): [1], ("a", "c"): [2]}
     """
     # Find the parameters that are nested dictionaries
     nested_keys = {k for k, v in dictionary.items() if type(v) is dict}
@@ -223,8 +225,9 @@ def _flatten_nested_keys(dictionary):
 
 def _unflatten_nested_keys(dictionary):
     """
-    Unflatten the nested values of a dictionary based on the keys that are tuples
-    E.g. {("a", "b"): [1], ("a", "c"): [2]} becomes {"a": {"b": [1], "c": [2]}}
+    Unflatten the nested values of a dictionary based on the keys that are tuples.
+
+    E.g., {("a", "b"): [1], ("a", "c"): [2]} becomes {"a": {"b": [1], "c": [2]}}
     """
     # Find the parameters that are nested dictionaries
     nested_keys = {k[0] for k in dictionary if type(k) is tuple}
@@ -239,6 +242,7 @@ def _unflatten_nested_keys(dictionary):
 def _get_param_hash(param):
     """
     Get the hash of a param dictionary.
+
     It first unflattens nested dicts, removes unused nested parameters, nests them again and then create a frozenset
     based on the resulting items (tuples).
     Note that the flattening and unflattening dict functions are idempotent.
@@ -252,7 +256,7 @@ def _get_param_hash(param):
 
     Returns
     -------
-    str
+    hash : str
         Hash of the param dictionary.
     """
     # Remove parameters that are not used by particular configurations
@@ -264,7 +268,8 @@ def _get_param_hash(param):
 
 class ParamHistory(object):
     """
-    Used to evaluates whether a particular parameter configuration has already been previously seen or not.
+    Used to evaluate whether a particular parameter configuration has already been previously seen or not.
+
     To achieve that, we hash each parameter configuration, removing unused parameters first.
     """
     def __init__(self):
@@ -283,6 +288,7 @@ class ParamHistory(object):
 def _next_hyperparam(param_grid):
     """
     Iterator that gets the next parameter combination from a dictionary containing lists of parameters.
+
     The parameter combinations are deterministic and go over all possible combinations present in the parameter grid.
 
     Parameters
@@ -332,7 +338,7 @@ def _sample_parameters(param_grid):
     Returns
     -------
 
-    param: dict
+    params: dict
         Return dictionary containing sampled parameters.
 
     """
@@ -352,6 +358,7 @@ def _sample_parameters(param_grid):
 def _next_hyperparam_random(param_grid):
     """
     Iterator that gets the next parameter combination from a dictionary containing lists of parameters or callables.
+
     The parameter combinations are randomly chosen each iteration.
 
     Parameters
@@ -401,7 +408,8 @@ def _scalars_into_lists(param_grid):
 def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid, max_combinations=None,
                               param_grid_random_seed=0, use_filter=True, early_stopping=False,
                               early_stopping_params=None, use_test_for_selection=False, entities_subset=None,
-                              corrupt_side='s,o', use_default_protocol=False, retrain_best_model=False, verbose=False):
+                              corrupt_side='s,o', use_default_protocol=False, focusE=False, focusE_params={},
+                              retrain_best_model=False, verbose=False):
     """Model selection routine for embedding models via either grid search or random search.
 
     For grid search, pass a fixed ``param_grid`` and leave ``max_combinations`` as `None`
@@ -426,11 +434,11 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     ----------
     model_class : class
         The class of the EmbeddingModel to evaluate (TransE, DistMult, ComplEx, etc).
-    X_train : ndarray, shape [n, 3]
+    X_train : ndarray, shape (n, 3)
         An array of training triples.
-    X_valid : ndarray, shape [n, 3]
+    X_valid : ndarray, shape (n, 3)
         An array of validation triples.
-    X_test : ndarray, shape [n, 3]
+    X_test : ndarray, shape (n, 3)
         An array of test triples.
     param_grid : dict
         A grid of hyperparameters to use in model selection. The routine will train a model for each combination
@@ -444,28 +452,28 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         or ``"lr": lambda: np.random.uniform(0.01, 0.1)``.
     max_combinations: int
         Maximum number of combinations to explore.
-        By default (None) all combinations will be explored,
+        By default (`None`) all combinations will be explored,
         which makes it incompatible with random parameters for random search.
     param_grid_random_seed: int
         Random seed for the parameters that are callables and random.
     use_filter : bool
-        If True, will use the entire input dataset X to compute filtered MRR (default: True).
+        If `True`, it will use the entire input dataset `X` to compute filtered MRR (default: `True`).
     early_stopping: bool
-        Flag to enable early stopping (default:False).
+        Flag to enable early stopping (default: `False`).
 
-        If set to ``True``, the training loop adopts the following early stopping heuristic:
+        If set to `True`, the training loop adopts the following early stopping heuristic:
 
         - The model will be trained regardless of early stopping for ``burn_in`` epochs.
         - Every ``check_interval`` epochs the method will compute the metric specified in ``criteria``.
 
         If such metric decreases for ``stop_interval`` checks, we stop training early.
 
-        Note the metric is computed on ``x_valid``. This is usually a validation set that you held out.
+        Note the metric is computed on ``X_valid``. This is usually a validation set that you held out.
 
-        Also, because ``criteria`` is a ranking metric, it requires generating negatives.
-        Entities used to generate corruptions can be specified, as long as the side(s) of a triple to corrupt.
+        Also, since ``criteria`` is a ranking metric, it requires generating negatives.
+        Entities used to generate corruptions can be specified as the side(s) of a triple to corrupt.
         The method supports filtered metrics, by passing an array of positives to ``x_filter``. This will be used to
-        filter the negatives generated on the fly (i.e. the corruptions).
+        filter the negatives generated on the fly (i.e., the corruptions).
 
         .. note::
 
@@ -477,7 +485,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
                 early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}
 
-            Note the size of validation set also contributes to such overhead.
+            Note that the size of validation set also contributes to such overhead.
             In most cases a smaller validation set would be enough.
 
     early_stopping_params: dict
@@ -485,36 +493,41 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
         The following keys are supported:
 
-            * x_valid: ndarray, shape [n, 3] : Validation set to be used for early stopping. Uses X['valid'] by default.
+            * x_valid: ndarray, shape (n, 3) : Validation set to be used for early stopping.
+            Uses `X['valid']` by default.
 
-            * criteria: criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr``. (default)
+            * criteria: Criteria for early stopping ``hits10``, ``hits3``, ``hits1`` or ``mrr`` (default: `"mrr"`)
 
-            * x_filter: ndarray, shape [n, 3] : Filter to be used(no filter by default)
+            * x_filter: ndarray, shape (n, 3) : Filter to be used (default: `None`)
 
-            * burn_in: Number of epochs to pass before kicking in early stopping(default: 100)
+            * burn_in: Number of epochs to pass before kicking in early stopping (default: 100)
 
-            * check_interval: Early stopping interval after burn-in(default:10)
+            * check_interval: Early stopping interval after burn-in (default:10)
 
-            * stop_interval: Stop if criteria is performing worse over n consecutive checks (default: 3)
+            * stop_interval: Stop if criteria is performing worse over `n` consecutive checks (default: 3)
 
+    focusE: bool
+        Whether to use the focusE layer (default: `False`).
+    focusE_params: dict
+        Dictionary of parameters if focusE is activated.
     use_test_for_selection:bool
-        Use test set for model selection. If False, uses validation set (default: False).
+        Use test set for model selection. If `False`, uses validation set (default: `False`).
     entities_subset: array-like
-        List of entities to use for corruptions. If None, will generate corruptions
-        using all distinct entities (default: None).
-    corrupt_side: string
+        List of entities to use for corruptions. If `None`, will generate corruptions
+        using all distinct entities (default: `None`).
+    corrupt_side: str
         Specifies which side to corrupt the entities:
-        ``s`` is to corrupt only subject.
-        ``o`` is to corrupt only object.
-        ``s+o`` is to corrupt both subject and object.
-        ``s,o`` is to corrupt both subject and object but ranks are computed separately (default).
+        `"s"` to corrupt only subject.
+        `"o"` to corrupt only object.
+        `"s+o"` to corrupt both subject and object.
+        `"s,o"` to corrupt both subject and object but ranks are computed separately (default).
     use_default_protocol: bool
-        Flag to indicate whether to evaluate head and tail corruptions separately(default:False).
-        If this is set to true, it will ignore corrupt_side argument and corrupt both head
-        and tail separately and rank triples i.e. corrupt_side='s,o' mode.
+        Flag to indicate whether to evaluate head and tail corruptions separately (default: `False`).
+        If this is set to `True`, it will ignore ``corrupt_side`` argument and corrupt both head
+        and tail separately and rank triples, i.e., ``corrupt_side="s,o"`` mode.
     retrain_best_model: bool
-        Flag to indicate whether best model should be re-trained at the end with the validation set used in the search.
-        Default: False.
+        Flag to indicate whether best model should be re-trained at the end with the validation set used in the search
+        (default: `False`).
     verbose : bool
         Verbose mode for the model selection procedure (which is independent of the verbose mode in the model fit).
 
@@ -534,11 +547,11 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     best_mrr_train : float
         The MRR (unfiltered) of the best model computed over the validation set in the model selection loop.
 
-    ranks_test : ndarray, shape [n] or [n,2] depending on the value of corrupt_side.
+    ranks_test : ndarray, shape (n) or (n,2)
         An array of ranks of test triples.
-        When ``corrupt_side='s,o'`` the function returns [n,2]. The first column represents the rank against
-        subject corruptions and the second column represents the rank against object corruptions.
-        In other cases, it returns [n] i.e. rank against the specified corruptions.
+        When ``corrupt_side='s,o'`` the function returns an array of shape (n,2). The first column represents the
+        rank against subject corruptions and the second column represents the rank against object corruptions.
+        In other cases, it returns an array of size (n), i.e., rank against the specified corruptions.
 
     mrr_test : float
         The MRR (filtered) of the best model, retrained on the concatenation of training and validation sets,
@@ -558,29 +571,27 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     >>> X = load_wn18()
     >>> model_class = ComplEx
     >>> param_grid = {
-    >>>                     "batches_count": [50],
-    >>>                     "seed": 0,
-    >>>                     "epochs": [4000],
-    >>>                     "k": [100, 200],
-    >>>                     "eta": [5,10,15],
-    >>>                     "loss": ["pairwise", "nll"],
-    >>>                     "loss_params": {
-    >>>                         "margin": [2]
-    >>>                     },
-    >>>                     "embedding_model_params": {
-    >>>
-    >>>                     },
-    >>>                     "regularizer": ["LP", None],
-    >>>                     "regularizer_params": {
-    >>>                         "p": [1, 3],
-    >>>                         "lambda": [1e-4, 1e-5]
-    >>>                     },
-    >>>                     "optimizer": ["adagrad", "adam"],
-    >>>                     "optimizer_params":{
-    >>>                         "lr": lambda: np.random.uniform(0.0001, 0.01)
-    >>>                     },
-    >>>                     "verbose": False
-    >>>                 }
+    >>>                "batches_count": [50],
+    >>>                "seed": 0,
+    >>>                "epochs": [4000],
+    >>>                "k": [100, 200],
+    >>>                "eta": [5,10,15],
+    >>>                "loss": ["pairwise", "nll"],
+    >>>                "loss_params": {
+    >>>                    "margin": [2]
+    >>>                },
+    >>>                "embedding_model_params": {},
+    >>>                "regularizer": ["LP", None],
+    >>>                "regularizer_params": {
+    >>>                    "p": [1, 3],
+    >>>                    "lambda": [1e-4, 1e-5]
+    >>>                },
+    >>>                "optimizer": ["adagrad", "adam"],
+    >>>                "optimizer_params":{
+    >>>                    "lr": lambda: np.random.uniform(0.0001, 0.01)
+    >>>                },
+    >>>                "verbose": False
+    >>>               }
     >>> select_best_model_ranking(model_class, X['train'], X['valid'], X['test'], param_grid,
     >>>                           max_combinations=100, use_filter=True, verbose=True,
     >>>                           early_stopping=True)
@@ -653,7 +664,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         del model_params["model_name"]
         try:
             model = model_class(**model_params)
-            model.fit(X_train, early_stopping, early_stopping_params)
+            model.fit(X_train, early_stopping, early_stopping_params, focusE=focusE, focusE_params=focusE_params)
             
             ranks = evaluate_performance(selection_dataset, model=model,
                                          filter_triples=X_filter, verbose=verbose,

@@ -85,7 +85,7 @@ class DummyBackend():
            Parameters
            ----------
            data_source: file with data.
-           dataset_type: kind of data to be loaded (train | test | validation).
+           dataset_type: kind of data to be loaded (`train` | `test` | `validation`).
         """
         logger.debug("Simple in-memory data loading of {} dataset.".format(dataset_type))
         self.data_source = data_source
@@ -127,8 +127,8 @@ class DummyBackend():
         self.data_shape = self.mapper.backend.data_shape
 
     def _get_triples(self, subjects=None, objects=None, entities=None):
-        """Get triples that objects belongs to objects and subjects to subjects,
-           or if not provided either object or subject belongs to entities.
+        """Get triples whose objects belong to objects and subjects to subjects,
+           or, if provided neither object nor subject, triples whose subject or object belong to entities.
         """
         if subjects is None and objects is None:
             if entities is None:
@@ -153,18 +153,22 @@ class DummyBackend():
 
     def _get_complementary_entities(self, triples, use_filter=None):
         """Get subjects and objects complementary to a triple (?,p,?).
+
            Returns the participating entities in the relation ?-p-o and s-p-?.
            Function used during evaluation.
 
            WARNING: If the parent is set the triples returned are coming with parent indexing.
+
            Parameters
            ----------
-           x_triple: nd-array (N,3,) of N
-               triples (s-p-o) that we are querying.
+           x_triple: nd-array of shape (N, 3)
+               Triples `(s, p, o)` that we are querying.
 
            Returns
            -------
-           entities: two lists, of subjects and objects participating in the relations s-p-? and ?-p-o.
+           entities: tuple
+                Tuple containig two lists, one of subjects and one of objects participating in the relations
+                s-p-? and ?-p-o.
        """
 
         logger.debug("Getting complementary entities")
@@ -192,6 +196,7 @@ class DummyBackend():
 
     def _get_complementary_subjects(self, triples, use_filter=False):
         """Get subjects complementary to triples (?,p,o).
+
            For a given triple retrieve all subjects coming from triples with same objects and predicates.
 
            Parameters
@@ -202,7 +207,7 @@ class DummyBackend():
            Returns
            -------
            subjects : list
-                Subjects present in the input triples
+                Subjects present in the input triples.
         """
 
         logger.debug("Getting complementary subjects")
@@ -233,11 +238,11 @@ class DummyBackend():
 
             tmp_filter = []
             for triple in triples:
-                tmp = source[source[:, 2] == triple[2]]                                                                 # extract filter triples where the object is the one specified
-                tmp_filter.append(list(set(tmp[tmp[:, 1] == triple[1]][:, 0])))                                         # check that the relation is the one specified and add subjects
+                tmp = source[source[:, 2] == triple[2]]
+                tmp_filter.append(list(set(tmp[tmp[:, 1] == triple[1]][:, 0])))
             filtered.append(tmp_filter)
         # Unpack data into one list per triple no matter what filter it comes from
-        unpacked = list(zip(*filtered))                                                                                 # list of all subjects that are considered
+        unpacked = list(zip(*filtered))
         subjects = []
         for k in unpacked:
             lst = [j for i in k for j in i]
@@ -247,16 +252,20 @@ class DummyBackend():
 
     def get_source(self, source, name):
         """Loads specified by name data and keep it in the loaded dictionary.
+
            Used to load filter datasets.
 
            Parameters
            ----------
-           source: data source
-           name: name of the dataset to be loaded
+           source: ndarray or str
+                Data source to load data from.
+           name: str
+                Name of the dataset to be loaded.
  
            Returns
            -------
-           loaded data as a numpy array indexed according to mapper.
+           Loaded data : ndarray
+                Numpy array containing loaded data indexed according to mapper.
         """
         if name not in self.sources:
             if isinstance(source, np.ndarray):
@@ -273,7 +282,8 @@ class DummyBackend():
 
     def _get_complementary_objects(self, triples, use_filter=False):
         """Get objects complementary to  triples (s,p,?).
-           For a given triple retrieve all triples with same subjects and predicates.
+
+           For a given triple retrieves all triples with same subjects and predicates.
            Function used during evaluation.
 
            Parameters
@@ -284,7 +294,7 @@ class DummyBackend():
            Returns
            -------
            subjects : list
-                Objects present in the input triples
+                Objects present in the input triples.
         """
         logger.debug("Getting complementary objects")
        
@@ -327,9 +337,10 @@ class DummyBackend():
         return objects
 
     def _intersect(self, dataloader):
-        """Intersect between data and dataloader elements.
+        """Intersection between data and dataloader elements.
+
            Works only when dataloader is of type
-           DummyBackend.
+           ``DummyBackend``.
         """
         if not isinstance(dataloader.backend, DummyBackend):
             msg = "Intersection can only be calculated between same backends (DummyBackend), \
@@ -349,14 +360,18 @@ class DummyBackend():
         
            Parameters
            ----------
-           batch_size: size of a batch
-           dataset_type: kind of dataset that is needed (train | test | validation).
+           batch_size: int
+                Size of a batch
+           dataset_type: str
+                Kind of dataset that is needed (`"train"` | `"test"` | `"validation"`).
            random: not implemented.
            index_by: not implemented.
 
            Returns
            --------
-           ndarray(batch_size, 3)
+           Batch : ndarray
+                Batch of data of size `(batch_size, m)` where :math:`m>=3` and :math:`m>3` if numeric values
+                associated to edges are available.
         """
         if not isinstance(batch_size, int):
             batch_size = int(batch_size)
@@ -403,35 +418,30 @@ class GraphDataLoader():
        
        Example
        -------
-       >>> # Graph loader - loads the data from the file, numpy array, etc and generates batchs for iterating
+       >>> # Graph loader - loads the data from the file, numpy array, etc and generates batches for iterating
        >>> dataset_loader = GraphDataLoader('train.txt', 
-       >>>                            backend=SQLiteAdapter, # type of backend to use
-       >>>                            batch_size=1000,       # batch size to use while iterating over this dataset
-       >>>                            dataset_type='train',  # dataset type
-       >>>                            use_filter=False,      # Whether to use filter or not
-       >>>                            use_indexer=True)      # indicates that the data needs to be mapped to index
+       >>>                                  backend=SQLiteAdapter, # type of backend to use
+       >>>                                  batch_size=1000,       # batch size to use while iterating over this dataset
+       >>>                                  dataset_type='train',  # dataset type
+       >>>                                  use_filter=False,      # Whether to use filter or not
+       >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
+       >>>
        >>> # Choose the partitioner - in this case we choose RandomEdges partitioner
        >>> partitioner = RandomEdges(dataset_loader, k=3)
        >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
-       >>>                               k=50, 
-       >>>                               scoring_type='DistMult')
+       >>>                                                k=50,
+       >>>                                                scoring_type='DistMult')
        >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
-       >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
-       >>>                                               # this will generate data for the model during training
+       >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
        >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
        >>>                       epochs=10)              # number of epochs
        >>> dataset_loader_test = GraphDataLoader('/home/spai/code/ampligraph_projects/dataset/fb15k-237/test.txt', 
-       >>>                                 backend=SQLiteAdapter,     # type of backend to use
-       >>>                                 batch_size=400,            # batch size to use while iterating 
-       >>>                                                            # over this dataset
-       >>>                                 dataset_type='test',       # dataset type
-       >>>                                 use_indexer=
-       >>>            partitioned_model.data_handler.get_mapper())    # get the mapper from the trained model 
-       >>>                                                            # and map the concepts to same indices 
-       >>>                                                            # as used during training
-       >>> ranks = partitioned_model.evaluate(dataset_loader_test, # pass the dataloader object as input to the 
-       >>>                                                  # evaluate function. this will generate data
-       >>>                                                  # for the model during training
+       >>>                                       backend=SQLiteAdapter,     # type of backend to use
+       >>>                                       batch_size=400,            # batch size to use while iterating over this dataset
+       >>>                                       dataset_type='test',       # dataset type
+       >>>                                       use_indexer=partitioned_model.data_handler.get_mapper()    # get the mapper from the trained model and map the concepts to same indices as used during training
+       >>>                                      )
+       >>> ranks = partitioned_model.evaluate(dataset_loader_test, # pass the dataloader object as input to the evaluate function: this will generate data for the model during training
        >>>                                    batch_size=400)
 
     """    
@@ -443,36 +453,37 @@ class GraphDataLoader():
        
            Parameters
            ----------
-           data_source: numpy array, string, etc.
-               File with data (e.g. CSV). Can be a path pointing to the file location, can be data loaded as numpy, etc.
+           data_source: str or np.array or GraphDataLoader or AbstractGraphPartitioner
+               File with data (e.g. CSV). Can be a path pointing to the file location, can be data loaded as numpy, a
+               GraphDataLoader or an AbstractGraphPartitioner instance.
            batch_size: int
-               Size of batch,
-           dataset_type: string
-               Kind of data provided (train | test | valid),
-           backend: string
-               Name of backend class (DummyBackend, SQLiteAdapter) or, already initialised backend, 
-               If None, DummyBackend is used (in-memory processing).
-           use_indexer: bool, DataIndexer
+               Size of batch.
+           dataset_type: str
+               Kind of data provided (`"train"` | `"test"` | `"valid"`).
+           backend: str
+               Name of backend class (`DummyBackend`, `SQLiteAdapter`) or already initialised backend.
+               If `None`, `DummyBackend` is used (in-memory processing).
+           use_indexer: bool or DataIndexer
                Flag to tell whether data should be indexed.     
                If the DataIndexer object is passed, the mappings defined in the indexer will be reused 
-               to generate mappings for the current data
+               to generate mappings for the current data.
            verbose: bool
-               verbosity
+               Verbosity.
            remap: bool
                Flag to be used by graph partitioner, indicates whether 
                previously indexed data in partition has to be remapped to
-               new indexes (0, <size_of_partition>), to not be used with 
-               use_indexer=True, the new remappings will be persisted.
-           name: string
-               name of the partition. this is internally used when the data is partitioned.
+               new indexes (0, <size_of_partition>). It has not to be used with
+               ``use_indexer=True``. The new remappings will be persisted.
+           name: str
+               Name of the partition. This is internally used when the data is partitioned.
            parent: GraphDataLoader
-               Parent dataloader. This is also used internally when the data is partitioned.
+               Parent dataloader. This is internally used when the data is partitioned.
            in_memory: bool
                Persist indexes or not.
            use_filter: bool or dict
-               if True, current dataset would be used as filter
-               If dict, the datasets specified in the dict will be used for filtering
-               If False, the true positives will not be filtered from corruptions
+               If `True`, current dataset would be used as filter.
+               If `dict`, the datasets specified in the dict will be used for filtering.
+               If `False`, the true positives will not be filtered from corruptions.
         """   
         self.dataset_type = dataset_type
         self.data_source = data_source
@@ -524,16 +535,16 @@ class GraphDataLoader():
     
     @property
     def max_entities(self):
-        ''' Returns the maximum number of entities present in the dataset mapper'''
+        ''' Returns the maximum number of entities present in the dataset mapper.'''
         return self.backend.mapper.get_entities_count()
 
     @property
     def max_relations(self):
-        ''' Returns the maximum number of relations present in the dataset mapper'''
+        ''' Returns the maximum number of relations present in the dataset mapper.'''
         return self.backend.mapper.get_relations_count()
     
     def __next__(self):
-        """Function needed to be used as an itertor."""
+        """Function needed to be used as an iterator."""
         return self.batch_iterator.__next__()
       
     def reload(self, use_filter=False, dataset_type='train'):
@@ -545,33 +556,29 @@ class GraphDataLoader():
 
            Parameters
            ----------
-           use_filter: filter out true positives
+           use_filter: bool
+                Filter out true positives
         """
         return self.backend._get_batch_generator(self.batch_size, dataset_type=dataset_type)
     
     def get_tf_generator(self):
+        '''Generates a tensorflow.data.Dataset object.'''
         return tf.data.Dataset.from_generator(
             self.backend._get_batch_generator,
             output_signature=self.backend.get_output_signature(),
             args=(self.batch_size, self.dataset_type, False, "")
         ).prefetch(2)
-        # else:
-        #     return tf.data.Dataset.from_generator(
-        #         self.backend._get_batch_generator,
-        #         output_signature=self.backend.get_output_signature(),
-        #         args=(self.batch_size, self.dataset_type, False, "")
-        #     ).map(preprocess_focusE_weights)\
-        #         .prefetch(2)
 
     def add_dataset(self, data_source, dataset_type):
-        self.backend._add_dataset(data_source, dataset_type=dataset_type)  
+        '''Adds the dataset to the backend if possible.'''
+        self.backend._add_dataset(data_source, dataset_type=dataset_type)
     
     def get_data_size(self):
         """Returns number of triples."""
         return self.backend.get_data_size()
  
     def intersect(self, dataloader):
-        """Returns intersection between current dataloader elements and another one (argument).
+        """Returns the intersection between the current dataloader elements and another one (argument).
 
            Parameters
            ----------
@@ -579,44 +586,31 @@ class GraphDataLoader():
 
            Returns
            -------
-           intersection: np.array of intersecting elements.
+           intersection: ndarray
+                Array of intersecting elements.
         """
 
         return self.backend._intersect(dataloader)
 
     def get_participating_entities(self, triples, sides="s,o", use_filter=False):
-        """Get entities from triples with fixed subjects ("s"), objects ("o") or both ("s,o" or "o,s").
+        """Get entities from triples with fixed subjects or fixed objects or both fixed.
 
            Parameters
            ----------
            triples: list, array
                 List or array of arrays with 3 elements (subject, predicate, object).
            sides : str
-                String specifying what entities to retrieve: "s" - subjects, "o" - objects,
-                "s,o" - subjects and objects, "o,s" - objects and subjects.
+                String specifying what entities to retrieve: `"s"` - subjects, `"o"` - objects,
+                `"s,o"` - subjects and objects, `"o,s"` - objects and subjects.
 
            Returns
            -------
            entities : list
-                List of subjects (if sides="s") or objects (if sides="o") or two lists with both (if sides="s,o"
-                or sides="o,s").
+                List of subjects (if ``sides="s"``) or objects (if ``sides="o"``) or two lists with both
+                (if ``sides="s,o"`` or ``sides="o,s"``).
         """
-        """Get objects complementary to  triples (s,p,?).
-                   For a given triple retrieve all triples with same subjects and predicates.
-                   Function used during evaluation.
-
-                   Parameters
-                   ----------
-                   triples : list or array
-                        
-
-                   Returns
-                   -------
-                   subjects : list
-                        Objects present in the input triples
-                """
         if sides not in ['s', 'o', 's,o', 'o,s']:
-            msg = "Sides should be either s (subject), o (object), or s,o/o,s (subject, object/object, subject), \
+            msg = "Sides should be either 's' (subject), 'o' (object), or 's,o'/'o,s' (subject, object/object, subject), \
             instead got {}".format(sides)
             logger.error(msg)
             raise Exception(msg)
@@ -637,6 +631,7 @@ class GraphDataLoader():
 
     def get_complementary_subjects(self, triples, use_filter=False):
         """Get subjects complementary to triples (?,p,o).
+
            For a given triple retrieve all subjects coming from triples with same objects and predicates.
 
            Parameters
@@ -647,12 +642,13 @@ class GraphDataLoader():
            Returns
            -------
            subjects : list
-                Subjects present in the input triples
+                Subjects present in the input triples.
         """
         return self.backend._get_complementary_subjects(triples, use_filter=use_filter)
 
     def get_complementary_objects(self, triples, use_filter=False):
         """Get objects complementary to  triples (s,p,?).
+
            For a given triple retrieve all triples with same subjects and predicates.
            Function used during evaluation.
 
@@ -664,7 +660,7 @@ class GraphDataLoader():
            Returns
            -------
            subjects : list
-                Objects present in the input triples
+                Objects present in the input triples.
         """
         return self.backend._get_complementary_objects(triples, use_filter=use_filter)        
     
@@ -680,7 +676,8 @@ class GraphDataLoader():
 
            Returns
            -------
-           entities: list of entities participating in the relations s-p-? and ?-p-o per triple.
+           entities: list
+                List of entities participating in the relations s-p-? and ?-p-o per triple.
            TODO: What exactly it should return?
        """
         return self.backend._get_complementary_entities(triples, use_filter=use_filter)
@@ -691,19 +688,25 @@ class GraphDataLoader():
 
            Parameters
            ----------
-           subjects: list of entities that triples subject should belong to.
-           objects: list of entities that triples object should belong to.
-           entities: list of entities that triples subject and object should belong to.
+           subjects: list
+                List of entities that triples subject should belong to.
+
+           objects: list
+                List of entities that triples object should belong to.
+
+           entities: list
+                List of entities that triples subject and object should belong to.
         
            Returns
            -------
-           triples: list of triples constrained by subjects and objects.
+           triples: list
+                List of triples constrained by subjects and objects.
           
         """
         return self.backend._get_triples(subjects, objects, entities)
 
     def clean(self):
-        ''' Cleans up the temperory files created for training/eval '''
+        ''' Cleans up the temporary files created for training/evaluation.'''
         self.backend._clean()
         
     def on_epoch_end(self):

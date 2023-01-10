@@ -15,15 +15,15 @@ logger.setLevel(logging.DEBUG)
 
 
 class OptimizerWrapper(abc.ABC):
-    """Wrapper around tensorflow optimizer
+    """Wrapper around tensorflow optimizer.
     """
     def __init__(self, optimizer=None):
         """Initialize the tensorflow Optimizer and wraps it so that it can be used with graph partitioning.
         
         Parameters:
         -----------
-        optimizer: String (name of optimizer) or optimizer instance. 
-            See `tf.keras.optimizers`.
+        optimizer: str (name of optimizer) or optimizer instance.
+            See `tf.keras.optimizers <https://www.tensorflow.org/api_docs/python/tf/keras/optimizers>`.
         """ 
         self.optimizer = optimizer
         self.num_optimized_vars = 0
@@ -42,8 +42,9 @@ class OptimizerWrapper(abc.ABC):
             self.number_hyperparams = 2
 
     def apply_gradients(self, grads_and_vars):
-        """Wrapper around apply_gradients. 
-        See https://www.tensorflow.org/api_docs/python/tf/keras/optimizers for more details.
+        """Wrapper around apply_gradients.
+
+        See `tf.keras.optimizers <https://www.tensorflow.org/api_docs/python/tf/keras/optimizers>` for more details.
         """
         self.optimizer.apply_gradients(grads_and_vars)
         
@@ -51,20 +52,20 @@ class OptimizerWrapper(abc.ABC):
         self.is_partitioned_training = value
         
     def minimize(self, loss, ent_emb, rel_emb, gradient_tape, other_vars=[]):
-        '''Minimizes the loss with respect to entity, relation embeddings and other trainable vars
+        '''Minimizes the loss with respect to entity and relation embeddings and other trainable variables.
         
         Parameters:
         -----------
         loss: tf.Tensor
-            Model Loss
+            Model Loss.
         ent_emb: tf.Variable
-            entity embedding 
+            Entity embedding.
         rel_emb: tf.Variable
-            relation embedding
+            Relation embedding.
         gradient tape: tf.GradientTape
-            gradient tape under which the loss computation was tracked
+            Gradient tape under which the loss computation was tracked.
         other_vars: list
-            list of all other trainable variables
+            List of all the other trainable variables.
         '''
         all_trainable_vars = [ent_emb, rel_emb]
         all_trainable_vars.extend(other_vars)
@@ -90,20 +91,21 @@ class OptimizerWrapper(abc.ABC):
         #        self.number_hyperparams += 1
 
     def get_hyperparam_count(self):
-        ''' Number of hyperparams of the optimizer being used
-        Eg: adam has beta1 and beta2. if we use amsgrad argument then it has 3
+        ''' Number of hyperparams of the optimizer being used.
+
+            E.g., `adam` has `beta1` and `beta2`; if we use the `amsgrad` argument then it has also a third.
         '''
         return self.number_hyperparams
     
     def get_entity_relation_hyperparams(self):
-        ''' Get optimizer hyperparams related to entity and relation embeddings (for partitioned training)
+        ''' Get optimizer hyperparams related to entity and relation embeddings (for partitioned training).
         
         Returns:
         --------
         ent_hyperparams: np.array
-            entity embedding related optimizer hyperparameters
+            Entity embedding related optimizer hyperparameters.
         rel_hyperparams: np.array
-            relation embedding related optimizer hyperparameters
+            Relation embedding related optimizer hyperparameters.
         '''    
         optim_weights = self.optimizer.get_weights()
         ent_hyperparams = []
@@ -115,14 +117,14 @@ class OptimizerWrapper(abc.ABC):
         return ent_hyperparams, rel_hyperparams
     
     def set_entity_relation_hyperparams(self, ent_hyperparams, rel_hyperparams):
-        ''' Sets optimizer hyperparams related to entity and relation embeddings (for partitioned training)
+        ''' Sets optimizer hyperparams related to entity and relation embeddings (for partitioned training).
         
         Parameters:
         -----------
         ent_hyperparams: np.array
-            entity embedding related optimizer hyperparameters
+            Entity embedding related optimizer hyperparameters.
         rel_hyperparams: np.array
-            relation embedding related optimizer hyperparameters
+            Relation embedding related optimizer hyperparameters.
         '''
         optim_weights = self.optimizer.get_weights()
         for i, j in zip(range(1, len(optim_weights), self.num_optimized_vars), range(len(ent_hyperparams))):
@@ -132,13 +134,15 @@ class OptimizerWrapper(abc.ABC):
         
     def get_weights(self):
         """Wrapper around get weights.
-        See https://www.tensorflow.org/api_docs/python/tf/keras/optimizers for more details.
+
+        See `tf.keras.optimizers <https://www.tensorflow.org/api_docs/python/tf/keras/optimizers>` for more details.
         """
         return self.optimizer.get_weights()
         
     def set_weights(self, weights):
         """Wrapper around set weights.
-        See https://www.tensorflow.org/api_docs/python/tf/keras/optimizers for more details.
+
+        See `tf.keras.optimizers <https://www.tensorflow.org/api_docs/python/tf/keras/optimizers>` for more details.
         """
         self.optimizer.set_weights(weights)
 
@@ -161,17 +165,18 @@ class OptimizerWrapper(abc.ABC):
 
 def get(identifier):
     '''
-    Get the optimizer specified by the identifier
+    Get the optimizer specified by the identifier.
     
     Parameters:
     -----------
-    identifier: string, tf.optimizers.Optimizer instance
-        Instance of tf.optimizers.Optimizer or name of the optimizer to use (will use default parameters)
+    identifier: str or tf.optimizers.Optimizer instance
+        Name of the optimizer to use (with default parameters) or instance of the class `tf.optimizers.Optimizer`.
         
     Returns:
     --------
-    optimizer: instance of OptimizerWrapper
-        Instance of tf.optimizers.Optimizer wrapped around by OptimizerWrapper so that graph partitioning is supported
+    optimizer: OptimizerWrapper
+        Instance of `tf.optimizers.Optimizer` wrapped around by `OptimizerWrapper` so that graph partitioning
+        is supported.
         
     '''
     if isinstance(identifier, tf.optimizers.Optimizer):

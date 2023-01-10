@@ -3,21 +3,22 @@ import tensorflow as tf
 
 
 def LP_regularizer(trainable_param, regularizer_parameters={}):
-    '''
+    '''Norm :math:`L^{p}` regularizer.
+
 
     Parameters
     ----------
     trainable_param: tf.Variable
-        Trainable parameters of the model that needs to be regularized
+        Trainable parameters of the model that need to be regularized.
     regularizer_parameters: dict
-        Parameters of the regularizer
+        Parameters of the regularizer:
 
-        - **p**: (int). p for the LP regularizer. Eg when p=3 (default), it uses L3 regularizer
-        - **lambda** : (float). Regularizer weight. default is 0.001
+        - **p**: (int) - p for the LP regularizer. For example, when p=3 (default), it uses the L3 regularizer.
+        - **lambda** : (float) - Regularizer weight (default: 0.001).
     Returns
     -------
-    regularizer: instance of tf.keras.regularizer
-        Regularizer instance
+    regularizer: tf.keras.regularizer
+        Regularizer instance from the `tf.keras.regularizer` class.
 
     '''
     return regularizer_parameters.get('lambda', 0.001) * tf.reduce_sum(
@@ -25,18 +26,18 @@ def LP_regularizer(trainable_param, regularizer_parameters={}):
 
 
 def get(identifier, hyperparams={}):
-    ''' Get the regularizer specified by the identifier
+    ''' Get the regularizer specified by the identifier.
 
     Parameters:
     -----------
-    identifier: string, tf.keras.regularizer instance or a callable
-        Instance of tf.keras.regularizer or name of the regularizer to use (will use default parameters) or a
-        callable function
+    identifier: str or tf.keras.regularizer or a callable
+        Name of the regularizer to use (with default parameters) or instance of `tf.keras.regularizer` or a
+        callable function.
 
     Returns:
     --------
-    regularizer: instance of tf.keras.regularizer
-        Regularizer instance
+    regularizer: tf.keras.regularizer
+        Regularizer instance of the `tf.keras.regularizer` class.
 
     '''
     if isinstance(identifier, str) and identifier == 'l3':

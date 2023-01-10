@@ -9,8 +9,10 @@ import tensorflow as tf
 
 
 class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
-    ''' Generates corruptions during training by corrupting either subject or object using 
-        uniformly randomly sampled entity from the loaded graph.
+    ''' Generates corruptions during training.
+
+        The corruption might involve either subject or object using
+        entities sampled uniformly at random from the loaded graph.
     '''
     def get_config(self):
         config = super(CorruptionGenerationLayerTrain, self).get_config()
@@ -19,31 +21,31 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
     
     def __init__(self, seed=0, **kwargs):
         '''
-        Initializes the corruption generation layer
+        Initializes the corruption generation layer.
         
         Parameters:
         -----------
         eta: int
-            number of corruptions to generate
+            Number of corruptions to generate.
         '''
         self.seed = seed
         super(CorruptionGenerationLayerTrain, self).__init__(**kwargs)
 
     def call(self, pos, ent_size, eta):
         '''
-        Generates corruption for the positives supplied 
+        Generates corruption for the positives supplied.
         
         Parameters:
         -----------
         pos: (n, 3)
-            batch of input triples (positives)
+            Batch of input triples (positives).
         ent_size:
-            number of unique entities present in the partition
+            Number of unique entities present in the partition.
         
         Returns:
         --------
         corruptions: (n * eta, 3)
-            corruptions of the triples
+            Corruptions of the triples.
         '''
         # size and reshape the dataset to sample corruptions
         dataset = tf.reshape(tf.tile(tf.reshape(pos, [-1]), [eta]), [tf.shape(input=pos)[0] * eta, 3])
