@@ -28,7 +28,8 @@ def register_partitioning_manager(name):
        
        Parameters
        ----------
-       name: name of the new partition manager.
+       name: str
+            Name of the new partition manager.
  
        Example
        -------
@@ -53,20 +54,21 @@ def register_partitioning_manager(name):
 class PartitionDataManager(abc.ABC):
     def __init__(self, dataset_loader, model, strategy='Bucket', partitioner_k=3, root_directory=tempfile.gettempdir(),
                  ent_map_fname=None, ent_meta_fname=None, rel_map_fname=None, rel_meta_fname=None):
-        """Initializes the Partitioning Data Manager. 
-        Uses/Creates partitioner and generates and manages partition related params.
+        """Initializes the Partitioning Data Manager.
+
+        Uses/Creates partitioner and generates and manages partition related parameters.
         This is the base class.
         
         Parameters
         ----------
-        dataset_loader : 
+        dataset_loader : AbstractGraphPartitioner or GraphDataLoader
             Either an instance of AbstractGraphPartitioner or GraphDataLoader.
-        model: tf.keras.Model
-            The model that is being trained
-        strategy: string
-            Type of partitioning strategy to use
-        root_directory: string
-            directory where the partition manager files will be stored
+        model : tf.keras.Model
+            The model that is being trained.
+        strategy : string
+            Type of partitioning strategy to use.
+        root_directory : str
+            directory where the partition manager files will be stored.
         """
         self._model = model
         self.k = self._model.k
@@ -138,54 +140,55 @@ class PartitionDataManager(abc.ABC):
         
     @property
     def max_entities(self):
-        '''Returns the maximum entity size that can occur in a partition
+        '''Returns the maximum entity size that can occur in a partition.
         '''
         return self.max_ent_size
 
     @property
     def max_relations(self):
-        '''Returns the maximum relation size that can occur in a partition
+        '''Returns the maximum relation size that can occur in a partition.
         '''
         return self.num_rels
         
     def _generate_partition_params(self):
-        ''' Generates the metadata needed for persisting and loading partition embeddings and other params
+        ''' Generates the metadata needed for persisting and loading partition embeddings and other parameters.
         '''
         raise NotImplementedError('Abstract method not implemented')
         
     def _update_partion_embeddings(self, graph_data_loader, partition_number):
-        '''Persists the embeddings and other params after a partition is trained
+        '''Persists the embeddings and other parameters after a partition is trained.
         
         Parameters
         ----------
         graph_data_loader : GraphDataLoader
-            Data loader of the current partition that was trained
+            Data loader of the current partition that was trained.
         partition_number: int
-            Partition number of the current partition that was trained
+            Partition number of the current partition that was trained.
         '''
         raise NotImplementedError('Abstract method not implemented')
         
     def _change_partition(self, graph_data_loader, partition_number):
-        '''Gets a new partition to train and loads all the params of the partition
+        '''Gets a new partition to train and loads all the parameters of the partition.
         
         Parameters
         ----------
         graph_data_loader : GraphDataLoader
-            Data loader of the next partition that will be trained
+            Data loader of the next partition that will be trained.
         partition_number: int
-            Partition number of the next partition will be trained
+            Partition number of the next partition that will be trained.
         '''
         raise NotImplementedError('Abstract method not implemented')
         
     def data_generator(self):
-        '''Generates the data to be trained from the current partition. 
-        Once the partition data is exhausted, the current params are persisted; the partition is changed 
-        and model is notified.
+        '''Generates the data to be trained from the current partition.
+
+        Once the partition data is exhausted, the current parameters are persisted; the partition is changed
+        and the model is notified.
         
         Returns
         -------
-        batch_data_from_current_partition: (n,3)
-            A batch of triples from current partition being trained
+        batch_data_from_current_partition: array of shape (n,3)
+            A batch of triples from the current partition being trained.
         '''
         for i, partition_data in enumerate(self.partitioner):
             # partition_data is an object of graph data loader
@@ -203,7 +206,7 @@ class PartitionDataManager(abc.ABC):
                 self._update_partion_embeddings(partition_data, i)
                 
     def get_tf_generator(self):
-        ''' Returns tensorflow data generator
+        ''' Returns tensorflow data generator.
         '''
         return tf.data.Dataset.from_generator(
             self.data_generator,
@@ -212,57 +215,60 @@ class PartitionDataManager(abc.ABC):
         ).prefetch(0)
                 
     def __iter__(self):
-        """Function needed to be used as an itertor."""
+        """Function needed to be used as an iterator."""
         return self
 
     def __next__(self):
-        """Function needed to be used as an itertor."""
+        """Function needed to be used as an iterator."""
         return next(self.batch_iterator)
     
     def reload(self):
-        ''' reload the data for next epoch
+        '''Reload the data for the next epoch.
         '''
         self.partitioner.reload()
         self.batch_iterator = iter(self.data_generator())
         
     def on_epoch_end(self):
-        ''' Activities to be performed on epoch end
+        ''' Activities to be performed at the end of an epoch.
         '''
         pass
     
     def on_complete(self):
-        ''' Activities to be performed on end of training.
-            The manager persists the data (splits the entity partitions into individual embeddings)
+        ''' Activities to be performed at the end of training.
+
+            The manager persists the data (splits the entity partitions into individual embeddings).
         '''
         pass
     
 
 @register_partitioning_manager('GeneralPartitionDataManager')
 class GeneralPartitionDataManager(PartitionDataManager):
-    ''' Manages the partitioning related controls. 
-    Handles data generation and informs model about changes in partition.
+    ''' Manages the partitioning related controls.
+
+        Handles data generation and informs the model about changes in partition.
     '''
     def __init__(self, dataset_loader, model, strategy='RandomEdges', partitioner_k=3, 
                  root_directory=tempfile.gettempdir()):
-        """Initializes the Partitioning Data Manager. 
-        Uses/Creates partitioner and generates partition related params.
+        """Initialize the Partitioning Data Manager.
+
+        Uses/Creates partitioner and generates partition related parameters.
         
         Parameters
         ----------
-        dataset_loader : 
+        dataset_loader : AbstractGraphPartitioner or GraphDataLoader
             Either an instance of AbstractGraphPartitioner or GraphDataLoader.
         model: tf.keras.Model
-            The model that is being trained
-        strategy: string
-            Type of partitioning strategy to use
-        root_directory: string
-            directory where the partition manager files will be stored
+            The model that is being trained.
+        strategy: str
+            Type of partitioning strategy to use.
+        root_directory: str
+            Directory where the partition manager files will be stored.
         """
         super(GeneralPartitionDataManager, self).__init__(dataset_loader, model, 
                                                           strategy, partitioner_k, root_directory)
         
     def _generate_partition_params(self):
-        ''' Generates the metadata needed for persisting and loading partition embeddings and other params
+        ''' Generates the metadata needed for persisting and loading partition embeddings and other parameters.
         '''
 
         # create entity embeddings and optimizer hyperparams for all entities
@@ -298,14 +304,14 @@ class GeneralPartitionDataManager(PartitionDataManager):
                 rel_partition.update({out_dict_key: [opt_param, rel_emb]})
 
     def _update_partion_embeddings(self, graph_data_loader, partition_number):
-        '''Persists the embeddings and other params after a partition is trained
+        '''Persists the embeddings and other parameters after a partition is trained.
         
         Parameters
         ----------
         graph_data_loader : GraphDataLoader
-            Data loader of the current partition that was trained
+            Data loader of the current partition that was trained.
         partition_number: int
-            Partition number of the current partition that was trained
+            Partition number of the current partition that was trained.
         '''
         # set the trained params back for persisting (exclude paddings)
         self.all_ent_embs = self._model.encoding_layer.ent_emb.numpy()[:len(self.ent_original_ids), :]
@@ -354,14 +360,14 @@ class GeneralPartitionDataManager(PartitionDataManager):
             rel_partition.close()
 
     def _change_partition(self, graph_data_loader, partition_number):
-        '''Gets a new partition to train and loads all the params of the partition
+        '''Gets a new partition to train and loads all the parameters of the partition.
         
         Parameters
         ----------
         graph_data_loader : GraphDataLoader
-            Data loader of the next partition that will be trained
+            Data loader of the next partition that will be trained.
         partition_number: int
-            Partition number of the next partition will be trained
+            Partition number of the next partition will be trained.
         '''
         # from the graph data loader of the current partition get the original entity ids 
         ent_count_in_partition = graph_data_loader.backend.mapper.get_entities_count()
@@ -439,8 +445,9 @@ class GeneralPartitionDataManager(PartitionDataManager):
                                                                   rel_optim_hyperparams)
     
     def on_complete(self):
-        ''' Activities to be performed on end of training.
-            The manager persists the data (splits the entity partitions into individual embeddings)
+        ''' Activities to be performed at the end of training.
+
+            The manager persists the data (splits the entity partitions into individual embeddings).
         '''
         update_part_size = int(np.ceil(self.num_ents / self.partitioner_k))
         for part_num in range(self.partitioner_k):
@@ -458,28 +465,29 @@ class GeneralPartitionDataManager(PartitionDataManager):
 
 @register_partitioning_manager('BucketPartitionDataManager')
 class BucketPartitionDataManager(PartitionDataManager):
-    ''' Manages the partitioning related controls. 
+    ''' Manages the partitioning related controls.
+
     Handles data generation and informs model about changes in partition.
     '''
     def __init__(self, dataset_loader, model, strategy='Bucket', partitioner_k=3, root_directory=tempfile.gettempdir()):
-        """Initializes the Partitioning Data Manager. 
-        Uses/Creates partitioner and generates partition related params.
+        """Initialize the Partitioning Data Manager.
+        Uses/Creates partitioner and generates partition related parameters.
         
         Parameters
         ----------
-        dataset_loader : 
+        dataset_loader : AbstractGraphPartitioner or GraphDataLoader
             Either an instance of AbstractGraphPartitioner or GraphDataLoader.
         model: tf.keras.Model
-            The model that is being trained
-        strategy: string
-            Type of partitioning strategy to use
-        root_directory: string
-            directory where the partition manager files will be stored
+            The model that is being trained.
+        strategy: str
+            Type of partitioning strategy to use.
+        root_directory: str
+            Directory where the partition manager files will be stored.
         """
         super(BucketPartitionDataManager, self).__init__(dataset_loader, model, strategy, partitioner_k, root_directory)
         
     def _generate_partition_params(self):
-        ''' Generates the metadata needed for persisting and loading partition embeddings and other params
+        ''' Generates the metadata needed for persisting and loading partition embeddings and other parameters.
         '''
         
         num_optimizer_hyperparams = self._model.optimizer.get_hyperparam_count()
@@ -568,14 +576,14 @@ class BucketPartitionDataManager(PartitionDataManager):
                 metadata[str(i)] = rel_mat_order      
 
     def _update_partion_embeddings(self, graph_data_loader, partition_number):
-        '''Persists the embeddings and other params after a partition is trained
+        '''Persists the embeddings and other parameters after a partition is trained.
         
         Parameters
         ----------
         graph_data_loader : GraphDataLoader
-            Data loader of the current partition that was trained
+            Data loader of the current partition that was trained.
         partition_number: int
-            Partition number of the current partition that was trained
+            Partition number of the current partition that was trained.
         '''
         # set the trained params back for persisting (exclude paddings)
         self.all_ent_embs[self.ent_original_ids] = \
@@ -635,14 +643,14 @@ class BucketPartitionDataManager(PartitionDataManager):
             s.close()
 
     def _change_partition(self, graph_data_loader, partition_number):
-        '''Gets a new partition to train and loads all the params of the partition
+        '''Gets a new partition to train and loads all the parameters of the partition.
         
         Parameters
         ----------
         graph_data_loader : GraphDataLoader
-            Data loader of the next partition that will be trained
+            Data loader of the next partition that will be trained.
         partition_number: int
-            Partition number of the next partition will be trained
+            Partition number of the next partition will be trained.
         '''
         try:
             # open the meta data related to the partition
@@ -726,7 +734,8 @@ class BucketPartitionDataManager(PartitionDataManager):
     
     def on_complete(self):
         ''' Activities to be performed on end of training.
-            The manager persists the data (splits the entity partitions into individual embeddings)
+
+            The manager persists the data (splits the entity partitions into individual embeddings).
         '''
         for i in range(self.partitioner_k - 1, -1, -1):
             with shelve.open(self.partitioner.files[i]) as bucket:
@@ -747,16 +756,16 @@ class BucketPartitionDataManager(PartitionDataManager):
 
 def get_partition_adapter(dataset_loader, model, strategy='Bucket', 
                           partitioning_k=3, root_directory=tempfile.gettempdir()):
-    ''' Returns partition manager depending on the one registered by the partitioning strategy
+    ''' Returns partition manager depending on the one registered by the partitioning strategy.
     
     Parameters
     ----------
-    dataset_loader:
-        parent dataset loader that will be used for partitioning
-    model:
-        KGE model that will be managed while using partitioning
-    strategy:
-        Graph partitioning strategy
+    dataset_loader: AbstractGraphPartitioner or GraphDataLoader
+        Parent dataset loader that will be used for partitioning.
+    model: tf.keras.Model
+        KGE model that will be managed while using partitioning.
+    strategy: str
+        Graph partitioning strategy.
     '''
     if isinstance(dataset_loader, AbstractGraphPartitioner):
         partitioner_manager = PARTITION_MANAGER_REGISTRY.get(dataset_loader.manager)(

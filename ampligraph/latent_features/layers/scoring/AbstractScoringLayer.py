@@ -14,16 +14,16 @@ SCORING_LAYER_REGISTRY = {}
 
 
 def register_layer(name, external_params=None, class_params=None):
-    '''register the scoring function using this decorator
+    '''Register the scoring function using this decorator.
     
     Parameters
     -----------
-    name: string
-        name of the scoring function to be used to register the class
+    name: str
+        Name of the scoring function to be used to register the class.
     external_params: list of strings
-        if there are any scoring function hyperparams, register their names
+        If there are any scoring function hyperparams, register their names.
     class_params: dict 
-        things that may be used internally across various models
+        Parameters that may be used internally across various models.
     '''
     if external_params is None:
         external_params = []
@@ -49,7 +49,7 @@ def register_layer(name, external_params=None, class_params=None):
 
 
 class AbstractScoringLayer(tf.keras.layers.Layer):
-    ''' Abstract class for scoring layer
+    ''' Abstract class for scoring layer.
     '''
     def get_config(self):
         config = super(AbstractScoringLayer, self).get_config()
@@ -57,12 +57,12 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         return config
         
     def __init__(self, k):
-        '''Initializes the scoring layer
+        '''Initializes the scoring layer.
         
         Parameters
         ----------
         k: int
-            embedding size
+            Embedding size.
         '''
         super(AbstractScoringLayer, self).__init__()
         # store the embedding size. (concrete models may overwrite this)
@@ -74,13 +74,13 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         
         Parameters
         ----------
-        triples: (n, 3)
-            batch of input triples
+        triples: array-like, shape (n, 3)
+            Batch of input triples.
         
         Returns
         -------
-        scores: tf.Tensor (n,1)
-            tensor of scores of inputs
+        scores: tf.Tensor, shape (n,1)
+            Tensor of scores of inputs.
         '''
         return self._compute_scores(triples)
     
@@ -89,82 +89,84 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         
         Parameters
         -----------
-        triples: (n, 3)
-            batch of input triples
+        triples: array-like, shape (n, 3)
+            Batch of input triples.
         
         Returns
         --------
-        scores: tf.Tensor (n,1)
-            tensor of scores of inputs
+        scores: tf.Tensor, shape (n,1)
+            Tensor of scores of inputs.
         '''
         raise NotImplementedError('Abstract method not implemented!')
         
     def _get_object_corruption_scores(self, triples, ent_matrix):
         ''' Abstract function to compute object corruption scores.
+
         Evaluate the inputs against object corruptions and scores of the corruptions.
         
         Parameters
         -----------
-        triples: (n, k)
-            batch of input embeddings
-        ent_matrix: (m, k)
-            slice of embedding matrix (corruptions)
+        triples: array-like, shape (n, k)
+            Batch of input embeddings.
+        ent_matrix: array-like, shape (m, k)
+            Slice of embedding matrix (corruptions).
         
         Returns
         --------
-        scores: tf.Tensor (n,1)
-            scores of object corruptions (corruptions defined by ent_embs matrix)
+        scores: tf.Tensor, shape (n,1)
+            Scores of object corruptions (corruptions defined by `ent_embs` matrix).
         '''
         raise NotImplementedError('Abstract method not implemented!')
         
     def _get_subject_corruption_scores(self, triples, ent_matrix):
         ''' Abstract function to compute subject corruption scores.
+
         Evaluate the inputs against subject corruptions and scores of the corruptions.
         
         Parameters
         -----------
-        triples: (n, k)
-            batch of input embeddings
-        ent_matrix: (m, k)
-            slice of embedding matrix (corruptions)
+        triples: array-like, shape (n, k)
+            Batch of input embeddings.
+        ent_matrix: array-like, shape (m, k)
+            Slice of embedding matrix (corruptions).
         
         Returns
         --------
-        scores: tf.Tensor (n,1)
-            scores of subject corruptions (corruptions defined by ent_embs matrix)
+        scores: tf.Tensor, shape (n,1)
+            Scores of subject corruptions (corruptions defined by `ent_embs` matrix).
         '''
         raise NotImplementedError('Abstract method not implemented!')
 
     def get_ranks(self, triples, ent_matrix, start_ent_id, end_ent_id, filters, mapping_dict, 
                   corrupt_side='s,o', comparison_type='worst'):
-        ''' Computes the ranks of triples against their corruptions. 
-        Ranks are computed by corrupting triple s and o side by embeddings in ent_matrix.
+        ''' Computes the ranks of triples against their corruptions.
+
+        Ranks are computed by corrupting triple subject and/or object with the embeddings in ent_matrix.
         
         Parameters
         -----------
-        triples: (n, k)
-            batch of input embeddings
-        ent_matrix: (m, k)
-            slice of embedding matrix (corruptions)
+        triples: array-like, shape (n, k)
+            Batch of input embeddings.
+        ent_matrix: array-like, shape (m, k)
+            Slice of embedding matrix (corruptions).
         start_ent_id: int
-            original id of the first row of embedding matrix (used during partitioned approach)
+            Original id of the first row of embedding matrix (used during partitioned approach).
         end_ent_id: int 
-            original id of the last row of embedding matrix (used during partitioned approach)
+            Original id of the last row of embedding matrix (used during partitioned approach).
         filters: list of lists 
-            size of list is either 1 or 2 depending on the corrupt_side. 
-            size of the internal list is equal to the size of the input triples.
-            Each list contains array of filters(True Positives) related to the specified side for the 
-            corresponding triple in inputs. 
-        corrupt_side: string
-            which side to corrupt during evaluation
-        comparison_type: string
-            indicates how to break ties. default `worst` i.e. assigns the worst rank to the test triple.
-            Can be passed one of the three types `best`, `middle`, `worst`
+            Size of list is either 1 or 2 depending on ``corrupt_side``.
+            Size of the internal list is equal to the size of the input triples.
+            Each list contains an array of filters (True Positives) related to the specified side of triples to corrupt.
+        corrupt_side: str
+            Which side to corrupt during evaluation.
+        comparison_type: str
+            Indicates how to break ties (default: `worst`, i.e., assigns the worst rank to the test triple).
+            One of the three types can be passed: `"best"`, `"middle"`, `"worst"`.
             
         Returns
         --------
-        ranks: tf.Tensor (n,2)
-            ranks of triple against subject and object corruptions (corruptions defined by ent_embs matrix)
+        ranks: tf.Tensor, shape (n,2)
+            Ranks of triple against subject and object corruptions (corruptions defined by `ent_embs` matrix).
         '''
         # compute the score of true positives
         triple_score = self._compute_scores(triples)
@@ -293,7 +295,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                     # check how many of those were ranked higher than the test triple
                     num_filters_ranked_higher = tf.reduce_sum(
                         tf.cast(tf.gather(triple_score, [i]) <= score_filter, tf.int32))
-                    # ajust the rank of the test triple accordingly
+                    # adjust the rank of the test triple accordingly
                     obj_rank = tf.tensor_scatter_nd_sub(obj_rank, [[i]], [num_filters_ranked_higher])
                 
             out_ranks = out_ranks.write(out_ranks.size(), obj_rank)
@@ -302,17 +304,17 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         return out_ranks
         
     def compute_output_shape(self, input_shape):
-        ''' returns the output shape of outputs of call function
+        ''' Returns the output shape of the outputs of the call function.
         
         Parameters
         -----------
-        input_shape: 
-            shape of inputs of call function
+        input_shape: tuple
+            Shape of inputs of call function.
         
         Returns
         --------
-        output_shape:
-            shape of outputs of call function
+        output_shape: tuple
+            Shape of outputs of call function.
         '''
         assert isinstance(input_shape, list)
         batch_size, _ = input_shape

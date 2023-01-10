@@ -38,7 +38,7 @@ logger.setLevel(logging.DEBUG)
 
 
 class ScoringBasedEmbeddingModel(tf.keras.Model):
-    ''' Class for handling KGE models which follows the ranking based protocol
+    ''' Class for handling KGE models which follows the ranking based protocol.
     
         Examples
         --------
@@ -49,9 +49,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>> import tensorflow as tf
         >>> loss = SelfAdversarialLoss({'margin': 0.1, 'alpha': 5, 'reduction': 'sum'})
         >>> model = ScoringBasedEmbeddingModel(eta=5, 
-        >>>                                      k=300,
-        >>>                                      scoring_type='ComplEx',
-        >>>                                      seed=0)
+        >>>                                    k=300,
+        >>>                                    scoring_type='ComplEx',
+        >>>                                    seed=0)
         >>> model.compile(optimizer='adam', loss=loss)
         >>> model.fit('./fb15k-237/train.txt',
         >>>           batch_size=10000,
@@ -72,6 +72,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         return cls(**config)
     
     def get_config(self):
+        '''Get the configuration hyper-parameters of the scoring based embedding model.'''
         config = super(ScoringBasedEmbeddingModel, self).get_config()
         config.update({'eta': self.eta,
                        'k': self.k,
@@ -84,16 +85,16 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         
     def __init__(self, eta, k, scoring_type='DistMult', seed=0, max_ent_size=None, max_rel_size=None):
         '''
-        Initializes the scoring based embedding model. It uses the user specified scoring function.
+        Initializes the scoring based embedding model using the user specified scoring function.
         
         Parameters
         ----------
         eta: int
-            num of negatives to use during training per triple
+            Num of negatives to use during training per triple.
         k: int
-            embedding size
-        scoring_type: string
-            name of the scoring layer to use
+            Embedding size.
+        scoring_type: str
+            Name of the scoring layer to use.
             
             - ``TransE``  Translating embedding scoring function will be used
             - ``DistMult`` DistMult embedding scoring function will be used
@@ -101,7 +102,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             - ``HolE`` Holograph embedding scoring function will be used
 
         seed: int 
-            random seed
+            Random seed.
         '''
         super(ScoringBasedEmbeddingModel, self).__init__()
         # set the random seed
@@ -152,37 +153,38 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.partitioner_metadata = {}
         
     def is_fit(self):
+        '''Check whether the model has been fitted already.'''
         return self.is_fitted
   
     def compute_output_shape(self, inputShape):
-        ''' returns the output shape of outputs of call function
+        ''' Returns the output shape of the outputs of the call function.
         
         Parameters
         ----------
-        input_shape: 
-            shape of inputs of call function
+        input_shape: tuple
+            Shape of inputs of call function.
         
         Returns
         -------
-        output_shape:
-            shape of outputs of call function
+        output_shape: list of tuples
+            List with the shape of outputs of call function for the input triples and the corruption scores.
         '''
         # input triple score (batch_size, 1) and corruption score (batch_size * eta, 1)
         return [(None, 1), (None, 1)]
 
     def partition_change_updates(self, num_ents, ent_emb, rel_emb):
-        ''' perform the changes that are required when the partition is changed during training
+        ''' Perform the changes that are required when the partition is modified during training.
         
         Parameters
         ----------
-        num_ents: 
-            number of unique entities in the partition
-        ent_emb:
-            entity embeddings that need to be trained for the partition 
-            (all triples of the partition will have embeddings in this matrix)
-        rel_emb:
+        num_ents: int
+            Number of unique entities in the partition.
+        ent_emb: array-like
+            Entity embeddings that need to be trained for the partition
+            (all triples of the partition will have embeddings in this matrix).
+        rel_emb: array-like
             relation embeddings that need to be trained for the partition 
-            (all triples of the partition will have embeddings in this matrix)
+            (all triples of the partition will have embeddings in this matrix).
         
         '''
         # save the unique entities of the partition : will be used for corruption generation
@@ -197,17 +199,17 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
     def call(self, inputs, training=False):
         '''
-        Computes the scores of the triples and returns the corruption scores as well
+        Computes the scores of the triples and returns the corruption scores as well.
         
         Parameters
         ----------
         inputs: (n, 3)
-            batch of input triples
+            Batch of input triples.
         
         Returns
         -------
         out: list
-            list of input scores along with their corruptions
+            List of input scores along with their corruptions.
         '''
         # lookup embeddings of the inputs
         inp_emb = self.encoding_layer(inputs)
@@ -231,34 +233,34 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def _get_ranks(self, inputs, ent_embs, start_id, end_id, filters, mapping_dict, 
                    corrupt_side='s,o', ranking_strategy='worst'):
         '''
-        Evaluate the inputs against corruptions and return ranks
+        Evaluate the inputs against corruptions and return ranks.
         
         Parameters
         ----------
-        inputs: (n, 3)
-            batch of input triples
-        ent_embs: (m, k)
-            slice of embedding matrix (corruptions)
+        inputs: array-like, shape (n, 3)
+            Batch of input triples.
+        ent_embs: array-like, shape (m, k)
+            Slice of embedding matrix (corruptions).
         start_id: int
-            original id of the first row of embedding matrix (used during partitioned approach)
+            Original id of the first row of embedding matrix (used during partitioned approach).
         end_id: int 
-            original id of the last row of embedding matrix (used during partitioned approach)
+            Original id of the last row of embedding matrix (used during partitioned approach).
         filters: list of lists 
-            size of list is either 1 or 2 depending on the corrupt_side. 
-            size of the internal list is equal to the size of the input triples.
-            Each list contains array of filters(True Positives) related to the specified side for the 
-            corresponding triple in inputs. 
-        corrupt_side: string
-            which side to corrupt during evaluation
-        ranking_strategy: string
-            indicates how to break ties. default `worst` i.e. assigns the worst rank to the test triple.
-            Can be passed one of the three types `best`, `middle`, `worst`
+            Size of list is either 1 or 2 depending on ``corrupt_side``.
+            Size of the internal list is equal to the size of the input triples.
+            Each list contains an array of filters (i.e., True Positives) related to the specified side of the
+            corresponding input triples.
+        corrupt_side: str
+            Which side to corrupt during evaluation.
+        ranking_strategy: str
+            Indicates how to break ties (default: `worst`, i.e., assigns the worst rank to the test triple).
+            Can be one of the three types `"best"`, `"middle"`, `"worst"`.
             
         Returns
         -------
-        rank: (n, num of sides being corrupted)
-            ranks by corrupting against subject corruptions and object corruptions 
-            (corruptions defined by ent_embs matrix)
+        rank: tf.Tensor, shape (n, num of sides being corrupted)
+            Ranking against subject corruptions and object corruptions
+            (corruptions defined by `ent_embs` matrix).
         '''
         if not self.is_partitioned_training:
             inputs = [tf.nn.embedding_lookup(self.encoding_layer.ent_emb, inputs[:, 0]),
@@ -269,9 +271,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                             corrupt_side, ranking_strategy)
     
     def build(self, input_shape):
-        ''' Override the build function of the Model class. This is called on the first call to __call__
-        In this function we set some internal parameters of the encoding layers (which are needed to build that layer)
-        based on the input data supplied by the user while calling the fit function
+        ''' Override the build function of the Model class.
+
+        It is called on the first call to __call__
+        With this function we set some internal parameters of the encoding layers (needed to build that layers
+        themselves) based on the input data supplied by the user while calling the ``fit`` function.
         '''
         # set the max number of the entities that will be trained per partition
         # in case of non-partitioned training, it is equal to the total number of entities of the dataset
@@ -282,27 +286,25 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.built = True
 
     def compute_focusE_weights(self, weights):
-        '''Compute positive and negative weights to scale scores if use_focusE=True
+        '''Compute positive and negative weights to scale scores if ``use_focusE=True``.
 
         Parameters
         ----------
-        weights: (n, m)
-            batch of weights associated with true positives
+        weights: array-like, shape (n, m)
+            Batch of weights associated triples.
 
         Returns
         -------
-        out: tuple
-            tuple where the first elements is a tensor containing the positive weights
-            and the second is a tensor containing the negative weights
+        out: tuple of two tf.Tensors, (tf.Tensor(shape=(n, 1)), tf.Tensor(shape=(n * self.eta, 1)))
+            Tuple where the first elements is a tensor containing the positive weights
+            and the second is a tensor containing the negative weights.
         '''
 
         # focusE parameters
         structure_weight = self.focusE_params['structural_wt']
-        # print('Copmute_focusE_weights - Structural weights', self.focusE_params['structural_wt'])
 
         # Weights computation
         weights = tf.reduce_mean(weights, 1)
-        # print('compute_focusE_weights - after reduce_mean weights: ', weights)
         weights_pos = structure_weight + (1 - structure_weight) * (1 - weights)
         weights_neg = structure_weight + (1 - structure_weight) * (
             tf.reshape(tf.tile(weights, [self.eta]), [tf.shape(weights)[0] * self.eta]))
@@ -311,17 +313,17 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
     def train_step(self, data):
         '''
-        Training step
+        Training step.
         
         Parameters
         ----------
-        data: (n, m)
-            batch of input triples (true positives) with weights associated if m>3
+        data: array-like, shape (n, m)
+            Batch of input triples (true positives) with weights associated if m>3.
         
         Returns
         -------
         out: dict
-            dictionary of metrics computed on the outputs (eg: loss)
+            Dictionary of metrics computed on the outputs (e.g., loss).
         '''
         if self.data_shape > 3:
             triples = data[0]
@@ -334,9 +336,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         with tf.GradientTape() as tape:
             # get the model predictions
             score_pos, score_neg = self(tf.cast(triples, tf.int32), training=1)
-            # print('score_pos, score_neg before focusE')
-            # print(score_pos)
-            # print(score_neg)
             # focusE layer
             if self.use_focusE:
                 logger.debug("Using FocusE")
@@ -365,13 +364,13 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         return {m.name: m.result() for m in self.metrics}
     
     def make_train_function(self):
-        ''' Similar to keras lib, this function returns the handle to training step function. 
-        It processes one batch of data by iterating over the dataset iterator and computes the loss and optimizes on it.
+        ''' Similar to keras lib, this function returns the handle to the training step function.
+        It processes one batch of data by iterating over the dataset iterator, it computes the loss and optimizes on it.
 
         Returns
         -------
-        out: Function handle.
-              Handle to the training step function  
+        out: Function handle
+              Handle to the training step function.
         '''
         if self.train_function is not None:
             return self.train_function
@@ -382,12 +381,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             Parameters
             ----------
             iterator: tf.data.Iterator
-                Data iterator
+                Data iterator.
                 
             Returns
             -------
             output: dict
-              return a `dict` containing values that will be passed to `tf.keras.Callbacks.on_train_batch_end`
+              Return a dictionary containing values that will be passed to ``tf.keras.Callbacks.on_train_batch_end``.
             '''
             data = next(iterator)
             output = self.train_step(data)
@@ -401,24 +400,24 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         return self.train_function
 
     def get_focusE_params(self, dict_params={}):
-        '''Get parameters for focusE
+        '''Get parameters for focusE.
 
         Parameters
         ----------
         dict_params: dict
             The following hyper-params can be passed:
 
-            - **'non_linearity'**: can be one of the following values ``linear``, ``softplus``, ``sigmoid``, ``tanh``.
-            - **'stop_epoch'**: specifies how long to decay (linearly) the numeric values from 1 to original value
-            until it reaches original value.
+            - **'non_linearity'**: can be one of the following values `"linear"`, `"softplus"`, `"sigmoid"`, `"tanh"`.
+            - **'stop_epoch'**: specifies how long to decay (linearly) the structural influence hyper-parameter
+            from 1 until it reaches its original value.
             - **'structural_wt'**: structural influence hyperparameter [0, 1] that modulates the influence of graph
             topology.
 
-            if the respective key is missing, ``linear``, ``251`` and ``0.001`` are passed.                             # 251 + how to write better the documentation
+            If the respective key is missing: ``non_linearity="linear"``, ``stop_epoch=251`` and ``structural_wt=0.001``. # 251 ?
 
         Returns
         -------
-            non_linearity, stop_epoch, structural_wt
+            `non_linearity`, `stop_epoch`, `structural_wt` : str, int, float
         '''
         # Get the non-linearity function
         non_linearity = dict_params.get('non_linearity', 'linear')
@@ -440,7 +439,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         # Get structural_wt
         structure_weight = dict_params.get('structural_wt', 0.001)
-        assert (structure_weight <= 1) and (structure_weight >= 0), "Invalid focusE 'structural_wt' passed!"
+        assert (structure_weight <= 1) and (structure_weight >= 0), \
+            "Invalid focusE 'structural_wt' passed! It has to belong to [0,1]."
         if stop_epoch == 0:
             # use fixed structural weight
             structure_weight = 0.001
@@ -451,7 +451,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         return non_linearity, stop_epoch, structure_weight
 
     def update_focusE_params(self):
-        '''Update the structural weight after decay
+        '''Update the structural weight after decay.
         '''
         if self.focusE_params['structural_wt'] != 0.001:
             stop_epoch = self.focusE_params['stop_epoch']
@@ -476,41 +476,40 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             partitioning_k=1,
             focusE=False,
             focusE_params={}):
-        '''Fit the model of the user data.
+        '''Fit the model on the provided data.
         
         Parameters
         ----------
-        x: np.array(n, 3), string, GraphDataLoader instance, AbstractGraphPartitioner instance                          # How to specify that the second dimension could be >=3?
-            Data OR Filename of the data file OR Data Handle - that would be used for training
+        x: np.array, shape (n, 3) or str or GraphDataLoader or AbstractGraphPartitioner
+            Data OR Filename of the data file OR Data Handle to be used for training.
         batch_size: int
-            batch size to use during training. 
-            May be overridden if x is GraphDataLoader or AbstractGraphPartitioner instance
+            Batch size to use during training.
+            May be overridden if ``x`` is a GraphDataLoader or AbstractGraphPartitioner instance.
         epochs: int
-            Number of epochs to train (default: 1)
+            Number of epochs to train (default: 1).
         verbose: bool
-            verbosity (default: True)
+            Verbosity (default: `True`).
         callbacks: list of tf.keras.callbacks.Callback
-            list of callbacks to be used during training (default: None)
+            List of callbacks to be used during training (default: `None`).
         validation_split: float
-            validation split that would be carved out from x (default: 0.0)
-            (currently supported only when x is numpy array)
-        validation_data: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance             # Same as above
-            Data OR Filename of the data file OR Data Handle - that would be used for validation
+            Validation split to carve out of ``x`` (default: 0.0) (currently supported only when ``x`` is a np.array).
+        validation_data: np.array, shape (n,3) or str or `GraphDataLoader` or `AbstractGraphPartitioner`
+            Data OR Filename of the data file OR Data Handle to be used for validation.
         shuffle: bool
-            indicates whether to shuffle the data after every epoch during training (default: True)
+            Indicates whether to shuffle the data after every epoch during training (default: `True`).
         initial epoch: int
-            initial epoch number (default: 1)
+            Initial epoch number (default: 1).
         validation_batch_size: int
-            batch size to use during validation. (default: 100)
-            May be overridden if validation_data is GraphDataLoader or AbstractGraphPartitioner instance
+            Batch size to use during validation (default: 100).
+            May be overridden if ``validation_data`` is `GraphDataLoader` or `AbstractGraphPartitioner` instance.
         validation_freq: int
-            indicates how often to validate (default: 50)
+            Indicates how often to validate (default: 50).
         validation_burn_in: int
-            the burn in time after which the validation kicks in
+            The burn-in time after which the validation kicks in.
         validation_filter: bool or dict
-            validation filter to be used. 
-        validation_entities_subset: list, nparray
-            Subset of entities to be used for generating corruptions
+            Validation filter to be used.
+        validation_entities_subset: list or np.array
+            Subset of entities to be used for generating corruptions.
 
             .. Note ::
 
@@ -518,48 +517,47 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 as shown in the accompanying example below.
 
         focusE: bool
-            Specify whether to include the FocusE layer
-
+            Specify whether to include the FocusE layer (default: `False`).
             The FocusE layer :cite:`pai2021learning` allows to inject numeric edge attributes into the scoring layer
             of a traditional knowledge graph embedding architecture.
-            Semantically, the numeric value can signify importance, uncertainity, significance, confidence, etc.
+            Semantically, the numeric value can signify importance, uncertainity, significance, confidence...
+            of a triple.
         focusE_params: dict
-            If FocusE layer is included, specify its hyper-parameters
-
+            If FocusE layer is included, specify its hyper-parameters.
             The following hyper-params can be passed:
 
-            - **'non_linearity'**: can be one of the following values ``linear``, ``softplus``, ``sigmoid``, ``tanh``
-            - **'stop_epoch'**: specifies how long to decay (linearly) the numeric values from 1 to original value
-            until it reachs original value.
-            - **'structural_wt'**: structural influence hyperparameter [0, 1] that modulates the influence of graph
-            topology.
+            - `"non_linearity"`: can be one of the following values `"linear"`, `"softplus"`, `"sigmoid"`, `"tanh"`.
+            - `"stop_epoch"`: specifies how long to decay (linearly) the numeric values from 1 to original value.
+            - `"structural_wt"`: structural influence hyperparameter :math:`\in [0, 1]` that modulates the influence
+            of graph topology.
 
-            If focusE==True and focusE_params==dict(), then the default values are passed.
-            
-
+            If ``focusE==True`` and ``focusE_params==dict()``, then the default values are passed:
+            ``non_linearity="linear"``, ``stop_epoch=251`` and ``structural_wt=0.001``.
 
         partitioning_k: int
-            No. of partitions to use while training. default is 1. The data is not partitioned when this is set to 1.
-            May be overridden if x is an AbstractGraphPartitioner instance.
+            Num of partitions to use while training (default: 1, i.e., the data is not partitioned).
+            May be overridden if ``x`` is an `AbstractGraphPartitioner` instance.
             
             .. Note ::
             
                 This function is quite useful when the size of your dataset is extremely large and cannot fit in memory.
-                Setting this to a number > 1 will automatically partition the data using ``BucketGraphPartitioner``
+                Setting this to a number strictly larger than 1 will automatically partition the data using
+                ``BucketGraphPartitioner``.
                 Kindly checkout the tutorials for usage in Advanced mode.
             
         Returns
         -------
-        history: A `History` object. Its `History.history` attribute is a record of training loss values, 
-        as well as validation loss values and validation metrics values.
+        history: History object
+            Its `History.history` attribute is a record of training loss values, as well as validation loss
+            and validation metrics values.
         
         Examples
         --------
         >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
         >>> model = ScoringBasedEmbeddingModel(eta=5, 
-        >>>                                      k=300,
-        >>>                                      scoring_type='ComplEx',
-        >>>                                      seed=0)
+        >>>                                    k=300,
+        >>>                                    scoring_type='ComplEx',
+        >>>                                    seed=0)
         >>> model.compile(optimizer='adam', loss='nll')
         >>> model.fit('./fb15k-237/train.txt',
         >>>           batch_size=10000,
@@ -580,28 +578,25 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>> from ampligraph.datasets import load_fb15k_237
         >>> dataset = load_fb15k_237()
         >>> model = ScoringBasedEmbeddingModel(eta=1, 
-        >>>                      k=10,
-        >>>                      scoring_type='TransE')
+        >>>                                    k=10,
+        >>>                                    scoring_type='TransE')
         >>> model.compile(optimizer='adam', loss='multiclass_nll')
         >>> import tensorflow as tf
-        >>> early_stop = tf.keras.callbacks.EarlyStopping(
-        >>>                               monitor="val_mrr", # which metrics to monitor
-        >>>                               patience=3,        # If the monitored metric doesnt improve 
-        >>>                                                  # for these many checks the model early stops
-        >>>                               verbose=1,         # verbosity
-        >>>                               mode="max",        # how to compare the monitored metrics. 
-        >>>                                                  # max - means higher is better
-        >>>                               restore_best_weights=True) # restore the weights with best value
+        >>> early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_mrr",            # which metrics to monitor
+        >>>                                               patience=3,                   # If the monitored metric doesnt improve for these many checks the model early stops
+        >>>                                               verbose=1,                    # verbosity
+        >>>                                               mode="max",                   # how to compare the monitored metrics; "max" means higher is better
+        >>>                                               restore_best_weights=True)    # restore the weights with best value
         >>> # the early stopping instance needs to be passed as callback to fit function
         >>> model.fit(dataset['train'],
-        >>>              batch_size=10000,
-        >>>              epochs=5,
-        >>>              validation_freq=1,                       # validation frequency
-        >>>              validation_batch_size=100,               # validation batch size
-        >>>              validation_burn_in=3,                    # burn in time
-        >>>              validation_corrupt_side='s,o',           # which side to corrupt
-        >>>              validation_data=dataset['valid'][::100], # Validation data
-        >>>              callbacks=[early_stop])                  # Pass the early stopping object as a callback 
+        >>>           batch_size=10000,
+        >>>           epochs=5,
+        >>>           validation_freq=1,                       # validation frequency
+        >>>           validation_batch_size=100,               # validation batch size
+        >>>           validation_burn_in=3,                    # burn in time
+        >>>           validation_corrupt_side='s,o',           # which side to corrupt
+        >>>           validation_data=dataset['valid'][::100], # Validation data
+        >>>           callbacks=[early_stop])                  # Pass the early stopping object as a callback
         Epoch 1/5
         29/29 [==============================] - 2s 82ms/step - loss: 6698.2188
         Epoch 2/5
@@ -755,22 +750,25 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             return self.history
         
     def get_indexes(self, X, type_of='t', order="raw2ind"):
-        """Converts given data to indexes or to raw data (according to order), works for 
-           both triples (type_of='t'), entities (type_of='e'), and relations (type_of='r').
+        """Converts given data to indexes or to raw data (according to ``order``).
+
+            It works for ``X`` containing triples, entities, or relations.
            
            Parameters
            ----------
-           X: np.array
-               data to be indexed.
+           X: np.array or list
+               Data to be indexed.
            type_of: str
-               one of ['e', 't', 'r']
+               Specifies whether to get indexes/raw data for triples (``type_of='t'``), entities (``type_of='e'``),
+                or relations (``type_of='r'``).
            order: str 
-               one of ['raw2ind', 'ind2raw']
+               Specifies whether to get indexes from raw data (``order='raw2ind'``) or
+               raw data from indexes (``order='ind2raw'``).
 
            Returns
            -------
            Y: np.array
-               indexed data
+               Indexed data or raw data.
                
            Examples
            --------
@@ -798,20 +796,21 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             Parameters
             ----------
             concept_type: str
-                Indicates whether it is entity 'e' or relation 'r'. Default is 'e'
+                Indicates whether to count entities (``concept_type='e'``) or relations
+                (``concept_type='r') (default: 'e').
                 
             Returns
             -------
             count: int
-                count of the entities or relations
+                Count of the entities or relations.
             
             Examples
             --------
             >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
             >>> model = ScoringBasedEmbeddingModel(eta=5, 
-            >>>                                      k=300,
-            >>>                                      scoring_type='ComplEx',
-            >>>                                      seed=0)
+            >>>                                    k=300,
+            >>>                                    scoring_type='ComplEx',
+            >>>                                    seed=0)
             >>> model.compile(optimizer='adam', loss='nll')
             >>> model.fit('./fb15k-237/train.txt',
             >>>           batch_size=10000,
@@ -831,8 +830,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             raise ValueError("Invalid Concept Type (expected 'e' or 'r')")
         
     def get_train_embedding_matrix_size(self):
-        ''' Returns the embedding matrix size used for training. 
-            This may not be same as n, k during partitioned training.
+        ''' Returns the size of the embedding matrix used for training.
+
+            This may not be same as (n, k) during partitioned training (where `n` is the number of triples in the
+            whole training set).
         '''
         assert self.is_fitted, 'Model is not fit on the data yet!'
         return {'e': self.encoding_layer.ent_emb.shape,
@@ -847,6 +848,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
              signatures=None,
              options=None,
              save_traces=True):
+        '''Save the model.'''
         super(ScoringBasedEmbeddingModel, self).save(filepath,
                                                      overwrite,
                                                      include_optimizer,
@@ -857,6 +859,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.save_metadata(filedir=filepath)
         
     def save_metadata(self, filepath=None, filedir=None):
+        ''' Save metadata.'''
         # store ampligraph specific metadata
         if filepath is not None:
             base_dir = os.path.dirname(filedir)
@@ -894,20 +897,22 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def save_weights(self,
                      filepath,
                      overwrite=True):
-        ''' Save the trainable weights. Use this function if the training process is complete and you want to 
-            use the model only for inference. Use ``load_weights`` to load the model weights back.
+        ''' Save the trainable weights.
+
+            Use this function if the training process is complete and you want to
+            use the model only for inference. Use :meth:`load_weights` to load the model weights back.
             
             .. Note ::
-                If you want to continue training, you can use the ``save_model`` and ``load_model`` 
-                function under ``ampligraph.utils`` module. The save_model function saves the entire 
-                state of the graph which allows us to continue from where we left.
+                If you want to be able of continuing the training, you can use the :meth:`ampligraph.utils.save_model`
+                and :meth:`ampligraph.utils.load_model`. :meth:`ampligraph.utils.save_model` function saves
+                the entire state of the graph which allows us to continue the training from where we left.
                 
            Parameters
            ----------
-           filepath: string
-               Path to save the model
+           filepath: str
+               Path to save the model.
            overwrite: bool
-               Flag which indicates whether the model, if present, needs to be overwritten or not
+               Flag which indicates whether the model, if present, needs to be overwritten or not (default: `True`).
         '''
         # TODO: verify other formats
         
@@ -918,7 +923,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.save_metadata(filepath)
 
     def build_full_model(self, batch_size=100):
-        ''' this method is called while loading the weights to build the model
+        ''' This method is called while loading the weights to build the model.
         '''
         self.build((batch_size, 3))
         for i in range(len(self.layers)):
@@ -963,18 +968,19 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 
     def load_weights(self,
                      filepath):
-        ''' Loads the model weights. 
-            Use this function if ''save_weights`` was used to save the model. 
+        ''' Loads the model weights.
+
+            Use this function if ``save_weights`` was used to save the model.
             
             .. Note ::
-                If you want to continue training, you can use the ``save_model`` and ``load_model`` 
-                function under ``ampligraph.utils`` module. The save_model function saves the entire 
-                state of the graph which allows us to continue from where we left.
+                If you want to continue training, you can use the :meth:`ampligraph.utils.save_model` and
+                :meth:`ampligraph.utils.load_model`. These functions save the entire state of the graph
+                which allows to continue the training from where it stopped.
                 
            Parameters
            ----------
-           filepath: string
-               Path to save the model
+           filepath: str
+               Path to save the model.
         '''
         self.load_metadata(filepath)
         self.build_full_model()
@@ -987,17 +993,17 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 entity_relation_initializer='glorot_uniform',
                 entity_relation_regularizer=None,
                 **kwargs):
-        ''' Compile the model
+        ''' Compile the model.
         
         Parameters
         ----------
-        optimizer: String (name of optimizer) or optimizer instance. 
-            The optimizer used to minimize the loss function. Choose between
-            ``sgd``, ``adagrad``, ``adam``, ``rmsprop``, etc.
+        optimizer: str (name of optimizer) or optimizer instance.
+            The optimizer used to minimize the loss function. For pre-defined options, choose between
+            `"sgd"`, `"adagrad"`, `"adam"`, `"rmsprop"`, etc.
             See `tf.keras.optimizers <https://www.tensorflow.org/api_docs/python/tf/keras/optimizers>`_ 
             for up-to-date details.
             
-            If a string is passed then the default parameters of the optimizer will be used.
+            If a string is passed, then the default parameters of the optimizer will be used.
             
             Examples:
             ---------
@@ -1012,17 +1018,17 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             >>> adam_opt = tf.keras.optimizers.Adam(learning_rate=0.003)
             >>> model.compile(loss='pairwise', optim=adam_opt)
             
-        loss: String (name of objective function), objective function or
+        loss: str (name of objective function), objective function or
             `ampligraph.latent_features.loss_functions.Loss` instance. 
 
-            If passing a string, you can use one of the following. These losses would be used with their 
-            default setting.
+            If a string is passed, you can use one of the following losses which will be used with their
+            default setting:
             
-            - ``pairwise``  the model will use pairwise margin-based loss function.
-            - ``nll`` the model will use negative loss likelihood.
-            - ``absolute_margin`` the model will use absolute margin likelihood.
-            - ``self_adversarial`` the model will use adversarial sampling loss function.
-            - ``multiclass_nll`` the model will use multiclass nll loss. 
+            - `"pairwise"`:  the model will use the pairwise margin-based loss function.
+            - `"nll"`: the model will use the negative loss likelihood.
+            - `"absolute_margin"`: the model will use the absolute margin likelihood.
+            - `"self_adversarial"`: the model will use the adversarial sampling loss function.
+            - `"multiclass_nll"`: the model will use the multiclass nll loss.
             
             Examples
             --------
@@ -1053,16 +1059,16 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             >>> # pass this loss while compiling the model
             >>> model.compile(loss=userLoss, optim='adam')
             
-        entity_relation_initializer: String (name of objective function), objective function or 
-            ``tf.keras.initializers.Initializer`` instance
+        entity_relation_initializer: str (name of initializer function), initializer function or
+            ``tf.keras.initializers.Initializer`` instance or list.
             
             Initializer of the entity and relation embeddings. This is either a single value or a list of size 2.
-            If it is a single value, then both the entities and relations will be initialized based on 
-            the same initializer. if it is a list, the first initializer will be used for entities and second 
+            If a single value is passed, then both the entities and relations will be initialized based on
+            the same initializer; if a list, the first initializer will be used for entities and the second
             for relations.
             
             If a string is passed, then the default parameters will be used. Choose between
-            ``random_normal``, ``random_uniform``, ``glorot_normal``, ``he_normal``, etc.
+            `"random_normal"`, `"random_uniform"`, `"glorot_normal"`, `"he_normal"`, etc.
 
             See `tf.keras.initializers <https://www.tensorflow.org/api_docs/python/tf/keras/initializers>`_ 
             for up-to-date details.
@@ -1088,15 +1094,15 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             >>>     return tf.random.normal(shape)
             >>> model.compile(loss='pairwise', optim='adam', entity_relation_initializer=my_init)
             
-        entity_relation_regularizer: String (name of objective function), objective function or 
-            `tf.keras.regularizers.Regularizer` instance
+        entity_relation_regularizer: str (name of regularizer function) or regularizer function or
+            `tf.keras.regularizers.Regularizer` instance or list
             Regularizer of entities and relations.
-            If it is a single value, then both the entities and relations will be regularized based on 
-            the same regularizer. if it is a list, the first regularizer will be used for entities and second 
+            If a single value is passed, then both the entities and relations will be regularized based on
+            the same regularizer; if a list, the first regularizer will be used for entities and second
             for relations.
             
-            If a string is passed, then the default parameters will be used. Choose between
-            ``l1``, ``l2``, ``l1_l2``, etc.
+            If a string is passed, then the default parameters of the regularizers will be used. Choose between
+            `"l1"`, `"l2"`, `"l1_l2"`, etc.
 
             See `tf.keras.regularizers <https://www.tensorflow.org/api_docs/python/tf/keras/regularizers>`_ 
             for up-to-date details.
@@ -1114,8 +1120,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             >>> reg = tf.keras.regularizers.L1L2(l1=0.001, l2=0.1)
             >>> model.compile(loss='pairwise', optim='adam', entity_relation_regularizer=reg)
             
-            If the user wants to define custom regularizer it can be any callable with the signature 
-            `reg = fn(weight_matrix)`
+            If the user wants to define custom regularizer it can be any callable with signature
+            ``reg = fn(weight_matrix)``.
             
             Examples
             --------
@@ -1127,9 +1133,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         --------
         >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
         >>> model = ScoringBasedEmbeddingModel(eta=5, 
-        >>>                                      k=300,
-        >>>                                      scoring_type='ComplEx',
-        >>>                                      seed=0)
+        >>>                                    k=300,
+        >>>                                    scoring_type='ComplEx',
+        >>>                                    seed=0)
         >>> model.compile(optimizer='adam', loss='nll')
         >>> model.fit('./fb15k-237/train.txt',
         >>>           batch_size=10000,
@@ -1164,7 +1170,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
     @property
     def metrics(self):
-        '''returns all the metrics that will be computed during training'''
+        '''Returns all the metrics that will be computed during training.'''
         metrics = []
         if self._is_compiled:
             if self.compiled_loss is not None:
@@ -1172,23 +1178,23 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         return metrics
 
     def get_emb_matrix_test(self, part_number=1, number_of_parts=1):
-        ''' get the embedding matrix during evaluation
+        ''' Get the embedding matrix during evaluation.
         
         Parameters
         ----------
         part number: int
-            specifies which part of number_of_parts of entire emb matrix to return
+            Specifies which part to return from the ``number_of_parts`` in which the entire embedding matrix is split.
         number_of_parts: int
-            Total number of parts in which to split the emb matrix
+            Total number of parts in which to split the embedding matrix.
             
         Returns
         -------
-        emb_matrix: np.array(n,k)
-            embedding matrix corresponding the part_number out of number_of_parts parts.
+        emb_matrix: np.array, shape (n,k)
+            Part of the embedding matrix corresponding to `part_number`.
         start_index: int
-            Original entity index(data dict) of the first row of the emb_matrix.
+            Original entity index (data dict) of the first row of the `emb_matrix`.
         end_index: int
-            Original entity index(data dict) of the last row of the emb_matrix.
+            Original entity index (data dict) of the last row of the `emb_matrix`.
             
         '''
         if number_of_parts == 1:
@@ -1210,13 +1216,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 return np.array(emb_matrix), int(indices[0]), int(indices[-1])
 
     def make_test_function(self):
-        ''' Similar to keras lib, this function returns the handle to test step function. 
+        ''' Similar to keras lib, this function returns the handle to test step function.
+
         It processes one batch of data by iterating over the dataset iterator and computes the test metrics.
 
         Returns
         -------
-        out: Function handle.
-              Handle to the test step function  
+        out: Function handle
+              Handle to the test step function.
         '''
         # if self.test_function is not None:
         #    return self.test_function
@@ -1288,11 +1295,18 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     
     def process_model_inputs_for_test(self, triples):
         ''' Return the processed triples. 
-        
+
+        Parameters
+        ----------
+        triples: np.array
+            Triples to be processed.
+
         Returns
         -------
-        In regular (non partitioned) mode, the triples are returned as it is.
-        In case of partitioning, it returns the triple embeddings as a list of size 3 - sub, pred and obj embeddings.
+        out_triples: np.array or list
+            In regular (non partitioned) mode, the triples are returned as they are given in input.
+            In case of partitioning, it returns the triple embeddings as a list of size 3, where each element
+            is a np.array of subjects, predicates and objects embeddings.
         '''
         if self.is_partitioned_training:
             np_triples = triples.numpy()
@@ -1324,44 +1338,46 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                  callbacks=None,
                  dataset_type='test'):
         '''
-        Evaluate the inputs against corruptions and return ranks
+        Evaluate the inputs against corruptions and return ranks.
 
         Parameters
         ----------
-        x: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
-            Data OR Filename of the data file OR Data Handle - that would be used for training
+        x: np.array, shape (n,3) or str or GraphDataLoader or AbstractGraphPartitioner
+            Data OR Filename of the data file OR Data Handle to be used for training.
         batch_size: int
-            batch size to use during training. 
-            May be overridden if x is GraphDataLoader or AbstractGraphPartitioner instance
+            Batch size to use during training.
+            May be overridden if ``x`` is `GraphDataLoader` or `AbstractGraphPartitioner` instance
         verbose: bool
             Verbosity mode.
         use_filter: bool or dict
-            whether to use filter of not. If a dictionary is specified, the data in the dict is concatenated 
-            and used as filter
-        corrupt_side: string
-            which side to corrupt (can take values: ``s``, ``o``, ``s+o`` or ``s,o``) (default:``s,o``)
-        ranking_strategy: string
-            indicates how to break ties. default ``worst`` i.e. assigns the worst rank to the test triple.
-            Can be passed one of the three types ``best``, ``middle``, ``worst``
-        entities_subset: list, nparray
-            Subset of entities to be used for generating corruptions
-        callbacks: keras.callbacks.Callback
-            List of `keras.callbacks.Callback` instances. List of callbacks to apply during evaluation.
+            Whether to use a filter of not. If a dictionary is specified, the data in the dict is concatenated
+            and used as filter.
+        corrupt_side: str
+            Which side to corrupt of a triple to corrupt. It can be the subject (``corrupt_size="s"``),
+            the object (``corrupt_size="o"``), the subject and the object (``corrupt_size="s+o"`` or
+            ``corrupt_size="s,o"``) (default:`"s,o"`).
+        ranking_strategy: str
+            Indicates how to break ties when a test triple gets the same rank of a corruption.
+            Can be one of the three types: `"best"`, `"middle"`, `"worst"` (default: `"worst"`, i.e.,
+            the worst rank is assigned to the test triple).
+        entities_subset: list or np.array
+            Subset of entities to be used for generating corruptions.
+        callbacks: list of keras.callbacks.Callback instances
+            List of callbacks to apply during evaluation.
 
         Returns
         -------
-        rank: (n, number of corrupted sides)
-            ranks by corrupting against subject corruptions and/or object corruptions 
-            (corruptions defined by ent_embs matrix)
+        rank: np.array, shape (n, number of corrupted sides)
+            Ranking of test triples against subject corruptions and/or object corruptions.
             
         Examples
         --------
         >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
         >>> from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
         >>> model = ScoringBasedEmbeddingModel(eta=5, 
-        >>>                                      k=300,
-        >>>                                      scoring_type='ComplEx',
-        >>>                                      seed=0)
+        >>>                                    k=300,
+        >>>                                    scoring_type='ComplEx',
+        >>>                                    seed=0)
         >>> model.compile(optimizer='adam', loss='nll')
         >>> model.fit('./fb15k-237/train.txt',
         >>>           batch_size=10000,
@@ -1459,23 +1475,26 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         return np.concatenate(self.all_ranks)
 
     def predict_step(self, inputs):
-        ''' Returns the output of predict step on a batch of data'''
+        ''' Returns the output of predict step on a batch of data.'''
+        if self.data_shape > 3 and isinstance(inputs, tuple):
+            inputs = inputs[0]
         score_pos = self(inputs, False)
         return score_pos
     
     def predict_step_partitioning(self, inputs):
-        ''' Returns the output of predict step on a batch of data'''
+        ''' Returns the output of predict step on a batch of data.'''
         score_pos = self.scoring_layer(inputs)
         return score_pos
 
     def make_predict_function(self):
-        ''' Similar to keras lib, this function returns the handle to predict step function. 
-        It processes one batch of data by iterating over the dataset iterator and computes the predict outputs.
+        ''' Similar to keras lib, this function returns the handle to the predict step function.
+
+        It processes one batch of data by iterating over the dataset iterator and computes the prediction outputs.
 
         Returns
         -------
-        out: Function handle.
-              Handle to the predict step function
+        out: Function handle
+              Handle to the predict function.
         '''
         if self.predict_function is not None:
             return self.predict_function
@@ -1502,24 +1521,24 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 verbose=0,
                 callbacks=None):
         '''
-        Compute scores of the input triples
+        Compute scores of the input triples.
 
         Parameters
         -----------
-        x: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
-            Data OR Filename of the data file OR Data Handle - that would be used for training
+        x: np.array, shape (n,3) or str or GraphDataLoader or AbstractGraphPartitioner
+            Data OR Filename of the data file OR Data Handle to be used for training.
         batch_size: int
-            batch size to use during training.
-            May be overridden if x is GraphDataLoader or AbstractGraphPartitioner instance
+            Batch size to use during training.
+            May be overridden if ``x`` is `GraphDataLoader` or `AbstractGraphPartitioner` instance
         verbose: bool
             Verbosity mode.
-        callbacks: keras.callbacks.Callback
-            List of `keras.callbacks.Callback` instances. List of callbacks to apply during evaluation.
+        callbacks: list of keras.callbacks.Callback instances
+            List of callbacks to apply during evaluation.
 
         Returns
         -------
-        scores: (n, )
-            score of the input triples
+        scores: np.array, shape (n, )
+            Score of the input triples.
             
         Examples
         --------
@@ -1527,9 +1546,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>> from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
         >>> import numpy as np
         >>> model = ScoringBasedEmbeddingModel(eta=5, 
-        >>>                                      k=300,
-        >>>                                      scoring_type='ComplEx',
-        >>>                                      seed=0)
+        >>>                                    k=300,
+        >>>                                    scoring_type='ComplEx',
+        >>>                                    seed=0)
         >>> model.compile(optimizer='adam', loss='nll')
         >>> model.fit('./fb15k-237/train.txt',
         >>>           batch_size=10000,
@@ -1582,17 +1601,21 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         return np.concatenate(outputs)
     
     def make_calibrate_function(self):
-        ''' Similar to keras lib, this function returns the handle to calibrate step function. 
-        It processes one batch of data by iterating over the dataset iterator and computes the predict outputs.
+        ''' Similar to keras lib, this function returns the handle to the calibrate step function.
+
+        It processes one batch of data by iterating over the dataset iterator and computes the calibration
+        of predictions.
 
         Returns
         -------
-        out: Function handle.
-              Handle to the predict step function
+        out: Function handle
+              Handle to the calibration function.
         '''
 
         def calibrate_with_corruption(iterator):
             inputs = next(iterator)
+            if self.data_shape > 3 and isinstance(inputs, tuple):
+                inputs = inputs[0]
             if self.is_partitioned_training:
                 inp_emb = self.process_model_inputs_for_test(inputs)
                 inp_score = self.scoring_layer(inp_emb)
@@ -1611,6 +1634,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         
         def calibrate_with_negatives(iterator):
             inputs = next(iterator)
+            if self.data_shape > 3 and isinstance(inputs, tuple):
+                inputs = inputs[0]
             if self.is_partitioned_training:
                 inp_emb = self.process_model_inputs_for_test(inputs)
                 inp_score = self.scoring_layer(inp_emb)
@@ -1631,7 +1656,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         return calibrate_fn
     
     def calibrate(self, X_pos, X_neg=None, positive_base_rate=None, batch_size=32, epochs=50, verbose=0):
-        """Calibrate predictions
+        """Calibrate predictions.
 
         The method implements the heuristics described in :cite:`calibration`,
         using Platt scaling :cite:`platt1999probabilistic`.
@@ -1647,7 +1672,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         The optimization is done using a second-order method (limited-memory BFGS), \
         therefore no hyperparameter needs to be specified.
 
-        #. Only positive triples are provided, and the negative triples are generated by corruptions \
+        #. Only positive triples are provided, and the negative triples are generated by corruptions, \
         just like it is done in training or evaluation. The optimization is done using a first-order method (ADAM), \
         therefore ``batches_count`` and ``epochs`` must be specified.
 
@@ -1655,15 +1680,15 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         Calibration is highly dependent on the base rate of positive triples.
         Therefore, for mode (2) of operation, the user is required to provide the ``positive_base_rate`` argument.
         For mode (1), that can be inferred automatically by the relative sizes of the positive and negative sets,
-        but the user can override that by providing a value to ``positive_base_rate``.
+        but the user can override this behaviour by providing a value to ``positive_base_rate``.
 
         Defining the positive base rate is the biggest challenge when calibrating without negatives. That depends on
-        the user choice of which triples will be evaluated during test time.
-        Let's take WN11 as an example: it has around 50% positives triples on both the validation set and test set,
-        so naturally the positive base rate is 50%. However, should the user resample it to have 75% positives
-        and 25% negatives, its previous calibration will be degraded. The user must recalibrate the model now with a
-        75% positive base rate. Therefore, this parameter depends on how the user handles the dataset and
-        cannot be determined automatically or a priori.
+        the user choice of triples to be evaluated during test time.
+        Let's take the WN11 dataset as an example: it has around 50% positives triples on both the validation set
+        and test set, so the positive base rate follows to be 50%. However, should the user resample it to have
+        75% positives and 25% negatives, the previous calibration would be degraded. The user must recalibrate
+        the model with a 75% positive base rate. Therefore, this parameter depends on how the user handles the
+        dataset and cannot be determined automatically or a priori.
 
         .. Note ::
             :cite:`calibration` `calibration experiments available here
@@ -1672,30 +1697,30 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         Parameters
         ----------
-        X_pos : np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
-            Data OR Filename of the data file OR Data Handle - that would be used as positive triples.
-        X_neg : np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
-            Data OR Filename of the data file OR Data Handle - that would be used as negative triples.
+        X_pos : np.array, shape (n,3) or str or GraphDataLoader or AbstractGraphPartitioner
+            Data OR Filename of the data file OR Data Handle to be used as positive triples.
+        X_neg : np.array, shape (n,3) or str or GraphDataLoader or AbstractGraphPartitioner
+            Data OR Filename of the data file OR Data Handle to be used as negative triples.
 
             If `None`, the negative triples are generated via corruptions
             and the user must provide a positive base rate instead.
         positive_base_rate: float
             Base rate of positive statements.
 
-            For example, if we assume there is a fifty-fifty chance of any query to be true, the base rate would be 50%.
+            For example, if we assume there is an even chance for any query to be true, the base rate would be 50%.
 
-            If ``X_neg`` is provided and this is `None`, the relative sizes of ``X_pos`` and ``X_neg`` will be used to
-            determine the base rate. For example, if we have 50 positive triples and 200 negative triples,
-            the positive base rate will be assumed to be 50/(50+200) = 1/5 = 0.2.
+            If ``X_neg`` is provided and ``positive_base_rate=None``, the relative sizes of ``X_pos`` and ``X_neg``
+            will be used to determine the base rate. For example, if we have 50 positive triples and 200 negative
+            triples, the positive base rate will be assumed to be :math:`\frac{50}{(50+200)} = \frac{1}{5} = 0.2`.
 
             This must be a value between 0 and 1.
         batches_size: int
-            Batch size for positives
+            Batch size for positives.
         epochs: int
             Number of epochs used to train the Platt scaling model.
-            Only applies when ``X_neg`` is  `None`.
+            Only applies when ``X_neg=None``.
         verbose: bool
-            Verbosity
+            Verbosity (default: `False`).
            
         Example
         -------
@@ -1704,16 +1729,18 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>> import numpy as np
         >>> dataset = load_fb15k_237()
         >>> model = ScoringBasedEmbeddingModel(eta=5, 
-        >>>                                      k=300,
-        >>>                                      scoring_type='ComplEx')
+        >>>                                    k=300,
+        >>>                                    scoring_type='ComplEx')
         >>> model.compile(optimizer='adam', loss='nll')
         >>> model.fit(dataset['train'],
-        >>>              batch_size=10000,
-        >>>              epochs=5)
+        >>>           batch_size=10000,
+        >>>           epochs=5)
         >>> print('Raw scores (sorted):', np.sort(model.predict(dataset['test'])))
         >>> print('Indices obtained by sorting (scores):', np.argsort(model.predict(dataset['test'])))
         >>> model.calibrate(dataset['test'], 
-        >>>                 batch_size=10000, positive_base_rate=0.9, epochs=100)
+        >>>                 batch_size=10000,
+        >>>                 positive_base_rate=0.9,
+        >>>                 epochs=100)
         >>> print('Calibrated scores (sorted):', np.sort(model.predict_proba(dataset['test'])))
         >>> print('Indices obtained by sorting (Calibrated):', np.argsort(model.predict_proba(dataset['test'])))
         Raw scores (sorted): [-0.6014494 -0.5925436 -0.5465378 ...  1.9067042  2.0135512  2.2477078]
@@ -1801,24 +1828,24 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                       verbose=0,
                       callbacks=None):
         '''
-        Compute calibrated scores (0 <= score <= 1) of the input triples 
+        Compute calibrated scores (:math:`0 <= score <= 1`) for the input triples.
 
         Parameters
         ----------
-        x: np.array(n,3), string, GraphDataLoader instance, AbstractGraphPartitioner instance
-            Data OR Filename of the data file OR Data Handle - that would be used for training
+        x: np.array, shape (n,3) or str or GraphDataLoader or AbstractGraphPartitioner
+            Data OR Filename of the data file OR Data Handle to be used for training.
         batch_size: int
-            batch size to use during training.
-            May be overridden if x is GraphDataLoader or AbstractGraphPartitioner instance
+            Batch size to use during training.
+            May be overridden if ``x`` is `GraphDataLoader` or `AbstractGraphPartitioner` instance.
         verbose: bool
-            Verbosity mode.
-        callbacks: keras.callbacks.Callback
-            List of `keras.callbacks.Callback` instances. List of callbacks to apply during evaluation.
+            Verbosity mode (default: `False`).
+        callbacks: list of keras.callbacks.Callback instances
+            List of callbacks to apply during evaluation.
 
         Returns
         -------
-        scores: (n, )
-            calibrated score of the input triples
+        scores: np.array, shape (n, )
+            Calibrated scors for the input triples.
             
         Example
         -------
@@ -1827,16 +1854,18 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>> import numpy as np
         >>> dataset = load_fb15k_237()
         >>> model = ScoringBasedEmbeddingModel(eta=5, 
-        >>>                                      k=300,
-        >>>                                      scoring_type='ComplEx')
+        >>>                                    k=300,
+        >>>                                    scoring_type='ComplEx')
         >>> model.compile(optimizer='adam', loss='nll')
         >>> model.fit(dataset['train'],
-        >>>              batch_size=10000,
-        >>>              epochs=5)
+        >>>           batch_size=10000,
+        >>>           epochs=5)
         >>> print('Raw scores (sorted):', np.sort(model.predict(dataset['test'])))
         >>> print('Indices obtained by sorting (scores):', np.argsort(model.predict(dataset['test'])))
         >>> model.calibrate(dataset['test'], 
-        >>>                 batch_size=10000, positive_base_rate=0.9, epochs=100)
+        >>>                 batch_size=10000,
+        >>>                 positive_base_rate=0.9,
+        >>>                 epochs=100)
         >>> print('Calibrated scores (sorted):', np.sort(model.predict_proba(dataset['test'])))
         >>> print('Indices obtained by sorting (Calibrated):', np.argsort(model.predict_proba(dataset['test'])))
         Raw scores (sorted): [-0.6014494 -0.5925436 -0.5465378 ...  1.9067042  2.0135512  2.2477078]
@@ -1890,25 +1919,25 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
         Parameters
         ----------
-        entities : array-like, dtype=int, shape=[n]
+        entities : array-like, shape=(n)
             The entities (or relations) of interest. Element of the vector must be the original string literals, and
             not internal IDs.
-        embedding_type : string
-            If 'e', ``entities`` argument will be considered as a list of knowledge graph entities (i.e. nodes).
-            If set to 'r', they will be treated as relation types instead (i.e. predicates).
+        embedding_type : str
+            If `'e'` is passed, ``entities`` argument will be considered as a list of knowledge graph entities
+            (i.e., nodes). If set to `'r'`, ``entities`` will be treated as relations instead.
         Returns
         -------
-        embeddings : ndarray, shape [n, k]
-            An array of k-dimensional embeddings.
+        embeddings : ndarray, shape (n, k)
+            An array of `k`-dimensional embeddings.
             
         Example
         -------
         >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
         >>> from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
         >>> model = ScoringBasedEmbeddingModel(eta=5, 
-        >>>                                      k=300,
-        >>>                                      scoring_type='ComplEx',
-        >>>                                      seed=0)
+        >>>                                    k=300,
+        >>>                                    scoring_type='ComplEx',
+        >>>                                    seed=0)
         >>> model.compile(optimizer='adam', loss='nll')
         >>> model.fit('./fb15k-237/train.txt',
         >>>           batch_size=10000,

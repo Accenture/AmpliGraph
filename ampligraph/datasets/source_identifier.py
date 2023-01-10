@@ -7,7 +7,7 @@
 #
 """Data source identifier.
 
-This module provides main class and supporting functions for automatic
+This module provides the main class and the supporting functions for automatic
 identification of data source (whether it is csv, tar.gz or numpy array)
 and provides adequate loader for the data source identified.
 """
@@ -27,14 +27,18 @@ def load_csv(data_source, chunk_size=None, sep='\t', verbose=False, **kwargs):
     
         Parameters
         ---------
-        data_source: csv file with data, separated by sep.
-        chunk_size: the size of chunk to be used while reading the data, if used returned type 
-                    is an iterator not a numpy array.
-        sep: separator in the csv file, e.g. line "1,2,3\n" has separator comma, while "1 2 3\n" has space.
+        data_source: str
+            csv file with data, separated by ``sep``.
+        chunk_size: int
+            The size of chunk to be used while reading the data. If used, the returned type is
+            an iterator and not a numpy array.
+        sep: str
+            Separator in the csv file, e.g. line "1,2,3\n" has ``sep=","``, while "1 2 3\n" has ``sep=" "``.
     
         Returns
         -------
-        data: either numpy array with data or lazy iterator if chunk_size was provided.
+        data: ndarray or iter
+            Either a numpy array with data or a lazy iterator if ``chunk_size`` was provided.
     """
     data = pd.read_csv(data_source, sep=sep, chunksize=chunk_size, header=None, **kwargs)
     logger.debug("data type: {}".format(type(data)))
@@ -47,7 +51,7 @@ def load_csv(data_source, chunk_size=None, sep='\t', verbose=False, **kwargs):
 
 
 def chunks(iterable, chunk_size=1):
-    """Chunks generator"""
+    """Chunks generator."""
     iterator = iter(iterable)
     for first in iterator:
         yield np.array(list(chain([first], islice(iterator, chunk_size - 1))))
@@ -65,14 +69,14 @@ def load_tar(data_source, chunk_size=None, verbose=False):
 
 class DataSourceIdentifier():
     """Class that recognizes the type of given file and provides with an
-       adequate loader. It currently supports CSV files only.
+       adequate loader.
      
        Properties
        ----------
-       supported_types: dictionary of supported types along with their adequate loaders,
-                        to support a new data type this dictionary need to be updated with
-                        key as the file extension and value as the loading function name.
-                        TODO: the supported types could be stored in a json file as a configuration.
+       supported_types: dict
+            Dictionary of supported types along with their adequate loaders, to support a new data type, this
+            dictionary needs to be updated with the file extension as key and the loading function name as value.
+            TODO: the supported types could be stored in a json file as a configuration.
     
        Example
        -------
@@ -85,7 +89,8 @@ class DataSourceIdentifier():
             
            Parameters
            ----------
-           data_source: name of a file to be recognized.
+           data_source: str
+                Name of a file to be recognized.
         """
         self.verbose = verbose
         self.data_source = data_source

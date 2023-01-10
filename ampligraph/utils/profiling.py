@@ -15,7 +15,8 @@ def get_memory_size():
 
     Returns
     -------
-    total: memory size in usage in total
+    Total: float
+        Memory size used in total.
     """
     snapshot = tracemalloc.take_snapshot()
     stats = snapshot.statistics('lineno', cumulative=True)
@@ -24,15 +25,17 @@ def get_memory_size():
 
 
 def get_human_readable_size(size_in_bytes):
-    """Convert size in bytes in human readable units.
+    """Convert size from bytes to human readable units.
 
     Parameters
     ----------
-    size_in_bytes: original size given in bytes
+    size_in_bytes: int
+        Original size given in bytes
 
     Returns
     -------
-    tuple of new size and unit, size in units GB/MB/KB/Bytes according to thresholds.
+    readable_size: tuple
+        Tuple of new size and unit, size in units GB/MB/KB/Bytes according to thresholds.
     """
     if size_in_bytes >= 1024 * 1024 * 1024:
         return float(size_in_bytes / (1024 * 1024 * 1024)), "GB"  # return in GB
@@ -48,9 +51,10 @@ def timing_and_memory(f):
 
     Parameters
     ----------
-    f: function for which the time an memory will be measured
+    f: function
+        Function for which the time and memory will be measured.
 
-    It logs the time and the memory in the dictionary passed inside 'log' parameter if provided.
+    It logs the time and the memory in the dictionary passed inside `'log'` parameter if provided.
     Time is logged in seconds, memory in bytes. Example dictionary entry looks like that:
     {'SPLIT':{'time':1.62, 'memory-bytes':789.097}}, where keys are names of functions that
     were called to get the time measured in uppercase.

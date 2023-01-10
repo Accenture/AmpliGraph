@@ -15,7 +15,7 @@ logger.setLevel(logging.DEBUG)
 
 
 def hits_at_n_score(ranks, n):
-    r"""Hits@N
+    r"""Hits@N.
 
     The function computes how many elements of a vector of rankings ``ranks`` make it to the top ``n`` positions.
 
@@ -55,7 +55,7 @@ def hits_at_n_score(ranks, n):
 
     Parameters
     ----------
-    ranks: ndarray or list, shape [n] or [n,2]
+    ranks: ndarray or list, shape (n) or (n,2)
         Input ranks of n test statements.
     n: int
         The maximum rank considered to accept a positive.
@@ -63,7 +63,7 @@ def hits_at_n_score(ranks, n):
     Returns
     -------
     hits_n_score: float
-        The Hits@n score
+        The Hits@n score.
 
     Examples
     --------
@@ -83,7 +83,7 @@ def hits_at_n_score(ranks, n):
 
 
 def mrr_score(ranks):
-    r"""Mean Reciprocal Rank (MRR)
+    r"""Mean Reciprocal Rank (MRR).
 
     The function computes the mean of the reciprocal of elements of a vector of rankings ``ranks``.
 
@@ -125,13 +125,13 @@ def mrr_score(ranks):
 
     Parameters
     ----------
-    ranks: ndarray or list, shape [n] or [n,2]
+    ranks: ndarray or list, shape (n) or (n,2)
         Input ranks of n test statements.
 
     Returns
     -------
     mrr_score: float
-        The MRR score
+        The MRR score.
 
     Examples
     --------
@@ -151,7 +151,7 @@ def mrr_score(ranks):
 
 
 def rank_score(y_true, y_pred, pos_lab=1):
-    """Rank of a triple
+    """Computes the rank of a triple.
 
         The rank of a positive element against a list of negatives.
 
@@ -161,9 +161,9 @@ def rank_score(y_true, y_pred, pos_lab=1):
 
     Parameters
     ----------
-    y_true : ndarray, shape [n]
+    y_true : ndarray, shape (n)
         An array of binary labels. The array only contains one positive.
-    y_pred : ndarray, shape [n]
+    y_pred : ndarray, shape (n)
         An array of scores, for the positive element and the n-1 negatives.
     pos_lab : int
         The value of the positive label (default = 1).
@@ -192,9 +192,9 @@ def rank_score(y_true, y_pred, pos_lab=1):
 
 
 def mr_score(ranks):
-    r"""Mean Rank (MR)
+    r"""Mean Rank (MR).
 
-    The function computes the mean of of a vector of rankings ``ranks``.
+    The function computes the mean of a vector of rankings ``ranks``.
 
     It can be used in conjunction with the learning to rank evaluation protocol of
     :meth:`ampligraph.evaluation.evaluate_performance`.
@@ -232,13 +232,13 @@ def mr_score(ranks):
 
     Parameters
     ----------
-    ranks: ndarray or list, shape [n] or [n,2]
+    ranks: ndarray or list, shape (n) or (n,2)
         Input ranks of n test statements.
 
     Returns
     -------
     mr_score: float
-        The MR score
+        The MR score.
 
     Examples
     --------

@@ -22,14 +22,14 @@ logger.setLevel(logging.DEBUG)
 
 
 class PartitioningReporter:
-    """Assesses the quality of partitioning according to
-    chosen metrics and report it.
+    """Assesses the quality of partitioning according to chosen metrics and report it.
 
     Available metrics: edge cut, edge imbalance, vertex imbalance, time, memory usage.
 
     Parameters
     ----------
-    partitionings: data splits to be compared
+    partitionings:
+            Data splits to be compared.
 
     Example
     -------
@@ -42,23 +42,26 @@ class PartitioningReporter:
 
            Parameters
            ----------
-           partitionings: list of partitioning strategies.
+           partitionings:
+                List of partitioning strategies.
         """
         self.partitionings = partitionings
 
     def get_edge_cut(self, k, partitions, avg_size=None):
-        """Calculates mean edge cut across partitions in a single
-        partitioning.
+        """Calculates mean edge cut across partitions in a single partitioning.
 
         Parameters
         ----------
-        k: number of partitions
-        partitions: partitions in one partitioning
+        k: int
+            Number of partitions.
+        partitions:
+            Partitions in one partitioning.
 
         Returns
         -------
-
-        edge_cut: average edge cut between partitions"""
+        edge_cut: ndarray
+            Average edge cut between partitions.
+        """
 
         intersections = []
         logger.debug(partitions)
@@ -81,16 +84,19 @@ class PartitioningReporter:
         return edge_cut, edge_cut_proportion
     
     def get_edge_imbalance(self, avg_size, max_size):
-        """Calculates edge imbalance of partitions
+        """Calculates edge imbalance of partitions.
 
         Parameters
         ----------
-        avg_size: average size of partition
-        max_size: maximum size of partition
+        avg_size: int
+            Average size of partition.
+        max_size: int
+            Maximum size of partition.
 
         Returns
         -------
-        edge_imb: edge imbalance
+        edge_imb: float
+            Edge imbalance
         """
 
         edge_imb = max_size / avg_size - 1
@@ -103,13 +109,16 @@ class PartitioningReporter:
 
         Parameters
         ----------
-        partitions: partitions in one partitioning
+        partitions:
+            Partitions in one partitioning.
 
         Returns
         -------
-        vertex_imb: vertex imbalance
-        vertex_count: list of counts, e.g. for 2 partitions the list will be of size two with
-                 vertex count for each partition - (5,6), for 3 partitions:(5,2,4).        
+        vertex_imb: float
+            Vertex imbalance.
+        vertex_count: list
+            List of counts, e.g., for 2 partitions the list will be of size two with vertex count for each
+            partition: (5,6), for 3 partitions: (5,2,4).
         """
         lengths = []
         for partition in partitions:
@@ -124,16 +133,19 @@ class PartitioningReporter:
 
     def get_average_deviation_from_ideal_size_vertices(self, partitions):
         """Metric that calculates the average difference between the
-           ideal size of partition (in terms of vertices) and real,
-           it is expressed as percentage deviation from ideal size.
+           ideal size of partition (in terms of vertices) and the real size.
+
+           It is expressed as the percentage deviation from the ideal size.
 
            Parameters
            ----------
-           partitions: partitions in one partitioning
+           partitions:
+                Partitions in one partitioning.
 
            Returns
            -------
-           percentage_dev: percentage vertex size partition deviation
+           percentage_dev: float
+                Percentage vertex size partition deviation
         """
         k = len(partitions)
         sizes = []
@@ -147,16 +159,19 @@ class PartitioningReporter:
 
     def get_average_deviation_from_ideal_size_edges(self, partitions):
         """Metric that calculates the average difference between the
-           ideal size of partition (in terms of edges) and real,
-           it is expressed as percentage deviation from ideal size.
+           ideal size of partition (in terms of edges) and the real size.
+
+           It is expressed as percentage deviation from ideal size.
 
            Parameters
            ----------
-           partitions: partitions in one partitioning
+           partitions:
+                Partitions in one partitioning.
 
            Returns
            -------
-           percentage_dev: percentage edge size partition deviation
+           percentage_dev: float
+                Percentage edge size partition deviation.
         """
 
         k = len(partitions)
@@ -172,17 +187,18 @@ class PartitioningReporter:
         return percentage_dev
     
     def get_edges_count(self, partitions):
-        """Counts number of edges in each partition that
-           estimates the size of partition.
+        """Counts number of edges in each partition that estimates the size of partition.
 
            Parameters
            ---------
-           partitions: partitions in one partitioning
+           partitions:
+                Partitions in one partitioning.
 
            Returns
            -------
-           info: list of counts, e.g. for 2 partitions the list will be of size two with
-                 the edge count - (10,12), for 3 partitions: (7,8,7).
+           info: list
+                List of counts, e.g. for 2 partitions the list will be of size two with the edge count: (10,12);
+                for 3 partitions: (7,8,7).
         """
         info = []
         for partition in partitions:
@@ -193,13 +209,6 @@ class PartitioningReporter:
  
     def get_modularity(self):
         """Calculates modularity of partitions.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        modularity: modularity
         """
         raise NotImplementedError
 
@@ -209,14 +218,19 @@ class PartitioningReporter:
 
         Parameters
         ----------
-        partitioning: single split of data into partitions
-        EDGE_CUT [True/False]: flag whether to calculate edge cut or not
-        EDGE_IMB [True/False]: flag whether to calculate edge imbalance or not
-        VERTEX_IMB [True/False]: flag whether to calculate vertex imbalance or not
+        partitioning:
+            Single split of data into partitions.
+        EDGE_CUT : bool
+            Flag whether to calculate edge cut or not.
+        EDGE_IMB : bool
+            Flag whether to calculate edge imbalance or not.
+        VERTEX_IMB : bool
+            Flag whether to calculate vertex imbalance or not.
 
         Returns
         -------
-        metrics: dictionary with metrics
+        metrics: dict
+            Dictionary with metrics.
         """
         logs = partitioning[1]
         partitioning = partitioning[0]
@@ -254,12 +268,14 @@ class PartitioningReporter:
 
         Parameters
         ----------
-        visualize [True/False] flag indicating whether to visualize output
+        visualize : bool
+            Flag indicating whether to visualize output.
 
         Returns
         -------
-        reports: calculated metrics for all partitionings, dictionary with key
-        as numbers of partitions and values as dictionary with metrics
+        reports: dict
+            Calculated metrics for all partitionings stored in a dictionary with keys the numbers of partitions
+            and values the dictionary with metrics.
         """
         reports = {}
         for name, partitioning in self.partitionings.items():
@@ -329,14 +345,19 @@ def compare_partitionings(list_of_partitioners, data, num_partitions=2, visualiz
 
        Parameters
        ---------
-       list_of_partitioners: list of uninitialized partitioners
-       data: numpy array with graoh to be splited into partitions
-       num_partitions: number of partitions required
-       visualize [default=True]: flag whether to visualize results or not
+       list_of_partitioners: list
+            List of uninitialized partitioners.
+       data: ndarray
+            Numpy array with the graph to be split into partitions.
+       num_partitions: int
+            Number of partitions required.
+       visualize : bool
+            Flag whether to visualize results or not.
 
        Returns
        -------
-       result: dictionary with metrics evaluating partitionings
+       result: dict
+            Dictionary with metrics evaluating partitionings.
 
        Example
        -------

@@ -7,7 +7,7 @@
 #
 """Graph partitioning strategies.
 
-Module contains several graph partitioning strategies both based 
+This module contains several graph partitioning strategies both based
 on vertices split and edges split.
 
 Attributes
@@ -35,8 +35,10 @@ def register_partitioning_strategy(name, manager):
        
        Parameters
        ----------
-       name: name of the new partition strategy.
-       manager: name of the partitioning manager that will handle this partitioning strategy during training.
+       name: str
+            Name of the new partition strategy.
+       manager: str
+            Name of the partitioning manager that will handle this partitioning strategy during training.
  
        Example
        -------
@@ -65,11 +67,13 @@ def get_number_of_partitions(n):
     
        Parameters
        ----------
-       n: number of buckets with vertices.
+       n: int
+            Number of buckets with vertices.
 
        Returns
        -------
-       number of partitions
+       n_partitions: int
+            Number of partitions
     """
     return int(n * (n + 1) / 2)
 
@@ -82,10 +86,12 @@ class AbstractGraphPartitioner(ABC):
     """
 
     def __init__(self, data, k=2, seed=None, root_dir=tempfile.gettempdir(), **kwargs):
-        """Initialiser for AbstractGraphPartitioner.
+        """Initialise the AbstractGraphPartitioner.
 
-           data: input data as a GraphDataLoader.
-           k: number of partitions or buckets to split data into.
+           data: GraphDataLoader
+                Input data provided as a GraphDataLoader.
+           k: int
+                Number of partitions or buckets to split data into.
         """
         self.files = []
         self.partitions = []
@@ -96,33 +102,35 @@ class AbstractGraphPartitioner(ABC):
         self.reload()
         
     def __iter__(self):
-        """Function needed to be used as an itertor."""
+        """Function needed to be used as an iterator."""
         return self
     
     def reload(self):
-        """Reload the partition"""
+        """Reload the partition."""
         self.generator = self.partitions_generator()
 
     def get_data(self):
-        """Get the underlying data handler"""
+        """Get the underlying data handler."""
         return self._data
 
     def partitions_generator(self):
         """Generates partitions.
+
            Yields
            ------
-           next partition as GraphDataLoader object.
+           next_partition : GraphDataLoader
+                Next partition as a GraphDataLoader object.
         """
         for partition in self.partitions:
             partition.reload()
             yield partition
 
     def get_partitions_iterator(self):
-        """Reinstantiate partitions generator.
+        """Re-instantiate partitions generator.
            
            Returns
            -------
-           partitions generator.
+           Partitions generator
         """
         return self.partitions_generator()
 
@@ -133,25 +141,25 @@ class AbstractGraphPartitioner(ABC):
         return self.partitions       
  
     def __next__(self):
-        """Function needed to be used as an itertor."""
+        """Function needed to be used as an iterator."""
         return next(self.generator)
 
     def _split(self, seed=None, **kwargs):
-        """Split data into k equal size partitions.
+        """Split data into `k` equal size partitions.
 
            Parameters
            ----------
-           seed: seed for repeatability purposes, it is only
-                 used when certain randomization is required
+           seed: int
+                Seed to be used for repeatability purposes, it is only used when certain randomization is required.
 
            Returns
            -------
-            partitions: parts of equal size with triples
+           Partitions
         """
         pass
 
     def clean(self):
-        """ Remove the temperory files created for the partitions
+        """ Remove the temporary files created for the partitions.
         """
         for partition in self.partitions:
             partition.clean()
@@ -176,8 +184,7 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
            >>> dataset = load_fb15k_237()
            >>> dataset_loader = GraphDataLoader(dataset['train'], 
            >>>                                  backend=SQLiteAdapter, # type of backend to use
-           >>>                                  batch_size=2,          # batch size to use while iterating 
-           >>>                                                         # over this dataset
+           >>>                                  batch_size=2,          # batch size to use while iterating over the dataset
            >>>                                  dataset_type='train',  # dataset type
            >>>                                  use_filter=False,      # Whether to use filter or not
            >>>                                  use_indexer=True)      # indicates that the data needs 
@@ -185,17 +192,17 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
            >>> partitioner = BucketGraphPartitioner(dataset_loader, k=2)
            >>> # create and compile a model as usual
            >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
-           >>>                       k=50, 
-           >>>                       scoring_type='DistMult')
+           >>>                                                k=50,
+           >>>                                                scoring_type='DistMult')
            >>>
            >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
            >>>
-           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
-           >>>                                               # this will generate data for the model during training
+           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
            >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
-           >>>                       epochs=10)              # number
+           >>>                       epochs=10)              # number of epochs
                       
-                      
+       Example
+       -------
            >>> d = np.array([[1,1,2], [1,1,3],[1,1,4],[5,1,3],[5,1,2],[6,1,3],[6,1,2],[6,1,4],[6,1,7]])
            >>> data = GraphDataLoader(d, batch_size=1, dataset_type="test")
            >>> partitioner = BucketGraphPartitioner(data, k=2)
@@ -217,29 +224,34 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
             [['5,0,6']]
     """
     def __init__(self, data, k=2, **kwargs):
-        """Initialiser for BucketGraphPartitioner.
+        """Initialise the BucketGraphPartitioner.
            
            Parameters
            ----------
            data: GraphDataLoader
-               input data as a GraphDataLoader.
+               Input data as a GraphDataLoader.
            k: int 
-               number of buckets to split entities/vertices into.
+               Number of buckets to split entities (i.e., vertices) into.
         """
 
         self.partitions = []
         super().__init__(data, k, **kwargs)
        
     def create_single_partition(self, ind1, ind2, timestamp, partition_nb, batch_size=1):
-        """Creates partition based on given two indices of buckets.
+        """Creates partition based on the two given indices of buckets.
+
            It appends created partition to the list of partitions (self.partitions).
           
            Parameters
            ----------
-           ind1: index of the first bucket needed to create partition.
-           ind2: index of the second bucket needed to create partition.
-           timestamp: date and time string that the files are created with (shelves).
-           partition_nb: assigned number of partition.           
+           ind1: int
+                Index of the first bucket needed to create partition.
+           ind2: int
+                Index of the second bucket needed to create partition.
+           timestamp: str
+                Date and time string that the files are created with (shelves).
+           partition_nb: int
+                Assigned number of partitions.
         """
         # logger.debug("------------------------------------------------")        
         # logger.debug("Creating partition nb: {}".format(partition_nb))
@@ -285,8 +297,8 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
     
     @timing_and_memory
     def _split(self, seed=None, verbose=False, batch_size=1, **kwargs):
-        """Split data into self.k buckets based on unique entities and assign 
-           accordingly triples to k partitions and intermediate partitions.
+        """Split data into `self.k` buckets based on unique entities and assign
+           accordingly triples to `k` partitions and intermediate partitions.
         """
         timestamp = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
         self.ents_size = self._data.backend.mapper.get_entities_count()
@@ -335,36 +347,33 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
            >>> dataset = load_fb15k_237()
            >>> dataset_loader = GraphDataLoader(dataset['train'], 
            >>>                                  backend=SQLiteAdapter, # type of backend to use
-           >>>                                  batch_size=2,          # batch size to use while iterating 
-           >>>                                                         # over this dataset
+           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
            >>>                                  dataset_type='train',  # dataset type
-           >>>                                  use_filter=False,      # Whether to use filter or not
-           >>>                                  use_indexer=True)      # indicates that the data needs to 
-           >>>                                                         # be mapped to index
+           >>>                                  use_filter=False,      # whether to use filter or not
+           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
            >>> partitioner = RandomVerticesGraphPartitioner(dataset_loader, k=2)
            >>> # create and compile a model as usual
            >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
-           >>>                       k=50, 
-           >>>                       scoring_type='DistMult')
+           >>>                                                k=50,
+           >>>                                                scoring_type='DistMult')
            >>>
            >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
            >>>
-           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
-           >>>                                               # this will generate data for the model during training
-           >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
-           >>>                       epochs=10)              # number
+           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
+           >>>                       use_partitioning=True,  # specify that partitioning needs to be used
+           >>>                       epochs=10)              # number of epochs
     """
     def __init__(self, data, k=2, seed=None, **kwargs):
-        """Initialiser for RandomVerticesGraphPartitioner.
+        """Initialise the RandomVerticesGraphPartitioner.
 
            Parameters
            ----------
            data: GraphDataLoader
-               input data as a GraphDataLoader.
+               Input data provided as a GraphDataLoader.
            k: int 
-               number of buckets to split entities/vertices into.
+               Number of buckets to split entities (i.e., vertices) into.
            seed: int
-               seed to be used during partitioning
+               Seed to be used during partitioning.
         """
         self._data = data
         self._k = k
@@ -373,12 +382,13 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
        
     @timing_and_memory
     def _split(self, seed=None, batch_size=1, **kwargs):
-        """Split data into k equal size partitions by randomly drawing subset of vertices
+        """Split data into `k` equal size partitions by randomly drawing subset of vertices
            of partition size and retrieving triples associated with these vertices.
 
            Returns
            -------
-            partitions: parts of equal size with triples
+            partitions
+                Partitions of equal size with triples.
         """
         timestamp = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
         self.ents_size = self._data.backend.mapper.get_entities_count()
@@ -415,45 +425,44 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
 
 class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
     """Template for edge-based partitioning strategy that splits edges
-       into partitions, should be inherited to create different edge-based strategy.
+       into partitions.
+
+        To be inherited to create different edge-based strategies.
        
        Example
        -------
            >>> dataset = load_fb15k_237()
            >>> dataset_loader = GraphDataLoader(dataset['train'], 
            >>>                                  backend=SQLiteAdapter, # type of backend to use
-           >>>                                  batch_size=2,          # batch size to use while iterating 
-           >>>                                                         # over this dataset
+           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
            >>>                                  dataset_type='train',  # dataset type
            >>>                                  use_filter=False,      # Whether to use filter or not
-           >>>                                  use_indexer=True)      # indicates that the data needs 
-           >>>                                                         # to be mapped to index
+           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
            >>> partitioner = EdgeBasedGraphPartitioner(dataset_loader, k=2)
            >>> # create and compile a model as usual
            >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
-           >>>                       k=50, 
-           >>>                       scoring_type='DistMult')
+           >>>                                                k=50,
+           >>>                                                scoring_type='DistMult')
            >>>
            >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
            >>>
-           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
-           >>>                                               # this will generate data for the model during training
+           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
            >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
-           >>>                       epochs=10)              # number
+           >>>                       epochs=10)              # number of epochs
     """
     def __init__(self, data, k=2, random=False, index_by="", **kwargs):
-        """Initialiser for EdgeBasedGraphPartitioner.
+        """Initialise the EdgeBasedGraphPartitioner.
 
            Parameters
            ----------
            data: GraphDataLoader
-               input data as a GraphDataLoader.
+               Input data as a GraphDataLoader.
            k: int 
-               number of buckets to split entities/vertices into.
+               Number of buckets to split entities (i.e., vertices) into.
            random: bool
-               whether to draw edges/triples in random order.
-           index_by: string
-               which index to use when returning triples (s,o,so,os).
+               Whether to draw edges/triples in random order.
+           index_by: str
+               Which index to use when returning triples (`"s"`, `"o"`, `"so"`, `"os"`).
         """
 
         self.partitions = []
@@ -462,16 +471,17 @@ class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
         super().__init__(data, k=k, random=random, index_by=index_by, **kwargs)
 
     def get_data(self):
+        '''Get the underlying data handler.'''
         return self._data
 
     @timing_and_memory
     def _split(self, seed=None, batch_size=1, random=False, index_by="", **kwargs):
-        """Split data into k equal size partitions by randomly drawing subset of
-        edges from dataset.
+        """Split data into `k` equal size partitions by randomly drawing subset of edges from dataset.
 
            Returns
            -------
-            partitions: parts of equal size with triples
+            partitions
+                Parts of equal size with triples
         """
         timestamp = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
         self.size = self._data.backend.get_data_size()
@@ -508,35 +518,32 @@ class RandomEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
            >>> dataset = load_fb15k_237()
            >>> dataset_loader = GraphDataLoader(dataset['train'], 
            >>>                                  backend=SQLiteAdapter, # type of backend to use
-           >>>                                  batch_size=2,          # batch size to use while iterating 
-           >>>                                                         # over this dataset
+           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
            >>>                                  dataset_type='train',  # dataset type
            >>>                                  use_filter=False,      # Whether to use filter or not
-           >>>                                  use_indexer=True)      # indicates that the data needs 
-           >>>                                                         # to be mapped to index
+           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
            >>> partitioner = RandomEdgesGraphPartitioner(dataset_loader, k=2)
            >>> # create and compile a model as usual
            >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
-           >>>                       k=50, 
-           >>>                       scoring_type='DistMult')
+           >>>                                                k=50,
+           >>>                                                scoring_type='DistMult')
            >>>
            >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
            >>>
-           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
-           >>>                                               # this will generate data for the model during training
+           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
            >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
-           >>>                       epochs=10)              # number
+           >>>                       epochs=10)              # number of epochs
     """
 
     def __init__(self, data, k=2, **kwargs):
-        """Initialiser for RandomEdgesGraphPartitioner.
+        """Initialise the RandomEdgesGraphPartitioner.
 
            Parameters
            ----------
            data: GraphDataLoader
-               input data as a GraphDataLoader.
+               Input data as a GraphDataLoader.
            k: int 
-               number of buckets to split entities/vertices into.
+               Number of buckets to split entities (i.e., vertices) into.
         """
         self.partitions = []
         self._data = data
@@ -554,34 +561,31 @@ class NaiveGraphPartitioner(EdgeBasedGraphPartitioner):
            >>> dataset = load_fb15k_237()
            >>> dataset_loader = GraphDataLoader(dataset['train'], 
            >>>                                  backend=SQLiteAdapter, # type of backend to use
-           >>>                                  batch_size=2,          # batch size to use while iterating 
-           >>>                                                         # over this dataset
+           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
            >>>                                  dataset_type='train',  # dataset type
            >>>                                  use_filter=False,      # Whether to use filter or not
-           >>>                                  use_indexer=True)      # indicates that the data needs to be 
-           >>>                                                         # mapped to index
+           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
            >>> partitioner = NaiveGraphPartitioner(dataset_loader, k=2)
            >>> # create and compile a model as usual
            >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
-           >>>                       k=50, 
-           >>>                       scoring_type='DistMult')
+           >>>                                                k=50,
+           >>>                                                scoring_type='DistMult')
            >>>
            >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
            >>>
-           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
-           >>>                                               # this will generate data for the model during training
+           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
            >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
-           >>>                       epochs=10)              # number
+           >>>                       epochs=10)              # number of epochs
     """
     def __init__(self, data, k=2, **kwargs):
-        """Initialiser for NaiveGraphPartitioner.
+        """Initialise the NaiveGraphPartitioner.
 
            Parameters
            ----------
            data: GraphDataLoader
-               input data as a GraphDataLoader.
+               Input data as a GraphDataLoader.
            k: int 
-               number of buckets to split entities/vertices into.
+               Number of buckets to split entities (i.e., vertices) into.
         """
         self.partitions = []
         super().__init__(data, k, random=False, index_by="", **kwargs)
@@ -590,41 +594,38 @@ class NaiveGraphPartitioner(EdgeBasedGraphPartitioner):
 @register_partitioning_strategy("SortedEdges", "GeneralPartitionDataManager")
 class SortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
     """Partitioning strategy that splits edges into equal size
-       partitions retriving triples from the data ordered by subject.
+       partitions retrieving triples from the data ordered by subject.
        
        Example
        -------
            >>> dataset = load_fb15k_237()
            >>> dataset_loader = GraphDataLoader(dataset['train'], 
            >>>                                  backend=SQLiteAdapter, # type of backend to use
-           >>>                                  batch_size=2,          # batch size to use while iterating 
-           >>>                                                         # over this dataset
+           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
            >>>                                  dataset_type='train',  # dataset type
            >>>                                  use_filter=False,      # Whether to use filter or not
-           >>>                                  use_indexer=True)      # indicates that the data needs to be 
-           >>>                                                         # mapped to index
+           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
            >>> partitioner = SortedEdgesGraphPartitioner(dataset_loader, k=2)
            >>> # create and compile a model as usual
            >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
-           >>>                       k=50, 
-           >>>                       scoring_type='DistMult')
+           >>>                                                k=50,
+           >>>                                                scoring_type='DistMult')
            >>>
            >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
            >>>
-           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
-           >>>                                               # this will generate data for the model during training
+           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
            >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
-           >>>                       epochs=10)              # number
+           >>>                       epochs=10)              # number of epochs
     """
     def __init__(self, data, k=2, **kwargs):
-        """Initialiser for SortedEdgesGraphPartitioner.
+        """Initialise the SortedEdgesGraphPartitioner.
 
            Parameters
            ----------
            data: GraphDataLoader
-               input data as a GraphDataLoader.
+               Input data as a GraphDataLoader.
            k: int 
-               number of buckets to split entities/vertices into.
+               Number of buckets to split entities (i.e., vertices) into.
         """
 
         self.partitions = []
@@ -634,41 +635,38 @@ class SortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
 @register_partitioning_strategy("DoubleSortedEdges", "GeneralPartitionDataManager")
 class DoubleSortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
     """Partitioning strategy that splits edges into equal size
-       partitions retriving triples from the data ordered by subject and object.
+       partitions retrieving triples from the data ordered by subject and object.
        
        Example
        -------
            >>> dataset = load_fb15k_237()
            >>> dataset_loader = GraphDataLoader(dataset['train'], 
            >>>                                  backend=SQLiteAdapter, # type of backend to use
-           >>>                                  batch_size=2,          # batch size to use while iterating 
-           >>>                                                         # over this dataset
+           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
            >>>                                  dataset_type='train',  # dataset type
            >>>                                  use_filter=False,      # Whether to use filter or not
-           >>>                                  use_indexer=True)      # indicates that the data needs to be 
-           >>>                                                         # mapped to index
+           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
            >>> partitioner = DoubleSortedEdgesGraphPartitioner(dataset_loader, k=2)
            >>> # create and compile a model as usual
            >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
-           >>>                       k=50, 
-           >>>                       scoring_type='DistMult')
+           >>>                                                k=50,
+           >>>                                                scoring_type='DistMult')
            >>>
            >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
            >>>
-           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function
-           >>>                                               # this will generate data for the model during training
+           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
            >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
-           >>>                       epochs=10)              # number
+           >>>                       epochs=10)              # number of epochs
     """
     def __init__(self, data, k=2, **kwargs):
-        """Initialiser for DoubleSortedEdgesGraphPartitioner.
+        """Initialise the DoubleSortedEdgesGraphPartitioner.
 
            Parameters
            ----------
            data: GraphDataLoader
-               input data as a GraphDataLoader.
+               Input data as a GraphDataLoader.
            k: int 
-               number of buckets to split entities/vertices into.
+               Number of buckets to split entities (i.e., vertices) into.
         """
         self.partitions = []
         super().__init__(data, k, random=False, index_by="so", **kwargs)

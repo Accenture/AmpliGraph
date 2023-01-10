@@ -62,15 +62,21 @@ class SQLiteAdapter():
        
             Parameters
             ----------
-            db_name: name of the database.
-            chunk_size: size of a chunk to read data from while feeding the database,
-                        if not provided will be default (DEFAULT_CHUNKSIZE).
-            root_directory: directory where data will be stored - database created and mappings.
-            use_indexer: object of type DataIndexer with predifined mapping or bool flag to tell whether data 
-            should be indexed.
-            remap: whether to remap or not (shouldn't be used here) - NotImplemented here.
-            parent: Not Implemented.
-            verbose: print status messages.
+            db_name: str
+                Name of the database.
+            chunk_size: int
+                Size of a chunk to read data from while feeding the database (default: DEFAULT_CHUNKSIZE).
+            root_directory: str
+                Path to a directory where data will be stored, database created and mappings.
+            use_indexer: DataIndexer or bool
+                Object of type DataIndexer with pre-defined mapping or bool flag to tell whether data
+                should be indexed.
+            remap: bool
+                Whether to remap or not (shouldn't be used here) - NotImplemented here.
+            parent:
+                Not Implemented.
+            verbose:
+                Print status messages.
         """
         self.db_name = db_name
         self.verbose = verbose
@@ -104,6 +110,7 @@ class SQLiteAdapter():
             self.chunk_size = chunk_size
             
     def get_output_signature(self):
+        '''Get the output signature of the tf.data.Dataset object.'''
         triple_tensor = tf.TensorSpec(shape=(None, 3), dtype=tf.int32)
 
         # focusE
@@ -119,13 +126,14 @@ class SQLiteAdapter():
         return (triple_tensor)
         
     def open_db(self):
+        '''Open the database.'''
         db_uri = 'file:{}?mode=rw'.format(pathname2url(self.db_path))
         self.connection = sqlite3.connect(db_uri, uri=True)
         self.flag_db_open = True
         logger.debug("----------------DB OPENED - normally -----------------------")
 
     def open_connection(self):
-        """Context manager function to open or create if not exists database connection."""
+        """Context manager function to open (or create if it does not exist) a database connection."""
         if not self.flag_db_open:
             try:
                 self.open_db()
@@ -143,8 +151,8 @@ class SQLiteAdapter():
         return self
     
     def __exit__(self, type, value, tb):
-        """Context manager exit function, required to used with "with statement", closes
-           the connection and do the rollback if required"""
+        """Context manager exit function, to be used with "with statement", closes
+           the connection and do the rollback if required."""
         if self.flag_db_open:
             if tb is None:
                 self.connection.commit()
@@ -156,6 +164,7 @@ class SQLiteAdapter():
             logger.debug("!!!!!!!!----------------DB CLOSED -----------------------")
 
     def _add_dataset(self, data_source, dataset_type):
+        '''Load the data.'''
         self._load(data_source, dataset_type)
         
     def _get_db_schema(self):
@@ -164,7 +173,8 @@ class SQLiteAdapter():
     
            Returns
            -------
-           db_schema: list of SQL commands to create tables and indexes.
+           db_schema: list
+                List of SQL commands to create tables and indexes.
         """
         if self.data_shape < 4:
             db_schema = [
@@ -202,7 +212,8 @@ class SQLiteAdapter():
     
            Returns
            -------
-           clean_up: list of SQL commands to clean tables and indexes.
+           clean_up: list
+                List of SQL commands to clean tables and indexes.
         """  
         clean_up = ["drop index IF EXISTS triples_table_po_idx",
                     "drop index IF EXISTS triples_table_sp_idx",
@@ -215,11 +226,13 @@ class SQLiteAdapter():
     
            Parameters
            ----------
-           query: SQLite query to be executed.
+           query: str
+                SQLite query to be executed.
      
            Returns
            -------
-           output: result of a query with fetchall().
+           output:
+                Result of a query with fetchall().
         """
         with self:
             cursor = self.connection.cursor()
@@ -239,7 +252,8 @@ class SQLiteAdapter():
 
            Parameters
            ----------
-           query: list of SQLite queries to be executed.
+           query: list
+                List of SQLite queries to be executed.
      
            Returns
            -------
@@ -254,10 +268,12 @@ class SQLiteAdapter():
     
            Parameters
            ----------
-           table: table where to input data.
-           values: array of data with shape (N,m) to be written to the database,
-                   where N is a number of entries, m=3 if we only have triples and                                      # How to write documentation?
-                   m>3 if we have numerical weights associated with each triple.
+           table: str
+                Table where to input data.
+           values: ndarray
+                Numpy array of data with shape (N,m) to be written to the database.
+                   `N` is a number of entries, :math:`m=3` if we only have triples and :math:`m>3` if we have numerical
+                   weights associated with each triple.
         """
         with self:
             if self.verbose:
@@ -284,8 +300,8 @@ class SQLiteAdapter():
         self._execute_queries(self._get_db_schema())
 
     def _get_triples(self, subjects=None, objects=None, entities=None):
-        """Get triples that objects belongs to objects and subjects to subjects,
-           or if not provided either object or subject belongs to entities.
+        """Get triples whose objects belong to objects and subjects to subjects,
+           or, if not provided either object or subject, belong to entities.
         """
         if subjects is None and objects is None:
             if entities is None:
@@ -308,14 +324,17 @@ class SQLiteAdapter():
     
            Parameters
            ----------
-           chunk: numpy array with a fragment of data of size (N,3), where each element is:
+           chunk: ndarray
+                Numpy array with a fragment of data of size (N,3), where each element is:
                   (subject, predicate, object).
-           dataset_type: defines what kind of data is it (train, test, validation).
+           dataset_type: str
+                Defines what kind of data we are considering (`"train"`, `"test"`, `"validation"`).
            
            Returns
            -------
-           tmp: numpy array of size (N,4) with indexed triples,
-                where each element is: (subject index, predicate index, object index, dataset_type).
+           tmp: ndarray
+                Numpy array of size (N,4) with indexed triples, where each element is of the form
+                (subject index, predicate index, object index, dataset_type).
            """
         if self.verbose:
             logger.debug("getting triples...")
@@ -350,7 +369,8 @@ class SQLiteAdapter():
         
            Returns
            -------
-           True/False - flag indicating whether indexing took place.
+           Flag : bool
+                Flag indicating whether indexing took place.
         """
         if not hasattr(self, "mapper"):
             return False
@@ -363,21 +383,26 @@ class SQLiteAdapter():
             logger.debug("Data reloaded: {}".format(self.data))
         
     def populate(self, data_source, dataset_type="train", get_indexed_triples=None, loader=None):
-        """Condition: before you can enter triples you have to index data.
+        """Populate the database with data.
+
+            Condition: before you can enter triples you have to index data.
     
            Parameters
            ----------
-           data_source: file with data (e.g. csv file).
-           dataset_type: what type of data is it? (train | test | validation).
-           get_indexed_triples: function to obtain indexed triples.
-           loader: loading function to be used to load data, if None, the
-                   DataSourceIdentifier will try to identify type and return
-                   adequate loader.
+           data_source: ndarray or str
+                Numpy array or file (e.g., csv file)  with data.
+           dataset_type: str
+                What type of data is it? (`"train"` | `"test"` | `"validation"`).
+           get_indexed_triples: func
+                Function to obtain indexed triples.
+           loader: func
+                Loading function to be used to load data; if `None`, the `DataSourceIdentifier` will try
+                to identify the type and return an adequate loader.
         """
         self.data_source = data_source        
         self.loader = loader
         if loader is None:
-            self.loader = self.identifier.fetch_loader()                                                                # Return a function like read_csv
+            self.loader = self.identifier.fetch_loader()
         if not self.is_indexed() and self.use_indexer is not False:
             if self.verbose:
                 logger.debug("indexing...")
@@ -386,12 +411,12 @@ class SQLiteAdapter():
             logger.debug("Data is already indexed or no indexing is required.")
         if get_indexed_triples is None:
             get_indexed_triples = self.get_indexed_triples
-        data = self.loader(data_source, chunk_size=self.chunk_size)                                                     # Here triples are actually retrieved
+        data = self.loader(data_source, chunk_size=self.chunk_size)
 
         self.reload_data()
         for chunk in data: # chunk is a numpy array of size (n,m) with m=3/4
             self.data_shape = chunk.shape[1]
-            values_triples = get_indexed_triples(chunk, dataset_type=dataset_type)                                      # take a subset of a chunk (if needed)
+            values_triples = get_indexed_triples(chunk, dataset_type=dataset_type)
             self._insert_values_to_a_table("triples_table", values_triples)
         if self.verbose:
             logger.debug("data is populated")
@@ -412,12 +437,15 @@ class SQLiteAdapter():
     
            Parameters
            ----------
-           table: table for which to obtain the size.
-           condition: condition to count only a subset of data.
+           table: str
+                Table for which to obtain the size.
+           condition: str
+                Condition to count only a subset of data.
     
            Returns
            -------
-           count: number of records in the table.
+           count: int
+                Number of records in the table.
         """
         query = "SELECT count(*) from {} {};".format(table, condition)
         count = self._execute_query(query)
@@ -443,11 +471,13 @@ class SQLiteAdapter():
 
            Parameters
            ----------
-           triples: list or array with Nx3 elements (subject, predicate, object).
+           triples: list or array
+                List or array with Nx3 elements (subject, predicate, object).
 
            Returns
            -------
-           result of a query, list of objects.
+           objects : list
+                Result of a query, list of objects.
         """
         results = []
         if self.use_filter is False or self.use_filter is None:
@@ -480,11 +510,13 @@ class SQLiteAdapter():
 
            Parameters
            ----------
-           triple: list or array with 3 elements (subject, predicate, object).
+           triple: list or array
+                List or array with elements (subject, predicate, object).
 
            Returns
            -------
-           result of a query, list of subjects.
+           subjects : list
+                Result of a query, list of subjects.
         """
         results = []
         if self.use_filter is False or self.use_filter is None:
@@ -515,12 +547,13 @@ class SQLiteAdapter():
 
         Parameters
         ----------
-        x_triple: nd-array (3,)
-            triple (s-p-o) that we are querying.
+        triples: ndarray of shape (N,3)
+            Triples (s-p-o) that we are querying.
 
         Returns
         -------
-        entities: list of entities participating in the relations s-p-? and ?-p-o.
+        entities: list, list
+                Two lists of subjects and objects participating in the relations ?-p-o and s-p-?.
         """
         objects = self._get_complementary_objects(triples, use_filter=use_filter)
         subjects = self._get_complementary_subjects(triples, use_filter=use_filter)
@@ -531,27 +564,27 @@ class SQLiteAdapter():
 
         Parameters
         ----------
-        dataset_type: string
-            indicates which dataset to use (train | test | validation).
+        dataset_type: str
+            Indicates which dataset to use (`"train"` | `"test"` | `"validation"`).
         batch_size: int
-            number of elements in a batch (default: 1).
-        use_filter : bool                                                                                               # This argument is not given!
-            Flag to indicate whether to return the concepts that need to be filtered
-        index_by: possible values:  {"", so, os, s, o}, indicates whether to use index and which to use,
-                                   index by subject, object or both. Indexes were created for the fields so 
-                                   SQLite should use them here to speed up, see example below:
+            Number of elements in a batch (default: :math:`1`).
+        index_by: str
+            Possible values:  `{"", "so", "os", "s", "o"}`. It indicates whether to use index and which to use:
+            index by subject (`"s"`), object (`"o"`) or both (`"so"`, `"os"`).
+            Indexes were created for the fields so SQLite should use them here to speed up, see example below:
                   sqlite> EXPLAIN QUERY PLAN SELECT * FROM triples_table ORDER BY subject, object LIMIT 7000, 30;
                   QUERY PLAN
                   `--SCAN TABLE triples_table USING INDEX triples_table_sub_obj_idx
+        random: bool
+            Whether to get records from database in a random order.
 
-        random: get records from database in a random order.
-
-        Returns
+        Yields
         -------
-        batch_output : nd-array
-            yields a batch of triples from the dataset type specified
-        participating_entities : list of all entities that were involved in the s-p-? and ?-p-o relations. 
-                                 This is returned only if use_filter is set to true.
+        batch_output : ndarray
+            Yields a batch of triples from the dataset type specified
+        participating_entities : list
+            List of all entities that were involved in the s-p-? and ?-p-o relations.
+            This is returned only if ``use_filter=True``.
         """
         if not isinstance(dataset_type, str):
             dataset_type = dataset_type.decode("utf-8")
@@ -610,13 +643,16 @@ class SQLiteAdapter():
                     yield triples
                     
     def summary(self, count=True):                                                                                      # FocusE fix types
-        """Prints summary of the database, whether it exists, what
-           tables does it have and how many records (count=True),
-           what are fields held and their types with an example record.
+        """Prints summary of the database.
+
+           The information that is displayed is: whether it exists, what tables does it have,
+           how many records it contains (if ``count=True``), what are fields held and their
+           types with an example record.
 
            Parameters
            ----------
-           count: whether to count number of records per table (can be time consuming)
+           count: bool
+                Whether to count number of records per table (can be time consuming).
 
            Example
            -------
@@ -672,8 +708,10 @@ class SQLiteAdapter():
            
            Parameters
            ----------
-           data_source: file from where to read data (e.g. csv file).
-           dataset_type: kind of dataset that is being loaded (train | test | validation).
+           data_source: str or ndarray
+                Numpy array or path to a file (e.g. csv file) from where to read data.
+           dataset_type: str
+                Kind of dataset that is being loaded (`"train"` | `"test"` | `"validation"`).
         """
         
         self.data_source = data_source
