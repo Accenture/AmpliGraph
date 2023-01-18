@@ -1,7 +1,6 @@
 Utils
 =====
 .. currentmodule:: ampligraph.utils
-
 .. automodule:: ampligraph.utils
 
 This module contains utility functions for Knowledge Graph Embedding models.
@@ -16,7 +15,7 @@ the model training from where it was interrupted when the model was first saved.
 
 
 .. autosummary::
-    :toctree:
+    :toctree: generated
     :template: function.rst
 
     save_model
@@ -29,7 +28,7 @@ Visualization
 Functions to visualize embeddings.
 
 .. autosummary::
-    :toctree:
+    :toctree: generated
     :template: function.rst
 
     create_tensorboard_visualizations
@@ -37,10 +36,11 @@ Functions to visualize embeddings.
 Others
 -------------
 
-Function to convert a pandas DataFrame with headers into triples. 
+Function various functions to be used at need.
 
 .. autosummary::
-    :toctree:
+    :toctree: generated
     :template: function.rst
 
     dataframe_to_triples
+    preprocess_focusE_weights

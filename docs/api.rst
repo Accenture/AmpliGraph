@@ -12,3 +12,4 @@ AmpliGraph includes the following submodules:
     ampligraph.evaluation
     ampligraph.discovery
     ampligraph.utils
+

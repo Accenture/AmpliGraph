@@ -39,7 +39,8 @@ extensions = [
     'sphinxcontrib.bibtex',
     'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
-    'myst_parser'
+    'myst_parser',
+    'sphinx.ext.doctest'
 ]
 
 # New in AmpliGraph 2.x. Required by sphinxcontrib.bibtex >=2.0.0
@@ -48,6 +49,7 @@ bibtex_bibfiles = ['references.bib']
 # New in AmpliGraph 2. Introduced in Sphinx 3.0
 autosummary_generate = False
 autosummary_generate_overwrite = False
+autosummary_ignore_module_all = False # autosummary documents every member listed in __all__ and no others.
 
 autodoc_mock_imports = ["tensorflow"]
 
@@ -57,7 +59,6 @@ templates_path = ['_templates']
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
-#
 source_suffix = ['.rst', '.md']
 
 # The master toctree document.
