@@ -15,7 +15,7 @@ class CalibrationLayer(tf.keras.layers.Layer):
         The class implements the heuristics described in :cite:`calibration`,
         using Platt scaling :cite:`platt1999probabilistic`.
         
-        See the docs of model.calibrate() for more details.
+        See the docs of :meth:`~ampligraph.latent_features.models.ScoringBasedEmbeddingModel.calibrate()` for more details.
     '''
     
     def get_config(self):

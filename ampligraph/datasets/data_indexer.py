@@ -12,12 +12,8 @@ It can be persisted and contains supporting functions.
 
 Example
 -------
-    >>>data = np.array([['/m/01',
-                      '/relation1',
-                      '/m/02'],
-                     ['/m/01',
-                      '/relation2',
-                      '/m/07']])
+    >>>data = np.array([['/m/01', '/relation1', '/m/02'],
+    >>>                 ['/m/01', '/relation2', '/m/07']])
     >>>mapper = DataIndexer(data)
     >>>mapper.get_indexes(data)        
 
@@ -35,6 +31,7 @@ import tempfile
 import sqlite3
 import shutil
 import uuid
+from ampligraph.utils import preprocess_focusE_weights
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -54,7 +51,7 @@ class DataIndexer():
         - create_mappings - core function that creates mappings.
         - get_indexes - given an array of triples, returns it in an indexed form,
           or given indexes, it returns the original triples (subject to parameters).
-        - update_mappings [NotYetImplemented] - update mappings from new data.                                          # [NotYetImplemented] : what to do with it?
+        - update_mappings [NotYetImplemented] - update mappings from new data.
         
        Properties:
         - data - data to be indexed, either a numpy array or a generator.
@@ -419,7 +416,7 @@ class InMemory():
             indexed_data = self.get_indexes_from_a_dictionary(sample[:,:3], order=order)
             # focusE
             if sample.shape[1] > 3:
-                    weights = sample[:, 3:]
+                    weights = preprocess_focusE_weights(data=sample[:, :3], weights=sample[:, 3:])
                     return np.concatenate([indexed_data, weights], axis=1)
             else:
                 return indexed_data
@@ -913,7 +910,8 @@ class Shelves():
             self.data_shape = sample.shape[1]
             indexed_data = self.get_indexes_from_shelves(sample[:, :3], order=order)
             if sample.shape[1] > 3:
-                weights = sample[:, 3:]
+                # weights = sample[:, 3:]
+                weights = preprocess_focusE_weights(data=sample[:, :3], weights=sample[:, 3:])
                 return np.concatenate([indexed_data, weights], axis=1)
             return indexed_data
         else:

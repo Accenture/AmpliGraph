@@ -70,7 +70,7 @@ class DataHandler():
         else:
             # use graph data loader by default
             self._adapter = GraphDataLoader(x,
-                                            backend=SQLiteAdapter,
+                                            backend=DummyBackend,
                                             batch_size=batch_size,
                                             dataset_type=dataset_type,
                                             use_indexer=use_indexer,
