@@ -39,18 +39,16 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         max_rel_size: int
             Max relations that can occur in any partition (default: `None`).
         entity_kernel_initializer: str (name of objective function), objective function or
-            `tf.keras.initializers.Initializer` instance
+        `tf.keras.initializers.Initializer` instance
             An objective function is any callable with the signature ``init = fn(shape)``.
             Initializer of the entity embeddings.
         entity_kernel_regularizer: str (name of objective function), objective function or
-            `tf.keras.initializers.Initializer` instance
+        `tf.keras.initializers.Initializer` instance
             An objective function is any callable with the signature ``init = fn(shape)``
             Initializer of the relation embeddings.
-        relation_kernel_initializer: str (name of objective function), objective function or
-            `tf.keras.regularizers.Regularizer` instance
+        relation_kernel_initializer: str or objective function or `tf.keras.regularizers.Regularizer` instance
             Regularizer of entity embeddings.
-        relation_kernel_regularizer: str (name of objective function), objective function or
-            `tf.keras.regularizers.Regularizer` instance
+        relation_kernel_regularizer: str or objective function or `tf.keras.regularizers.Regularizer` instance
             Regularizer of relations embeddings.
         seed: int 
             Random seed.
@@ -96,13 +94,12 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         
         Parameters:
         -----------
-        initializer: str (name of objective function), objective function,
-            `tf.keras.initializers.Initializer` instance or list
-            An objective function is any callable with the signature ``init = fn(shape)``
+        initializer: str (name of objective function) or objective function or `tf.keras.initializers.Initializer` or list
             Initializer of the entity and relation embeddings. This is either a single value or a list of size 2.
             If it is a single value, then both the entities and relations will be initialized based on 
             the same initializer. If it is a list, the first initializer will be used for entities and the second
-            for relations.
+            for relations. Any callable with the signature ``init = fn(shape)`` can be interpreted as an objective
+            function.
         '''
         if isinstance(initializer, list):
             assert len(initializer) == 2, \
@@ -119,9 +116,9 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         
         Parameters:
         -----------
-        regularizer: str (name of objective function), objective function,
-            `tf.keras.regularizers.Regularizer` instance or list
-            Regularizer of entities and relations.
+        regularizer: str (name of objective function) or objective function or `tf.keras.regularizers.Regularizer`
+        instance or list
+            Regularizer of the weights determining entity and relation embeddings.
             If it is a single value, then both the entities and relations will be regularized based on 
             the same regularizer. If it is a list, the first regularizer will be used for entities and the second
             for relations.
@@ -129,7 +126,7 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
             
         if isinstance(regularizer, list):
             assert len(regularizer) == 2, \
-                'Incorrect length for regularizer. Assumed 2 got {}'.format(len(regularizer))
+                'Incorrect length for regularizer. Expected 2, got {}'.format(len(regularizer))
             self.ent_regularizer = tf.keras.regularizers.get(regularizer[0])
             self.rel_regularizer = tf.keras.regularizers.get(regularizer[1])
         else:
@@ -138,7 +135,7 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         
     @property 
     def max_ent_size(self):
-        ''' Returns the value of size of entity embedding matrix.
+        ''' Returns the size of the entity embedding matrix.
         '''
         return self._max_ent_size_internal
     
@@ -242,12 +239,12 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         
         Parameters:
         -----------
-        triples: ndarray, shape (n, 3)
+        triples : ndarray, shape (n, 3)
             Batch of input triples.
         
         Returns:
         --------
-        list: 
+        emb_triples : list
             List of embeddings of subjects, predicates, objects.
         '''
         # look up in the respective embedding matrix
@@ -261,12 +258,12 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         
         Parameters:
         -----------
-        input_shape: 
+        input_shape: list
             Shape of inputs of call function.
         
         Returns:
         --------
-        output_shape:
+        output_shape: list
             Shape of outputs of call function.
         '''
         assert isinstance(input_shape, list)
