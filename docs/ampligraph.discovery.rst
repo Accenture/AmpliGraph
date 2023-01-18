@@ -6,7 +6,7 @@ Discovery
 
 
 .. autosummary::
-    :toctree:
+    :toctree: generated
     :template: function.rst
 
     discover_facts
