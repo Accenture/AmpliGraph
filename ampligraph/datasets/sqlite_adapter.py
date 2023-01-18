@@ -37,25 +37,26 @@ DEFAULT_CHUNKSIZE = 30000
 class SQLiteAdapter():
     """ Class implementing database connection.
     
-        Example
-        -------
-        >>># using GraphDataLoader
-        >>>data = GraphDataLoader("data.csv", backend=SQLiteAdapter)
-        >>># using initialised backend
-        >>>data = GraphDataLoader("./fb15k/test.txt", backend=SQLiteAdapter("database.db", use_indexer=mapper))
-        >>>for elem in data:
-        >>>    print(elem)
-        >>>    break
+        Examples
+        --------
+        >>> AMPLIGRAPH_DATA_HOME='/your/path/to/datasets/
+        >>> # Initialize GraphDataLoader from .csv file
+        >>> data = GraphDataLoader("data.csv", backend=SQLiteAdapter)
+        >>> # Initialize GraphDataLoader from .txt file using indexer to map entities to integers
+        >>> data = GraphDataLoader(AMPLIGRAPH_DATA_HOME + "fb15k/test.txt",
+        >>>                        backend=SQLiteAdapter("database.db", use_indexer=True))
+        >>> for elem in data:
+        >>>     print(elem)
+        >>>     break
         [(1, 1, 2)]
-        >>># raw with default indexing
-        >>>with SQLiteAdapter("database.db") as backend:
-        >>>    backend.populate("./fb15k/test.txt", dataset_type="train")
-        >>># raw with previously specified indexing
-        >>>mapper = DataIndexer(data.values)
-        >>>with SQLiteAdapter("database.db", use_indexer=mapper) as backend:
-        >>>    backend.populate("data.csv", dataset_type="train")
+        >>> # Populate the database with raw triples for training
+        >>> with SQLiteAdapter("database.db") as backend:
+        >>>     backend.populate(AMPLIGRAPH_DATA_HOME + "fb15k/train.txt", dataset_type="train")
+        >>> # Populate the database with indexed triples for training
+        >>> with SQLiteAdapter("database.db", use_indexer=True) as backend:
+        >>>     backend.populate(AMPLIGRAPH_DATA_HOME + "fb15k/train.txt", dataset_type="train")
     """
-    def __init__(self, db_name, identifier=None, chunk_size=DEFAULT_CHUNKSIZE, root_directory=tempfile.gettempdir(),
+    def __init__(self, db_name, identifier=None, chunk_size=DEFAULT_CHUNKSIZE, root_directory=None,
                  use_indexer=True, verbose=False, remap=False, name='main_partition', parent=None, in_memory=True,
                  use_filter=False):
         """ Initialise SQLiteAdapter.
@@ -67,7 +68,9 @@ class SQLiteAdapter():
             chunk_size: int
                 Size of a chunk to read data from while feeding the database (default: DEFAULT_CHUNKSIZE).
             root_directory: str
-                Path to a directory where data will be stored, database created and mappings.
+                Path to a directory where the database will be created, and the data and mappings will be stored.
+                If `None`, the root directory is obtained through the :meth:`tempfile.gettempdir()` method
+                (default: `None`).
             use_indexer: DataIndexer or bool
                 Object of type DataIndexer with pre-defined mapping or bool flag to tell whether data
                 should be indexed.
@@ -88,7 +91,12 @@ class SQLiteAdapter():
             self.identifier = identifier
 
         self.flag_db_open = False
-        self.root_directory = root_directory
+
+        if root_directory is None:
+            self.root_directory = tempfile.gettempdir()
+        else:
+            self.root_directory = root_directory
+
         self.db_path = os.path.join(self.root_directory, self.db_name)
         self.use_indexer = use_indexer
         self.remap = remap
@@ -325,15 +333,14 @@ class SQLiteAdapter():
            Parameters
            ----------
            chunk: ndarray
-                Numpy array with a fragment of data of size (N,3), where each element is:
-                  (subject, predicate, object).
+                Numpy array with a fragment of data of size (N,3), where each element is: (subject, predicate, object).
            dataset_type: str
                 Defines what kind of data we are considering (`"train"`, `"test"`, `"validation"`).
            
            Returns
            -------
            tmp: ndarray
-                Numpy array of size (N,4) with indexed triples, where each element is of the form
+                Numpy array of size (N, 4) with indexed triples, where each element is of the form
                 (subject index, predicate index, object index, dataset_type).
            """
         if self.verbose:
@@ -345,15 +352,15 @@ class SQLiteAdapter():
             triples = self.mapper.get_indexes(chunk[:, :3])
             if self.data_shape > 3:
                 weights = chunk[:, 3:]
-                weights = preprocess_focusE_weights(data=triples,
-                                                    weights=weights)
-                return np.hstack([triples, weights, np.array(len(triples) * [dataset_type]).reshape(-1, 1)])            # focusE
+                # weights = preprocess_focusE_weights(data=triples,
+                #                                     weights=weights)
+                return np.hstack([triples, weights, np.array(len(triples) * [dataset_type]).reshape(-1, 1)])
             return np.append(triples, np.array(len(triples) * [dataset_type]).reshape(-1, 1), axis=1)
         else:
-            return np.append(chunk, np.array(len(chunk) * [dataset_type]).reshape(-1, 1), axis=1)                       # focusE already OK because chunk includes the 4-th dim
+            return np.append(chunk, np.array(len(chunk) * [dataset_type]).reshape(-1, 1), axis=1)
 
     def index_entities(self):
-        """Index data. It reloads data before as it is an iterator."""
+        """Index the data via the definition of the DataIndexer."""
         self.reload_data()
         if self.use_indexer is True:
             self.mapper = DataIndexer(self.data, 
@@ -365,7 +372,7 @@ class SQLiteAdapter():
             self.mapper = self.use_indexer
     
     def is_indexed(self):
-        """Check if adapter has indexer.
+        """Check if the current data adapter has already been indexed.
         
            Returns
            -------
@@ -385,7 +392,7 @@ class SQLiteAdapter():
     def populate(self, data_source, dataset_type="train", get_indexed_triples=None, loader=None):
         """Populate the database with data.
 
-            Condition: before you can enter triples you have to index data.
+            Condition: before you can store triples, you have to index data.
     
            Parameters
            ----------
@@ -397,7 +404,7 @@ class SQLiteAdapter():
                 Function to obtain indexed triples.
            loader: func
                 Loading function to be used to load data; if `None`, the `DataSourceIdentifier` will try
-                to identify the type and return an adequate loader.
+                to identify the type of ``data_source`` and return an adequate loader.
         """
         self.data_source = data_source        
         self.loader = loader
@@ -415,6 +422,9 @@ class SQLiteAdapter():
 
         self.reload_data()
         for chunk in data: # chunk is a numpy array of size (n,m) with m=3/4
+            if chunk.shape[1] > 3:
+                weights = preprocess_focusE_weights(data=chunk[:, :3], weights=chunk[:, 3:]) # weights normalization
+                chunk = np.concatenate([chunk[:, :3], weights], axis=1)
             self.data_shape = chunk.shape[1]
             values_triples = get_indexed_triples(chunk, dataset_type=dataset_type)
             self._insert_values_to_a_table("triples_table", values_triples)
@@ -428,6 +438,11 @@ class SQLiteAdapter():
             for key in self.use_filter:
                 present_filters = [x[0] for x in self._execute_query("SELECT DISTINCT dataset_type FROM triples_table")]
                 if key not in present_filters:
+                    # to allow users not to pass weights in test and validation
+                    if self.data_shape > 3 and self.use_filter[key].shape[1] == 3:
+                        nan_weights = np.empty((self.use_filter[key].shape[0], 1))
+                        nan_weights.fill(np.nan)
+                        self.use_filter[key] = np.concatenate([self.use_filter[key], nan_weights], axis=1)
                     self.populate(self.use_filter[key], key)
         query = "SELECT count(*) from triples_table;"
         _ = self._execute_query(query)
@@ -623,8 +638,6 @@ class SQLiteAdapter():
                 # focusE
                 if self.data_shape > 3:
                     weights = np.array(out)[:, 3:-1]
-                    weights = preprocess_focusE_weights(data=triples,
-                                                        weights=weights)
 
             else:
                 weights = np.array([])
@@ -654,21 +667,21 @@ class SQLiteAdapter():
            count: bool
                 Whether to count number of records per table (can be time consuming).
 
-           Example
-           -------
-           >>>adapter = SQLiteAdapter("database_24-06-2020_03-51-12_PM.db")
-           >>>with adapter as db:
-           >>>    db.summary()
+           Examples
+           --------
+           >>> adapter = SQLiteAdapter("database_24-06-2020_03-51-12_PM.db")
+           >>> with adapter as db:
+           >>>     db.summary()
            Summary for Database database_29-06-2020_09-37-20_AM.db
            File size: 3.9453MB
            Tables: triples_table
-           -------------
-           |TRIPLES_TABLE|
-           -------------
-           
-                  subject (int):   predicate (int):   object (int):   dataset_type (text(50)): 
-           e.g.   34321            29218              38102           train                     
-           
+           +-----------------------------------------------------------------------------------+
+           |                                TRIPLES_TABLE                                      |
+           +---------------------+------------------+---------------+--------------------------+
+           |    | subject (int)  | predicate (int)  | object (int)  | dataset_type (text(50))  |
+           +----+----------------+------------------+---------------+--------------------------+
+           |e.g.| 34321          | 29218            | 38102         | train                    |
+           +----+----------------+------------------+---------------+--------------------------+
            Records: 59070
 
         """
