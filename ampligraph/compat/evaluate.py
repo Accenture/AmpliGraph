@@ -55,18 +55,18 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
 
     Parameters
     ----------
-    X : ndarray of shape [n, 3]
+    X : ndarray, shape (n, 3)
         An array of test triples.
     model : EmbeddingModel
-        A knowledge graph embedding model
-    filter_triples : ndarray of shape [n, 3] or None
+        A knowledge graph embedding model.
+    filter_triples : ndarray, shape (n, 3), or None
         The triples used to filter negatives.
 
         .. note::
-            When *filtered* mode is enabled (i.e. `filtered_triples` is not `None`), to speed up the procedure,
+            When *filtered* mode is enabled (i.e., ``filtered_triples`` is not `None`), to speed up the procedure,
             we use a database based filtering. This strategy is as described below:
 
-            * Store the filter_triples in the DB
+            * Store the filter_triples in the DB.
             * For each test triple, we generate corruptions for evaluation and score them.
             * The corruptions may contain some False Negatives. We find such statements by quering the database.
             * From the computed scores we retrieve the scores of the False Negatives.
@@ -75,48 +75,48 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
               subtract this value from the above computed rank to yield the final filtered rank.
               
             **Execution Time:** This method takes ~4 minutes on FB15K using ComplEx
-            (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB)
+            (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB).
 
     verbose : bool
         Verbose mode.
     filter_unseen : bool
-        This can be set to `False` to skip filtering of unseen entities if train_test_split_unseen() was used to
+        This can be set to `False` to skip filtering of unseen entities if :meth:`train_test_split_unseen()` was used to
         split the original dataset.
 
     entities_subset: array-like
         List of entities to use for corruptions. If `None`, will generate corruptions
-        using all distinct entities. Default is `None`.
-    corrupt_side: string
+        using all distinct entities (default: `None`).
+    corrupt_side: str
         Specifies which side of the triple to corrupt:
 
-        - 's': corrupt only subject.
-        - 'o': corrupt only object.
-        - 's+o': corrupt both subject and object.
-        - 's,o': corrupt subject and object sides independently and return 2 ranks. This corresponds to the \
+        - `'s'`: corrupt only subject.
+        - `'o'`: corrupt only object.
+        - `'s+o'`: corrupt both subject and object.
+        - `'s,o'`: corrupt subject and object sides independently and return 2 ranks. This corresponds to the \
         evaluation protocol used in literature, where head and tail corruptions are evaluated separately.
 
         .. note::
-            When ``corrupt_side='s,o'`` the function will return 2*n ranks as a [n, 2] array.
+            When ``corrupt_side='s,o'`` the function will return :math:`2*n` ranks as a (n, 2) array.
             The first column of the array represents the subject corruptions.
             The second column of the array represents the object corruptions.
-            Otherwise, the function returns n ranks as [n] array.
+            Otherwise, the function returns :math:`n` ranks as (n) array.
 
     use_default_protocol: bool
         Flag to indicate whether to use the standard protocol used in literature defined in
-        :cite:`bordes2013translating` (default: False).
+        :cite:`bordes2013translating` (default: `False`).
         If set to `True`, ``corrupt_side`` will be set to `'s,o'`.
         This corresponds to the evaluation protocol used in literature, where head and tail corruptions
-        are evaluated separately, i.e. in corrupt_side='s,o' mode
+        are evaluated separately, i.e., in ``corrupt_side='s,o'`` mode
     batch_size: int
-        batch size to use for evaluation
+        Batch size to use for evaluation.
 
     Returns
     -------
-    ranks : ndarray, shape [n] or [n,2] depending on the value of corrupt_side.
+    ranks : ndarray, shape (n) or (n,2)
         An array of ranks of test triples.
-        When ``corrupt_side='s,o'`` the function returns [n,2]. The first column represents the rank against
+        When ``corrupt_side='s,o'`` the function returns (n,2). The first column represents the rank against
         subject corruptions and the second column represents the rank against object corruptions.
-        In other cases, it returns [n] i.e. rank against the specified corruptions.
+        In other cases, it returns (n), i.e., rank against the specified corruptions.
 
     Examples
     --------
