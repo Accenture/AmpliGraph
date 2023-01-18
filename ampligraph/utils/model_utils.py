@@ -335,17 +335,18 @@ def preprocess_focusE_weights(data, weights, normalize=True):
     Parameters
     ----------
     data: array-like, shape (n,m)
-        Array of shape (n,m) with :math:`m>=3`. If ``weights=None``, data contains triples
-        and weights (:math:`m>3`). If ``weights`` is passed, data only contains triples (:math:`m=3`).
+        Array of shape (n,m) with :math:`m=4`. If ``weights=None``, data contains triples
+        and weights (:math:`m>3`). If ``weights`` is passed, ``data`` only contains triples (:math:`m=3`).
     weights: array-like
-        If not `None`, ``weights`` has shape (n, l), with l>0.
+        If not `None`, ``weights`` has shape (n, m-3), with m>0.
     normalize : bool
         Specify whether to normalize the weights into the [0,1] range (default: `True`).
 
     Returns
     -------
-    processed_weights: np.array, shape (n, m)
-        An array of weights properly preprocessed.
+    processed_weights: np.array, shape (n, 1)
+        An array of weights properly preprocessed and averaged into a unique vector if more than one vector of
+        weights were given.
     '''
     if weights.ndim == 1:
         weights = weights.reshape(-1, 1)
@@ -368,4 +369,5 @@ def preprocess_focusE_weights(data, weights, normalize=True):
                             (weights[data[:, 1] == reln, col_idx].astype(float) - min_val) / (max_val - min_val)
             else:
                 pass  # all the weights are nans
+    weights = np.mean(weights, axis=1).reshape(-1, 1)
     return weights
