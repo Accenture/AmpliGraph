@@ -247,7 +247,7 @@ def train_model(dataset, model, config, gpu, root):
 
 
 if __name__ == "__main__":
-    arguments = docopt(__doc__, version='Train KGE model on benchamark data') 
+    arguments = docopt(__doc__, version='Train KGE model on benchmark data')
     schema = Schema({'--dataset': And(Use(lambda s: s.split(',')),
                                                               lambda l: all([1 if elem.lower() in SUPPORT_DATASETS else 0 for elem in l])),
                      '--model': And(Use(lambda s: s.split(',')),
