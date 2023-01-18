@@ -5,6 +5,8 @@ import tensorflow as tf
 def LP_regularizer(trainable_param, regularizer_parameters={}):
     '''Norm :math:`L^{p}` regularizer.
 
+    It is passed to the model as the ``entity_relation_regularizer`` argument of the
+    :meth:`~ampligraph.latent_features.models.ScoringBasedEmbeddingModel.compile` method.
 
     Parameters
     ----------
@@ -13,7 +15,7 @@ def LP_regularizer(trainable_param, regularizer_parameters={}):
     regularizer_parameters: dict
         Parameters of the regularizer:
 
-        - **p**: (int) - p for the LP regularizer. For example, when p=3 (default), it uses the L3 regularizer.
+        - **p**: (int) - p for the LP regularizer. For example, when :math:`p=3` (default), it uses the L3 regularizer.
         - **lambda** : (float) - Regularizer weight (default: 0.001).
     Returns
     -------

@@ -274,7 +274,9 @@ def _add_reciprocal_relations(triples_df):
 def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciprocal_rels=False):
     """Load a knowledge graph from a .csv file.
 
-    Loads a knowledge graph serialized in a .csv file as:
+    Loads a knowledge graph serialized in a .csv file filtering duplicated statements. In the .csv file, each line
+    has to represent a triple, and entities and relations are separated by ``sep``.
+    For instance, if ``sep="\\t"``, the .csv file look like:
 
     .. code-block:: text
 
@@ -282,15 +284,12 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciproc
        subj1    relationY   obj2
        subj3    relationZ   obj2
        subj4    relationY   obj2
-       ...
+                  ...
 
-    .. note::
-        The function filters duplicated statements.
-
-    .. note::
-        It is recommended to use :meth:`ampligraph.evaluation.train_test_split_no_unseen` to split custom
-        knowledge graphs into train, validation, and test sets, since it will lead to validation and test
-        sets that do not include triples with entities that do not occur in the training set.
+    .. hint::
+        To split a generic knowledge graphs into **training**, **validation**, and **test** sets do not use the above
+        function, but rather :meth:`~ampligraph.evaluation.protocol.train_test_split_no_unseen`: this will return
+        validation and test sets not including triples with entities not present in the training set.
 
 
     Parameters
@@ -301,7 +300,7 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciproc
     file_name : str
         File name.
     sep : str
-        The subject-predicate-object separator (default: `"\t"`).
+        The subject-predicate-object separator (default: ``"\\t"``).
     header : int or None
         The row of the header of the csv file. Same as pandas.read_csv header param.
     add_reciprocal_rels : bool
@@ -311,15 +310,14 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciproc
 
     Returns
     -------
-
     triples : ndarray, shape (n, 3)
         The actual triples of the file.
 
     Examples
     --------
-
+    >>> PATH_TO_FOLDER = 'your/path/to/folder/'
     >>> from ampligraph.datasets import load_from_csv
-    >>> X = load_from_csv('folder', 'dataset.csv', sep=',')
+    >>> X = load_from_csv(PATH_TO_FOLDER, 'dataset.csv', sep=',')
     >>> X[:3]
     array([['a', 'y', 'b'],
            ['b', 'y', 'a'],
@@ -451,11 +449,11 @@ def load_mapper_from_json(directory_path, file_name):
 def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
     """Load the WN18 dataset.
 
+    WN18 is a subset of Wordnet. It was first presented by :cite:`bordes2013translating`.
+
     .. warning::
         The dataset includes a large number of inverse relations that spilled to the test set, and its use in
-        experiments has been deprecated. Use WN18RR instead.
-
-    WN18 is a subset of Wordnet. It was first presented by :cite:`bordes2013translating`.
+        experiments has been deprecated. **Use WN18RR instead**.
 
     The WN18 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
     If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
@@ -523,13 +521,16 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fals
 
     The dataset is described in :cite:`DettmersMS018`.
 
+     ..warning:: *WN18RR*'s validation set contains 198 unseen entities over 210 triples. The test set
+        has 209 unseen entities, distributed over 210 triples.
+
     The WN18RR dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
     If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
 
-    It is divided in three splits:
+    This dataset is divided in three splits:
 
     - `train`: 86,835 triples
     - `valid`: 3,034 triples
@@ -540,9 +541,6 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fals
     ========= ========= ======= ======= ============ ===========
     WN18RR    86,835    3,034   3,134   40,943        11
     ========= ========= ======= ======= ============ ===========
-
-    .. warning:: WN18RR's validation set contains 198 unseen entities over 210 triples.
-        The test set has 209 unseen entities, distributed over 210 triples.
 
     Parameters
     ----------
@@ -599,11 +597,11 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fals
 def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
     """Load the FB15k dataset.
 
+    FB15k is a split of Freebase, first proposed by :cite:`bordes2013translating`.
+
     .. warning::
         The dataset includes a large number of inverse relations that spilled to the test set, and its use in
-        experiments has been deprecated. Use FB15k-237 instead.
-
-    FB15k is a split of Freebase, first proposed by :cite:`bordes2013translating`.
+        experiments has been deprecated. **Use FB15k-237 instead**.
 
     The FB15k dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
     If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
@@ -677,6 +675,9 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=F
 
    FB15k-237 is a reduced version of FB15K. It was first proposed by :cite:`toutanova2015representing`.
 
+   .. warning:: *FB15K-237*'s validation set contains 8 unseen entities over 9 triples. The test set has 29 unseen entities,
+        distributed over 28 triples.
+
    The FB15k-237 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
    If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
    If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
@@ -699,10 +700,6 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=F
    FB15K-237 272,115   17,535  20,466   273        14,541    237
    ========= ========= ======= ======= ==========  ========  =========
 
-
-   .. warning::
-       FB15K-237's validation set contains 8 unseen entities over 9 triples.
-       The test set has 29 unseen entities, distributed over 28 triples.
 
    Parameters
    ----------
@@ -791,7 +788,7 @@ def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fa
     If the dataset is not found at either location it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
-    It is divided in three splits:
+    This dataset is divided in three splits:
 
     - `train`: 1,079,040 triples
     - `valid`: 5,000 triples
@@ -859,12 +856,16 @@ def load_wn11(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
 
     WordNet was originally proposed in `WordNet: a lexical database for English` :cite:`miller1995wordnet`.
 
+    .. note::
+        WN11 also provide true and negative labels for the triples in the validation and tests sets.
+        The positive base rate is close to 50%.
+
     WN11 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
     If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
-    It is divided in three splits:
+    This dataset is divided in three splits:
 
     - `train`: 110361 triples
     - `valid`: 5215 triples
@@ -955,12 +956,16 @@ def load_fb13(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
     and was initially presented in
     `Reasoning With Neural Tensor Networks for Knowledge Base Completion` :cite:`socher2013reasoning`.
 
+    .. note::
+        FB13 also provide true and negative labels for the triples in the validation and tests sets.
+        The positive base rate is close to 50%.
+
     FB13 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
     If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
-    It is divided in three splits:
+    This dataset is divided in three splits:
 
     - `train`: 316232 triples
     - `valid`: 11816 triples
@@ -1068,10 +1073,10 @@ def load_from_rdf(folder_name, file_name, rdf_format='nt', data_home=None, add_r
         Large RDF graphs should be serialized to ntriples beforehand and loaded with ``load_from_ntriples()`` instead.
         This function, indeed, is faster by orders of magnitude.
 
-    .. note::
-        It is recommended to use :meth:`ampligraph.evaluation.train_test_split_no_unseen` to split custom
-        knowledge graphs into train, validation, and test sets, since using this function will lead to validation and
-        test sets that do not include triples with entities that do not occur in the training set.
+    .. hint::
+        To split a generic knowledge graphs into **training**, **validation**, and **test** sets do not use the above
+        function, but rather :meth:`~ampligraph.evaluation.protocol.train_test_split_no_unseen`: this will return
+        validation and test sets not including triples with entities not present in the training set.
 
 
     Parameters
@@ -1090,7 +1095,7 @@ def load_from_rdf(folder_name, file_name, rdf_format='nt', data_home=None, add_r
 
     Returns
     -------
-        triples : ndarray of shape (n, 3)
+        triples : ndarray, shape (n, 3)
             The actual triples of the file.
     """
 
@@ -1122,10 +1127,10 @@ def load_from_ntriples(folder_name, file_name, data_home=None, add_reciprocal_re
         _:alice <http://xmlns.com/foaf/0.1/knows> _:bob .
         _:bob <http://xmlns.com/foaf/0.1/knows> _:alice .
 
-    .. note::
-        It is recommended to use :meth:`ampligraph.evaluation.train_test_split_no_unseen` to split custom
-        knowledge graphs into train, validation, and test sets, since using this function will lead to validation and
-        test sets that do not include triples with entities that do not occur in the training set.
+    .. hint::
+        To split a generic knowledge graphs into **training**, **validation**, and **test** sets do not use the above
+        function, but rather :meth:`~ampligraph.evaluation.protocol.train_test_split_no_unseen`: this will return
+        validation and test sets not including triples with entities not present in the training set.
 
 
     Parameters
@@ -1233,7 +1238,7 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
-    It is divided in three splits:
+    This dataset is divided in three splits:
 
     - `train`: 461,932 triples
     - `valid`: 850 triples
@@ -1703,13 +1708,16 @@ def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False
 
     The dataset is described in :cite:`safavi_codex_2020`.
 
+    .. note::
+        CODEX-M contains also ground truths negative triples for test and validation sets. For more information, see
+        the above reference to the original paper.
+
     The CodDEx dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
     If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
 
-
-    It is divided in three splits:
+    This dataset is divided in three splits:
 
     - `train`: 185,584 triples
     - `valid`: 10,310 triples

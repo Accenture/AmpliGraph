@@ -586,7 +586,8 @@ ClusteringAndClassificationWithEmbeddings.ipynb
     >>>         texts.append(plt.text(point['embedding1']+.02, point['embedding2'], str(point['teams'])))
     >>> adjust_text(texts)
 
-    .. image:: img/clustering/clustered_embeddings_docstring.png
+    .. image:: ../img/clustering/clustered_embeddings_docstring.png
+        :align: center
 
     """
     if model.is_backward:

@@ -7,8 +7,9 @@
 #
 """Data loader for graphs (big and small).
 
-This module provides GraphDataLoader class that can be parametrized with a backend
-and in-memory backend (DummyBackend).
+This module provides GraphDataLoader class that can be parametrized with an artificial backend that reads data in-memory
+(:class:`~ampligraph.datasets.graph_data_loader.DummyBackend`) or with a SQLite backend that stores and reads data
+on-disk (:class:`~ampligraph.datasets.sqlite_adapter.SQLiteAdapter`).
 """
 from .source_identifier import DataSourceIdentifier
 from .data_indexer import DataIndexer
@@ -25,19 +26,25 @@ logger.setLevel(logging.DEBUG)
 
 
 class DummyBackend():
-    """Class providing artificial backend, that reads data into memory."""
-    def __init__(self, identifier, use_indexer=True, remap=False, name="main_partition", verbose=False, 
-                 parent=None, in_memory=False, root_directory=tempfile.gettempdir(), use_filter=False):
+    """Class providing an artificial backend, that reads data into memory."""
+    def __init__(self, identifier, use_indexer=True, remap=False, name="main_partition", parent=None,
+                 in_memory=True, root_directory=tempfile.gettempdir(), use_filter=False, verbose=False):
         """Initialise DummyBackend.
 
            Parameters
            ----------
            identifier: initialize data source identifier, provides loader. 
-           use_indexer: flag or mapper object to tell whether data should be indexed.
-           remap: flag for partitioner to indicate whether to remap previously 
-                  indexed data to (0, <size_of_partition>).
-           parent: parent data loader that persists data.
-           name: identifying name of files for indexer, partition name/id.
+           use_indexer: bool or mapper object
+                Flag or mapper object to tell whether data should be indexed (default: `False`).
+           remap: bool
+                Flag for partitioner to indicate whether to remap previously indexed data to (0, <size_of_partition>)
+                (default: `False`).
+           name: str
+                Name identifying files for the indexer, partition name/id.
+           parent:
+                Parent data loader that persists data.
+           verbose: bool
+                Verbosity.
         """
         # in_memory = False
         self.verbose = verbose
@@ -65,6 +72,7 @@ class DummyBackend():
         pass
         
     def get_output_signature(self):
+        '''Get the output signature for the tf.data.Dataset object.'''
         triple_tensor = tf.TensorSpec(shape=(None, 3), dtype=tf.int32)
         if self.data_shape > 3:
             weights_tensor = tf.TensorSpec(shape=(None, self.data_shape - 3), dtype=tf.float32)
@@ -84,8 +92,10 @@ class DummyBackend():
            
            Parameters
            ----------
-           data_source: file with data.
-           dataset_type: kind of data to be loaded (`train` | `test` | `validation`).
+           data_source: np.array or str
+                Array or name of the file containing the data.
+           dataset_type: str
+                Kind of data to be loaded (`"train"` | `"test"` | `"validation"`).
         """
         logger.debug("Simple in-memory data loading of {} dataset.".format(dataset_type))
         self.data_source = data_source
@@ -127,8 +137,8 @@ class DummyBackend():
         self.data_shape = self.mapper.backend.data_shape
 
     def _get_triples(self, subjects=None, objects=None, entities=None):
-        """Get triples whose objects belong to objects and subjects to subjects,
-           or, if provided neither object nor subject, triples whose subject or object belong to entities.
+        """Get triples whose subjects belongs to ``subjects``, objects to ``objects``,
+           or, if neither object nor subject is provided, triples whose subject or object belong to entities.
         """
         if subjects is None and objects is None:
             if entities is None:
@@ -161,14 +171,14 @@ class DummyBackend():
 
            Parameters
            ----------
-           x_triple: nd-array of shape (N, 3)
+           x_triple: nd-array, shape (N, 3)
                Triples `(s, p, o)` that we are querying.
 
            Returns
            -------
            entities: tuple
-                Tuple containig two lists, one of subjects and one of objects participating in the relations
-                s-p-? and ?-p-o.
+                Tuple containing two lists, one with the subjects and one of with the objects participating in the
+                relations ?-p-o and s-p-?.
        """
 
         logger.debug("Getting complementary entities")
@@ -251,7 +261,7 @@ class DummyBackend():
         return subjects
 
     def get_source(self, source, name):
-        """Loads specified by name data and keep it in the loaded dictionary.
+        """Loads the data specified by ``name`` and keep it in the loaded dictionary.
 
            Used to load filter datasets.
 
@@ -281,7 +291,7 @@ class DummyBackend():
         return self.sources[name]
 
     def _get_complementary_objects(self, triples, use_filter=False):
-        """Get objects complementary to  triples (s,p,?).
+        """Get objects complementary to triples (s,p,?).
 
            For a given triple retrieves all triples with same subjects and predicates.
            Function used during evaluation.
@@ -319,6 +329,7 @@ class DummyBackend():
             source = self.get_source(filter_source, filter_name)
 
             # load source if not loaded
+            source = self.get_source(filter_source, filter_name)
             # filter
  
             tmp_filter = []
@@ -339,8 +350,7 @@ class DummyBackend():
     def _intersect(self, dataloader):
         """Intersection between data and dataloader elements.
 
-           Works only when dataloader is of type
-           ``DummyBackend``.
+           Works only when dataloader is of type `DummyBackend`.
         """
         if not isinstance(dataloader.backend, DummyBackend):
             msg = "Intersection can only be calculated between same backends (DummyBackend), \
@@ -356,12 +366,12 @@ class DummyBackend():
         return intersection
         
     def _get_batch_generator(self, batch_size, dataset_type="train", random=False, index_by=""):
-        """Batch generator of data.
+        """Data batch generator.
         
            Parameters
            ----------
            batch_size: int
-                Size of a batch
+                Size of a batch.
            dataset_type: str
                 Kind of dataset that is needed (`"train"` | `"test"` | `"validation"`).
            random: not implemented.
@@ -370,7 +380,7 @@ class DummyBackend():
            Returns
            --------
            Batch : ndarray
-                Batch of data of size `(batch_size, m)` where :math:`m>=3` and :math:`m>3` if numeric values
+                Batch of data of size `(batch_size, m)` where :math:`m≥3` and :math:`m>3` if numeric values
                 associated to edges are available.
         """
         if not isinstance(batch_size, int):
@@ -411,15 +421,17 @@ class GraphDataLoader():
     """Data loader for models to ingest graph data.
     
        This class is internally used by the model to store the data passed by the user and batch over it during 
-       training/eval, and to obtain filters during evaluation. 
+       training and evaluation, and to obtain filters during evaluation.
+
        It can be used by advanced users to load custom datasets which are large, for performing partitioned training. 
-       The complete dataset wont get loaded in the memory. It will load the data in parts based on which partition 
+       The complete dataset will not get loaded in memory. It will load the data in chunks based on which partition
        is being trained.
        
        Example
        -------
+       >>> AMPLIGRAPH_DATA_HOME='/your/path/to/datasets/
        >>> # Graph loader - loads the data from the file, numpy array, etc and generates batches for iterating
-       >>> dataset_loader = GraphDataLoader('train.txt', 
+       >>> dataset_loader = GraphDataLoader(AMPLIGRAPH_DATA_HOME + 'fb15k-237/train.txt',
        >>>                                  backend=SQLiteAdapter, # type of backend to use
        >>>                                  batch_size=1000,       # batch size to use while iterating over this dataset
        >>>                                  dataset_type='train',  # dataset type
@@ -435,7 +447,7 @@ class GraphDataLoader():
        >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
        >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
        >>>                       epochs=10)              # number of epochs
-       >>> dataset_loader_test = GraphDataLoader('/home/spai/code/ampligraph_projects/dataset/fb15k-237/test.txt', 
+       >>> dataset_loader_test = GraphDataLoader(AMPLIGRAPH_DATA_HOME + 'fb15k-237/test.txt',
        >>>                                       backend=SQLiteAdapter,     # type of backend to use
        >>>                                       batch_size=400,            # batch size to use while iterating over this dataset
        >>>                                       dataset_type='test',       # dataset type
@@ -446,7 +458,7 @@ class GraphDataLoader():
 
     """    
     def __init__(self, data_source, batch_size=1, dataset_type="train", 
-                 backend=None, root_directory=tempfile.gettempdir(),
+                 backend=None, root_directory=None,
                  use_indexer=True, verbose=False, remap=False, name="main_partition", 
                  parent=None, in_memory=False, use_filter=False):
         """Initialise persistent/in-memory data storage.
@@ -455,7 +467,7 @@ class GraphDataLoader():
            ----------
            data_source: str or np.array or GraphDataLoader or AbstractGraphPartitioner
                File with data (e.g. CSV). Can be a path pointing to the file location, can be data loaded as numpy, a
-               GraphDataLoader or an AbstractGraphPartitioner instance.
+               `GraphDataLoader` or an `AbstractGraphPartitioner` instance.
            batch_size: int
                Size of batch.
            dataset_type: str
@@ -463,6 +475,10 @@ class GraphDataLoader():
            backend: str
                Name of backend class (`DummyBackend`, `SQLiteAdapter`) or already initialised backend.
                If `None`, `DummyBackend` is used (in-memory processing).
+           root_directory: str
+                Path to a directory where the database will be created, and the data and mappings will be stored.
+                If `None`, the root directory is obtained through the :meth:`tempfile.gettempdir()` method
+                (default: `None`).
            use_indexer: bool or DataIndexer
                Flag to tell whether data should be indexed.     
                If the DataIndexer object is passed, the mappings defined in the indexer will be reused 
@@ -470,10 +486,9 @@ class GraphDataLoader():
            verbose: bool
                Verbosity.
            remap: bool
-               Flag to be used by graph partitioner, indicates whether 
-               previously indexed data in partition has to be remapped to
-               new indexes (0, <size_of_partition>). It has not to be used with
-               ``use_indexer=True``. The new remappings will be persisted.
+               Flag to be used by graph partitioner, indicates whether previously indexed data in partition has to
+               be remapped to new indexes (0, <size_of_partition>). It has not to be used with ``use_indexer=True``.
+               The new remappings will be persisted.
            name: str
                Name of the partition. This is internally used when the data is partitioned.
            parent: GraphDataLoader
@@ -481,14 +496,17 @@ class GraphDataLoader():
            in_memory: bool
                Persist indexes or not.
            use_filter: bool or dict
-               If `True`, current dataset would be used as filter.
+               If `True`, current dataset will be used as filter.
                If `dict`, the datasets specified in the dict will be used for filtering.
                If `False`, the true positives will not be filtered from corruptions.
         """   
         self.dataset_type = dataset_type
         self.data_source = data_source
         self.batch_size = batch_size
-        self.root_directory = root_directory
+        if root_directory is None:
+            self.root_directory = tempfile.gettempdir()
+        else:
+            self.root_directory = root_directory
         self.identifier = DataSourceIdentifier(self.data_source)       
         self.use_indexer = use_indexer
         self.remap = remap
@@ -535,12 +553,12 @@ class GraphDataLoader():
     
     @property
     def max_entities(self):
-        ''' Returns the maximum number of entities present in the dataset mapper.'''
+        '''Maximum number of entities present in the dataset mapper.'''
         return self.backend.mapper.get_entities_count()
 
     @property
     def max_relations(self):
-        ''' Returns the maximum number of relations present in the dataset mapper.'''
+        '''Maximum number of relations present in the dataset mapper.'''
         return self.backend.mapper.get_relations_count()
     
     def __next__(self):
@@ -551,13 +569,13 @@ class GraphDataLoader():
         """Reinstantiate batch iterator."""
         self.batch_iterator = self.get_batch_generator(use_filter=use_filter, dataset_type=dataset_type)
  
-    def get_batch_generator(self, use_filter=False, dataset_type='train'):
+    def get_batch_generator(self, dataset_type='train', use_filter=False):
         """Get batch generator from the backend.
 
            Parameters
            ----------
-           use_filter: bool
-                Filter out true positives
+           dataset_type: str
+                Specifies whether data are generated for `"train"`, `"valid"` or `"test"` set.
         """
         return self.backend._get_batch_generator(self.batch_size, dataset_type=dataset_type)
     
@@ -570,7 +588,7 @@ class GraphDataLoader():
         ).prefetch(2)
 
     def add_dataset(self, data_source, dataset_type):
-        '''Adds the dataset to the backend if possible.'''
+        '''Adds the dataset to the backend (if possible).'''
         self.backend._add_dataset(data_source, dataset_type=dataset_type)
     
     def get_data_size(self):
@@ -578,11 +596,12 @@ class GraphDataLoader():
         return self.backend.get_data_size()
  
     def intersect(self, dataloader):
-        """Returns the intersection between the current dataloader elements and another one (argument).
+        """Returns the intersection between the current data loader and another one specified in ``dataloader``.
 
            Parameters
            ----------
-           dataloader: dataloader for which to calculate the intersection for.
+           dataloader: GraphDataLoader
+                Dataloader for which to calculate the intersection for.
 
            Returns
            -------
@@ -597,7 +616,7 @@ class GraphDataLoader():
 
            Parameters
            ----------
-           triples: list, array
+           triples: list or array
                 List or array of arrays with 3 elements (subject, predicate, object).
            sides : str
                 String specifying what entities to retrieve: `"s"` - subjects, `"o"` - objects,
@@ -676,9 +695,9 @@ class GraphDataLoader():
 
            Returns
            -------
-           entities: list
-                List of entities participating in the relations s-p-? and ?-p-o per triple.
-           TODO: What exactly it should return?
+           entities: tuple
+                 Tuple containing two lists, one with the subjects and one of with the objects participating in the
+                relations ?-p-o and s-p-?.
        """
         return self.backend._get_complementary_entities(triples, use_filter=use_filter)
 

@@ -37,14 +37,14 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         
         Parameters:
         -----------
-        pos: (n, 3)
+        pos: array-like, shape (n, 3)
             Batch of input triples (positives).
-        ent_size:
+        ent_size: int
             Number of unique entities present in the partition.
         
         Returns:
         --------
-        corruptions: (n * eta, 3)
+        corruptions: array-like, shape (n * eta, 3)
             Corruptions of the triples.
         '''
         # size and reshape the dataset to sample corruptions
