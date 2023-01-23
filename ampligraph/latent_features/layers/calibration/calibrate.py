@@ -60,7 +60,7 @@ class CalibrationLayer(tf.keras.layers.Layer):
             trainable=True)
         self.built = True
         
-    def call(self, scores_pos, scores_neg=[], training=0):
+    def call(self, scores_pos, scores_neg=tf.convert_to_tensor(()), training=0):
         if training:
             scores_all = tf.concat([scores_pos, scores_neg], axis=0)
         else:
@@ -69,14 +69,14 @@ class CalibrationLayer(tf.keras.layers.Layer):
         logits = -(self.calib_w * scores_all + self.calib_b)
         
         if training:
-            labels = tf.concat([tf.cast(tf.fill(scores_pos.shape[0], 
+            labels = tf.concat([tf.cast(tf.fill(scores_pos.shape,
                                                 (self.pos_size + 1.0) / (self.pos_size + 2.0)), tf.float32),
-                                tf.cast(tf.fill(scores_neg.shape[0], 1 / (self.neg_size + 2.0)), tf.float32)],
+                                tf.cast(tf.fill(scores_neg.shape, 1 / (self.neg_size + 2.0)), tf.float32)],
                                axis=0)
             weigths_pos = scores_neg.shape[0] / scores_pos.shape[0]
             weights_neg = (1.0 - self.positive_base_rate) / self.positive_base_rate
-            weights = tf.concat([tf.cast(tf.fill(scores_pos.shape[0], weigths_pos), tf.float32),
-                                 tf.cast(tf.fill(scores_neg.shape[0], weights_neg), tf.float32)], axis=0)
+            weights = tf.concat([tf.cast(tf.fill(scores_pos.shape, weigths_pos), tf.float32),
+                                 tf.cast(tf.fill(scores_neg.shape, weights_neg), tf.float32)], axis=0)
             loss = tf.reduce_mean(weights * tf.nn.sigmoid_cross_entropy_with_logits(labels, logits))
             return loss
         else:
