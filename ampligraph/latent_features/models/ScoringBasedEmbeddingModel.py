@@ -44,16 +44,18 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         --------
         >>> # create model and compile using user defined optimizer settings and 
         >>> # user defined settings of an existing loss
+        >>> from ampligraph.datasets import load_fb15k_237
         >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
         >>> from ampligraph.latent_features.loss_functions import SelfAdversarialLoss
         >>> import tensorflow as tf
+        >>> X = load_fb15k_237()
         >>> loss = SelfAdversarialLoss({'margin': 0.1, 'alpha': 5, 'reduction': 'sum'})
         >>> model = ScoringBasedEmbeddingModel(eta=5, 
         >>>                                    k=300,
         >>>                                    scoring_type='ComplEx',
         >>>                                    seed=0)
         >>> model.compile(optimizer='adam', loss=loss)
-        >>> model.fit('./fb15k-237/train.txt',
+        >>> model.fit(X['train'],
         >>>           batch_size=10000,
         >>>           epochs=5)
         Epoch 1/5
@@ -432,7 +434,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         elif non_linearity == 'sigmoid':
             non_linearity = tf.sigmoid
         elif non_linearity == 'softplus':
-            non_linearity = tf.math.softplus
+            non_linearity = lambda x: (tf.math.log(1 + 9999*tf.exp(x)))
         else:
             raise ValueError('Invalid focusE non-linearity')
 
@@ -483,11 +485,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         
         Parameters
         ----------
-        x: np.array, shape (n, 3) or str or GraphDataLoader or AbstractGraphPartitioner
+        x: np.array, shape (n, 3), or str or GraphDataLoader or AbstractGraphPartitioner
             Data OR Filename of the data file OR Data Handle to be used for training.
         batch_size: int
             Batch size to use during training.
-            May be overridden if ``x`` is a GraphDataLoader or AbstractGraphPartitioner instance.
+            May be overridden if **x** is a GraphDataLoader or AbstractGraphPartitioner instance.
         epochs: int
             Number of epochs to train (default: 1).
         verbose: bool
@@ -495,8 +497,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         callbacks: list of tf.keras.callbacks.Callback
             List of callbacks to be used during training (default: `None`).
         validation_split: float
-            Validation split to carve out of ``x`` (default: 0.0) (currently supported only when ``x`` is a np.array).
-        validation_data: np.array, shape (n,3) or str or `GraphDataLoader` or `AbstractGraphPartitioner`
+            Validation split to carve out of **x** (default: 0.0) (currently supported only when **x** is a np.array).
+        validation_data: np.array, shape (n, 3) or str or `GraphDataLoader` or `AbstractGraphPartitioner`
             Data OR Filename of the data file OR Data Handle to be used for validation.
         shuffle: bool
             Indicates whether to shuffle the data after every epoch during training (default: `True`).
@@ -525,6 +527,13 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             of a traditional knowledge graph embedding architecture.
             Semantically, the numeric value can signify importance, uncertainity, significance, confidence...
             of a triple.
+
+            .. Note ::
+
+                In order to activate focusE, the training data must have shape (n, 4), where the first three columns
+                store subject, predicate and object of triples, and the 4-th column stores the numerical edge value
+                associated with each triple.
+
         focusE_params: dict
             If FocusE layer is included, specify its hyper-parameters.
             The following hyper-params can be passed:
@@ -917,8 +926,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
             .. Note ::
                 If you want to be able of continuing the training, you can use the :meth:`ampligraph.utils.save_model`
-                and :meth:`ampligraph.utils.load_model`. :meth:`ampligraph.utils.save_model` function saves
-                the entire state of the graph which allows us to continue the training from where we left.
+                and :meth:`ampligraph.utils.restore_model`.These functions allow to save and restore the entire state
+                of the graph, which allows to continue the training from where it was stopped.
                 
            Parameters
            ----------
@@ -1019,9 +1028,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             If a string is passed, then the default parameters of the optimizer will be used.
             
             If you want to use custom hyperparameters you need to create an instance of the optimizer and 
-            pass the instance to the compile function.
-            
-            .. code-block:: python
+            pass the instance to the compile function ::
 
                 import tensorflow as tf
                 adam_opt = tf.keras.optimizers.Adam(learning_rate=0.003)
@@ -1036,36 +1043,35 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             - `"nll"`: the model will use the negative loss likelihood.
             - `"absolute_margin"`: the model will use the absolute margin likelihood.
             - `"self_adversarial"`: the model will use the adversarial sampling loss function.
-            - `"multiclass_nll"`: the model will use the multiclass nll loss.
-            
-            .. code-block::
+            - `"multiclass_nll"`: the model will use the multiclass nll loss. ::
 
                 model.compile(loss='absolute_margin', optim='adam')
             
             If you want to modify the default parameters of the loss function, you need to explictly create an instance 
-            of the loss with required hyperparameters and then pass this instance. 
-            
-            .. code-block::
+            of the loss with required hyperparameters and then pass this instance.
 
-                from ampligraph.latent_features import AbsoluteMarginLoss
-                ab_loss = AbsoluteMarginLoss(loss_params={'margin': 3})
-                model.compile(loss=ab_loss, optim='adam')
+            Examples
+            --------
+            >>> from ampligraph.latent_features import AbsoluteMarginLoss
+            >>> ab_loss = AbsoluteMarginLoss(loss_params={'margin': 3})
+            >>> model.compile(loss=ab_loss, optim='adam')
             
             An objective function is any callable with the signature 
             ``loss = fn(score_true, score_corr, eta)``
-            
-            .. code-block::
 
-                # Create a user defined loss function with the above signature
-                def userLoss(scores_pos, scores_neg):
-                   # user defined loss - takes in 2 params and returns loss
-                   neg_exp = tf.exp(scores_neg)
-                   pos_exp = tf.exp(scores_pos)
-                   softmax_score = pos_exp / (tf.reduce_sum(neg_exp, axis=0) + pos_exp)
-                   loss = -tf.math.log(softmax_score)
-                   return loss
-                # pass this loss while compiling the model
-                model.compile(loss=userLoss, optim='adam')
+            Examples
+            --------
+            >>>  # Create a user defined loss function with the above signature
+            >>>  def userLoss(scores_pos, scores_neg):
+            >>>     # user defined loss - takes in 2 params and returns loss
+            >>>   neg_exp = tf.exp(scores_neg)
+            >>>   pos_exp = tf.exp(scores_pos)
+            >>>   # Apply softmax to the scores
+            >>>   score = pos_exp / (tf.reduce_sum(neg_exp, axis=0) + pos_exp)
+            >>>   loss = -tf.math.log(score)
+            >>>   return loss
+            >>> # pass this loss while compiling the model
+            >>> model.compile(loss=userLoss, optim='adam')
             
         entity_relation_initializer: str (name of initializer function), initializer function or \
         `tf.keras.initializers.Initializer` or list.
@@ -1080,27 +1086,33 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
             See `tf.keras.initializers <https://www.tensorflow.org/api_docs/python/tf/keras/initializers>`_ 
             for up-to-date details.
-            
-            .. code-block::
 
-                model.compile(loss='pairwise', optim='adam', entity_relation_initializer='random_normal')
+            Examples
+            --------
+
+            >>> model.compile(loss='pairwise', optim='adam',
+            >>>               entity_relation_initializer='random_normal')
             
             If the user wants to use custom hyperparameters, then an instance of the 
             ``tf.keras.initializers.Initializer`` needs to be passed.
-            
-            .. code-block::
 
-                import tensorflow as tf
-                init = tf.keras.initializers.RandomNormal(stddev=0.00003)
-                model.compile(loss='pairwise', optim='adam', entity_relation_initializer=init)
-            
+            Examples
+            --------
+
+            >>> import tensorflow as tf
+            >>> init = tf.keras.initializers.RandomNormal(stddev=0.00003)
+            >>> model.compile(loss='pairwise', optim='adam',
+            >>>               entity_relation_initializer=init)
+
             If the user wants to define custom initializer it can be any callable with the signature `init = fn(shape)`
-            
-            .. code-block::
 
-                def my_init(shape):
-                     return tf.random.normal(shape)
-                model.compile(loss='pairwise', optim='adam', entity_relation_initializer=my_init)
+            Examples
+            --------
+
+            >>> def my_init(shape):
+            >>>     return tf.random.normal(shape)
+            >>> model.compile(loss='pairwise', optim='adam',
+            >>>               entity_relation_initializer=my_init)
             
         entity_relation_regularizer: str (name of regularizer function) or regularizer function or \
         `tf.keras.regularizers.Regularizer` instance or list
@@ -1115,27 +1127,33 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             See `tf.keras.regularizers <https://www.tensorflow.org/api_docs/python/tf/keras/regularizers>`_ 
             for up-to-date details.
 
-            .. code-block::
+            Examples
+            --------
 
-                model.compile(loss='pairwise', optim='adam', entity_relation_regularizer='l2')
+            >>> model.compile(loss='pairwise', optim='adam',
+            >>>               entity_relation_regularizer='l2')
             
             If the user wants to use custom hyperparameters, then an instance of the 
             ``tf.keras.regularizers.Regularizer`` needs to be passed.
-            
-            .. code-block::
 
-                import tensorflow as tf
-                reg = tf.keras.regularizers.L1L2(l1=0.001, l2=0.1)
-                model.compile(loss='pairwise', optim='adam', entity_relation_regularizer=reg)
+            Examples
+            --------
+
+            >>> import tensorflow as tf
+            >>> reg = tf.keras.regularizers.L1L2(l1=0.001, l2=0.1)
+            >>> model.compile(loss='pairwise', optim='adam',
+            >>>               entity_relation_regularizer=reg)
             
             If the user wants to define custom regularizer it can be any callable with signature
             ``reg = fn(weight_matrix)``.
-            
-            .. code-block::
 
-                def my_reg(weight_matrix):
-                      return 0.01 * tf.math.reduce_sum(tf.math.abs(weight_matrix))
-                model.compile(loss='pairwise', optim='adam', entity_relation_regularizer=my_reg)
+            Examples
+            --------
+
+            >>> def my_reg(weight_mx):
+            >>>       return 0.01 * tf.math.reduce_sum(tf.math.abs(weight_mx))
+            >>> model.compile(loss='pairwise', optim='adam',
+            >>>               entity_relation_regularizer=my_reg)
             
         Examples
         --------
@@ -1717,6 +1735,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
             If `None`, the negative triples are generated via corruptions
             and the user must provide a positive base rate instead.
+
         positive_base_rate: float
             Base rate of positive statements.
 
@@ -1750,14 +1769,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>>           epochs=5)
         >>> print('Raw scores (sorted):', np.sort(model.predict(dataset['test'])))
         >>> print('Indices obtained by sorting (scores):', np.argsort(model.predict(dataset['test'])))
+        Raw scores (sorted): [-0.6014494 -0.5925436 -0.5465378 ...  1.9067042  2.0135512  2.2477078]
+        Indices obtained by sorting (scores): [14573 11577  4404 ... 17817 17816   733]
         >>> model.calibrate(dataset['test'], 
         >>>                 batch_size=10000,
         >>>                 positive_base_rate=0.9,
         >>>                 epochs=100)
         >>> print('Calibrated scores (sorted):', np.sort(model.predict_proba(dataset['test'])))
         >>> print('Indices obtained by sorting (Calibrated):', np.argsort(model.predict_proba(dataset['test'])))
-        Raw scores (sorted): [-0.6014494 -0.5925436 -0.5465378 ...  1.9067042  2.0135512  2.2477078]
-        Indices obtained by sorting (scores): [14573 11577  4404 ... 17817 17816   733]
         Calibrated scores (sorted): [0.5553725  0.5556108  0.5568415  ... 0.6211011  0.62382233 0.6297585 ]
         Indices obtained by sorting (Calibrated): [14573 11577  4404 ... 17817 17816   733]
         """
