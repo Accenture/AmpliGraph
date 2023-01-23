@@ -1209,7 +1209,7 @@ def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, spl
     dataset['valid'] = dataset['valid'][:, 0:3]
     dataset['test'] = dataset['test'][:, 0:3]
 
-    sorted_indices = np.squeeze(np.argsort(dataset['test_numeric_values']))
+    sorted_indices = np.squeeze(np.argsort(dataset['test_numeric_values'], axis=0))
     dataset['test'] = dataset['test'][sorted_indices]
     dataset['test_numeric_values'] = dataset['test_numeric_values'][sorted_indices]
     
