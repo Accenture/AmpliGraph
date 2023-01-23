@@ -52,7 +52,7 @@ def register_partitioning_manager(name):
 
 
 class PartitionDataManager(abc.ABC):
-    def __init__(self, dataset_loader, model, strategy='Bucket', partitioner_k=3, root_directory=tempfile.gettempdir(),
+    def __init__(self, dataset_loader, model, strategy='Bucket', partitioner_k=3, root_directory=None,
                  ent_map_fname=None, ent_meta_fname=None, rel_map_fname=None, rel_meta_fname=None):
         """Initializes the Partitioning Data Manager.
 
@@ -84,7 +84,10 @@ class PartitionDataManager(abc.ABC):
             self.rel_meta_fname = rel_map_fname
             
         else:
-            self.root_directory = root_directory
+            if root_directory is not None:
+                self.root_directory = root_directory
+            else:
+                self.root_directory = tempfile.gettempdir()
             self.timestamp = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p")
             self.ent_map_fname = os.path.join(self.root_directory, 'ent_partition_{}'.format(self.timestamp))
             self.ent_meta_fname = os.path.join(self.root_directory, 'ent_metadata_{}'.format(self.timestamp))
@@ -248,7 +251,7 @@ class GeneralPartitionDataManager(PartitionDataManager):
         Handles data generation and informs the model about changes in partition.
     '''
     def __init__(self, dataset_loader, model, strategy='RandomEdges', partitioner_k=3, 
-                 root_directory=tempfile.gettempdir()):
+                 root_directory=None):
         """Initialize the Partitioning Data Manager.
 
         Uses/Creates partitioner and generates partition related parameters.
@@ -469,7 +472,7 @@ class BucketPartitionDataManager(PartitionDataManager):
 
     Handles data generation and informs model about changes in partition.
     '''
-    def __init__(self, dataset_loader, model, strategy='Bucket', partitioner_k=3, root_directory=tempfile.gettempdir()):
+    def __init__(self, dataset_loader, model, strategy='Bucket', partitioner_k=3, root_directory=None):
         """Initialize the Partitioning Data Manager.
         Uses/Creates partitioner and generates partition related parameters.
         
@@ -755,7 +758,7 @@ class BucketPartitionDataManager(PartitionDataManager):
         
 
 def get_partition_adapter(dataset_loader, model, strategy='Bucket', 
-                          partitioning_k=3, root_directory=tempfile.gettempdir()):
+                          partitioning_k=3, root_directory=None):
     ''' Returns partition manager depending on the one registered by the partitioning strategy.
     
     Parameters
