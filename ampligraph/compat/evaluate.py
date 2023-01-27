@@ -13,7 +13,7 @@ logger.setLevel(logging.DEBUG)
 
 
 def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_unseen=True, entities_subset=None,
-                         corrupt_side='s,o', use_default_protocol=False, batch_size=100):
+                         corrupt_side='s,o', batch_size=100):
     """Evaluate the performance of an embedding model.
 
     The evaluation protocol follows the procedure defined in :cite:`bordes2013translating` and can be summarised as:
@@ -101,12 +101,6 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
             The second column of the array represents the object corruptions.
             Otherwise, the function returns :math:`n` ranks as (n) array.
 
-    use_default_protocol: bool
-        Flag to indicate whether to use the standard protocol used in literature defined in
-        :cite:`bordes2013translating` (default: `False`).
-        If set to `True`, ``corrupt_side`` will be set to `'s,o'`.
-        This corresponds to the evaluation protocol used in literature, where head and tail corruptions
-        are evaluated separately, i.e., in ``corrupt_side='s,o'`` mode
     batch_size: int
         Batch size to use for evaluation.
 
@@ -122,31 +116,30 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
     --------
     >>> import numpy as np
     >>> from ampligraph.datasets import load_wn18
-    >>> from ampligraph.latent_features import ComplEx
-    >>> from ampligraph.evaluation import evaluate_performance, mrr_score, hits_at_n_score
+    >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+    >>> from ampligraph.evaluation import mrr_score, hits_at_n_score
     >>>
     >>> X = load_wn18()
-    >>> model = ComplEx(batches_count=10, seed=0, epochs=10, k=150, eta=1,
-    >>>                 loss='nll', optimizer='adam')
-    >>> model.fit(np.concatenate((X['train'], X['valid'])))
-    >>>
-    >>> filter_triples = np.concatenate((X['train'], X['valid'], X['test']))
-    >>> ranks = evaluate_performance(X['test'][:5], model=model,
-    >>>                              filter_triples=filter_triples,
-    >>>                              corrupt_side='s+o',
-    >>>                              use_default_protocol=False)
-    >>> ranks
-    array([  1, 582, 543,   6,  31])
-    >>> mrr_score(ranks)
-    0.24049691297347323
-    >>> hits_at_n_score(ranks, n=10)
-    0.4
+    >>> model = ScoringBasedEmbeddingModel(k=150, eta=1, scoring_type='ComplEx')
+    >>> model.compile(optimizer='adam', loss='nll')
+    >>> model.fit(X['train'],
+    >>>           batch_size=int(X['train'].shape[0] / 10),
+    >>>           epochs=10)
+    >>> filter_triples = {'test': np.concatenate([X['train'], X['valid'], X['test']], axis=0)}
+    >>> ranks = model.evaluate(X['test'][:5],
+    >>>                        use_filter=filter_triples,
+    >>>                        corrupt_side='s+o')
+    >>> print(ranks)
+    [[  1]
+     [116]
+     [  1]
+     [  1]
+     [214]]
+    >>> print(mrr_score(ranks))
+    0.6026587173702869
+    >>> print(hits_at_n_score(ranks, n=10))
+    0.6
     """
-    if use_default_protocol:
-        logger.warning('DeprecationWarning: use_default_protocol will be removed in future. '
-                       'Please use corrupt_side argument instead.')
-        corrupt_side = 's,o'
-
     logger.debug('Evaluating the performance of the embedding model.')
     assert corrupt_side in ['s', 'o', 's+o', 's,o'], 'Invalid value for corrupt_side.'
     

@@ -429,7 +429,7 @@ class GraphDataLoader():
        
        Example
        -------
-       >>> AMPLIGRAPH_DATA_HOME='/your/path/to/datasets/
+       >>> AMPLIGRAPH_DATA_HOME='/your/path/to/datasets/'
        >>> # Graph loader - loads the data from the file, numpy array, etc and generates batches for iterating
        >>> dataset_loader = GraphDataLoader(AMPLIGRAPH_DATA_HOME + 'fb15k-237/train.txt',
        >>>                                  backend=SQLiteAdapter, # type of backend to use

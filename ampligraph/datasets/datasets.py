@@ -313,8 +313,8 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciproc
     triples : ndarray, shape (n, 3)
         The actual triples of the file.
 
-    Examples
-    --------
+    Example
+    -------
     >>> PATH_TO_FOLDER = 'your/path/to/folder/'
     >>> from ampligraph.datasets import load_from_csv
     >>> X = load_from_csv(PATH_TO_FOLDER, 'dataset.csv', sep=',')
@@ -431,8 +431,8 @@ def load_mapper_from_json(directory_path, file_name):
     mapper : dict
         Dictionary of mappings between graph entities and predicates and human-readable version of them.
     
-    Examples
-    --------
+    Example
+    -------
     
     >>> from ampligraph.datasets import load_mapper_from_json
     >>> mapper = load_mapper_from_json('folder', 'mapper.json')
@@ -487,8 +487,8 @@ def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
     splits : dict
         The dataset splits `{'train': train, 'valid': valid, 'test': test}`. Each split is a ndarray of shape (n, 3).
 
-    Examples
-    --------
+    Example
+    -------
     >>> from ampligraph.datasets import load_wn18
     >>> X = load_wn18()
     >>> X['test'][:3]
@@ -521,7 +521,7 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fals
 
     The dataset is described in :cite:`DettmersMS018`.
 
-     ..warning:: *WN18RR*'s validation set contains 198 unseen entities over 210 triples. The test set
+     .. warning:: *WN18RR*'s validation set contains 198 unseen entities over 210 triples. The test set
         has 209 unseen entities, distributed over 210 triples.
 
     The WN18RR dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
@@ -560,7 +560,7 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fals
     splits : dict
         The dataset splits: `{'train': train, 'valid': valid, 'test': test}`. Each split is a ndarray of shape (n, 3).
 
-    Examples
+    Example
     -------
 
     >>> from ampligraph.datasets import load_wn18rr
@@ -636,8 +636,8 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
     splits : dict
         The dataset splits: `{'train': train, 'valid': valid, 'test': test}`. Each split is a ndarray of shape (n, 3).
 
-    Examples
-    --------
+    Example
+    -------
 
     >>> from ampligraph.datasets import load_fb15k
     >>> X = load_fb15k()
@@ -723,8 +723,8 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=F
        The dataset splits: `{'train': train, 'valid': valid, 'test': test, 'test-human':test_human, 'test-human-ids': test_human_ids}`.
        Each split is a ndarray of shape (n, 3).
 
-   Examples
-   --------
+   Example
+   -------
 
    >>> from ampligraph.datasets import load_fb15k_237
    >>> X = load_fb15k_237()
@@ -818,7 +818,7 @@ def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fa
     splits : dict
         The dataset splits: `{'train': train, 'valid': valid, 'test': test}`. Each split is a ndarray of shape (n, 3).
 
-    Examples
+    Example
     -------
 
     >>> from ampligraph.datasets import load_yago3_10
@@ -904,7 +904,7 @@ def load_wn11(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
         Each split containing a dataset is a ndarray of shape (n, 3).
         The labels are a ndarray of shape (n).
 
-    Examples
+    Example
     -------
 
     >>> from ampligraph.datasets import load_wn11
@@ -1004,7 +1004,7 @@ def load_fb13(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
         Each split containing a dataset is a ndarray of shape (n, 3).
         The labels are ndarray of shape (n).
 
-    Examples
+    Example
     -------
 
     >>> from ampligraph.datasets import load_fb13
@@ -1199,7 +1199,10 @@ def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, spl
         Each numeric value split contains numeric values associated with the corresponding dataset split and
         is a ndarray of shape (n, 1).
         Each dataset split is a ndarray of shape (n,3).
-        The `topk` and `bottomk` splits are only returned when `split_test_into_top_bottom` is set to `True`.
+        The `topk` and `bottomk` splits are only returned when `split_test_into_top_bottom` is set to `True` and contain
+        the triples ordered by highest/lowest numeric edge value associated. These are typically used at evaluation time
+        aiming at observing a model that assigns the highest rank possible to the `_topk` and the lowest possible to
+        the `_bottomk`.
     """
     dataset['train_numeric_values'] = dataset['train'][:, 3:].astype(np.float32)
     dataset['valid_numeric_values'] = dataset['valid'][:, 3:].astype(np.float32)
@@ -1285,9 +1288,12 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
         Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
         is a ndarray of shape (n).
         Each dataset split is a ndarray of shape (n,3).
-        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
+        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True`` and contain
+        the triples ordered by highest/lowest numeric edge value associated. These are typically used at evaluation time
+        aiming at observing a model that assigns the highest rank possible to the `_topk` and the lowest possible to
+        the `_bottomk`.
         
-    Examples
+    Example
     -------
     >>> from ampligraph.datasets import load_onet20k
     >>> X = load_onet20k()
@@ -1378,9 +1384,12 @@ def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
         Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
         is a ndarray of shape (n).
         Each dataset split is a ndarray of shape (n,3).
-        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
+        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True`` and contain
+        the triples ordered by highest/lowest numeric edge value associated. These are typically used at evaluation time
+        aiming at observing a model that assigns the highest rank possible to the `_topk` and the lowest possible to
+        the `_bottomk`.
         
-    Examples
+    Example
     -------
     >>> from ampligraph.datasets import load_ppi5k
     >>> X = load_ppi5k()
@@ -1469,9 +1478,12 @@ def load_nl27k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
         Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
         is a ndarray of shape (n).
         Each dataset split is a ndarray of shape (n,3).
-        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
+        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True`` and contain
+        the triples ordered by highest/lowest numeric edge value associated. These are typically used at evaluation time
+        aiming at observing a model that assigns the highest rank possible to the `_topk` and the lowest possible to
+        the `_bottomk`.
         
-    Examples
+    Example
     -------
     >>> from ampligraph.datasets import load_nl27k
     >>> X = load_nl27k()
@@ -1560,8 +1572,12 @@ def load_cn15k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
         Each ``*_numeric_values`` split contains numeric values associated to the corresponding dataset split and
         is a ndarray of shape (n).
         Each dataset split is a ndarray of shape (n,3).
-        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True``.
-    Examples
+        The ``*_topk`` and ``*_bottomk`` splits are only returned when ``split_test_into_top_bottom=True`` and contain
+        the triples ordered by highest/lowest numeric edge value associated. These are typically used at evaluation time
+        aiming at observing a model that assigns the highest rank possible to the `_topk` and the lowest possible to
+        the `_bottomk`.
+
+    Example
     -------
     >>> from ampligraph.datasets import load_cn15k
     >>> X = load_cn15k()
@@ -1658,8 +1674,8 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
 
     X : pandas data frame containing triples (full=False), records with predicates (full=True).
 
-    Examples
-    --------
+    Example
+    -------
 
     >>> from ampligraph.datasets import _load_xai_fb15k_237_experiment_log
     >>> X = _load_xai_fb15k_237_experiment_log()
@@ -1757,7 +1773,7 @@ def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False
         The dataset splits: `{'train': train, 'valid': valid, 'valid_negatives': valid_negatives', 'test': test, 'test_negatives': test_negatives}`.
         Each split is a ndarray of shape (n, 3).
 
-    Examples
+    Example
     -------
 
     >>> from ampligraph.datasets import load_codex
