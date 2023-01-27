@@ -39,7 +39,7 @@ class SQLiteAdapter():
     
         Examples
         --------
-        >>> AMPLIGRAPH_DATA_HOME='/your/path/to/datasets/
+        >>> AMPLIGRAPH_DATA_HOME='/your/path/to/datasets/'
         >>> # Initialize GraphDataLoader from .csv file
         >>> data = GraphDataLoader("data.csv", backend=SQLiteAdapter)
         >>> # Initialize GraphDataLoader from .txt file using indexer to map entities to integers

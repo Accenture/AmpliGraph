@@ -593,7 +593,7 @@ class NLLMulticlass(Loss):
        ----------
        scores_pos : tf.Tensor, shape (n, 1)
            A tensor of scores assigned to positive statements.
-       scores_neg : tf.Tensor, shape [n*negative_count, 1]
+       scores_neg : tf.Tensor, shape (eta, n)
            A tensor of scores assigned to negative statements.
 
        Returns
@@ -666,7 +666,7 @@ class LossFunctionWrapper(Loss):
        ----------
        scores_pos : tf.Tensor, shape (n, 1)
            A tensor of scores assigned to positive statements.
-       scores_neg : tf.Tensor, shape [n*negative_count, 1]
+       scores_neg : tf.Tensor, shape (eta, n)
            A tensor of scores assigned to negative statements.
 
        Returns

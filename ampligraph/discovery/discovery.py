@@ -86,13 +86,11 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
     X_pred : ndarray, shape (n, 3)
         A list of new facts predicted to be true.
 
-    Examples
-    --------
-    >>> from ampligraph.discovery import discover_facts
+    Example
+    -------
     >>> import requests
     >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
     >>> from ampligraph.datasets import load_from_csv
-    >>> from ampligraph.latent_features.models import ScoringBasedEmbeddingModel
     >>> from ampligraph.discovery import discover_facts
     >>> # Game of Thrones relations dataset
     >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
@@ -274,8 +272,8 @@ def generate_candidates(X, strategy, target_rel, max_candidates, consolidate_sid
             A list of candidate statements.
 
 
-        Examples
-        --------
+        Example
+        -------
         >>> import numpy as np
         >>> from ampligraph.discovery.discovery import generate_candidates
         >>>
@@ -520,8 +518,8 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="e"):
     labels : ndarray, shape [n]
         Index of the cluster each triple belongs to.
 
-    Examples
-    --------
+    Example
+    -------
     >>> # Note seaborn, matplotlib, adjustText are not AmpliGraph dependencies.
     >>> # and must therefore be installed manually as:
     >>> #
@@ -698,8 +696,8 @@ def find_duplicates(X, model, mode="e", metric='l2', tolerance='auto',
     tolerance: float
         Tolerance used to find the duplicates (useful if the automatic tolerance option is selected).
 
-    Examples
-    --------
+    Example
+    -------
     >>> import pandas as pd
     >>> import numpy as np
     >>> import re
@@ -912,14 +910,14 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
     S : ndarray, shape (n)
        A list of scores.
 
-    Examples
-    --------
+    Example
+    -------
 
     >>> import requests
     >>> from ampligraph.datasets import load_from_csv
     >>> from ampligraph.discovery import discover_facts
     >>> from ampligraph.discovery import query_topn
-    >>> from ampligraph.latent_features.models import ScoringBasedEmbeddingModel
+    >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
     >>> # Game of Thrones relations dataset
     >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
     >>> open('GoT.csv', 'wb').write(requests.get(url).content)
