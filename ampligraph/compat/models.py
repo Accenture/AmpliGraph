@@ -263,7 +263,7 @@ class ScoringModelBase:
 
         focusE = False
         params_focusE = {}
-        if focusE_numeric_edge_values != None:
+        if focusE_numeric_edge_values is not None:
             if isinstance(focusE_numeric_edge_values, np.ndarray) and isinstance(X, np.ndarray):
                 focusE = True
                 X = np.concatenate([X, focusE_numeric_edge_values], axis=1)
