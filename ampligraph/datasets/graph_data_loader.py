@@ -149,9 +149,15 @@ class DummyBackend():
             subjects = entities
             objects = entities
         # check_subjects = np.vectorize(lambda t: t in subjects)
-        check_triples = np.vectorize(lambda t, r: (t in objects and r in subjects) or (
-            t in subjects and r in objects))
-        triples = self.data[check_triples(self.data[:, 2], self.data[:, 0])]
+        if subjects is not None and objects is not None:
+            check_triples = np.vectorize(lambda t, r: (t in objects and r in subjects) or (
+                t in subjects and r in objects))
+            triples = self.data[check_triples(self.data[:, 2], self.data[:, 0])]
+            print(triples.shape)
+        elif objects is None:
+            triples = self.data[np.isin(self.data[:, 0], subjects)]
+        elif subjects is None:
+            triples = self.data[np.isin(self.data[:, 2], objects)]
         triples = np.append(triples, np.array(len(triples) * [self.dataset_type]).reshape(-1, 1), axis=1)
         # triples_from_objects = self.data[check_objects(self.data[:,0])]
         # triples = np.vstack([triples_from_subjects, triples_from_objects])
