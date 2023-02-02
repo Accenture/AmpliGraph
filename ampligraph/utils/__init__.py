@@ -11,7 +11,6 @@
 
 from .model_utils import save_model, restore_model, create_tensorboard_visualizations, \
     write_metadata_tsv, dataframe_to_triples, preprocess_focusE_weights
-# from .profiling import get_memory_size, get_human_readable_size, timing_and_memory
 
 __all__ = ['save_model', 'restore_model', 'create_tensorboard_visualizations',
            'write_metadata_tsv', 'dataframe_to_triples', 'preprocess_focusE_weights']
