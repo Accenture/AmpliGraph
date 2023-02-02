@@ -23,16 +23,16 @@ def LP_regularizer(trainable_param, regularizer_parameters={}):
     regularizer_parameters: dict
         Parameters of the regularizer:
 
-        - **p**: (int) - p for the LP regularizer. For example, when :math:`p=3` (default), it uses the L3 regularizer.
-        - **lambda** : (float) - Regularizer weight (default: 0.001).
+        - **p**: (int) - p for the LP regularizer. For example, when :math:`p=2` (default), it uses the L2 regularizer.
+        - **lambda** : (float) - Regularizer weight (default: 0.00001).
     Returns
     -------
     regularizer: tf.keras.regularizer
         Regularizer instance from the `tf.keras.regularizer` class.
 
     '''
-    return regularizer_parameters.get('lambda', 0.001) * tf.reduce_sum(
-        tf.pow(tf.abs(trainable_param), regularizer_parameters.get('p', 3)))
+    return regularizer_parameters.get('lambda', 0.00001) * tf.reduce_sum(
+        tf.pow(tf.abs(trainable_param), regularizer_parameters.get('p', 2)))
 
 
 def get(identifier, hyperparams={}):
