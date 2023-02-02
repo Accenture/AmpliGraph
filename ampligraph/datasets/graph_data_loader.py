@@ -429,9 +429,12 @@ class GraphDataLoader():
        
        Example
        -------
+       >>> from ampligraph.datasets import GraphDataLoader, SQLiteAdapter, BucketGraphPartitioner
+       >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
        >>> AMPLIGRAPH_DATA_HOME='/your/path/to/datasets/'
        >>> # Graph loader - loads the data from the file, numpy array, etc and generates batches for iterating
-       >>> dataset_loader = GraphDataLoader(AMPLIGRAPH_DATA_HOME + 'fb15k-237/train.txt',
+       >>> path_to_training = AMPLIGRAPH_DATA_HOME + 'fb15k-237/train.txt'
+       >>> dataset_loader = GraphDataLoader(path_to_training,
        >>>                                  backend=SQLiteAdapter, # type of backend to use
        >>>                                  batch_size=1000,       # batch size to use while iterating over this dataset
        >>>                                  dataset_type='train',  # dataset type
@@ -439,22 +442,32 @@ class GraphDataLoader():
        >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
        >>>
        >>> # Choose the partitioner - in this case we choose RandomEdges partitioner
-       >>> partitioner = RandomEdges(dataset_loader, k=3)
+       >>> partitioner = BucketGraphPartitioner(dataset_loader, k=3)
        >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
        >>>                                                k=50,
        >>>                                                scoring_type='DistMult')
        >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
        >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
-       >>>                       use_partitioning=True,  # Specify that partitioning needs to be used           
        >>>                       epochs=10)              # number of epochs
-       >>> dataset_loader_test = GraphDataLoader(AMPLIGRAPH_DATA_HOME + 'fb15k-237/test.txt',
-       >>>                                       backend=SQLiteAdapter,     # type of backend to use
-       >>>                                       batch_size=400,            # batch size to use while iterating over this dataset
-       >>>                                       dataset_type='test',       # dataset type
-       >>>                                       use_indexer=partitioned_model.data_handler.get_mapper()    # get the mapper from the trained model and map the concepts to same indices as used during training
-       >>>                                      )
-       >>> ranks = partitioned_model.evaluate(dataset_loader_test, # pass the dataloader object as input to the evaluate function: this will generate data for the model during training
+       >>> indexer = partitioned_model.data_handler.get_mapper()    # get the mapper from the trained model
+       >>> path_to_test = AMPLIGRAPH_DATA_HOME + 'fb15k-237/test.txt'
+       >>> dataset_loader_test = GraphDataLoader(path_to_test,
+       >>>                                       backend=SQLiteAdapter,                         # type of backend to use
+       >>>                                       batch_size=400,                                # batch size to use while iterating over this dataset
+       >>>                                       dataset_type='test',                           # dataset type
+       >>>                                       use_indexer=indexer                            # mapper to map test concepts to the same indices used during training
+       >>>                                       )
+       >>> ranks = partitioned_model.evaluate(dataset_loader_test, # pass the dataloader object to generate data for the model during training
        >>>                                    batch_size=400)
+       >>> print(ranks)
+       [[  85    7]
+        [  95    9]
+        [1074   22]
+        ...
+        [ 546   95]
+        [9961 7485]
+        [1494    2]]
+
 
     """    
     def __init__(self, data_source, batch_size=1, dataset_type="train", 
