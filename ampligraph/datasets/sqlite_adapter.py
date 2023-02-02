@@ -319,10 +319,14 @@ class SQLiteAdapter():
 
             subjects = entities
             objects = entities
-
-        query = "select * from triples_table where (subject in ({0}) and object in \
-        ({1})) or (subject in ({1}) and object in ({0}));".format(
-            ",".join(str(v) for v in subjects), ",".join(str(v) for v in objects))
+        if subjects is not None and objects is not None:
+            query = "select * from triples_table where (subject in ({0}) and object in \
+            ({1})) or (subject in ({1}) and object in ({0}));".format(
+                ",".join(str(v) for v in subjects), ",".join(str(v) for v in objects))
+        elif objects is None:
+            query = "select * from triples_table where (subject in ({0}));".format(",".join(str(v) for v in subjects))
+        elif subjects is None:
+            query = "select * from triples_table where (object in ({0}));".format(",".join(str(v) for v in objects))
         triples = np.array(self._execute_query(query))
         triples = np.append(triples[:, :3].astype('int'), triples[:, 3].reshape(-1, 1), axis=1)
         return triples 
