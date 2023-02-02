@@ -6,7 +6,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 from ampligraph.datasets.partitioning_reporter import PartitioningReporter
-from ampligraph.datasets import NaiveGraphPartitioner, GraphDataLoader
+from ampligraph.datasets.graph_partitioner import NaiveGraphPartitioner, GraphDataLoader
 import pytest
 import mock
 from pytest_mock import mocker

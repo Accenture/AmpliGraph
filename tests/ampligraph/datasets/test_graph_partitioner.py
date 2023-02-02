@@ -6,7 +6,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 import pytest
-from ampligraph.datasets import AbstractGraphPartitioner, RandomVerticesGraphPartitioner,\
+from ampligraph.datasets.graph_partitioner import AbstractGraphPartitioner, RandomVerticesGraphPartitioner,\
      RandomEdgesGraphPartitioner, SortedEdgesGraphPartitioner, NaiveGraphPartitioner, \
      DoubleSortedEdgesGraphPartitioner, get_number_of_partitions, PARTITION_ALGO_REGISTRY,\
      GraphDataLoader
@@ -197,15 +197,21 @@ def test_number_of_partitions_after_graph_partitioning(graph_partitioner):
        assert n_parts == graph_partitioner[1], "{}: Requested number of partitions not equal to the actual should be {} got {}".format(graph_partitioner[0].__class__.__name__, graph_partitioner[1], n_parts)
 
 
-def test_random_vertices_graph_partitioner(data, k):
-    partitioner = RandomVerticesGraphPartitioner(data, k)
-    n_nodes = data.backend.mapper.get_entities_count()//k
-    for partition in partitioner:
-        actual = partition.backend.mapper.get_entities_count()
-        accept_range = [x for y in [(n_nodes - i, n_nodes + i) for i in range(k)] for x in y]
-        print(accept_range)
-        assert actual in accept_range, "Nodes in a bucket not equal to expected, got {}, expected {} +- (0, {}).".format(actual, k, n_nodes)
-    partitioner.clean()
+# def test_random_vertices_graph_partitioner(data, k):
+      # TODO: this test isn't really meaningful: triples that we obtain with this partitioning strategy
+      # are those with both subject AND object in the same partition. So it may happen that the number of
+      # entities involved in triples is much smaller than the expected
+#     partitioner = RandomVerticesGraphPartitioner(data, k)
+#     print('data.shape: ', data)
+#     n_nodes = data.backend.mapper.get_entities_count()//k
+#     print('n_nodes: ', n_nodes)
+#     for partition in partitioner:
+#         actual = partition.backend.mapper.get_entities_count()
+#         print(actual)
+#         accept_range = [x for y in [(n_nodes - i, n_nodes + i) for i in range(k)] for x in y]
+#         print(accept_range)
+#         assert actual in accept_range, "Nodes in a bucket not equal to expected, got {}, expected {} +- (0, {}).".format(actual, k, n_nodes)
+#     partitioner.clean()
 
 def test_partition_size_in_edge_based_graph_partitioner(edge_graph_partitioner):
     partitioner, data, k = edge_graph_partitioner
