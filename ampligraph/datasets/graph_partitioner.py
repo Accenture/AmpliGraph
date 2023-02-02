@@ -85,7 +85,7 @@ class AbstractGraphPartitioner(ABC):
     _k [default=2]: number of partitions to split into
     """
 
-    def __init__(self, data, k=2, seed=None, root_dir=tempfile.gettempdir(), **kwargs):
+    def __init__(self, data, k=2, seed=None, root_dir=None, **kwargs):
         """Initialise the AbstractGraphPartitioner.
 
            data: GraphDataLoader
@@ -97,7 +97,10 @@ class AbstractGraphPartitioner(ABC):
         self.partitions = []
         self._data = data
         self._k = k
-        self.root_dir = root_dir
+        if root_dir is None:
+            self.root_dir = tempfile.gettempdir()
+        else:
+            self.root_dir = root_dir
         self._split(seed=seed, batch_size=data.batch_size, **kwargs)
         self.reload()
         

@@ -1037,7 +1037,7 @@ class Shelves():
         
 @register_indexer_backend("sqlite")
 class SQLite():
-    def __init__(self, data, db_file=None, root_directory=tempfile.gettempdir(), name="main_partition", **kwargs):
+    def __init__(self, data, db_file=None, root_directory=None, name="main_partition", **kwargs):
         """Initialise backend by creating mappings.
 
            Parameters
@@ -1058,7 +1058,10 @@ class SQLite():
             if os.path.exists(self.db_file):
                 os.remove(self.db_file)
             self.mapped = False
-        self.root_directory = root_directory
+        if root_directory is None:
+            self.root_directory = tempfile.gettempdir()
+        else:
+            self.root_directory = root_directory
         self.name = name
 
         self.max_ents_index = -1

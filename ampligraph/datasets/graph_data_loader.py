@@ -28,7 +28,7 @@ logger.setLevel(logging.DEBUG)
 class DummyBackend():
     """Class providing an artificial backend, that reads data into memory."""
     def __init__(self, identifier, use_indexer=True, remap=False, name="main_partition", parent=None,
-                 in_memory=True, root_directory=tempfile.gettempdir(), use_filter=False, verbose=False):
+                 in_memory=True, root_directory=None, use_filter=False, verbose=False):
         """Initialise DummyBackend.
 
            Parameters
@@ -54,7 +54,10 @@ class DummyBackend():
         self.name = name
         self.parent = parent
         self.in_memory = in_memory
-        self.root_directory = root_directory
+        if root_directory is None:
+            self.root_directory = tempfile.gettempdir()
+        else:
+            self.root_directory = root_directory
         self.use_filter = use_filter
         self.sources = {}
 
