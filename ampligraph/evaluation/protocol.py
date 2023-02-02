@@ -408,7 +408,7 @@ def _scalars_into_lists(param_grid):
 def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid, max_combinations=None,
                               param_grid_random_seed=0, use_filter=True, early_stopping=False,
                               early_stopping_params=None, use_test_for_selection=False, entities_subset=None,
-                              corrupt_side='s,o', use_default_protocol=False, focusE=False, focusE_params={},
+                              corrupt_side='s,o', focusE=False, focusE_params={},
                               retrain_best_model=False, verbose=False):
     """Model selection routine for embedding models via either grid search or random search.
 
@@ -432,8 +432,8 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
     Parameters
     ----------
-    model_class : class
-        The class of the EmbeddingModel to evaluate (TransE, DistMult, ComplEx, etc).
+    model_class : str
+        The class of the EmbeddingModel to evaluate (`'TransE'`, `'DistMult'`, `'ComplEx'`, etc).
     X_train : ndarray, shape (n, 3)
         An array of training triples.
     X_valid : ndarray, shape (n, 3)
@@ -507,7 +507,8 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
             * stop_interval: Stop if criteria is performing worse over `n` consecutive checks (default: 3)
 
     focusE: bool
-        Whether to use the focusE layer (default: `False`).
+        Whether to use the focusE layer (default: `False`). If `True`, make sure you pass the weights as an additional
+        column concatenated after the training triples.
     focusE_params: dict
         Dictionary of parameters if focusE is activated.
     use_test_for_selection:bool
@@ -521,10 +522,6 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         `"o"` to corrupt only object.
         `"s+o"` to corrupt both subject and object.
         `"s,o"` to corrupt both subject and object but ranks are computed separately (default).
-    use_default_protocol: bool
-        Flag to indicate whether to evaluate head and tail corruptions separately (default: `False`).
-        If this is set to `True`, it will ignore ``corrupt_side`` argument and corrupt both head
-        and tail separately and rank triples, i.e., ``corrupt_side="s,o"`` mode.
     retrain_best_model: bool
         Flag to indicate whether best model should be re-trained at the end with the validation set used in the search
         (default: `False`).
@@ -564,12 +561,11 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     Examples
     --------
     >>> from ampligraph.datasets import load_wn18
-    >>> from ampligraph.latent_features import ComplEx
     >>> from ampligraph.evaluation import select_best_model_ranking
     >>> import numpy as np
     >>>
     >>> X = load_wn18()
-    >>> model_class = ComplEx
+    >>> model_class = 'ComplEx'
     >>> param_grid = {
     >>>                "batches_count": [50],
     >>>                "seed": 0,
@@ -598,12 +594,11 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
     """
     from ..compat import evaluate_performance
+    from importlib import import_module
+    compat_module = import_module('ampligraph.compat')
+    model_class = getattr(compat_module, model_class)
     
     logger.debug('Starting gridsearch over hyperparameters. {}'.format(param_grid))
-    if use_default_protocol:
-        logger.warning('DeprecationWarning: use_default_protocol will be removed in future. \
-                        Please use corrupt_side argument instead.')
-        corrupt_side = 's,o'
 
     if early_stopping_params is None:
         early_stopping_params = {}
@@ -633,6 +628,13 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         except KeyError:
             logger.debug('Early stopping enable but no x_valid parameter set. Setting x_valid to {}'.format(X_valid))
             early_stopping_params['x_valid'] = X_valid
+
+    focusE_numeric_edge_values = None
+    if focusE:
+        assert isinstance(X_train, np.ndarray) and X_train.shape[1] > 3, "Weights are missing! Concatenate them to X_train" \
+                                                                         "in order to use FocusE!"
+        focusE_numeric_edge_values = X_train[:, 3:]
+        param_grid["embedding_model_params"] = {**param_grid["embedding_model_params"], **focusE_params}
 
     if use_filter:
         X_filter = {'train': X_train, 
@@ -664,12 +666,14 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         del model_params["model_name"]
         try:
             model = model_class(**model_params)
-            model.fit(X_train, early_stopping, early_stopping_params, focusE=focusE, focusE_params=focusE_params)
+            model.fit(X_train,
+                      early_stopping,
+                      early_stopping_params,
+                      focusE_numeric_edge_values=focusE_numeric_edge_values)
             
             ranks = evaluate_performance(selection_dataset, model=model,
                                          filter_triples=X_filter, verbose=verbose,
                                          entities_subset=entities_subset,
-                                         use_default_protocol=use_default_protocol,
                                          corrupt_side=corrupt_side)
 
             curr_mrr, mr, hits_1, hits_3, hits_10 = evaluation(ranks)
@@ -708,12 +712,20 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
     if best_model is not None:
         if retrain_best_model:
-            best_model.fit(np.concatenate((X_train, X_valid)), early_stopping, early_stopping_params)
+            if focusE:
+                assert isinstance(X_valid, np.ndarray) and X_valid.shape[1] > 3, "Validation set is used as training" \
+                                                                                 "data for retraining the best model," \
+                                                                                 "but weights are missing." \
+                                                                                 "Concatenate them to X_valid!"
+                focusE_numeric_edge_values = np.concatenate([focusE_numeric_edge_values, X_valid[:, 3:]], axis=0)
+            best_model.fit(np.concatenate((X_train, X_valid)),
+                           early_stopping,
+                           early_stopping_params,
+                           focusE_numeric_edge_values=focusE_numeric_edge_values)
 
         ranks_test = evaluate_performance(X_test, model=best_model,
                                           filter_triples=X_filter, verbose=verbose,
                                           entities_subset=entities_subset,
-                                          use_default_protocol=use_default_protocol,
                                           corrupt_side=corrupt_side)
 
         test_mrr, test_mr, test_hits_1, test_hits_3, test_hits_10 = evaluation(ranks_test)
