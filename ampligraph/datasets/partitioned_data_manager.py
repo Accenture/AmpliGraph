@@ -72,6 +72,7 @@ class PartitionDataManager(abc.ABC):
         """
         self._model = model
         self.k = self._model.k
+        self.internal_k = self._model.internal_k
         self.eta = self._model.eta
         self.partitioner_k = partitioner_k
         if ent_map_fname is not None and ent_meta_fname is not None and \
@@ -286,10 +287,10 @@ class GeneralPartitionDataManager(PartitionDataManager):
                 for i in range(update_part_size * part_num, 
                                min(update_part_size * (part_num + 1), self.num_ents)):
                     out_dict_key = str(i)
-                    opt_param = np.zeros(shape=(1, num_optimizer_hyperparams, self.k), dtype=np.float32)
-                    # ent_emb = xavier(self.num_ents, self.k, num_ents_bucket)
+                    opt_param = np.zeros(shape=(1, num_optimizer_hyperparams, self.internal_k), dtype=np.float32)
+                    # ent_emb = xavier(self.num_ents, self.internal_k, num_ents_bucket)
                     ent_emb = self._model.encoding_layer.ent_init(
-                        shape=(1, self.k),
+                        shape=(1, self.internal_k),
                         dtype=tf.float32).numpy()
                     ent_partition.update({out_dict_key: [opt_param, ent_emb]})
 
@@ -299,10 +300,10 @@ class GeneralPartitionDataManager(PartitionDataManager):
             for i in range(self.num_rels):
                 out_dict_key = str(i)
                 # TODO change the hardcoding from 3 to actual hyperparam of optim
-                opt_param = np.zeros(shape=(1, num_optimizer_hyperparams, self.k), dtype=np.float32)
-                # rel_emb = xavier(self.num_rels, self.k, self.num_rels)
+                opt_param = np.zeros(shape=(1, num_optimizer_hyperparams, self.internal_k), dtype=np.float32)
+                # rel_emb = xavier(self.num_rels, self.internal_k, self.num_rels)
                 rel_emb = self._model.encoding_layer.rel_init(
-                    shape=(1, self.k), 
+                    shape=(1, self.internal_k),
                     dtype=tf.float32).numpy()
                 rel_partition.update({out_dict_key: [opt_param, rel_emb]})
 
@@ -505,9 +506,9 @@ class BucketPartitionDataManager(PartitionDataManager):
                     num_ents_bucket = bucket['indexes'].shape[0]
                     # print(num_ents_bucket)
                     # TODO change the hardcoding from 3 to actual hyperparam of optim
-                    opt_param = np.zeros(shape=(num_ents_bucket, num_optimizer_hyperparams, self.k), dtype=np.float32)
+                    opt_param = np.zeros(shape=(num_ents_bucket, num_optimizer_hyperparams, self.internal_k), dtype=np.float32)
                     ent_emb = self._model.encoding_layer.ent_init(
-                        shape=(num_ents_bucket, self.k),
+                        shape=(num_ents_bucket, self.internal_k),
                         dtype=tf.float32).numpy()
                     ent_partition.update({out_dict_key: [opt_param, ent_emb]})
 
@@ -516,9 +517,9 @@ class BucketPartitionDataManager(PartitionDataManager):
         with shelve.open(self.rel_map_fname, writeback=True) as rel_partition:
             out_dict_key = str(0)
             # TODO change the hardcoding from 3 to actual hyperparam of optim
-            opt_param = np.zeros(shape=(self.num_rels, num_optimizer_hyperparams, self.k), dtype=np.float32)
+            opt_param = np.zeros(shape=(self.num_rels, num_optimizer_hyperparams, self.internal_k), dtype=np.float32)
             rel_emb = self._model.encoding_layer.rel_init(
-                shape=(self.num_rels, self.k), 
+                shape=(self.num_rels, self.internal_k),
                 dtype=tf.float32).numpy()
             rel_partition.update({out_dict_key: [opt_param, rel_emb]})
                 
