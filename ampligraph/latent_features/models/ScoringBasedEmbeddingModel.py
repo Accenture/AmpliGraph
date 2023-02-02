@@ -16,6 +16,7 @@ import logging
 
 from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
 from ampligraph.datasets import data_adapter
+from ampligraph.datasets.partitioned_data_manager import PartitionDataManager
 from ampligraph.latent_features.layers.scoring.AbstractScoringLayer import SCORING_LAYER_REGISTRY
 from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
 from ampligraph.latent_features.layers.calibration import CalibrationLayer
@@ -125,16 +126,16 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.scoring_layer = SCORING_LAYER_REGISTRY[scoring_type](k)
         # get the actual k depending on scoring layer 
         # Ex: complex model uses k embeddings for real and k for img side. 
-        # so internally it has 2*k. where as transE uses k.
+        # so internally it has 2*k, whereas transE uses k.
         self.k = k
         self.internal_k = self.scoring_layer.internal_k
         
         # create the corruption generation layer - generates eta corruptions during training
         self.corruption_layer = CorruptionGenerationLayerTrain()
         
-        # assume that you have max_ent_size unique entities - if it is single partition
-        # this would change if we use partitions - based on which partition is in memory
-        # this is used by corruption_layer to sample eta corruptions
+        # If it is single partition, assume that you have max_ent_size unique entities
+        # This would change if we use partitions: based on which partition is in memory
+        # this attribute is used by the corruption_layer to sample eta corruptions
         self.num_ents = self.max_ent_size
         
         # Create the embedding lookup layer. 
@@ -568,9 +569,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         
         Example
         -------
-        >>> from ampligraph.dataset import load_fb15k_237
-        >>> X = load_fb15k_237()
+        >>> from ampligraph.datasets import load_fb15k_237
         >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> X = load_fb15k_237()
         >>> model = ScoringBasedEmbeddingModel(eta=5, 
         >>>                                    k=300,
         >>>                                    scoring_type='ComplEx',
@@ -665,7 +666,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             self.max_ent_size = self.data_handler._adapter.max_entities  
             self.max_rel_size = self.data_handler._adapter.max_relations
             # Number of columns (i.e., only triples or also weights?)
-            self.data_shape = self.data_handler._adapter.backend.data_shape
+            if isinstance(self.data_handler._adapter, PartitionDataManager):
+                self.data_shape = self.data_handler._parent_adapter.backend.data_shape
+            else:
+                self.data_shape = self.data_handler._adapter.backend.data_shape
 
             # FocusE
             if self.data_shape < 4:
@@ -679,6 +683,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                           'stop_epoch': stop_epoch,
                                           'structural_wt': structure_weight
                                           }
+                    print(self.focusE_params)
                 else:
                     print("Data shape is {}: not only triples were given, but focusE is not active!". \
                           format(self.data_shape))
@@ -794,7 +799,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
            Example
            -------
            >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
-           >>> from ampligraph.dataset import load_fb15k_237
+           >>> from ampligraph.datasets import load_fb15k_237
            >>> X = load_fb15k_237()
            >>> model = ScoringBasedEmbeddingModel(eta=5, 
            >>>                                    k=300,
@@ -829,9 +834,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
             Example
             -------
-            >>> from ampligraph.dataset import load_fb15k_237
-            >>> X = load_fb15k_237()
+            >>> from ampligraph.datasets import load_fb15k_237
             >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+            >>> X = load_fb15k_237()
             >>> model = ScoringBasedEmbeddingModel(eta=5, 
             >>>                                    k=300,
             >>>                                    scoring_type='ComplEx',
@@ -929,7 +934,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
             .. Note ::
                 If you want to be able of continuing the training, you can use the :meth:`ampligraph.utils.save_model`
-                and :meth:`ampligraph.utils.restore_model`.These functions allow to save and restore the entire state
+                and :meth:`ampligraph.utils.restore_model`.These functions save and restore the entire state
                 of the graph, which allows to continue the training from where it was stopped.
                 
            Parameters
@@ -1138,9 +1143,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
         Example
         -------
-        >>> from ampligraph.dataset import load_fb15k_237
-        >>> X = load_fb15k_237()
+        >>> from ampligraph.datasets import load_fb15k_237
         >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> X = load_fb15k_237()
         >>> model = ScoringBasedEmbeddingModel(eta=5,
         >>>                                    k=300,
         >>>                                    scoring_type='ComplEx',
@@ -1216,7 +1221,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         else:
             with shelve.open(self.partitioner_metadata['ent_map_fname']) as ent_partition:
                 batch_size = int(np.ceil(len(ent_partition.keys()) / number_of_parts))
-                indices = np.arange(part_number * batch_size, (part_number + 1) * batch_size).astype(np.str)
+                indices = np.arange(part_number * batch_size, (part_number + 1) * batch_size).astype(str)
                 emb_matrix = []
                 for idx in indices:
                     try:
@@ -1382,14 +1387,16 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             
         Example
         -------
+        >>> from ampligraph.datasets import load_fb15k_237
         >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
         >>> from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
+        >>> X = load_fb15k_237()
         >>> model = ScoringBasedEmbeddingModel(eta=5, 
         >>>                                    k=300,
         >>>                                    scoring_type='ComplEx',
         >>>                                    seed=0)
         >>> model.compile(optimizer='adam', loss='nll')
-        >>> model.fit('./fb15k-237/train.txt',
+        >>> model.fit(X['train'],
         >>>           batch_size=10000,
         >>>           epochs=5)
         Epoch 1/5
@@ -1402,12 +1409,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         29/29 [==============================] - 1s 33ms/step - loss: 65867.3750
         Epoch 5/5
         29/29 [==============================] - 1s 34ms/step - loss: 63517.9062
-        >>> ranks = model.evaluate('./fb15k-237/test.txt', 
+        >>> ranks = model.evaluate(X['test'],
         >>>                        batch_size=100,
         >>>                        corrupt_side='s,o',
-        >>>                        use_filter={'train':'./fb15k-237/train.txt',
-        >>>                                    'valid':'./fb15k-237/valid.txt',
-        >>>                                    'test':'./fb15k-237/test.txt'})
+        >>>                        use_filter={'train': X['train'],
+        >>>                                    'valid': X['valid'],
+        >>>                                    'test': X['test'])
         >>> mr_score(ranks), mrr_score(ranks), hits_at_n_score(ranks, 1), hits_at_n_score(ranks, 10), len(ranks)
         28 triples containing invalid keys skipped!
         9 triples containing invalid keys skipped!
@@ -1553,9 +1560,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         Example
         -------
         >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
-        >>> from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
         >>> import numpy as np
-        >>> from ampligraph.dataset import load_fb15k_237
+        >>> from ampligraph.datasets import load_fb15k_237
         >>> X = load_fb15k_237()
         >>> model = ScoringBasedEmbeddingModel(eta=5, 
         >>>                                    k=300,
@@ -1566,19 +1572,21 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>>           batch_size=10000,
         >>>           epochs=5)
         Epoch 1/5
-        29/29 [==============================] - 1s 45ms/step - loss: 67361.3203
+        29/29 [==============================] - 7s 228ms/step - loss: 67361.2734
         Epoch 2/5
-        29/29 [==============================] - 1s 21ms/step - loss: 67318.1172
+        29/29 [==============================] - 5s 184ms/step - loss: 67318.8203
         Epoch 3/5
-        29/29 [==============================] - 1s 21ms/step - loss: 67017.7266
+        29/29 [==============================] - 5s 187ms/step - loss: 67021.1641
         Epoch 4/5
-        29/29 [==============================] - 1s 20ms/step - loss: 65864.6406
+        29/29 [==============================] - 5s 188ms/step - loss: 65865.5547
         Epoch 5/5
-        29/29 [==============================] - 1s 20ms/step - loss: 63518.3633
-        >>> pred = model.predict('./fb15k-237/test.txt', 
+        29/29 [==============================] - 5s 188ms/step - loss: 63510.2773
+
+        >>> pred = model.predict(X['test'],
         >>>                      batch_size=100)
         >>> print(np.sort(pred))
-        [-1.0262519  -0.53667593 -0.5083029  ...  3.3078291   3.311306 3.3261664 ]
+        [-1.0868168  -0.46582496 -0.44715863 ...  3.2484274   3.3147712  3.326     ]
+
         '''
 
         self.data_handler_test = data_adapter.DataHandler(x,
@@ -1750,16 +1758,17 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>>           epochs=5)
         >>> print('Raw scores (sorted):', np.sort(model.predict(dataset['test'])))
         >>> print('Indices obtained by sorting (scores):', np.argsort(model.predict(dataset['test'])))
-        Raw scores (sorted): [-0.6014494 -0.5925436 -0.5465378 ...  1.9067042  2.0135512  2.2477078]
-        Indices obtained by sorting (scores): [14573 11577  4404 ... 17817 17816   733]
+        Raw scores (sorted): [-1.0689778   -0.42082012  -0.39887887 ...  3.261838  3.2755773  3.2768354 ]
+        Indices obtained by sorting (scores): [ 3834 18634  4066 ...  6237 13633 10961]
         >>> model.calibrate(dataset['test'], 
         >>>                 batch_size=10000,
         >>>                 positive_base_rate=0.9,
         >>>                 epochs=100)
         >>> print('Calibrated scores (sorted):', np.sort(model.predict_proba(dataset['test'])))
         >>> print('Indices obtained by sorting (Calibrated):', np.argsort(model.predict_proba(dataset['test'])))
-        Calibrated scores (sorted): [0.5553725  0.5556108  0.5568415  ... 0.6211011  0.62382233 0.6297585 ]
-        Indices obtained by sorting (Calibrated): [14573 11577  4404 ... 17817 17816   733]
+        Calibrated scores (sorted): [0.49547982 0.5396996  0.54118955 ... 0.7624245  0.7631044  0.76316655]
+        Indices obtained by sorting (Calibrated): [ 3834 18634  4066 ...  6237 13633 10961]
+
         """
         self.is_calibrated = False
         data_handler_calibrate_pos = data_adapter.DataHandler(X_pos,
@@ -1875,14 +1884,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>>           epochs=5)
         >>> print('Raw scores (sorted):', np.sort(model.predict(dataset['test'])))
         >>> print('Indices obtained by sorting (scores):', np.argsort(model.predict(dataset['test'])))
+        Raw scores (sorted): [-1.0384613  -0.46752608 -0.45149875 ...  3.2897844  3.3034315  3.3280635 ]
+        Indices obtained by sorting (scores): [ 3834 18634  4066 ...  1355 13633 10961]
         >>> model.calibrate(dataset['test'], 
         >>>                 batch_size=10000,
         >>>                 positive_base_rate=0.9,
         >>>                 epochs=100)
         >>> print('Calibrated scores (sorted):', np.sort(model.predict_proba(dataset['test'])))
         >>> print('Indices obtained by sorting (Calibrated):', np.argsort(model.predict_proba(dataset['test'])))
-        Raw scores (sorted): [-0.6014494 -0.5925436 -0.5465378 ...  1.9067042  2.0135512  2.2477078]
-        Indices obtained by sorting (scores): [14573 11577  4404 ... 17817 17816   733]
         Calibrated scores (sorted): [0.5553725  0.5556108  0.5568415  ... 0.6211011  0.62382233 0.6297585 ]
         Indices obtained by sorting (Calibrated): [14573 11577  4404 ... 17817 17816   733]
         '''
@@ -1946,8 +1955,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         Example
         -------
         >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
-        >>> from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
-        >>> from ampligraph.dataset import load_fb15k_237
+        >>> from ampligraph.datasets import load_fb15k_237
         >>> X = load_fb15k_237()
         >>> model = ScoringBasedEmbeddingModel(eta=5, 
         >>>                                    k=300,
@@ -1959,10 +1967,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         >>>           epochs=5,
         >>>           verbose=False)
         >>> model.get_embeddings(['/m/027rn', '/m/06v8s0'], 'e')
-        array([[ 0.09800743,  0.12193961, -0.06898162, ...,  0.12019662,
-         -0.11576499,  0.08774101],
-        [ 0.04332181, -0.08408434,  0.07138592, ..., -0.00679277,
-         -0.05230478,  0.07487527]], dtype=float32)
+        array([[ 0.04482496  0.11973907  0.01117733 ... -0.13391922  0.11103553  -0.08132861]
+         [-0.10158381  0.08108605 -0.07608676 ...  0.0591407  0.02791426  0.07559016]], dtype=float32)
         """
 
         if embedding_type == 'e':
