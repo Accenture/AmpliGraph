@@ -61,6 +61,7 @@ def save_model(model, model_name_path=None):
             to the working directory.
 
     """
+    model.data_shape = tf.Variable(model.data_shape, trainable=False)  # Redefine the attribute for saving it
     if model_name_path is None:
         model_name_path = "{0}".format(strftime("%Y_%m_%d-%H_%M_%S", gmtime()))
     if os.path.exists(model_name_path):
