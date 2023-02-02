@@ -57,6 +57,8 @@ design new models:
     ~layers.scoring.AbstractScoringLayer.AbstractScoringLayer
     ~loss_functions.Loss
 
+.. _embedding:
+
 Embedding Generation Layer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 The embedding generation layer generates the embeddings of the concepts present in the triples. It may be as simple as
