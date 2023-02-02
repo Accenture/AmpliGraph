@@ -58,30 +58,28 @@ class DataIndexer():
             
         Example
         -------
-        
-        >>># In-memory mapping
-        >>>data = np.array([['a','b','c'],['c','b','d'],['d','e','f']])
-        >>>mapper = DataIndexer(data, backend='in_memory')
-        >>>mapper.get_indexes(data)
-        
-        Mappings created with: 4 ents, 4 rev_ents, 2 rels and 2 rev_rels
-
-        <tf.Tensor: shape=(3, 3), dtype=int32, numpy=
-        array([[0, 0, 1],
-               [1, 0, 2],
-               [2, 1, 3]], dtype=int32)>
-               
-        >>># Persistent mapping
-        >>>data = np.array([['a','b','c'],['c','b','d'],['d','e','f']])
-        >>>mapper = DataIndexerShelves(data, backend='sqlite')
-        >>>mapper.get_indexes(data)        
+        >>> from ampligraph.datasets import DataIndexer
+        >>> import numpy as np
+        >>> # In-memory mapping
+        >>> data = np.array([['a','b','c'],['c','b','d'],['d','e','f']])
+        >>> mapper = DataIndexer(data, backend='in_memory')
+        >>> print(mapper.get_indexes(data))
+        [[0 0 1]
+         [1 0 2]
+         [2 1 3]]
+        >>> # Persistent mapping
+        >>> data = np.array([['a','b','c'],['c','b','d'],['d','e','f']])
+        >>> mapper = DataIndexer(data, backend='sqlite')
+        >>> print(mapper.get_indexes(data))
+        [[0 0 1]
+         [1 0 2]
+         [2 1 3]]
        """
     def __init__(self, X, backend="in_memory", **kwargs):
         '''Initialises the DataIndexer.'''
         logger.debug("Initialisation of DataIndexer.")
         self.backend_type = backend
         self.data = X
-        # print(X)
 #        if len(kwargs) == 0:
 #            self.backend = INDEXER_BACKEND_REGISTRY.get(backend)(X)
 #        else:
