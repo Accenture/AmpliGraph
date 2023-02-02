@@ -13,7 +13,7 @@ logger.setLevel(logging.DEBUG)
 
 
 def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_unseen=True, entities_subset=None,
-                         corrupt_side='s,o', batch_size=100):
+                         corrupt_side='s,o', batch_size=1):
     """Evaluate the performance of an embedding model.
 
     The evaluation protocol follows the procedure defined in :cite:`bordes2013translating` and can be summarised as:
