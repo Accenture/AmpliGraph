@@ -49,6 +49,37 @@ def load_csv(data_source, chunk_size=None, sep='\t', verbose=False, **kwargs):
     else:
         return data
 
+def load_json(data_source, orient='records', chunksize=None):
+    """json files data loader.
+
+        Parameters
+        ----------
+        data_source : str
+            Path to a .json file.
+        orient : str
+            Indicates the expected .json file format. The default ``orient="records"`` assumes the knowledge graph is
+            stored as a list like `[{subject_1: value, predicate_1: value, object_1: value}, ...,
+            {subject_n: value, predicate_n: value, object_n: value}]`. If looking for more options check the
+            `Pandas <https://pandas.pydata.org/docs/reference/api/pandas.read_json.html>`_ website.
+        chunksize : int
+            The size of chunk to be used while reading the data. If used, the returned type is
+            an iterator and not a numpy array.
+
+
+        Returns
+        -------
+        data : ndarray or iter
+            Either a numpy array with data or a lazy iterator if ``chunk_size`` was provided.
+    """
+    if chunksize is not None:
+        data = pd.read_json(data_source, orient=orient, lines=True, chunksize=chunksize)
+    else:
+        data = pd.read_json(data_source, orient=orient)
+    logger.debug("data type: {}".format(type(data)))
+    logger.debug("JSON loaded into iterator data.")
+
+    return data.values
+
 
 def chunks(iterable, chunk_size=1):
     """Chunks generator."""
@@ -76,8 +107,7 @@ class DataSourceIdentifier():
        supported_types: dict
             Dictionary of supported types along with their adequate loaders, to support a new data type, this
             dictionary needs to be updated with the file extension as key and the loading function name as value.
-            TODO: the supported types could be stored in a json file as a configuration.
-    
+
        Example
        -------
        >>>identifier = DataSourceIdentifier("data.csv")
@@ -96,7 +126,8 @@ class DataSourceIdentifier():
         self.data_source = data_source
         self.supported_types = {"csv": load_csv, 
                                 "txt": load_csv, 
-                                "gz": load_csv, 
+                                "gz": load_csv,
+                                "json": load_json,
                                 "tar": load_tar,
                                 "iter": chunks}
         self._identify()
