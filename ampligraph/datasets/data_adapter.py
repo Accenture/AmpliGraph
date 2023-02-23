@@ -26,8 +26,8 @@ class DataHandler():
                  partitioning_k=1):
         '''Initializes the DataHandler
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         model: tf.keras.Model
             Model instance.
         batch_size: int

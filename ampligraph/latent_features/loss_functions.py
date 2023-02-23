@@ -224,8 +224,8 @@ class PairwiseLoss(Loss):
     where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives,
     :math:`\mathcal{C}` is the set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
-    Examples
-    --------
+    Example
+    -------
     >>> import ampligraph.latent_features.loss_functions as lfs
     >>> loss = lfs.PairwiseLoss({'margin': 0.005, 'reduction': 'sum'})
     >>> isinstance(loss, lfs.PairwiseLoss)
@@ -300,8 +300,8 @@ class NLLLoss(Loss):
     where :math:`y \in \{-1, 1\}` is the label of the statement, :math:`\mathcal{G}` is the set of positives,
     :math:`\mathcal{C}` is the set of corruptions and :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
-    Examples
-    --------
+    Example
+    -------
     >>> import ampligraph.latent_features.loss_functions as lfs
     >>> loss = lfs.NLLLoss({'reduction': 'mean'})
     >>> isinstance(loss, lfs.NLLLoss)
@@ -375,8 +375,8 @@ class AbsoluteMarginLoss(Loss):
     where :math:`\gamma` is the margin, :math:`\mathcal{G}` is the set of positives, :math:`\mathcal{C}` is the
     set of corruptions, :math:`f_{model}(t;\Theta)` is the model-specific scoring function.
 
-    Examples
-    --------
+    Example
+    -------
     >>> import ampligraph.latent_features.loss_functions as lfs
     >>> loss = lfs.AbsoluteMarginLoss({'margin': 1, 'reduction': 'mean'})
     >>> isinstance(loss, lfs.AbsoluteMarginLoss)
@@ -461,8 +461,8 @@ class SelfAdversarialLoss(Loss):
     where :math:`\alpha` is the temperature of sampling and :math:`f_{model}` is the scoring function of
     the desired embedding model.
 
-    Examples
-    --------
+    Example
+    -------
     >>> import ampligraph.latent_features.loss_functions as lfs
     >>> loss = lfs.SelfAdversarialLoss({'margin': 1, 'alpha': 0.1, 'reduction': 'mean'})
     >>> isinstance(loss, lfs.SelfAdversarialLoss)
@@ -549,8 +549,8 @@ class NLLMulticlass(Loss):
         \mathcal{L(X)} = -\sum_{x_{e_1,e_2,r_k} \in X} log\,p(e_2|e_1,r_k)
          -\sum_{x_{e_1,e_2,r_k} \in X} log\,p(e_1|r_k, e_2)
          
-    Examples
-    --------
+    Example
+    -------
     >>> import ampligraph.latent_features.loss_functions as lfs
     >>> loss = lfs.NLLMulticlass({'reduction': 'mean'})
     >>> isinstance(loss, lfs.NLLMulticlass)
@@ -616,8 +616,8 @@ class NLLMulticlass(Loss):
 class LossFunctionWrapper(Loss):
     """Wraps a loss function in the `Loss` class.
     
-    Examples
-    --------
+    Example
+    -------
     >>> import ampligraph.latent_features.loss_functions as lfs
     >>> def user_defined_loss(scores_pos, scores_neg):
     >>>    neg_exp = tf.exp(scores_neg)
@@ -694,8 +694,8 @@ def get(identifier, hyperparams={}):
     loss: Loss class instance
         Loss function.
         
-    Examples
-    --------
+    Example
+    -------
     >>> import ampligraph.latent_features.loss_functions as lfs
     >>> nll_loss = lfs.get('nll')
     >>> isinstance(udf_loss, Loss)

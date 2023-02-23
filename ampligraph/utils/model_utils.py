@@ -29,8 +29,8 @@ logger.setLevel(logging.DEBUG)
 def save_model(model, model_name_path=None):
     """Save a trained model to disk.
 
-        Examples
-        --------
+        Example
+        -------
         >>> import numpy as np
         >>> from ampligraph.latent_features import ComplEx
         >>> from ampligraph.utils import save_model
@@ -78,7 +78,7 @@ def restore_model(model_name_path=None):
     '''Restore a trained model from disk.
 
     Parameters
-    ==========
+    ----------
     model_name_path : str
         Name of the path to the model.
     '''
@@ -154,10 +154,10 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all',
         `TensorBoard Embedding Projector <https://projector.tensorflow.org>`_ will give a result
         similar to the picture below:
 
-        .. image:: img/embeddings_projector.png
+        .. image:: ../img/embeddings_projector.png
 
-    Examples
-    --------
+    Example
+    -------
     >>> # create model and compile using user defined optimizer settings and user defined settings of an existing loss
     >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
     >>> from ampligraph.latent_features.loss_functions import SelfAdversarialLoss
@@ -305,8 +305,8 @@ def dataframe_to_triples(X, schema):
     schema: list of tuples
         List of (subject, relation_name, object) tuples where subject and object are in the headers of the data frame.
 
-    Examples
-    --------
+    Example
+    -------
     >>> import pandas as pd
     >>> import numpy as np
     >>> from ampligraph.utils.model_utils import dataframe_to_triples
