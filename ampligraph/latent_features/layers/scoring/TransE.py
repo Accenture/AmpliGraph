@@ -18,7 +18,7 @@ class TransE(AbstractScoringLayer):
     The scoring function of TransE computes a similarity between the embedding of the subject
     :math:`\mathbf{e}_{sub}` translated by the embedding of the predicate :math:`\mathbf{e}_{pred}`,
     and the embedding of the object :math:`\mathbf{e}_{obj}`,
-    using the :math:`L_1` or :math:`L_2` norm :math:`||\cdot||`:
+    using the :math:`L_1` or :math:`L_2` norm :math:`||\cdot||` (default: :math:`L_1`):
     
     .. math::
         f_{TransE}=-||\mathbf{e}_{sub} + \mathbf{e}_{pred} - \mathbf{e}_{obj}||

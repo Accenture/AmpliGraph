@@ -112,8 +112,8 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_un
         subject corruptions and the second column represents the rank against object corruptions.
         In other cases, it returns (n), i.e., rank against the specified corruptions.
 
-    Examples
-    --------
+    Example
+    -------
     >>> import numpy as np
     >>> from ampligraph.datasets import load_wn18
     >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel

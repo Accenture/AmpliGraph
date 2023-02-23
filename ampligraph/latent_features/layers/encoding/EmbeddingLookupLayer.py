@@ -30,8 +30,8 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         '''
         Initializes the embeddings of the model.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         k: int
             Embedding size.
         max_ent_size: int
@@ -52,6 +52,7 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
             Regularizer of relations embeddings.
         seed: int 
             Random seed.
+
         '''
         super(EmbeddingLookupLayer, self).__init__(**kwargs)
         
@@ -81,7 +82,8 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         self.rel_regularizer = relation_kernel_regularizer
         
     def set_ent_rel_initial_value(self, ent_init, rel_init):
-        ''' Sets the initial value of entity and relation embedding matrix.
+        '''
+        Sets the initial value of entity and relation embedding matrix.
 
         This function is mainly used during the partitioned training where the full embedding matrix is 
         initialized outside the model.
@@ -90,16 +92,18 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         self.rel_partition = rel_init
         
     def set_initializer(self, initializer):
-        ''' Set the initializer of the weights of this layer.
+        '''
+        Set the initializer of the weights of this layer.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         initializer: str (name of objective function) or objective function or `tf.keras.initializers.Initializer` or list
             Initializer of the entity and relation embeddings. This is either a single value or a list of size 2.
             If it is a single value, then both the entities and relations will be initialized based on 
             the same initializer. If it is a list, the first initializer will be used for entities and the second
             for relations. Any callable with the signature ``init = fn(shape)`` can be interpreted as an objective
             function.
+
         '''
         if isinstance(initializer, list):
             assert len(initializer) == 2, \
@@ -112,16 +116,17 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
             self.rel_init = tf.keras.initializers.get(initializer)
             
     def set_regularizer(self, regularizer):
-        ''' Set the regularizer of the weights of this layer.
+        '''
+        Set the regularizer of the weights of this layer.
         
-        Parameters:
-        -----------
-        regularizer: str (name of objective function) or objective function or `tf.keras.regularizers.Regularizer`
-        instance or list
+        Parameters
+        ----------
+        regularizer: str (name of objective function) or objective function or `tf.keras.regularizers.Regularizer` instance or list
             Regularizer of the weights determining entity and relation embeddings.
             If it is a single value, then both the entities and relations will be regularized based on 
             the same regularizer. If it is a list, the first regularizer will be used for entities and the second
             for relations.
+
         '''
             
         if isinstance(regularizer, list):
@@ -212,8 +217,8 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
     def partition_change_updates(self, partition_ent_emb, partition_rel_emb):
         ''' Perform the changes that are required when the partition is changed during training.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         batch_ent_emb:
             Entity embeddings that need to be trained for the partition
             (all triples of the partition will have an embedding in this matrix).
@@ -237,13 +242,13 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         '''
         Looks up the embeddings of entities and relations of the triples.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         triples : ndarray, shape (n, 3)
             Batch of input triples.
         
-        Returns:
-        --------
+        Returns
+        -------
         emb_triples : list
             List of embeddings of subjects, predicates, objects.
         '''
@@ -256,13 +261,13 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
     def compute_output_shape(self, input_shape):
         ''' Returns the output shape of outputs of call function.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         input_shape: list
             Shape of inputs of call function.
         
-        Returns:
-        --------
+        Returns
+        -------
         output_shape: list
             Shape of outputs of call function.
         '''

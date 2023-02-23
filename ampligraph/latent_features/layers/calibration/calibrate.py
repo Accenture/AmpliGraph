@@ -45,6 +45,9 @@ class CalibrationLayer(tf.keras.layers.Layer):
         super(CalibrationLayer, self).__init__(**kwargs)
         
     def build(self, input_shape):
+        '''
+        Build method.
+        '''
         self.calib_w = self.add_weight(
             'calib_w',
             shape=(),
@@ -61,6 +64,9 @@ class CalibrationLayer(tf.keras.layers.Layer):
         self.built = True
         
     def call(self, scores_pos, scores_neg=tf.convert_to_tensor(()), training=0):
+        '''
+        Call method.
+        '''
         if training:
             scores_all = tf.concat([scores_pos, scores_neg], axis=0)
         else:

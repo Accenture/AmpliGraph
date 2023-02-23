@@ -385,7 +385,8 @@ def compare_partitionings(list_of_partitioners, data, num_partitions=2, visualiz
 
 def main():
     """Main function with example usage."""
-    from ampligraph.datasets import GraphDataLoader, SQLiteAdapter
+    from ampligraph.datasets import GraphDataLoader
+    from ampligraph.datasets.sqlite_adapter import SQLiteAdapter
     sample = load_fb15k_237()['train']
     data = GraphDataLoader(sample, backend=SQLiteAdapter, in_memory=False)
     partitioners = [RandomVerticesGraphPartitioner]

@@ -58,7 +58,7 @@ class DataIndexer():
             
         Example
         -------
-        >>> from ampligraph.datasets import DataIndexer
+        >>> from ampligraph.datasets.data_indexer import DataIndexer
         >>> import numpy as np
         >>> # In-memory mapping
         >>> data = np.array([['a','b','c'],['c','b','d'],['d','e','f']])
@@ -414,7 +414,8 @@ class InMemory():
             indexed_data = self.get_indexes_from_a_dictionary(sample[:,:3], order=order)
             # focusE
             if sample.shape[1] > 3:
-                    weights = preprocess_focusE_weights(data=sample[:, :3], weights=sample[:, 3:])
+                    # weights = preprocess_focusE_weights(data=sample[:, :3], weights=sample[:, 3:])
+                    weights = sample[:, 3:]
                     return np.concatenate([indexed_data, weights], axis=1)
             else:
                 return indexed_data
@@ -908,8 +909,8 @@ class Shelves():
             self.data_shape = sample.shape[1]
             indexed_data = self.get_indexes_from_shelves(sample[:, :3], order=order)
             if sample.shape[1] > 3:
-                # weights = sample[:, 3:]
-                weights = preprocess_focusE_weights(data=sample[:, :3], weights=sample[:, 3:])
+                weights = sample[:, 3:]
+                # weights = preprocess_focusE_weights(data=sample[:, :3], weights=sample[:, 3:])
                 return np.concatenate([indexed_data, weights], axis=1)
             return indexed_data
         else:

@@ -287,6 +287,7 @@ class ScoringModelBase:
                        callbacks=callbacks,
                        focusE=focusE,
                        focusE_params=params_focusE)
+        self.data_shape = self.model.data_shape
         
     def get_indexes(self, X, type_of='t', order="raw2ind"):
         """Converts given data to indexes or to raw data (according to order).
@@ -323,9 +324,9 @@ class ScoringModelBase:
             count: int
                 Count of the entities or relations.
         '''
-        if embedding_type == 'entity' or embedding_type == 'e':
+        if concept_type == 'entity' or concept_type == 'e':
             return self.model.get_count('e')
-        elif embedding_type == 'relation' or embedding_type == 'r':
+        elif concept_type == 'relation' or concept_type == 'r':
             return self.model.get_count('r')
         else:
             raise ValueError('Invalid value for concept_type!')

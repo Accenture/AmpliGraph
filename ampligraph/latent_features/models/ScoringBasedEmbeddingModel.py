@@ -280,9 +280,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def build(self, input_shape):
         ''' Override the build function of the Model class.
 
-        It is called on the first call to __call__
+        It is called on the first call to ``__call__``.
         With this function we set some internal parameters of the encoding layers (needed to build that layers
-        themselves) based on the input data supplied by the user while calling the ``fit`` function.
+        themselves) based on the input data supplied by the user while calling the `~ScoringBasedEmbeddingModel.fit` method.
         '''
         # set the max number of the entities that will be trained per partition
         # in case of non-partitioned training, it is equal to the total number of entities of the dataset
@@ -485,152 +485,152 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             partitioning_k=1,
             focusE=False,
             focusE_params={}):
-        '''Fit the model on the provided data.
+        ''' Fit the model on the provided data.
         
-        Parameters
-        ----------
-        x: np.array, shape (n, 3), or str or GraphDataLoader or AbstractGraphPartitioner
-            Data OR Filename of the data file OR Data Handle to be used for training.
-        batch_size: int
-            Batch size to use during training.
-            May be overridden if **x** is a GraphDataLoader or AbstractGraphPartitioner instance.
-        epochs: int
-            Number of epochs to train (default: 1).
-        verbose: bool
-            Verbosity (default: `True`).
-        callbacks: list of tf.keras.callbacks.Callback
-            List of callbacks to be used during training (default: `None`).
-        validation_split: float
-            Validation split to carve out of **x** (default: 0.0) (currently supported only when **x** is a np.array).
-        validation_data: np.array, shape (n, 3) or str or `GraphDataLoader` or `AbstractGraphPartitioner`
-            Data OR Filename of the data file OR Data Handle to be used for validation.
-        shuffle: bool
-            Indicates whether to shuffle the data after every epoch during training (default: `True`).
-        initial epoch: int
-            Initial epoch number (default: 1).
-        validation_batch_size: int
-            Batch size to use during validation (default: 100).
-            May be overridden if ``validation_data`` is `GraphDataLoader` or `AbstractGraphPartitioner` instance.
-        validation_freq: int
-            Indicates how often to validate (default: 50).
-        validation_burn_in: int
-            The burn-in time after which the validation kicks in.
-        validation_filter: bool or dict
-            Validation filter to be used.
-        validation_entities_subset: list or np.array
-            Subset of entities to be used for generating corruptions.
+            Parameters
+            ----------
+            x: np.array, shape (n, 3), or str or GraphDataLoader or AbstractGraphPartitioner
+                Data OR Filename of the data file OR Data Handle to be used for training.
+            batch_size: int
+                Batch size to use during training.
+                May be overridden if **x** is a GraphDataLoader or AbstractGraphPartitioner instance.
+            epochs: int
+                Number of epochs to train (default: 1).
+            verbose: bool
+                Verbosity (default: `True`).
+            callbacks: list of tf.keras.callbacks.Callback
+                List of callbacks to be used during training (default: `None`).
+            validation_split: float
+                Validation split to carve out of **x** (default: 0.0) (currently supported only when **x** is a np.array).
+            validation_data: np.array, shape (n, 3) or str or `GraphDataLoader` or `AbstractGraphPartitioner`
+                Data OR Filename of the data file OR Data Handle to be used for validation.
+            shuffle: bool
+                Indicates whether to shuffle the data after every epoch during training (default: `True`).
+            initial epoch: int
+                Initial epoch number (default: 1).
+            validation_batch_size: int
+                Batch size to use during validation (default: 100).
+                May be overridden if ``validation_data`` is `GraphDataLoader` or `AbstractGraphPartitioner` instance.
+            validation_freq: int
+                Indicates how often to validate (default: 50).
+            validation_burn_in: int
+                The burn-in time after which the validation kicks in.
+            validation_filter: bool or dict
+                Validation filter to be used.
+            validation_entities_subset: list or np.array
+                Subset of entities to be used for generating corruptions.
 
-            .. Note ::
+                .. Note ::
 
-                One can perform early stopping using the tensorflow callback ``tf.keras.callbacks.EarlyStopping``
-                as shown in the accompanying example below.
+                    One can perform early stopping using the tensorflow callback ``tf.keras.callbacks.EarlyStopping``
+                    as shown in the accompanying example below.
 
-        focusE: bool
-            Specify whether to include the FocusE layer (default: `False`).
-            The FocusE layer :cite:`pai2021learning` allows to inject numeric edge attributes into the scoring layer
-            of a traditional knowledge graph embedding architecture.
-            Semantically, the numeric value can signify importance, uncertainity, significance, confidence...
-            of a triple.
+            focusE: bool
+                Specify whether to include the FocusE layer (default: `False`).
+                The FocusE layer :cite:`pai2021learning` allows to inject numeric edge attributes into the scoring layer
+                of a traditional knowledge graph embedding architecture.
+                Semantically, the numeric value can signify importance, uncertainity, significance, confidence...
+                of a triple.
 
-            .. Note ::
+                .. Note ::
 
-                In order to activate focusE, the training data must have shape (n, 4), where the first three columns
-                store subject, predicate and object of triples, and the 4-th column stores the numerical edge value
-                associated with each triple.
+                    In order to activate focusE, the training data must have shape (n, 4), where the first three columns
+                    store subject, predicate and object of triples, and the 4-th column stores the numerical edge value
+                    associated with each triple.
 
-        focusE_params: dict
-            If FocusE layer is included, specify its hyper-parameters.
-            The following hyper-params can be passed:
+            focusE_params: dict
+                If FocusE layer is included, specify its hyper-parameters.
+                The following hyper-params can be passed:
 
-            - `"non_linearity"`: can be one of the following values `"linear"`, `"softplus"`, `"sigmoid"`, `"tanh"`.
-            - `"stop_epoch"`: specifies how long to decay (linearly) the numeric values from 1 to original value.
-            - `"structural_wt"`: structural influence hyperparameter :math:`\in [0, 1]` that modulates the influence
-            of graph topology.
+                + `"non_linearity"`: can be one of the following values `"linear"`, `"softplus"`, `"sigmoid"`, `"tanh"`.
+                + `"stop_epoch"`: specifies how long to decay (linearly) the numeric values from 1 to original value.
+                + `"structural_wt"`: structural influence hyperparameter :math:`\in [0, 1]` that modulates the influence of graph topology.
 
-            If ``focusE==True`` and ``focusE_params==dict()``, then the default values are passed:
-            ``non_linearity="linear"``, ``stop_epoch=251`` and ``structural_wt=0.001``.
+                If ``focusE==True`` and ``focusE_params==dict()``, then the default values are passed:
+                ``non_linearity="linear"``, ``stop_epoch=251`` and ``structural_wt=0.001``.
 
-        partitioning_k: int
-            Num of partitions to use while training (default: 1, i.e., the data is not partitioned).
-            May be overridden if ``x`` is an `AbstractGraphPartitioner` instance.
-            
-            .. Note ::
-            
-                This function is quite useful when the size of your dataset is extremely large and cannot fit in memory.
-                Setting this to a number strictly larger than 1 will automatically partition the data using
-                ``BucketGraphPartitioner``.
-                Kindly checkout the tutorials for usage in Advanced mode.
-            
-        Returns
-        -------
-        history: History object
-            Its `History.history` attribute is a record of training loss values, as well as validation loss
-            and validation metrics values.
-        
-        Example
-        -------
-        >>> from ampligraph.datasets import load_fb15k_237
-        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
-        >>> X = load_fb15k_237()
-        >>> model = ScoringBasedEmbeddingModel(eta=5, 
-        >>>                                    k=300,
-        >>>                                    scoring_type='ComplEx',
-        >>>                                    seed=0)
-        >>> model.compile(optimizer='adam', loss='nll')
-        >>> model.fit(X['train'],
-        >>>           batch_size=10000,
-        >>>           epochs=5)
-        Epoch 1/5
-        29/29 [==============================] - 2s 71ms/step - loss: 67361.3047
-        Epoch 2/5
-        29/29 [==============================] - 1s 35ms/step - loss: 67318.6094
-        Epoch 3/5
-        29/29 [==============================] - 1s 37ms/step - loss: 67020.0703
-        Epoch 4/5
-        29/29 [==============================] - 1s 35ms/step - loss: 65867.3750
-        Epoch 5/5
-        29/29 [==============================] - 1s 35ms/step - loss: 63517.9062
-        
-        >>> # Early stopping example
-        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
-        >>> from ampligraph.datasets import load_fb15k_237
-        >>> dataset = load_fb15k_237()
-        >>> model = ScoringBasedEmbeddingModel(eta=1, 
-        >>>                                    k=10,
-        >>>                                    scoring_type='TransE')
-        >>> model.compile(optimizer='adam', loss='multiclass_nll')
-        >>> import tensorflow as tf
-        >>> early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_mrr",            # which metrics to monitor
-        >>>                                               patience=3,                   # If the monitored metric doesnt improve for these many checks the model early stops
-        >>>                                               verbose=1,                    # verbosity
-        >>>                                               mode="max",                   # how to compare the monitored metrics; "max" means higher is better
-        >>>                                               restore_best_weights=True)    # restore the weights with best value
-        >>> # the early stopping instance needs to be passed as callback to fit function
-        >>> model.fit(dataset['train'],
-        >>>           batch_size=10000,
-        >>>           epochs=5,
-        >>>           validation_freq=1,                       # validation frequency
-        >>>           validation_batch_size=100,               # validation batch size
-        >>>           validation_burn_in=3,                    # burn in time
-        >>>           validation_corrupt_side='s,o',           # which side to corrupt
-        >>>           validation_data=dataset['valid'][::100], # Validation data
-        >>>           callbacks=[early_stop])                  # Pass the early stopping object as a callback
-        Epoch 1/5
-        29/29 [==============================] - 2s 82ms/step - loss: 6698.2188
-        Epoch 2/5
-        29/29 [==============================] - 1s 34ms/step - loss: 6648.8862
-        Epoch 3/5
-        3/3 [==============================] - 1s 446ms/steposs: 6652.895
-        29/29 [==============================] - 2s 84ms/step - loss: 6590.2842 - val_mrr: 0.0811 - 
-        val_mr: 1776.4545 - val_hits@1: 0.0000e+00 - val_hits@10: 0.2301 - val_hits@100: 0.4148
-        Epoch 4/5
-        3/3 [==============================] - 0s 102ms/steposs: 6564.021
-        29/29 [==============================] - 1s 47ms/step - loss: 6517.4517 - val_mrr: 0.0918 - 
-        val_mr: 1316.6335 - val_hits@1: 0.0000e+00 - val_hits@10: 0.2528 - val_hits@100: 0.4716
-        Epoch 5/5
-        3/3 [==============================] - 1s 177ms/steposs: 6468.798
-        29/29 [==============================] - 2s 62ms/step - loss: 6431.8696 - val_mrr: 0.0901 - 
-        val_mr: 1074.8920 - val_hits@1: 0.0000e+00 - val_hits@10: 0.2386 - val_hits@100: 0.4773
+            partitioning_k: int
+                Num of partitions to use while training (default: 1, i.e., the data is not partitioned).
+                May be overridden if ``x`` is an `AbstractGraphPartitioner` instance.
+
+                .. Note ::
+
+                    This function is quite useful when the size of your dataset is extremely large and cannot fit in memory.
+                    Setting this to a number strictly larger than 1 will automatically partition the data using
+                    ``BucketGraphPartitioner``.
+                    Kindly checkout the tutorials for usage in Advanced mode.
+
+            Returns
+            -------
+            history: History object
+                Its `History.history` attribute is a record of training loss values, as well as validation loss
+                and validation metrics values.
+
+            Example
+            -------
+            >>> from ampligraph.datasets import load_fb15k_237
+            >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+            >>> X = load_fb15k_237()
+            >>> model = ScoringBasedEmbeddingModel(eta=5,
+            >>>                                    k=300,
+            >>>                                    scoring_type='ComplEx',
+            >>>                                    seed=0)
+            >>> model.compile(optimizer='adam', loss='nll')
+            >>> model.fit(X['train'],
+            >>>           batch_size=10000,
+            >>>           epochs=5)
+            Epoch 1/5
+            29/29 [==============================] - 2s 71ms/step - loss: 67361.3047
+            Epoch 2/5
+            29/29 [==============================] - 1s 35ms/step - loss: 67318.6094
+            Epoch 3/5
+            29/29 [==============================] - 1s 37ms/step - loss: 67020.0703
+            Epoch 4/5
+            29/29 [==============================] - 1s 35ms/step - loss: 65867.3750
+            Epoch 5/5
+            29/29 [==============================] - 1s 35ms/step - loss: 63517.9062
+
+            >>> # Early stopping example
+            >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+            >>> from ampligraph.datasets import load_fb15k_237
+            >>> dataset = load_fb15k_237()
+            >>> model = ScoringBasedEmbeddingModel(eta=1,
+            >>>                                    k=10,
+            >>>                                    scoring_type='TransE')
+            >>> model.compile(optimizer='adam', loss='multiclass_nll')
+            >>> import tensorflow as tf
+            >>> early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_mrr",            # which metrics to monitor
+            >>>                                               patience=3,                   # If the monitored metric doesnt improve for these many checks the model early stops
+            >>>                                               verbose=1,                    # verbosity
+            >>>                                               mode="max",                   # how to compare the monitored metrics; "max" means higher is better
+            >>>                                               restore_best_weights=True)    # restore the weights with best value
+            >>> # the early stopping instance needs to be passed as callback to fit function
+            >>> model.fit(dataset['train'],
+            >>>           batch_size=10000,
+            >>>           epochs=5,
+            >>>           validation_freq=1,                       # validation frequency
+            >>>           validation_batch_size=100,               # validation batch size
+            >>>           validation_burn_in=3,                    # burn in time
+            >>>           validation_corrupt_side='s,o',           # which side to corrupt
+            >>>           validation_data=dataset['valid'][::100], # Validation data
+            >>>           callbacks=[early_stop])                  # Pass the early stopping object as a callback
+            Epoch 1/5
+            29/29 [==============================] - 2s 82ms/step - loss: 6698.2188
+            Epoch 2/5
+            29/29 [==============================] - 1s 34ms/step - loss: 6648.8862
+            Epoch 3/5
+            3/3 [==============================] - 1s 446ms/steposs: 6652.895
+            29/29 [==============================] - 2s 84ms/step - loss: 6590.2842 - val_mrr: 0.0811 -
+            val_mr: 1776.4545 - val_hits@1: 0.0000e+00 - val_hits@10: 0.2301 - val_hits@100: 0.4148
+            Epoch 4/5
+            3/3 [==============================] - 0s 102ms/steposs: 6564.021
+            29/29 [==============================] - 1s 47ms/step - loss: 6517.4517 - val_mrr: 0.0918 -
+            val_mr: 1316.6335 - val_hits@1: 0.0000e+00 - val_hits@10: 0.2528 - val_hits@100: 0.4716
+            Epoch 5/5
+            3/3 [==============================] - 1s 177ms/steposs: 6468.798
+            29/29 [==============================] - 2s 62ms/step - loss: 6431.8696 - val_mrr: 0.0901 -
+            val_mr: 1074.8920 - val_hits@1: 0.0000e+00 - val_hits@10: 0.2386 - val_hits@100: 0.4773
+
         '''
         # verifies if compile has been called before calling fit
         self._assert_compile_was_called()
@@ -683,7 +683,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                           'stop_epoch': stop_epoch,
                                           'structural_wt': structure_weight
                                           }
-                    print(self.focusE_params)
                 else:
                     print("Data shape is {}: not only triples were given, but focusE is not active!". \
                           format(self.data_shape))
@@ -824,8 +823,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             Parameters
             ----------
             concept_type: str
-                Indicates whether to count entities (``concept_type='e'``) or relations
-                (``concept_type='r') (default: 'e').
+                Indicates whether to count entities (``concept_type='e'``) or
+                relations (``concept_type='r'``) (default: `'e'`).
                 
             Returns
             -------

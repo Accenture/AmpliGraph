@@ -156,7 +156,6 @@ class DummyBackend():
             check_triples = np.vectorize(lambda t, r: (t in objects and r in subjects) or (
                 t in subjects and r in objects))
             triples = self.data[check_triples(self.data[:, 2], self.data[:, 0])]
-            print(triples.shape)
         elif objects is None:
             triples = self.data[np.isin(self.data[:, 0], subjects)]
         elif subjects is None:
@@ -408,8 +407,8 @@ class DummyBackend():
             # focusE
             if self.data_shape > 3:
                 weights = self.data[start_index:start_index + batch_size, 3:]
-                weights = preprocess_focusE_weights(data=out,
-                                                    weights=weights)
+                # weights = preprocess_focusE_weights(data=out,
+                #                                     weights=weights)
                 if self.use_filter:
                     yield out, tf.ragged.constant(participating_entities, dtype=tf.int32), weights
                 else:
@@ -438,7 +437,8 @@ class GraphDataLoader():
        
        Example
        -------
-       >>> from ampligraph.datasets import GraphDataLoader, SQLiteAdapter, BucketGraphPartitioner
+       >>> from ampligraph.datasets import GraphDataLoader, BucketGraphPartitioner
+       >>> from ampligraph.datasets.sqlite_adapter import SQLiteAdapter
        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
        >>> AMPLIGRAPH_DATA_HOME='/your/path/to/datasets/'
        >>> # Graph loader - loads the data from the file, numpy array, etc and generates batches for iterating

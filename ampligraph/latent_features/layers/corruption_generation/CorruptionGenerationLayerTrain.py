@@ -23,8 +23,8 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         '''
         Initializes the corruption generation layer.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         eta: int
             Number of corruptions to generate.
         '''
@@ -35,15 +35,15 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         '''
         Generates corruption for the positives supplied.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         pos: array-like, shape (n, 3)
             Batch of input triples (positives).
         ent_size: int
             Number of unique entities present in the partition.
         
-        Returns:
-        --------
+        Returns
+        -------
         corruptions: array-like, shape (n * eta, 3)
             Corruptions of the triples.
         '''

@@ -38,14 +38,14 @@ def LP_regularizer(trainable_param, regularizer_parameters={}):
 def get(identifier, hyperparams={}):
     ''' Get the regularizer specified by the identifier.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     identifier: str or tf.keras.regularizer or a callable
         Name of the regularizer to use (with default parameters) or instance of `tf.keras.regularizer` or a
         callable function.
 
-    Returns:
-    --------
+    Returns
+    -------
     regularizer: tf.keras.regularizer
         Regularizer instance of the `tf.keras.regularizer` class.
 

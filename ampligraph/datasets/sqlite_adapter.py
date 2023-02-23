@@ -11,8 +11,9 @@ This module provides SQLite backend for GraphDataLoader.
 
 Attributes
 ----------
-DEFAULT_CHUNKSIZE: [default 30000] size of data that can be at once loaded to the memory,
-                   number of rows, should be set according to available hardware capabilities.
+DEFAULT_CHUNKSIZE: int
+    Size of data that can be at once loaded to the memory, number of rows, should be set according to available
+    hardware capabilities (default: 30000).
 """
 from .data_indexer import DataIndexer
 from ampligraph.utils.profiling import get_human_readable_size
@@ -37,8 +38,8 @@ DEFAULT_CHUNKSIZE = 30000
 class SQLiteAdapter():
     """ Class implementing database connection.
     
-        Examples
-        --------
+        Example
+        -------
         >>> AMPLIGRAPH_DATA_HOME='/your/path/to/datasets/'
         >>> # Initialize GraphDataLoader from .csv file
         >>> data = GraphDataLoader("data.csv", backend=SQLiteAdapter)
@@ -118,7 +119,9 @@ class SQLiteAdapter():
             self.chunk_size = chunk_size
             
     def get_output_signature(self):
-        '''Get the output signature of the tf.data.Dataset object.'''
+        '''Get the output signature of the tf.data.Dataset object.
+
+        '''
         triple_tensor = tf.TensorSpec(shape=(None, 3), dtype=tf.int32)
 
         # focusE
@@ -134,14 +137,18 @@ class SQLiteAdapter():
         return (triple_tensor)
         
     def open_db(self):
-        '''Open the database.'''
+        '''Open the database.
+
+        '''
         db_uri = 'file:{}?mode=rw'.format(pathname2url(self.db_path))
         self.connection = sqlite3.connect(db_uri, uri=True)
         self.flag_db_open = True
         logger.debug("----------------DB OPENED - normally -----------------------")
 
     def open_connection(self):
-        """Context manager function to open (or create if it does not exist) a database connection."""
+        """Context manager function to open (or create if it does not exist) a database connection.
+
+        """
         if not self.flag_db_open:
             try:
                 self.open_db()
@@ -160,7 +167,9 @@ class SQLiteAdapter():
     
     def __exit__(self, type, value, tb):
         """Context manager exit function, to be used with "with statement", closes
-           the connection and do the rollback if required."""
+           the connection and do the rollback if required.
+
+        """
         if self.flag_db_open:
             if tb is None:
                 self.connection.commit()
@@ -310,6 +319,7 @@ class SQLiteAdapter():
     def _get_triples(self, subjects=None, objects=None, entities=None):
         """Get triples whose objects belong to objects and subjects to subjects,
            or, if not provided either object or subject, belong to entities.
+
         """
         if subjects is None and objects is None:
             if entities is None:
@@ -364,7 +374,9 @@ class SQLiteAdapter():
             return np.append(chunk, np.array(len(chunk) * [dataset_type]).reshape(-1, 1), axis=1)
 
     def index_entities(self):
-        """Index the data via the definition of the DataIndexer."""
+        """Index the data via the definition of the DataIndexer.
+
+        """
         self.reload_data()
         if self.use_indexer is True:
             self.mapper = DataIndexer(self.data, 
@@ -382,6 +394,7 @@ class SQLiteAdapter():
            -------
            Flag : bool
                 Flag indicating whether indexing took place.
+
         """
         if not hasattr(self, "mapper"):
             return False
@@ -409,6 +422,7 @@ class SQLiteAdapter():
            loader: func
                 Loading function to be used to load data; if `None`, the `DataSourceIdentifier` will try
                 to identify the type of ``data_source`` and return an adequate loader.
+
         """
         self.data_source = data_source        
         self.loader = loader
@@ -427,7 +441,8 @@ class SQLiteAdapter():
         self.reload_data()
         for chunk in data: # chunk is a numpy array of size (n,m) with m=3/4
             if chunk.shape[1] > 3:
-                weights = preprocess_focusE_weights(data=chunk[:, :3], weights=chunk[:, 3:]) # weights normalization
+                # weights = preprocess_focusE_weights(data=chunk[:, :3], weights=chunk[:, 3:]) # weights normalization
+                weights = chunk[:, 3:]
                 chunk = np.concatenate([chunk[:, :3], weights], axis=1)
             self.data_shape = chunk.shape[1]
             values_triples = get_indexed_triples(chunk, dataset_type=dataset_type)
@@ -465,6 +480,7 @@ class SQLiteAdapter():
            -------
            count: int
                 Number of records in the table.
+
         """
         query = "SELECT count(*) from {} {};".format(table, condition)
         count = self._execute_query(query)
@@ -477,11 +493,15 @@ class SQLiteAdapter():
         return count[0][0]
 
     def clean_up(self):
-        """Clean the database."""
+        """Clean the database.
+
+        """
         _ = self._execute_queries(self._get_clean_up())
         
     def remove_db(self):
-        """Remove the database file."""
+        """Remove the database file.
+
+        """
         os.remove(self.db_path)        
         logger.debug("Database removed.")
 
@@ -497,6 +517,7 @@ class SQLiteAdapter():
            -------
            objects : list
                 Result of a query, list of objects.
+
         """
         results = []
         if self.use_filter is False or self.use_filter is None:
@@ -536,6 +557,7 @@ class SQLiteAdapter():
            -------
            subjects : list
                 Result of a query, list of subjects.
+
         """
         results = []
         if self.use_filter is False or self.use_filter is None:
@@ -573,6 +595,7 @@ class SQLiteAdapter():
         -------
         entities: list, list
                 Two lists of subjects and objects participating in the relations ?-p-o and s-p-?.
+
         """
         objects = self._get_complementary_objects(triples, use_filter=use_filter)
         subjects = self._get_complementary_subjects(triples, use_filter=use_filter)
@@ -604,6 +627,7 @@ class SQLiteAdapter():
         participating_entities : list
             List of all entities that were involved in the s-p-? and ?-p-o relations.
             This is returned only if ``use_filter=True``.
+
         """
         if not isinstance(dataset_type, str):
             dataset_type = dataset_type.decode("utf-8")
@@ -671,8 +695,8 @@ class SQLiteAdapter():
            count: bool
                 Whether to count number of records per table (can be time consuming).
 
-           Examples
-           --------
+           Example
+           -------
            >>> adapter = SQLiteAdapter("database_24-06-2020_03-51-12_PM.db")
            >>> with adapter as db:
            >>>     db.summary()
@@ -729,6 +753,7 @@ class SQLiteAdapter():
                 Numpy array or path to a file (e.g. csv file) from where to read data.
            dataset_type: str
                 Kind of dataset that is being loaded (`"train"` | `"test"` | `"validation"`).
+
         """
         
         self.data_source = data_source

@@ -5,15 +5,16 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-"""Graph partitioning strategies.
+"""
+Graph partitioning strategies.
 
-This module contains several graph partitioning strategies both based
-on vertices split and edges split.
+This module contains several graph partitioning strategies both based on vertices split and edges split.
 
 Attributes
 ----------
-PARTITION_ALGO_REGISTRY: dictionary containing strategies' names 
-as key and reference to the strategy class as a value.
+PARTITION_ALGO_REGISTRY : dict
+    Dictionary containing the names of the strategies as key and reference to the strategy class as a value.
+
 """
 import numpy as np
 from abc import ABC
@@ -73,21 +74,20 @@ def get_number_of_partitions(n):
        Returns
        -------
        n_partitions: int
-            Number of partitions
+            Number of partitions.
     """
     return int(n * (n + 1) / 2)
 
 
 class AbstractGraphPartitioner(ABC):
     """Meta class defining interface for graph partitioning algorithms.
-
-    _data: graph data to split across partitions
-    _k [default=2]: number of partitions to split into
     """
 
     def __init__(self, data, k=2, seed=None, root_dir=None, **kwargs):
         """Initialise the AbstractGraphPartitioner.
 
+           Parameters
+           ----------
            data: GraphDataLoader
                 Input data provided as a GraphDataLoader.
            k: int
@@ -133,7 +133,7 @@ class AbstractGraphPartitioner(ABC):
            
            Returns
            -------
-           Partitions generator
+               Partitions generator
         """
         return self.partitions_generator()
 
@@ -157,13 +157,13 @@ class AbstractGraphPartitioner(ABC):
 
            Returns
            -------
-           Partitions
+           Partitions:
+               Partitions in which the entities are divided.
         """
         pass
 
     def clean(self):
-        """ Remove the temporary files created for the partitions.
-        """
+        """Remove the temporary files created for the partitions."""
         for partition in self.partitions:
             partition.clean()
         for f in self.files:
@@ -180,57 +180,56 @@ class AbstractGraphPartitioner(ABC):
     
 @register_partitioning_strategy("Bucket", "BucketPartitionDataManager")
 class BucketGraphPartitioner(AbstractGraphPartitioner):
-    """Bucket-based partition strategy.
+    """ Bucket-based partition strategy.
 
-       This strategy first splits entities into :math:`k` buckets and creates:
-            + :math:`k` partitions where the :math:`i`-th includes triples such that subject and
-            object belong to the :math:`i`-th partition;
-            + :math:`\frac{k^2 - k}{2}` partitions indexed by :math:`(i,j)` with :math:`i,j \in \{1, ..., k\}, i \neq j`
-            where the  :math:`(i,j)`-th partition contains triples such that the subject belongs to the :math:`i`-th partition
-            and the object to the :math:`j`-th partition or viceversa.
+        This strategy first splits entities into :math:`k` buckets and creates:
 
-       Example
-       -------
-       >>> from ampligraph.datasets import load_fb15k_237
-       >>> from ampligraph.datasets import GraphDataLoader, BucketGraphPartitioner, SQLiteAdapter
-       >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
-       >>> dataset = load_fb15k_237()
-       >>> dataset_loader = GraphDataLoader(dataset['train'],
-       >>>                                  backend=SQLiteAdapter, # Type of backend to use
-       >>>                                  batch_size=1000,       # Batch size to use while iterating over the dataset
-       >>>                                  dataset_type='train',  # Dataset type
-       >>>                                  use_filter=False,      # Whether to use filter or not
-       >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
-       >>> partitioner = BucketGraphPartitioner(dataset_loader, k=2)
-       >>> # create and compile a model as usual
-       >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, k=50, scoring_type='DistMult')
-       >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
-       >>> partitioned_model.fit(partitioner,       # The partitioner object generate data for the model during training
-       >>>                       epochs=10)         # Number of epochs
+        + `k` partitions where the `i`-th includes triples such that subject and object belong to the `i`-th partition.
+        + :math:`\\frac{(k^2-k)}{2}` partitions indexed by :math:`(i,j)` with :math:`i,j=1,...,k`, :math:`i \\neq j` where the  :math:`(i,j)`-th partition contains triples such that the subject belongs to the :math:`i`-th partition and the object to the :math:`j`-th partition or viceversa.
 
-       Example
-       -------
-           >>> import numpy as np
-           >>> from ampligraph.datasets import GraphDataLoader, BucketGraphPartitioner
-           >>> d = np.array([[1,1,2], [1,1,3],[1,1,4],[5,1,3],[5,1,2],[6,1,3],[6,1,2],[6,1,4],[6,1,7]])
-           >>> data = GraphDataLoader(d, batch_size=1, dataset_type="test")
-           >>> partitioner = BucketGraphPartitioner(data, k=2)
-           >>> for i, partition in enumerate(partitioner):
-           >>>    print("partition ", i)
-           >>>    for batch in partition:
-           >>>        print(batch)
-           partition  0
-           [['0,0,1']]
-           [['0,0,2']]
-           [['0,0,3']]
-           partition  1
-           [['4,0,1']]
-           [['4,0,2']]
-           [['5,0,1']]
-           [['5,0,2']]
-           [['5,0,3']]
-           partition  2
-           [['5,0,6']]
+        Example
+        -------
+        >>> from ampligraph.datasets import load_fb15k_237, GraphDataLoader, BucketGraphPartitioner
+        >>> from ampligraph.datasets.sqlite_adapter import SQLiteAdapter
+        >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+        >>> dataset = load_fb15k_237()
+        >>> dataset_loader = GraphDataLoader(dataset['train'],
+        >>>                                  backend=SQLiteAdapter, # Type of backend to use
+        >>>                                  batch_size=1000,       # Batch size to use while iterating over the dataset
+        >>>                                  dataset_type='train',  # Dataset type
+        >>>                                  use_filter=False,      # Whether to use filter or not
+        >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
+        >>> partitioner = BucketGraphPartitioner(dataset_loader, k=2)
+        >>> # create and compile a model as usual
+        >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, k=50, scoring_type='DistMult')
+        >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
+        >>> partitioned_model.fit(partitioner,       # The partitioner object generate data for the model during training
+        >>>                       epochs=10)         # Number of epochs
+
+        Example
+        -------
+        >>> import numpy as np
+        >>> from ampligraph.datasets import GraphDataLoader, BucketGraphPartitioner
+        >>> d = np.array([[1,1,2], [1,1,3],[1,1,4],[5,1,3],[5,1,2],[6,1,3],[6,1,2],[6,1,4],[6,1,7]])
+        >>> data = GraphDataLoader(d, batch_size=1, dataset_type="test")
+        >>> partitioner = BucketGraphPartitioner(data, k=2)
+        >>> for i, partition in enumerate(partitioner):
+        >>>    print("partition ", i)
+        >>>    for batch in partition:
+        >>>        print(batch)
+        partition  0
+        [['0,0,1']]
+        [['0,0,2']]
+        [['0,0,3']]
+        partition  1
+        [['4,0,1']]
+        [['4,0,2']]
+        [['5,0,1']]
+        [['5,0,2']]
+        [['5,0,3']]
+        partition  2
+        [['5,0,6']]
+
     """
     def __init__(self, data, k=2, **kwargs):
         """Initialise the BucketGraphPartitioner.
@@ -241,6 +240,7 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
                Input data as a GraphDataLoader.
            k: int 
                Number of buckets to split entities (i.e., vertices) into.
+
         """
 
         self.partitions = []
@@ -261,6 +261,7 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
                 Date and time string that the files are created with (shelves).
            partition_nb: int
                 Assigned number of partitions.
+
         """
         # logger.debug("------------------------------------------------")        
         # logger.debug("Creating partition nb: {}".format(partition_nb))
@@ -307,6 +308,7 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
     def _split(self, seed=None, verbose=False, batch_size=1, **kwargs):
         """Split data into `self.k` buckets based on unique entities and assign
            accordingly triples to `k` partitions and intermediate partitions.
+
         """
         timestamp = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
         self.ents_size = self._data.backend.mapper.get_entities_count()
@@ -347,44 +349,45 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
     
 @register_partitioning_strategy("RandomVertices", "GeneralPartitionDataManager")
 class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
-    """Partitioning strategy that splits vertices into equal
-       sized buckets of random entities from the graph.
-
-       
-       Example
-       -------
-           >>> from ampligraph.datasets imoprt load_fb15k_237
-           >>> from ampligraph.datasets import GraphDataLoader, RandomVerticesGraphPartitioner, SQLiteAdapter
-           >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
-           >>> dataset = load_fb15k_237()
-           >>> dataset_loader = GraphDataLoader(dataset['train'], 
-           >>>                                  backend=SQLiteAdapter, # type of backend to use
-           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
-           >>>                                  dataset_type='train',  # dataset type
-           >>>                                  use_filter=False,      # whether to use filter or not
-           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
-           >>> partitioner = RandomVerticesGraphPartitioner(dataset_loader, k=2)
-           >>> # create and compile a model as usual
-           >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
-           >>>                                                k=50,
-           >>>                                                scoring_type='DistMult')
-           >>>
-           >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
-           >>>
-           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
-           >>>                       epochs=10)              # number of epochs
+    """Partitioning strategy that splits vertices into equal sized buckets of random entities from the graph.
 
        Example
        -------
-           >>> import numpy as np
-           >>> from ampligraph.datasets import GraphDataLoader, RandomVerticesGraphPartitioner
-           >>> d = np.array([[1,1,2], [1,1,3],[1,1,4],[5,1,3],[5,1,2],[6,1,3],[6,1,2],[6,1,4],[6,1,7]])
-           >>> data = GraphDataLoader(d, batch_size=1, dataset_type="test")
-           >>> partitioner = RandomVerticesGraphPartitioner(data, k=2)
-           >>> for i, partition in enumerate(partitioner):
-           >>>    print("partition ", i)
-           >>>    for batch in partition:
-           >>>        print(batch)
+       >>> from ampligraph.datasets imoprt load_fb15k_237
+       >>> from ampligraph.datasets import GraphDataLoader
+       >>> from ampligraph.datasets.sqlite_adapter import SQLiteAdapter
+       >>> from ampligraph.datasets.graph_partitioner import RandomVerticesGraphPartitioner
+       >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+       >>> dataset = load_fb15k_237()
+       >>> dataset_loader = GraphDataLoader(dataset['train'],
+       >>>                                  backend=SQLiteAdapter, # type of backend to use
+       >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
+       >>>                                  dataset_type='train',  # dataset type
+       >>>                                  use_filter=False,      # whether to use filter or not
+       >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
+       >>> partitioner = RandomVerticesGraphPartitioner(dataset_loader, k=2)
+       >>> # create and compile a model as usual
+       >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2,
+       >>>                                                k=50,
+       >>>                                                scoring_type='DistMult')
+       >>>
+       >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
+       >>>
+       >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
+       >>>                       epochs=10)              # number of epochs
+
+       Example
+       -------
+       >>> import numpy as np
+       >>> from ampligraph.datasets.graph_partitioner import GraphDataLoader, RandomVerticesGraphPartitioner
+       >>> d = np.array([[1,1,2], [1,1,3],[1,1,4],[5,1,3],[5,1,2],[6,1,3],[6,1,2],[6,1,4],[6,1,7]])
+       >>> data = GraphDataLoader(d, batch_size=1, dataset_type="test")
+       >>> partitioner = RandomVerticesGraphPartitioner(data, k=2)
+       >>> for i, partition in enumerate(partitioner):
+       >>>    print("partition ", i)
+       >>>    for batch in partition:
+       >>>        print(batch)
+
     """
     def __init__(self, data, k=2, seed=None, **kwargs):
         """Initialise the RandomVerticesGraphPartitioner.
@@ -397,6 +400,7 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
                Number of buckets to split entities (i.e., vertices) into.
            seed: int
                Seed to be used during partitioning.
+
         """
         self._data = data
         self._k = k
@@ -408,10 +412,6 @@ class RandomVerticesGraphPartitioner(AbstractGraphPartitioner):
         """Split data into `k` equal size partitions by randomly drawing subset of vertices
            of partition size and retrieving triples associated with these vertices.
 
-           Returns
-           -------
-            partitions
-                Partitions of equal size with triples.
         """
         timestamp = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
         self.ents_size = self._data.backend.mapper.get_entities_count()
@@ -454,30 +454,33 @@ class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
     """Template for edge-based partitioning strategy that splits edges
        into partitions.
 
-        To be inherited to create different edge-based strategies.
+       To be inherited to create different edge-based strategies.
        
        Example
        -------
-           >>> from ampligraph.datasets imoprt load_fb15k_237
-           >>> from ampligraph.datasets import GraphDataLoader, EdgeBasedGraphPartitioner, SQLiteAdapter
-           >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
-           >>> dataset = load_fb15k_237()
-           >>> dataset_loader = GraphDataLoader(dataset['train'], 
-           >>>                                  backend=SQLiteAdapter, # type of backend to use
-           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
-           >>>                                  dataset_type='train',  # dataset type
-           >>>                                  use_filter=False,      # Whether to use filter or not
-           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
-           >>> partitioner = EdgeBasedGraphPartitioner(dataset_loader, k=2)
-           >>> # create and compile a model as usual
-           >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
-           >>>                                                k=50,
-           >>>                                                scoring_type='DistMult')
-           >>>
-           >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
-           >>>
-           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
-           >>>                       epochs=10)              # number of epochs
+       >>> from ampligraph.datasets imoprt load_fb15k_237
+       >>> from ampligraph.datasets import GraphDataLoader
+       >>> from ampligraph.datasets.sqlite_adapter import SQLiteAdapter
+       >>> from ampligraph.datasets.graph_partitioner import EdgeBasedGraphPartitioner
+       >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+       >>> dataset = load_fb15k_237()
+       >>> dataset_loader = GraphDataLoader(dataset['train'],
+       >>>                                  backend=SQLiteAdapter, # type of backend to use
+       >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
+       >>>                                  dataset_type='train',  # dataset type
+       >>>                                  use_filter=False,      # Whether to use filter or not
+       >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
+       >>> partitioner = EdgeBasedGraphPartitioner(dataset_loader, k=2)
+       >>> # create and compile a model as usual
+       >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2,
+       >>>                                                k=50,
+       >>>                                                scoring_type='DistMult')
+       >>>
+       >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
+       >>>
+       >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
+       >>>                       epochs=10)              # number of epochs
+
     """
     def __init__(self, data, k=2, random=False, index_by="", **kwargs):
         """Initialise the EdgeBasedGraphPartitioner.
@@ -492,6 +495,7 @@ class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
                Whether to draw edges/triples in random order.
            index_by: str
                Which index to use when returning triples (`"s"`, `"o"`, `"so"`, `"os"`).
+
         """
 
         self.partitions = []
@@ -500,7 +504,9 @@ class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
         super().__init__(data, k=k, random=random, index_by=index_by, **kwargs)
 
     def get_data(self):
-        '''Get the underlying data handler.'''
+        '''Get the underlying data handler.
+
+        '''
         return self._data
 
     @timing_and_memory
@@ -509,8 +515,8 @@ class EdgeBasedGraphPartitioner(AbstractGraphPartitioner):
 
            Returns
            -------
-            partitions
-                Parts of equal size with triples
+           partitions
+                Parts of equal size containing triples
         """
         timestamp = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%p")
         self.size = self._data.backend.get_data_size()
@@ -544,26 +550,29 @@ class RandomEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
        
        Example
        -------
-           >>> from ampligraph.datasets imoprt load_fb15k_237
-           >>> from ampligraph.datasets import GraphDataLoader, RandomEdgesGraphPartitioner, SQLiteAdapter
-           >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
-           >>> dataset = load_fb15k_237()
-           >>> dataset_loader = GraphDataLoader(dataset['train'], 
-           >>>                                  backend=SQLiteAdapter, # type of backend to use
-           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
-           >>>                                  dataset_type='train',  # dataset type
-           >>>                                  use_filter=False,      # Whether to use filter or not
-           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
-           >>> partitioner = RandomEdgesGraphPartitioner(dataset_loader, k=2)
-           >>> # create and compile a model as usual
-           >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
-           >>>                                                k=50,
-           >>>                                                scoring_type='DistMult')
-           >>>
-           >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
-           >>>
-           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
-           >>>                       epochs=10)              # number of epochs
+       >>> from ampligraph.datasets imoprt load_fb15k_237
+       >>> from ampligraph.datasets import GraphDataLoader
+       >>> from ampligraph.datasets.sqlite_adapter import SQLiteAdapter
+       >>> from ampligraph.datasets.graph_partitioner import RandomEdgesGraphPartitioner
+       >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+       >>> dataset = load_fb15k_237()
+       >>> dataset_loader = GraphDataLoader(dataset['train'],
+       >>>                                  backend=SQLiteAdapter, # type of backend to use
+       >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
+       >>>                                  dataset_type='train',  # dataset type
+       >>>                                  use_filter=False,      # Whether to use filter or not
+       >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
+       >>> partitioner = RandomEdgesGraphPartitioner(dataset_loader, k=2)
+       >>> # create and compile a model as usual
+       >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2,
+       >>>                                                k=50,
+       >>>                                                scoring_type='DistMult')
+       >>>
+       >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
+       >>>
+       >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
+       >>>                       epochs=10)              # number of epochs
+
     """
 
     def __init__(self, data, k=2, **kwargs):
@@ -575,6 +584,7 @@ class RandomEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
                Input data as a GraphDataLoader.
            k: int 
                Number of buckets to split entities (i.e., vertices) into.
+
         """
         self.partitions = []
         self._data = data
@@ -589,26 +599,29 @@ class NaiveGraphPartitioner(EdgeBasedGraphPartitioner):
        
        Example
        -------
-           >>> from ampligraph.datasets imoprt load_fb15k_237
-           >>> from ampligraph.datasets import GraphDataLoader, NaiveGraphPartitioner, SQLiteAdapter
-           >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
-           >>> dataset = load_fb15k_237()
-           >>> dataset_loader = GraphDataLoader(dataset['train'], 
-           >>>                                  backend=SQLiteAdapter, # type of backend to use
-           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
-           >>>                                  dataset_type='train',  # dataset type
-           >>>                                  use_filter=False,      # Whether to use filter or not
-           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
-           >>> partitioner = NaiveGraphPartitioner(dataset_loader, k=2)
-           >>> # create and compile a model as usual
-           >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
-           >>>                                                k=50,
-           >>>                                                scoring_type='DistMult')
-           >>>
-           >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
-           >>>
-           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
-           >>>                       epochs=10)              # number of epochs
+       >>> from ampligraph.datasets imoprt load_fb15k_237
+       >>> from ampligraph.datasets import GraphDataLoader
+       >>> from ampligraph.datasets.sqlite_adapter import SQLiteAdapter
+       >>> from ampligraph.datasets.graph_partitioner import NaiveGraphPartitioner
+       >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+       >>> dataset = load_fb15k_237()
+       >>> dataset_loader = GraphDataLoader(dataset['train'],
+       >>>                                  backend=SQLiteAdapter, # type of backend to use
+       >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
+       >>>                                  dataset_type='train',  # dataset type
+       >>>                                  use_filter=False,      # Whether to use filter or not
+       >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
+       >>> partitioner = NaiveGraphPartitioner(dataset_loader, k=2)
+       >>> # create and compile a model as usual
+       >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2,
+       >>>                                                k=50,
+       >>>                                                scoring_type='DistMult')
+       >>>
+       >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
+       >>>
+       >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
+       >>>                       epochs=10)              # number of epochs
+
     """
     def __init__(self, data, k=2, **kwargs):
         """Initialise the NaiveGraphPartitioner.
@@ -619,6 +632,7 @@ class NaiveGraphPartitioner(EdgeBasedGraphPartitioner):
                Input data as a GraphDataLoader.
            k: int 
                Number of buckets to split entities (i.e., vertices) into.
+
         """
         self.partitions = []
         super().__init__(data, k, random=False, index_by="", **kwargs)
@@ -631,26 +645,29 @@ class SortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
        
        Example
        -------
-           >>> from ampligraph.datasets imoprt load_fb15k_237
-           >>> from ampligraph.datasets import GraphDataLoader, SortedEdgesGraphPartitioner, SQLiteAdapter
-           >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
-           >>> dataset = load_fb15k_237()
-           >>> dataset_loader = GraphDataLoader(dataset['train'], 
-           >>>                                  backend=SQLiteAdapter, # type of backend to use
-           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
-           >>>                                  dataset_type='train',  # dataset type
-           >>>                                  use_filter=False,      # Whether to use filter or not
-           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
-           >>> partitioner = SortedEdgesGraphPartitioner(dataset_loader, k=2)
-           >>> # create and compile a model as usual
-           >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
-           >>>                                                k=50,
-           >>>                                                scoring_type='DistMult')
-           >>>
-           >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
-           >>>
-           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
-           >>>                       epochs=10)              # number of epochs
+       >>> from ampligraph.datasets imoprt load_fb15k_237
+       >>> from ampligraph.datasets import GraphDataLoader
+       >>> from ampligraph.datasets.sqlite_adapter import SQLiteAdapter
+       >>> from ampligraph.datasets.graph_partitioner import SortedEdgesGraphPartitioner
+       >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+       >>> dataset = load_fb15k_237()
+       >>> dataset_loader = GraphDataLoader(dataset['train'],
+       >>>                                  backend=SQLiteAdapter, # type of backend to use
+       >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
+       >>>                                  dataset_type='train',  # dataset type
+       >>>                                  use_filter=False,      # Whether to use filter or not
+       >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
+       >>> partitioner = SortedEdgesGraphPartitioner(dataset_loader, k=2)
+       >>> # create and compile a model as usual
+       >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2,
+       >>>                                                k=50,
+       >>>                                                scoring_type='DistMult')
+       >>>
+       >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
+       >>>
+       >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
+       >>>                       epochs=10)              # number of epochs
+
     """
     def __init__(self, data, k=2, **kwargs):
         """Initialise the SortedEdgesGraphPartitioner.
@@ -661,6 +678,7 @@ class SortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
                Input data as a GraphDataLoader.
            k: int 
                Number of buckets to split entities (i.e., vertices) into.
+
         """
 
         self.partitions = []
@@ -674,26 +692,29 @@ class DoubleSortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
        
        Example
        -------
-           >>> from ampligraph.datasets imoprt load_fb15k_237
-           >>> from ampligraph.datasets import GraphDataLoader, DoubleSortedEdgesGraphPartitioner, SQLiteAdapter
-           >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
-           >>> dataset = load_fb15k_237()
-           >>> dataset_loader = GraphDataLoader(dataset['train'], 
-           >>>                                  backend=SQLiteAdapter, # type of backend to use
-           >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
-           >>>                                  dataset_type='train',  # dataset type
-           >>>                                  use_filter=False,      # Whether to use filter or not
-           >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
-           >>> partitioner = DoubleSortedEdgesGraphPartitioner(dataset_loader, k=2)
-           >>> # create and compile a model as usual
-           >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
-           >>>                                                k=50,
-           >>>                                                scoring_type='DistMult')
-           >>>
-           >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
-           >>>
-           >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
-           >>>                       epochs=10)              # number of epochs
+       >>> from ampligraph.datasets imoprt load_fb15k_237
+       >>> from ampligraph.datasets import GraphDataLoader
+       >>> from ampligraph.datasets.sqlite_adapter import SQLiteAdapter
+       >>> from ampligraph.datasets.graph_partitioner import DoubleSortedEdgesGraphPartitioner
+       >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
+       >>> dataset = load_fb15k_237()
+       >>> dataset_loader = GraphDataLoader(dataset['train'],
+       >>>                                  backend=SQLiteAdapter, # type of backend to use
+       >>>                                  batch_size=2,          # batch size to use while iterating over this dataset
+       >>>                                  dataset_type='train',  # dataset type
+       >>>                                  use_filter=False,      # Whether to use filter or not
+       >>>                                  use_indexer=True)      # indicates that the data needs to be mapped to index
+       >>> partitioner = DoubleSortedEdgesGraphPartitioner(dataset_loader, k=2)
+       >>> # create and compile a model as usual
+       >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2,
+       >>>                                                k=50,
+       >>>                                                scoring_type='DistMult')
+       >>>
+       >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
+       >>>
+       >>> partitioned_model.fit(partitioner,            # pass the partitioner object as input to the fit function this will generate data for the model during training
+       >>>                       epochs=10)              # number of epochs
+
     """
     def __init__(self, data, k=2, **kwargs):
         """Initialise the DoubleSortedEdgesGraphPartitioner.
@@ -704,13 +725,13 @@ class DoubleSortedEdgesGraphPartitioner(EdgeBasedGraphPartitioner):
                Input data as a GraphDataLoader.
            k: int 
                Number of buckets to split entities (i.e., vertices) into.
+
         """
         self.partitions = []
         super().__init__(data, k, random=False, index_by="so", **kwargs)
 
 
 def main():
-    """Main function - not implemented."""
     pass
 
 

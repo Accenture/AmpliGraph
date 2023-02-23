@@ -20,8 +20,8 @@ class OptimizerWrapper(abc.ABC):
     def __init__(self, optimizer=None):
         """Initialize the tensorflow Optimizer and wraps it so that it can be used with graph partitioning.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         optimizer: str (name of optimizer) or optimizer instance.
             See `tf.keras.optimizers <https://www.tensorflow.org/api_docs/python/tf/keras/optimizers>`.
         """ 
@@ -54,8 +54,8 @@ class OptimizerWrapper(abc.ABC):
     def minimize(self, loss, ent_emb, rel_emb, gradient_tape, other_vars=[]):
         '''Minimizes the loss with respect to entity and relation embeddings and other trainable variables.
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         loss: tf.Tensor
             Model Loss.
         ent_emb: tf.Variable
@@ -100,8 +100,8 @@ class OptimizerWrapper(abc.ABC):
     def get_entity_relation_hyperparams(self):
         ''' Get optimizer hyperparams related to entity and relation embeddings (for partitioned training).
         
-        Returns:
-        --------
+        Returns
+        -------
         ent_hyperparams: np.array
             Entity embedding related optimizer hyperparameters.
         rel_hyperparams: np.array
@@ -119,8 +119,8 @@ class OptimizerWrapper(abc.ABC):
     def set_entity_relation_hyperparams(self, ent_hyperparams, rel_hyperparams):
         ''' Sets optimizer hyperparams related to entity and relation embeddings (for partitioned training).
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         ent_hyperparams: np.array
             Entity embedding related optimizer hyperparameters.
         rel_hyperparams: np.array
@@ -167,13 +167,13 @@ def get(identifier):
     '''
     Get the optimizer specified by the identifier.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     identifier: str or tf.optimizers.Optimizer instance
         Name of the optimizer to use (with default parameters) or instance of the class `tf.optimizers.Optimizer`.
         
-    Returns:
-    --------
+    Returns
+    -------
     optimizer: OptimizerWrapper
         Instance of `tf.optimizers.Optimizer` wrapped around by `OptimizerWrapper` so that graph partitioning
         is supported.
