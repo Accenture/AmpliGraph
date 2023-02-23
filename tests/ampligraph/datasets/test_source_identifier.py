@@ -8,7 +8,8 @@
 import numpy as np
 import pytest
 import pandas as pd
-from ampligraph.datasets import DataSourceIdentifier, load_csv, chunks
+from ampligraph.datasets import load_csv, chunks
+from ampligraph.datasets.source_identifier import DataSourceIdentifier
 import os
 
 SCOPE = "function"

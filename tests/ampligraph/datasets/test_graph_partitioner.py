@@ -24,9 +24,9 @@ class dummyGraphGenerator():
        
        Example
        -------
-       >>>># Construct graph with 20 nodes, 10 edges and 4 unique edges types
-       >>>>generator = dummyGraphGenerator(20,10,4)
-       >>>>generator.get()
+       >>> # Construct graph with 20 nodes, 10 edges and 4 unique edges types
+       >>> generator = dummyGraphGenerator(20,10,4)
+       >>> generator.get()
        {'train': array([['h', 'r', 'p'],
                         ['a', 't', 'd'],
                         ['a', 's', 'j'],

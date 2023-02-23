@@ -5,7 +5,8 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-from ampligraph.datasets import GraphDataLoader, DummyBackend, SQLiteAdapter
+from ampligraph.datasets import GraphDataLoader, DummyBackend
+from ampligraph.datasets.sqlite_adapter import SQLiteAdapter
 import pytest
 import numpy as np
 import pandas as pd
