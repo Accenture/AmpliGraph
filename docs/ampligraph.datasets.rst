@@ -11,7 +11,7 @@ Loaders for Custom Knowledge Graphs
 These are functions to load custom knowledge graphs from disk. They load the data from the specified files and store it
 as a numpy array. These loaders are recommended when the datasets to load are small in size (approx 1M entities and
 millions of triples), i.e., as long as they can be stored in memory. In case the dataset is too big to fit in memory,
-use the :class:`~ampligraph.datasets.graph_data_loader.GraphDataLoader` class instead (see the
+use the :class:`GraphDataLoader` class instead (see the
 :ref:`Advanced Topics <advanced_topics>` section for more).
 
 .. autosummary::
