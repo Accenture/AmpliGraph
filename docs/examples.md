@@ -123,21 +123,22 @@ param_grid = {
 # Models are validated on the validation set.
 # It returnes a model re-trained on training and validation sets.
 best_model, best_params, best_mrr_train, \
-ranks_test, test_evaluation, experimental_history = select_best_model_ranking(model_class, # Name of the model to be used
-                                                                       # Dataset 
-                                                                       X_dict['train'],
-                                                                       X_dict['valid'],
-                                                                       X_dict['test'],          
-                                                                       # Parameter grid
-                                                                       param_grid,
-                                                                       # Set maximum number of combinations
-                                                                       max_combinations=20,
-                                                                       # Use filtered set for eval
-                                                                       use_filter=True, 
-                                                                       # corrupt subject and objects separately during eval
-                                                                       corrupt_side='s,o', 
-                                                                       # Log all the model hyperparams and evaluation stats
-                                                                       verbose=True)
+ranks_test, test_evaluation, experimental_history = \
+                        select_best_model_ranking(model_class, # Name of the model to be used
+                                                  # Dataset 
+                                                  X_dict['train'],
+                                                  X_dict['valid'],
+                                                  X_dict['test'],          
+                                                  # Parameter grid
+                                                  param_grid,
+                                                  # Set maximum number of combinations
+                                                  max_combinations=20,
+                                                  # Use filtered set for eval
+                                                  use_filter=True, 
+                                                  # corrupt subject and objects separately during eval
+                                                  corrupt_side='s,o', 
+                                                  # Log all the model hyperparams and evaluation stats
+                                                  verbose=True)
 print(type(best_model).__name__)
 print("Best model parameters: ")
 print(best_params)

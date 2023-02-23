@@ -20,7 +20,7 @@ FB15K-237
 ========== ======== ====== ======== ======== ========== ========================
   Model       MR     MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
 ========== ======== ====== ======== ======== ========== ========================
-  TransE    208     0.31    0.22     0.35      0.50      k: 400;
+  TransE    211     0.31    0.22     0.34     0.48       k: 400;
                                                          epochs: 4000;
                                                          eta: 30;
                                                          loss: multiclass_nll;
@@ -33,11 +33,10 @@ FB15K-237
                                                          lr: 0.0001;
                                                          embedding_model_params:
                                                          norm: 1;
-                                                         normalize_ent_emb: false;
                                                          seed: 0;
                                                          batches_count: 64;
 
-  DistMult  199     0.31      0.22     0.35      0.49    k: 300;
+  DistMult  211     0.30      0.21     0.33      0.48    k: 300;
                                                          epochs: 4000;
                                                          eta: 50;
                                                          loss: multiclass_nll;
@@ -50,9 +49,8 @@ FB15K-237
                                                          lr: 0.00005;
                                                          seed: 0;
                                                          batches_count: 50;
-                                                         normalize_ent_emb: false;
 
-  ComplEx   184     0.32      0.23     0.35      0.50    k: 350;
+  ComplEx   197     0.31      0.21     0.34      0.49    k: 350;
                                                          epochs: 4000;
                                                          eta: 30;
                                                          loss: multiclass_nll;
@@ -66,7 +64,7 @@ FB15K-237
                                                          p: 3;
                                                          batches_count: 64;
 
-  HolE      184     0.31       0.22     0.34     0.49    k: 350;
+  HolE      190     0.30       0.21     0.33     0.48    k: 350;
                                                          epochs: 4000;
                                                          eta: 50;
                                                          loss: multiclass_nll;
@@ -95,7 +93,7 @@ WN18RR
 ============ =========== ======== ========== ========== ============ =========================
  Model        MR          MRR      Hits@1     Hits@3     Hits\@10     Hyperparameters
 ============ =========== ======== ========== ========== ============ =========================
-  TransE      2692        0.22     0.03       0.37       0.54         k: 350;
+  TransE      3143        0.22     0.03       0.38       0.52         k: 350;
                                                                       epochs: 4000;
                                                                       eta: 30;
                                                                       loss: multiclass_nll;
@@ -107,12 +105,11 @@ WN18RR
                                                                       lambda: 0.0001;
                                                                       p: 2;
                                                                       seed: 0;
-                                                                      normalize_ent_emb: false;
                                                                       embedding_model_params:
                                                                       norm: 1;
                                                                       batches_count: 150;
 
- DistMult     5531        0.47     0.43       0.48       0.53         k: 350;
+ DistMult     4832        0.47     0.43       0.48       0.54         k: 350;
                                                                       epochs: 4000;
                                                                       eta: 30;
                                                                       loss: multiclass_nll;
@@ -124,10 +121,9 @@ WN18RR
                                                                       lambda: 0.0001;
                                                                       p: 2;
                                                                       seed: 0;
-                                                                      normalize_ent_emb: false;
                                                                       batches_count: 100;
 
- ComplEx      4177        0.51     0.46       0.53       0.58         k: 200;
+ ComplEx      4229        0.50     0.47       0.52       0.58         k: 200;
                                                                       epochs: 4000;
                                                                       eta: 20;
                                                                       loss: multiclass_nll;
@@ -143,7 +139,7 @@ WN18RR
                                                                       p: 3;
                                                                       batches_count: 10;
 
- HolE         7028        0.47     0.44       0.48       0.53         k: 200;
+ HolE         7072        0.47     0.44       0.49       0.54         k: 200;
                                                                       epochs: 4000;
                                                                       eta: 20;
                                                                       loss: self_adversarial;
@@ -169,7 +165,7 @@ YAGO3-10
 ========== ========== ======== ========== ========== =========== ===========================
  Model      MR         MRR      Hits@1     Hits@3     Hits\@10    Hyperparameters
 ========== ========== ======== ========== ========== =========== ===========================
-TransE      1264       0.51     0.41       0.57       0.67        k: 350;
+TransE      1210       0.50     0.41       0.56       0.67        k: 350;
                                                                   epochs: 4000;
                                                                   eta: 30;
                                                                   loss: multiclass_nll;
@@ -182,11 +178,10 @@ TransE      1264       0.51     0.41       0.57       0.67        k: 350;
                                                                   p: 2;
                                                                   embedding_model_params:
                                                                   norm: 1;
-                                                                  normalize_ent_emb: false;
                                                                   seed: 0;
                                                                   batches_count: 100;
 
-DistMult    1107       0.50     0.41       0.55       0.66        k: 350;
+DistMult    2301       0.48     0.39       0.53       0.64        k: 350;
                                                                   epochs: 4000;
                                                                   eta: 50;
                                                                   loss: multiclass_nll;
@@ -198,10 +193,9 @@ DistMult    1107       0.50     0.41       0.55       0.66        k: 350;
                                                                   lambda: 0.0001;
                                                                   p: 3;
                                                                   seed: 0;
-                                                                  normalize_ent_emb: false;
                                                                   batches_count: 100;
 
-ComplEx     1227       0.49     0.40       0.54       0.66        k: 350;
+ComplEx     3153       0.49     0.40       0.54       0.65        k: 350;
                                                                   epochs: 4000;
                                                                   eta: 30;
                                                                   loss: multiclass_nll;
@@ -215,7 +209,7 @@ ComplEx     1227       0.49     0.40       0.54       0.66        k: 350;
                                                                   seed: 0;
                                                                   batches_count: 100
 
-HolE        6776       0.50     0.42       0.56       0.65        k: 350;
+HolE        7525       0.47     0.38       0.52       0.62        k: 350;
                                                                   epochs: 4000;
                                                                   eta: 30;
                                                                   loss: self_adversarial;
@@ -262,7 +256,6 @@ FB15K
                                                         p: 3;
                                                         embedding_model_params:
                                                         norm: 1;
-                                                        normalize_ent_emb: false;
                                                         seed: 0;
                                                         batches_count: 100;
 
@@ -276,7 +269,6 @@ FB15K
                                                          optimizer_params:
                                                          lr: 0.0005;
                                                          seed: 0;
-                                                         normalize_ent_emb: false;
                                                          batches_count: 50;
 
  ComplEx    184      0.80    0.76     0.82      0.86     k: 200;
@@ -316,7 +308,7 @@ WN18
 ========== ======== ====== ======== ======== ========== ========================
   Model       MR     MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
 ========== ======== ====== ======== ======== ========== ========================
-TransE     260      0.66    0.44     0.88      0.95     k: 150;
+TransE     278      0.64    0.39     0.87      0.95     k: 150;
                                                         epochs: 4000;
                                                         eta: 10;
                                                         loss: multiclass_nll;
@@ -329,24 +321,10 @@ TransE     260      0.66    0.44     0.88      0.95     k: 150;
                                                         p: 3;
                                                         embedding_model_params:
                                                         norm: 1;
-                                                        normalize_ent_emb: false;
                                                         seed: 0;
                                                         batches_count: 100;
 
- DistMult   675      0.82    0.73     0.92      0.95     k: 200;
-                                                         epochs: 4000;
-                                                         eta: 20;
-                                                         loss: nll;
-                                                         loss_params:
-                                                         margin: 1;
-                                                         optimizer: adam;
-                                                         optimizer_params:
-                                                         lr: 0.0005;
-                                                         seed: 0;
-                                                         normalize_ent_emb: false;
-                                                         batches_count: 50;
-
- ComplEx    726      0.94    0.94     0.95      0.95     k: 200;
+ DistMult   729      0.82    0.72     0.92      0.95     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: nll;
@@ -358,7 +336,19 @@ TransE     260      0.66    0.44     0.88      0.95     k: 150;
                                                          seed: 0;
                                                          batches_count: 50;
 
-  HolE     665      0.94    0.93     0.94       0.95     k: 200;
+ ComplEx    758      0.94    0.94     0.95      0.95     k: 200;
+                                                         epochs: 4000;
+                                                         eta: 20;
+                                                         loss: nll;
+                                                         loss_params:
+                                                         margin: 1;
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 0.0005;
+                                                         seed: 0;
+                                                         batches_count: 50;
+
+  HolE     676      0.94    0.93     0.94       0.95     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: self_adversarial;
