@@ -5,7 +5,8 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-from ampligraph.datasets import SQLiteAdapter, DataSourceIdentifier
+from ampligraph.datasets.sqlite_adapter import SQLiteAdapter
+from ampligraph.datasets.source_identifier import DataSourceIdentifier
 import pytest
 import numpy as np
 import pandas as pd
