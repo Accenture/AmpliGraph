@@ -6,7 +6,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 import contextlib
-from .graph_data_loader import GraphDataLoader, DummyBackend
+from .graph_data_loader import GraphDataLoader, NoBackend
 from .sqlite_adapter import SQLiteAdapter
 from .graph_partitioner import AbstractGraphPartitioner
 from .partitioned_data_manager import get_partition_adapter
@@ -70,7 +70,7 @@ class DataHandler():
         else:
             # use graph data loader by default
             self._adapter = GraphDataLoader(x,
-                                            backend=DummyBackend,
+                                            backend=NoBackend,
                                             batch_size=batch_size,
                                             dataset_type=dataset_type,
                                             use_indexer=use_indexer,
