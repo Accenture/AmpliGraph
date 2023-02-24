@@ -13,7 +13,7 @@ or GPU memory.
 The first element of AmpliGraph's data pipeline is a data handler, that leverages the
 :class:`GraphDataLoader` class to load large datasets. This data loader takes data from a source
 and stores it in a certain backend. If, when initializing the :class:`GraphDataLoader`, we specify as
-argument ``backend=DummyBackend`` (default), we opt for storing data in memory, i.e., we are not using any backend.
+argument ``backend=NoBackend`` (default), we opt for storing data in memory, i.e., we are not using any backend.
 If, on the other hand, we set ``backend=SQLiteAdapter``, then we initialize a backend that relies on
 `SQLite <https://www.sqlite.org/index.html>`_. In this case, data is persisted on disk and is later loaded in memory in
 chunks, so to avoid overloading the RAM. This is the option to choose for handling massive datasets.
