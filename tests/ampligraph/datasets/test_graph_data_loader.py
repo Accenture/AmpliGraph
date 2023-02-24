@@ -5,7 +5,7 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-from ampligraph.datasets import GraphDataLoader, DummyBackend
+from ampligraph.datasets import GraphDataLoader, NoBackend
 from ampligraph.datasets.sqlite_adapter import SQLiteAdapter
 import pytest
 import numpy as np
@@ -23,7 +23,7 @@ def data_source(request):
     return request.param
 
 
-@pytest.fixture(params=[DummyBackend, SQLiteAdapter], scope=SCOPE)
+@pytest.fixture(params=[NoBackend, SQLiteAdapter], scope=SCOPE)
 def graph_data_loader(request, data_source):
     '''Returns a GraphDataLoader instance.'''
     data_loader = GraphDataLoader(data_source, backend=request.param)
