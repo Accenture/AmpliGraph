@@ -8,7 +8,7 @@
 """Data loader for graphs (big and small).
 
 This module provides GraphDataLoader class that can be parametrized with an artificial backend that reads data in-memory
-(:class:`~ampligraph.datasets.graph_data_loader.DummyBackend`) or with a SQLite backend that stores and reads data
+(:class:`~ampligraph.datasets.graph_data_loader.NoBackend`) or with a SQLite backend that stores and reads data
 on-disk (:class:`~ampligraph.datasets.sqlite_adapter.SQLiteAdapter`).
 """
 from .source_identifier import DataSourceIdentifier
@@ -25,11 +25,11 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-class DummyBackend():
+class NoBackend():
     """Class providing an artificial backend, that reads data into memory."""
     def __init__(self, identifier, use_indexer=True, remap=False, name="main_partition", parent=None,
                  in_memory=True, root_directory=None, use_filter=False, verbose=False):
-        """Initialise DummyBackend.
+        """Initialise NoBackend.
 
            Parameters
            ----------
@@ -63,7 +63,7 @@ class DummyBackend():
 
 
     def _add_dataset(self, data_source, dataset_type):
-        msg = "Adding datasets to DummyBackend not possible."
+        msg = "Adding datasets to NoBackend not possible."
         raise NotImplementedError(msg)
 
     def __enter__(self):
@@ -358,10 +358,10 @@ class DummyBackend():
     def _intersect(self, dataloader):
         """Intersection between data and dataloader elements.
 
-           Works only when dataloader is of type `DummyBackend`.
+           Works only when dataloader is of type `NoBackend`.
         """
-        if not isinstance(dataloader.backend, DummyBackend):
-            msg = "Intersection can only be calculated between same backends (DummyBackend), \
+        if not isinstance(dataloader.backend, NoBackend):
+            msg = "Intersection can only be calculated between same backends (NoBackend), \
             instead get {}".format(type(dataloader.backend))
             logger.error(msg)
             raise Exception(msg) 
@@ -495,8 +495,8 @@ class GraphDataLoader():
            dataset_type: str
                Kind of data provided (`"train"` | `"test"` | `"valid"`).
            backend: str
-               Name of backend class (`DummyBackend`, `SQLiteAdapter`) or already initialised backend.
-               If `None`, `DummyBackend` is used (in-memory processing).
+               Name of backend class (`NoBackend`, `SQLiteAdapter`) or already initialised backend.
+               If `None`, `NoBackend` is used (in-memory processing).
            root_directory: str
                 Path to a directory where the database will be created, and the data and mappings will be stored.
                 If `None`, the root directory is obtained through the :meth:`tempfile.gettempdir()` method
@@ -549,7 +549,7 @@ class GraphDataLoader():
             msg = "Either remap or Indexer should be specified at the same time."
             logger.error(msg)
             raise Exception(msg)
-        if isinstance(backend, type) and backend != DummyBackend:
+        if isinstance(backend, type) and backend != NoBackend:
             self.backend = backend("database_{}_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p"),
                                    str(uuid.uuid4())), identifier=self.identifier, 
                                    root_directory=self.root_directory, use_indexer=self.use_indexer, 
@@ -557,8 +557,8 @@ class GraphDataLoader():
                                    verbose=verbose, use_filter=self.use_filter)
             logger.debug("Initialized Backend with database at: {}".format(self.backend.db_path))
 
-        elif backend is None or backend == DummyBackend:
-            self.backend = DummyBackend(self.identifier, use_indexer=self.use_indexer, remap=self.remap, 
+        elif backend is None or backend == NoBackend:
+            self.backend = NoBackend(self.identifier, use_indexer=self.use_indexer, remap=self.remap,
                                         name=self.name, parent=self.parent, in_memory=self.in_memory, 
                                         use_filter=self.use_filter)
         else:
