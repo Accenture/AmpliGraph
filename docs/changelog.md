@@ -1,8 +1,13 @@
 # Changelog
 
 ## 2.0.0
-**30 June 2022**
+**24 February 2023**
 - Switched to TensorFlow 2 back-end
+- Keras style APIs
+- Change of the data input/output pipeline
+- Extension of supported optimizers, regularizers and initializer.
+- Different data storage support: no-backend (in memory) and SQLite-based backend
+- Support AmpliGraph 1.4 API within ampligraph.compat module
 
 ## 1.4.0
 **26 May 2021**
