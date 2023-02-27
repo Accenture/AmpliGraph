@@ -5,7 +5,7 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-from ampligraph.datasets import DataIndexer
+from ampligraph.datasets.data_indexer import DataIndexer
 import numpy as np
 import pytest
 
