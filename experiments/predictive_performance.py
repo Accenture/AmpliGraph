@@ -1,3 +1,11 @@
+
+# Copyright 2019-2023 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 """
 Train KGE model on benchmark datasets:
 Usage:
@@ -14,13 +22,10 @@ Options:
   -h --help              Show this screen.
   --version              Show version.
 """
-# Copyright 2019-2023 The AmpliGraph Authors. All Rights Reserved.
-#
-# This file is Licensed under the Apache License, Version 2.0.
-# A copy of the Licence is available in LICENCE, or at:
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
+
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 from docopt import docopt
 import ampligraph.datasets
 from ampligraph.evaluation import hits_at_n_score, mr_score, mrr_score
@@ -40,9 +45,7 @@ from beautifultable import BeautifulTable
 from tqdm import tqdm
 import warnings
 
-import os
 import tensorflow as tf
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 SUPPORT_DATASETS = ["fb15k", "fb15k-237", "wn18", "wn18rr", "yago310", "ppi5k"]                                         # FocusE
@@ -266,4 +269,5 @@ if __name__ == "__main__":
         os.mkdir(root)
     with open(config) as f:
         conf = json.loads(f.read())
+        print(gpu)
     train_model(dataset, model, conf, gpu, root)
