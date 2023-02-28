@@ -27,7 +27,7 @@ before_script:
   - pip install virtualenv
   - virtualenv venv
   - source venv/bin/activate
-  - pip install tensorflow=2.10
+  - pip install tensorflow==2.10
 
 test:
   script:
