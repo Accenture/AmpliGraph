@@ -28,6 +28,14 @@ or
 conda install tensorflow'>=2.9'
 ```
 
+### Install TensorFlow 2 for Mac OS M1 chip
+
+```
+conda install -c apple tensorflow-deps
+pip install --user tensorflow-macos==2.10
+pip install --user tensorflow-metal==0.6
+```
+
 ## Install AmpliGraph
 
 
