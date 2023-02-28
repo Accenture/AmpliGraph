@@ -610,6 +610,15 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         model_params_combinations = islice(_next_hyperparam_random(param_grid), max_combinations)
     else:
         model_params_combinations = _next_hyperparam(param_grid)
+        max_combinations = 1
+        for param in param_grid.values():
+            if isinstance(param, list):
+                max_combinations *= len(param)
+            elif isinstance(param, dict):
+                try:
+                    max_combinations *= int(np.prod([len(el) for el in param.values() if isinstance(el, list)]))
+                except:
+                    pass
 
     best_mrr_train = 0
     best_model = None
@@ -651,7 +660,10 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         hits_10 = hits_at_n_score(ranks, n=10)
         return mrr, mr, hits_1, hits_3, hits_10
 
-    for model_params in tqdm(model_params_combinations, total=max_combinations, disable=(not verbose)):
+    print("Grid search initialized successfully, training starting!")
+    print('Maximum number of combinations: ', max_combinations)
+    for model_params in tqdm(model_params_combinations, total=max_combinations):
+        print()
         current_result = {
             "model_name": model_params["model_name"],
             "model_params": model_params
@@ -662,7 +674,8 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
             model.fit(X_train,
                       early_stopping,
                       early_stopping_params,
-                      focusE_numeric_edge_values=focusE_numeric_edge_values)
+                      focusE_numeric_edge_values=focusE_numeric_edge_values,
+                      verbose=verbose)
             
             ranks = evaluate_performance(selection_dataset, model=model,
                                          filter_triples=X_filter, verbose=verbose,
@@ -702,7 +715,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
             else:
                 pass
         experimental_history.append(current_result)
-
+        print('Combination tried, on to the next one!')
     if best_model is not None:
         if retrain_best_model:
             if focusE:

@@ -37,18 +37,18 @@ def test_compute_score():
     assert (ranks.numpy() == np.array([[3, 2], [1, 0]], dtype=np.int32)).all(), '(s,o) Filtered Ranks not correct'
     
     ranks = model.get_ranks(triples, ent_matrix, 0, 4, tf.ragged.constant([[[0], [1]], [[2], [3]]], dtype=tf.int32),
-                           mapping_dict, corrupt_side = 's')
+                           mapping_dict, corrupt_side='s')
     assert (ranks.numpy() == np.array([[3, 2]], dtype=np.int32)).all(), '(s) Filtered Ranks not correct'
     
     ranks = model.get_ranks(triples, ent_matrix, 0, 4, tf.ragged.constant([[[2], [3]]], dtype=tf.int32),
-                           mapping_dict, corrupt_side = 'o')
+                           mapping_dict, corrupt_side='o')
     assert (ranks.numpy() == np.array([[1, 0]], dtype=np.int32)).all(), '(o) Filtered Ranks not correct'
     
     ranks = model.get_ranks(triples, ent_matrix, 0, 4, tf.ragged.constant([], dtype=tf.int32),
-                           mapping_dict, corrupt_side = 's')
+                           mapping_dict, corrupt_side='s')
     
     assert (ranks.numpy() == np.array([[4, 3]], dtype=np.int32)).all(), '(s) Unfiltered Ranks not correct'
     
     ranks = model.get_ranks(triples, ent_matrix, 0, 4, tf.ragged.constant([], dtype=tf.int32),
-                           mapping_dict, corrupt_side = 'o')
+                           mapping_dict, corrupt_side='o')
     assert (ranks.numpy() == np.array([[2, 1]], dtype=np.int32)).all(), '(o) Unfiltered Ranks not correct'

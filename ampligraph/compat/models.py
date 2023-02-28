@@ -173,7 +173,8 @@ class ScoringModelBase:
             early_stopping=False,
             early_stopping_params={},
             focusE_numeric_edge_values=None,
-            tensorboard_logs_path=None, callbacks=None):
+            tensorboard_logs_path=None, callbacks=None,
+            verbose=False):
         """Train the model (with optional early stopping).
 
         The model is trained on a training set ``X`` using the training protocol
@@ -285,6 +286,7 @@ class ScoringModelBase:
                        validation_filter=x_filter,
                        validation_entities_subset=early_stopping_params.get('corruption_entities', None),
                        callbacks=callbacks,
+                       verbose=verbose,
                        focusE=focusE,
                        focusE_params=params_focusE)
         self.data_shape = self.model.data_shape
