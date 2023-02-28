@@ -134,6 +134,7 @@ ScoringBasedEmbeddingModel
       
       
       
+      
       ~ScoringBasedEmbeddingModel.is_fit
       
       
@@ -257,6 +258,7 @@ ScoringBasedEmbeddingModel
       
       
    .. automethod:: ScoringBasedEmbeddingModel.get_train_embedding_matrix_size
+      
       
       
    .. automethod:: ScoringBasedEmbeddingModel.is_fit
