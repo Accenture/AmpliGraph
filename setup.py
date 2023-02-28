@@ -36,9 +36,11 @@ setup_params = dict(name='ampligraph',
                         'scipy>=1.3.0',
                         'networkx>=2.3',
                         'flake8>=3.7.7',
-                        'setuptools>=36',
-                        'mock',
-                        'pytest_mock'
-                    ])
+                        'setuptools>=36'
+                    ],
+                    setup_requires=['pytest-runner'],
+                    tests_require=['pytest', 
+                                   'pytest_mock', 
+                                   'mock'])
 if __name__ == '__main__':
     setup(**setup_params)
