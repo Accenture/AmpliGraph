@@ -1049,20 +1049,20 @@ class SQLite():
         logger.debug("Initialisation of SQLite indexer.")
         self.data = data
         self.metadata = {}
-        if db_file is not None:
-            self.db_file = os.path.join(root_directory, db_file)
-            self.mapped = True
-        else:
-            date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p")
-            self.db_file = os.path.join(root_directory, name + date + str(uuid.uuid4()) + ".db")
-
-            if os.path.exists(self.db_file):
-                os.remove(self.db_file)
-            self.mapped = False
         if root_directory is None:
             self.root_directory = tempfile.gettempdir()
         else:
             self.root_directory = root_directory
+        if db_file is not None:
+            self.db_file = os.path.join(self.root_directory, db_file)
+            self.mapped = True
+        else:
+            date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p")
+            self.db_file = os.path.join(self.root_directory, name + date + str(uuid.uuid4()) + ".db")
+
+            if os.path.exists(self.db_file):
+                os.remove(self.db_file)
+            self.mapped = False
         self.name = name
 
         self.max_ents_index = -1
