@@ -50,7 +50,7 @@ pages:
   script:
     - pip install sphinx sphinx-rtd-theme
     - cd doc
-    - make html
+    - make clean autogen html
     - mv build/html/ ../public/
   artifacts:
     paths:
