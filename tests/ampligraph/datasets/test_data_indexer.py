@@ -12,9 +12,9 @@ import pytest
 
 def data_generator(data):
     for elem in data:
-        yield np.array(elem).reshape((1,3))
+        yield np.array(elem).reshape((1, 3))
 
-np_array =  np.array([['a','b','c'],['c','b','d'],['d','e','f'],['f','e','c'],['a','e','d']])
+np_array =  np.array([['a', 'b', 'c'], ['c', 'b', 'd'], ['d', 'e', 'f'], ['f', 'e', 'c'], ['a', 'e', 'd']])
 generator = lambda: data_generator(np_array) 
 
 
@@ -51,14 +51,14 @@ def test_get_entities_in_batches(data_indexer):
 
 
 def test_get_indexes(data_indexer):
-    tmp = np.array([['a','b','c']])
+    tmp = np.array([['a', 'b', 'c']])
     indexes = data_indexer.get_indexes(tmp)
-    assert np.shape(indexes) == np.shape(tmp), "returnd indexes are not the same shape"
+    assert np.shape(indexes) == np.shape(tmp), "returned indexes are not the same shape"
     assert np.issubdtype(indexes.dtype,  np.integer), "indexes are not integers"
 
 @pytest.mark.skip(reason="update not implemented for sqlite backend")
 def test_update_mappings(data_indexer):
-    new_data = np.array([['g','i','h'],['g','i','a']])
+    new_data = np.array([['g', 'i', 'h'], ['g', 'i', 'a']])
     data_indexer.update_mappings(new_data)
     assert data_indexer.backend.ents_length == 6, "entities size should be 6, two new added"
     assert data_indexer.backend.rels_length == 3, "relations size should be 3, one new added"
@@ -66,7 +66,7 @@ def test_update_mappings(data_indexer):
 
 def test_get_starting_index_ents(data_indexer):
     ind = data_indexer.backend._get_starting_index_ents()
-    assert ind == data_indexer.backend.ents_length, "index doesn't match etities length"
+    assert ind == data_indexer.backend.ents_length, "index doesn't match entities length"
 
 
 def test_get_starting_index_rels(data_indexer):
