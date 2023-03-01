@@ -840,7 +840,8 @@ class Shelves():
             os.remove(name + ".dat")
             os.remove(name + ".dir")        
         except Exception:
-            os.remove(name + ".db")
+            if os.path.exists(name + ".db"):
+                os.remove(name + ".db")
 
     def move_shelve(self, source, destination):
         """Move shelve to a different file."""
