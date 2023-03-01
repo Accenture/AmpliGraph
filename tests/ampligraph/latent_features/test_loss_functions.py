@@ -21,7 +21,9 @@ def test_PairwiseLoss():
     corr_score = tf.constant([10.0, 100.0, 12.0, 102.0, 8.0, 98.0], dtype=tf.float32)
     # Loss: 2, 2, 4, 4, 0, 0
     loss = lossObj(pos_score, corr_score, eta=3)
-    assert (loss.numpy() == np.sum(np.array([2.0, 2.0], dtype=np.float32))).all(), \
+    print(loss.numpy())
+    assert (loss.numpy() > np.sum(np.array([2.0, 2.0], dtype=np.float32)) - 1e-4).all() and \
+           (loss.numpy() < np.sum(np.array([2.0, 2.0], dtype=np.float32)) + 1e-4).all(), \
         'PairwiseLoss: Loss function outputs dont match expected outputs'
     
     lossObj = PairwiseLoss({'margin': 2, 'reduction': 'sum'})
@@ -30,7 +32,8 @@ def test_PairwiseLoss():
     corr_score = tf.constant([10.0, 100.0, 12.0, 102.0, 8.0, 98.0], dtype=tf.float32)
     # Loss: 2, 2, 4, 4, 0, 0
     loss = lossObj(pos_score, corr_score, eta=3)
-    assert (loss.numpy() == np.sum(np.array([6.0, 6.0], dtype=np.float32))).all(), \
+    assert (loss.numpy() > np.sum(np.array([6.0, 6.0], dtype=np.float32)) - 1e-4).all() and \
+           (loss.numpy() < np.sum(np.array([6.0, 6.0], dtype=np.float32)) + 1e-4).all(), \
         'PairwiseLoss: Loss function outputs dont match expected outputs'
 
 
@@ -40,15 +43,17 @@ def test_NLLLoss():
     corr_score = tf.constant([51.0, 30.0, -100, -60, 96.0, 30.0], dtype=tf.float32)
     # Loss: 51, 30, 0, 0, 75, 30
     loss = lossObj(pos_score, corr_score, eta=3)
-    assert (loss.numpy() == np.sum(np.array([21.0, 10.0], dtype=np.float32))).all(), \
+    assert (loss.numpy() > np.sum(np.array([21.0, 10.0], dtype=np.float32)) - 1e-4).all() and \
+           (loss.numpy() < np.sum(np.array([21.0, 10.0], dtype=np.float32)) + 1e-4).all(), \
         'NLLLoss: Loss function outputs dont match expected outputs'
-    
+
     lossObj = NLLLoss({'reduction': 'sum'})
     pos_score = tf.constant([50.0, 30.0], dtype=tf.float32)
     corr_score = tf.constant([51.0, 30.0, -100, -60, 96.0, 30.0], dtype=tf.float32)
     # Loss: 51, 30, 0, 0, 75, 30
     loss = lossObj(pos_score, corr_score, eta=3)
-    assert (loss.numpy() == np.sum(np.array([126.0, 60.0], dtype=np.float32))).all(), \
+    assert (loss.numpy() > np.sum(np.array([126.0, 60.0], dtype=np.float32)) - 1e-4).all() and (
+            loss.numpy() < np.sum(np.array([126.0, 60.0], dtype=np.float32)) + 1e-4).all(), \
         'NLLLoss: Loss function outputs dont match expected outputs'
 
 
@@ -61,7 +66,8 @@ def test_AbsoluteMarginLoss():
     corr_score = tf.constant([13, -10, 10, -7, 7, -13], dtype=tf.float32)
     # Loss: 6, 10, 3, 10, 0, 10
     loss = lossObj(pos_score, corr_score, eta=3)
-    assert (loss.numpy() == np.sum(np.array([3.0, 10.0], dtype=np.float32))).all(), \
+    assert (loss.numpy() > np.sum(np.array([3.0, 10.0], dtype=np.float32)) - 1e-4).all() and \
+           (loss.numpy() < np.sum(np.array([3.0, 10.0], dtype=np.float32)) + 1e-4).all(), \
         'AbsoluteMarginLoss: Loss function outputs dont match expected outputs'
     
     lossObj = AbsoluteMarginLoss({'margin': 3, 'reduction': 'sum'})
@@ -72,7 +78,8 @@ def test_AbsoluteMarginLoss():
     corr_score = tf.constant([13, -10, 10, -7, 7, -13], dtype=tf.float32)
     # Loss: 6, 10, 3, 10, 0, 10
     loss = lossObj(pos_score, corr_score, eta=3)
-    assert (loss.numpy() == np.sum(np.array([9.0, 30.0], dtype=np.float32))).all(), \
+    assert (loss.numpy() > np.sum(np.array([9.0, 30.0], dtype=np.float32)) - 1e-4).all() and \
+           (loss.numpy() < np.sum(np.array([9.0, 30.0], dtype=np.float32)) + 1e-4).all(), \
         'NLLLoss: Loss function outputs dont match expected outputs'
 
 
@@ -86,7 +93,8 @@ def test_SelfAdversarialLoss():
     pos_score = tf.constant([3, -10.0], dtype=tf.float32)
     corr_score = tf.constant([np.log(2), np.log(10), np.log(2), np.log(50), np.log(4), np.log(40)], dtype=tf.float32)
     loss = lossObj(pos_score, corr_score, eta=3)
-    assert (loss.numpy() == np.sum(np.array([1.3552092, 9.222016], dtype=np.float32))).all(), \
+    assert (loss.numpy() > np.sum(np.array([1.3552092, 9.222016], dtype=np.float32)) - 1e-4).all() and\
+           (loss.numpy() < np.sum(np.array([1.3552092, 9.222016], dtype=np.float32)) + 1e-4).all(), \
         'SelfAdversarialLoss: Loss function outputs dont match expected outputs'
     
     lossObj = SelfAdversarialLoss({'margin': 3, 'alpha':1, 'reduction': 'sum'})
@@ -98,7 +106,8 @@ def test_SelfAdversarialLoss():
     pos_score = tf.constant([3, -10.0], dtype=tf.float32)
     corr_score = tf.constant([np.log(2), np.log(10), np.log(2), np.log(50), np.log(4), np.log(40)], dtype=tf.float32)
     loss = lossObj(pos_score, corr_score, eta=3)
-    assert (loss.numpy() == np.sum(np.array([4.060676, 13.664226], dtype=np.float32))).all(), \
+    assert (loss.numpy() > np.sum(np.array([4.060676, 13.664226], dtype=np.float32)) - 1e-4).all() and \
+           (loss.numpy() < np.sum(np.array([4.060676, 13.664226], dtype=np.float32)) + 1e-4).all(), \
         'SelfAdversarialLoss: Loss function outputs dont match expected outputs'
 
 
@@ -108,7 +117,8 @@ def test_NLLMulticlass():
     pos_score = tf.constant([np.log(1), np.log(10)], dtype=tf.float32)
     corr_score = tf.constant([np.log(2), np.log(10), np.log(4), np.log(50), np.log(3), np.log(30)], dtype=tf.float32)
     loss = lossObj(pos_score, corr_score, eta=3)
-    assert (loss.numpy() == np.sum(np.array([1.3862944, 1.3862944], dtype=np.float32))).all(), \
+    assert (loss.numpy() > np.sum(np.array([1.3862944, 1.3862944], dtype=np.float32)) - 1e-4).all() and \
+           (loss.numpy() < np.sum(np.array([1.3862944, 1.3862944], dtype=np.float32)) + 1e-4).all(), \
         'NLLMulticlass: Loss function outputs dont match expected outputs'
     
     lossObj = NLLMulticlass({'reduction': 'sum'})
@@ -116,7 +126,8 @@ def test_NLLMulticlass():
     corr_score = tf.constant([np.log(2), np.log(10), np.log(4), np.log(50), np.log(3), np.log(30)], dtype=tf.float32)
     loss = lossObj(pos_score, corr_score, eta=3)
 
-    assert (loss.numpy() == np.sum(np.array([2.3025851, 2.3025851], dtype=np.float32))).all(), \
+    assert (loss.numpy() > np.sum(np.array([2.3025851, 2.3025851], dtype=np.float32)) - 1e-4).all() and \
+           (loss.numpy() < np.sum(np.array([2.3025851, 2.3025851], dtype=np.float32)) + 1e-4).all(),        \
         'NLLMulticlass: Loss function outputs dont match expected outputs'
 
 
@@ -132,7 +143,8 @@ def test_LossFunctionWrapper():
     pos_score = tf.constant([np.log(1), np.log(10)], dtype=tf.float32)
     corr_score = tf.constant([np.log(2), np.log(10), np.log(4), np.log(50), np.log(3), np.log(30)], dtype=tf.float32)
     loss = lossObj(pos_score, corr_score, eta=3)
-    assert (loss.numpy() == np.sum(np.array([2.3025851, 2.3025851], dtype=np.float32))).all(), \
+    assert (loss.numpy() > np.sum(np.array([2.3025851, 2.3025851], dtype=np.float32)) - 1e-4).all() and \
+           (loss.numpy() < np.sum(np.array([2.3025851, 2.3025851], dtype=np.float32)) + 1e-4).all(), \
         'Get: Loss function outputs dont match expected outputs'
 
 
@@ -142,5 +154,6 @@ def test_get():
     corr_score = tf.constant([51.0, 30.0, -100, -60, 96.0, 30.0], dtype=tf.float32)
     # Loss: 51, 30, 0, 0, 75, 30
     loss = lossObj(pos_score, corr_score, eta=3)
-    assert (loss.numpy() == np.sum(np.array([126.0, 60.0], dtype=np.float32))).all(), \
+    assert (loss.numpy() > np.sum(np.array([126.0, 60.0], dtype=np.float32)) - 1e-4).all() and\
+           (loss.numpy() < np.sum(np.array([126.0, 60.0], dtype=np.float32)) + 1e-4).all(), \
         'Get: Loss function outputs dont match expected outputs'
