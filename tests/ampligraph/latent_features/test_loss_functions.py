@@ -21,7 +21,6 @@ def test_PairwiseLoss():
     corr_score = tf.constant([10.0, 100.0, 12.0, 102.0, 8.0, 98.0], dtype=tf.float32)
     # Loss: 2, 2, 4, 4, 0, 0
     loss = lossObj(pos_score, corr_score, eta=3)
-    print(loss.numpy())
     assert (loss.numpy() > np.sum(np.array([2.0, 2.0], dtype=np.float32)) - 1e-4).all() and \
            (loss.numpy() < np.sum(np.array([2.0, 2.0], dtype=np.float32)) + 1e-4).all(), \
         'PairwiseLoss: Loss function outputs dont match expected outputs'
