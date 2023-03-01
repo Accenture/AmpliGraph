@@ -58,10 +58,6 @@ pages:
     paths:
       - public
 
-packaging:
-  script:
-    - pip wheel --wheel-dir dist --no-deps .
-
 deploy:
   stage: deploy
   script: echo "Define your deployment script!"
