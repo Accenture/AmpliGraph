@@ -243,7 +243,7 @@ FB15K
 ========== ======== ====== ======== ======== ========== ========================
   Model       MR     MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
 ========== ======== ====== ======== ======== ========== ========================
-  TransE    44      0.63    0.50     0.73      0.85     k: 150;
+  TransE    45      0.62    0.48     0.72      0.84     k: 150;
                                                         epochs: 4000;
                                                         eta: 10;
                                                         loss: multiclass_nll;
@@ -259,7 +259,7 @@ FB15K
                                                         seed: 0;
                                                         batches_count: 100;
 
- DistMult   179      0.78    0.74     0.82      0.86     k: 200;
+ DistMult   227      0.71    0.66     0.75      0.80     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: self_adversarial;
@@ -271,7 +271,7 @@ FB15K
                                                          seed: 0;
                                                          batches_count: 50;
 
- ComplEx    184      0.80    0.76     0.82      0.86     k: 200;
+ ComplEx    199      0.73    0.67     0.77      0.82     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: self_adversarial;
@@ -280,10 +280,14 @@ FB15K
                                                          optimizer: adam;
                                                          optimizer_params:
                                                          lr: 0.0005;
+                                                         regularizer: LP;
+                                                         regularizer_params:
+                                                         lambda: 0.0001;
+                                                         p: 3;
                                                          seed: 0;
                                                          batches_count: 100;
 
-   HolE     216      0.80    0.76     0.83      0.87     k: 200;
+   HolE     216      0.00    0.00     0.00      0.00     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: self_adversarial;
@@ -369,9 +373,8 @@ To reproduce the above results: ::
     $ python predictive_performance.py
 
 
-.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~115 hours on
-    an Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box equipped with a Tesla V100 16GB.
-    The long running time is mostly due to the early stopping configuration (see section below).
+.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~40 hours on
+    an an Intel Xeon Gold 6226R, 256 GB, equipped with Tesla A100 40GB GPUs and  Ubuntu 20.04.
 
 .. note:: All of the experiments above were conducted with early stopping on half the validation set.
     Typically, the validation set can be found in ``X['valid']``.
@@ -386,8 +389,8 @@ To reproduce the above results: ::
       * burn_in: 0
       * check_interval: 50
 
-    Note that early stopping adds a significant computational burden to the learning procedure.
-    To lessen it, you may either decrease the validation set, the stop interval, the check interval,
+    Note that early stopping can save a lot of training time, but it also adds some computational cost to the
+    learning procedure. To lessen it, you may either decrease the validation set, the stop interval, the check interval,
     or increase the burn in.
 
 
@@ -406,14 +409,14 @@ Experiments can be limited to specific models-dataset combinations as follows: :
 Runtime Performance
 -------------------
 
-Training the models on FB15K-237 (``k=100, eta=10, batches_count=100, loss=multiclass_nll``), on an Intel Xeon Gold 6142, 64 GB
-Ubuntu 16.04 box equipped with a Tesla V100 16GB gives the following runtime report:
+Training the models on FB15K-237 (``k=100, eta=10, batches_count=10, loss=multiclass_nll``), on an Intel Xeon
+Gold 6226R, 256 GB, equipped with Tesla A100 40GB GPUs and Ubuntu 20.04 gives the following runtime report:
 
 ======== ==============
 model     seconds/epoch
 ======== ==============
-ComplEx     1.33
-TransE      1.22
-DistMult    1.20
-HolE        1.30
+ComplEx     0.18
+TransE      0.09
+DistMult    0.10
+HolE        0.18
 ======== ==============
