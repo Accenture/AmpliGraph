@@ -41,10 +41,8 @@ test:
 
 run:
   script:
-    - python setup.py bdist_wheel
-    # an alternative approach is to install and run:
-    - pip install dist/*
-    # run the command here
+    - pip install wheel  setuptools
+    - pip wheel --wheel-dir dist --no-deps .
   artifacts:
     paths:
       - dist/*.whl
@@ -55,10 +53,14 @@ pages:
     - cd docs
     - make clean autogen html
     - mkdir ../public/
-    - mv build/html/ ../public/
+    - mv _build/html/ ../public/
   artifacts:
     paths:
       - public
+
+packaging:
+  script:
+    - pip wheel --wheel-dir dist --no-deps .
 
 deploy:
   stage: deploy
