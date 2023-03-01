@@ -203,30 +203,30 @@ def test_find_duplicates():
         assert all(len(d) <= len(ent_rel) for d in dups)
         assert all(d.issubset(subspace) for d in dups)
 
-    dups, tol = find_duplicates(X, model, mode='t', tolerance='auto', expected_fraction_duplicates=0.5)
+    dups, tol = find_duplicates(X, model, mode='t', tolerance='auto', expected_fraction_duplicates=0.5, verbose=True)
     asserts(tol, dups, X, {tuple(x) for x in X})
 
-    dups, tol = find_duplicates(X, model, mode='t', tolerance=1.0)
+    dups, tol = find_duplicates(X, model, mode='t', tolerance=1.0, verbose=True)
     assert tol == 1.0
     asserts(tol, dups, X, {tuple(x) for x in X})
 
-    dups, tol = find_duplicates(np.unique(X[:, 0]), model, mode='e', tolerance='auto', expected_fraction_duplicates=0.5)
+    dups, tol = find_duplicates(np.unique(X[:, 0]), model, mode='e', tolerance='auto', expected_fraction_duplicates=0.5, verbose=True)
     asserts(tol, dups, entities, entities)
 
-    dups, tol = find_duplicates(np.unique(X[:, 2]), model, mode='e', tolerance='auto', expected_fraction_duplicates=0.5)
+    dups, tol = find_duplicates(np.unique(X[:, 2]), model, mode='e', tolerance='auto', expected_fraction_duplicates=0.5, verbose=True)
     asserts(tol, dups, entities, entities)
 
-    dups, tol = find_duplicates(np.unique(X[:, 1]), model, mode='r', tolerance='auto', expected_fraction_duplicates=0.5)
+    dups, tol = find_duplicates(np.unique(X[:, 1]), model, mode='r', tolerance='auto', expected_fraction_duplicates=0.5, verbose=True)
     asserts(tol, dups, relations, relations)
 
     with pytest.raises(ValueError):
-        find_duplicates(X, model, mode='hah')
+        find_duplicates(X, model, mode='hah', verbose=True)
     with pytest.raises(ValueError):
-        find_duplicates(X, model, mode='e')
+        find_duplicates(X, model, mode='e', verbose=True)
     with pytest.raises(ValueError):
-        find_duplicates(X, model, mode='r')
+        find_duplicates(X, model, mode='r', verbose=True)
     with pytest.raises(ValueError):
-        find_duplicates(np.unique(X[:, 0]), model, mode='t')
+        find_duplicates(np.unique(X[:, 0]), model, mode='t', verbose=True)
 
 
 def test_query_topn():
