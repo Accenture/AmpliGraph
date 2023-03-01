@@ -175,7 +175,8 @@ class AbstractGraphPartitioner(ABC):
                     os.remove(f + ".dir")
                     os.remove(f + ".dat")
                 except Exception:
-                    os.remove(f + ".db")
+                    if os.path.exists(f + ".db"):
+                        os.remove(f + ".db")
     
     
 @register_partitioning_strategy("Bucket", "BucketPartitionDataManager")
