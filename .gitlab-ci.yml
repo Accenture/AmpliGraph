@@ -32,12 +32,12 @@ before_script:
 
 codestyle:
   script:
+    - pip install pylint
     - pylint -v ./ampligraph
 
 test:
   script:
     - python setup.py test
-    - pip install pylint
 
 run:
   script:
