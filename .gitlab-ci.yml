@@ -52,8 +52,9 @@ run:
 pages:
   script:
     - pip install sphinx sphinx-rtd-theme
-    - cd doc
+    - cd docs
     - make clean autogen html
+    - mkdir ../public/
     - mv build/html/ ../public/
   artifacts:
     paths:
