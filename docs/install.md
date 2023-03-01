@@ -52,7 +52,7 @@ and install from source as below (also see the [How to Contribute guide](dev.md)
 ```
 git clone https://github.com/Accenture/AmpliGraph.git
 cd AmpliGraph
-git checkout develop
+git checkout ampligraph2/develop
 pip install -e .
 ```
 
