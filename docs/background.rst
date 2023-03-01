@@ -2,9 +2,9 @@ Background
 ==========
 
 For a comprehensive theoretical and hands-on overview of KGE models and hands-on AmpliGraph, check out our tutorials:
-`COLING-22 KGE4NLP Tutorial (Slides + Colab Notebook)`_ and `ECAI-20 Tutorial (Slides + Recording + Colab Notebook)`_. 
+`COLING-22 KGE4NLP Tutorial (Slides + Recording + Colab Notebook)`_ and `ECAI-20 Tutorial (Slides + Recording + Colab Notebook)`_. 
 
-.. _COLING-22 KGE4NLP Tutorial (Slides + Colab Notebook): https://kge4nlp-coling22.github.io/
+.. _COLING-22 KGE4NLP Tutorial (Slides + Recording + Colab Notebook): https://kge4nlp-coling22.github.io/
 
 .. _ECAI-20 Tutorial (Slides + Recording + Colab Notebook): https://kge-tutorial-ecai2020.github.io/
 
