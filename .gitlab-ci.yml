@@ -30,11 +30,14 @@ before_script:
   - pip install --upgrade pip
   - pip install tensorflow==2.10
 
+codestyle:
+  script:
+    - pylint -v ./ampligraph
+
 test:
   script:
     - python setup.py test
-    - pip install tox flake8  # you can also use tox
-    - tox -e py36,flake8
+    - pip install pylint
 
 run:
   script:
