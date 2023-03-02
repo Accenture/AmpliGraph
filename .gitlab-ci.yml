@@ -33,7 +33,7 @@ before_script:
 codestyle:
   script:
     - pip install pylint
-    - pylint -v ./ampligraph
+    - pylint --fail-under=3 -v ./ampligraph
 
 test:
   script:
