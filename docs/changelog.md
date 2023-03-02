@@ -4,9 +4,12 @@
 **24 February 2023**
 - Switched to TensorFlow 2 back-end
 - Keras style APIs
+- Unique model class ScoringBasedEmbeddingModel for all scoring functions that can be specified as a parameter when initializing the class
 - Change of the data input/output pipeline
 - Extension of supported optimizers, regularizers and initializer.
 - Different data storage support: no-backend (in memory) and SQLite-based backend
+- Codex-M Knowledge Graph included in the APIs for automatic download
+- ConvKB, ConvE, ConvE(1-N) not supported anymore as they are computationally expensive and thus not commonly used
 - Support AmpliGraph 1.4 API within ampligraph.compat module
 
 ## 1.4.0

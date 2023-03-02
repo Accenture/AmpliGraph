@@ -287,7 +287,7 @@ FB15K
                                                          seed: 0;
                                                          batches_count: 100;
 
-   HolE     216      0.00    0.00     0.00      0.00     k: 200;
+   HolE     222      0.72    0.65     0.77      0.83     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: self_adversarial;
@@ -297,7 +297,7 @@ FB15K
                                                          optimizer_params:
                                                          lr: 0.0005;
                                                          seed: 0;
-                                                         batches_count: 50;
+                                                         batches_count: 10;
 
 ========== ======== ====== ======== ======== ========== ========================
 
