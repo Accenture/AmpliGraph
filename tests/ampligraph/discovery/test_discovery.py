@@ -185,17 +185,19 @@ def test_find_duplicates():
                   ['a', 'y', 'd'],
                   ['c', 'x', 'd'],
                   ['b', 'y', 'c'],
-                  ['f', 'y', 'e']])
-    model = ScoringBasedEmbeddingModel(eta=5, 
-                                 k=10,
-                                 scoring_type='ComplEx')
+                  ['f', 'y', 'e'],
+                  ['a', 'z', 'e']])
+    model = ScoringBasedEmbeddingModel(eta=5,
+                                       k=10,
+                                       scoring_type='ComplEx',
+                                       seed=0)
     
     model.compile(optimizer='adam', loss='multiclass_nll')
 
     model.fit(X, batch_size=2, epochs=10)
 
     entities = set('a b c d e f'.split())
-    relations = set('x y'.split())
+    relations = set('x y z'.split())
 
     def asserts(tol, dups, ent_rel, subspace):
         assert tol > 0.0
@@ -203,20 +205,24 @@ def test_find_duplicates():
         assert all(len(d) <= len(ent_rel) for d in dups)
         assert all(d.issubset(subspace) for d in dups)
 
-    dups, tol = find_duplicates(X, model, mode='t', tolerance='auto', expected_fraction_duplicates=0.5, verbose=True)
+    dups, tol = find_duplicates(X, model, mode='t', tolerance='auto',
+                                expected_fraction_duplicates=0.5, verbose=True)
     asserts(tol, dups, X, {tuple(x) for x in X})
 
     dups, tol = find_duplicates(X, model, mode='t', tolerance=1.0, verbose=True)
     assert tol == 1.0
     asserts(tol, dups, X, {tuple(x) for x in X})
 
-    dups, tol = find_duplicates(np.unique(X[:, 0]), model, mode='e', tolerance='auto', expected_fraction_duplicates=0.5, verbose=True)
+    dups, tol = find_duplicates(np.unique(X[:, 0]), model, mode='e', tolerance='auto',
+                                expected_fraction_duplicates=0.5, verbose=True)
     asserts(tol, dups, entities, entities)
 
-    dups, tol = find_duplicates(np.unique(X[:, 2]), model, mode='e', tolerance='auto', expected_fraction_duplicates=0.5, verbose=True)
+    dups, tol = find_duplicates(np.unique(X[:, 2]), model, mode='e', tolerance='auto',
+                                expected_fraction_duplicates=0.5, verbose=True)
     asserts(tol, dups, entities, entities)
 
-    dups, tol = find_duplicates(np.unique(X[:, 1]), model, mode='r', tolerance='auto', expected_fraction_duplicates=0.5, verbose=True)
+    dups, tol = find_duplicates(np.unique(X[:, 1]), model, mode='r', tolerance='auto',
+                                expected_fraction_duplicates=0.5, verbose=True)
     asserts(tol, dups, relations, relations)
 
     with pytest.raises(ValueError):

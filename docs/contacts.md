@@ -42,8 +42,10 @@ If you instead use AmpliGraph in an academic publication, cite as:
 
 Active contributors (in alphabetical order)
 
++ [Alberto Bernardi](http://github.com/albernar)
 + [Luca Costabello](http://github.com/lukostaz)
 + [Chan Le Van](http://github.com/chanlevan)
++ [Adrianna Janik](https://github.com/adrijanik)
 + [Nicholas McCarthy](http://github.com/NicholasMcCarthy)
 + [Rory McGrath](http://github.com/rorymcgrath)
 + [Sumit Pai](http://github.com/sumitpai)
