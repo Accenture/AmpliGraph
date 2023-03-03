@@ -36,6 +36,8 @@ pip install --user tensorflow-macos==2.10
 pip install --user tensorflow-metal==0.6
 ```
 
+In case of problems with installation refer to [Tensorflow Plugin page on Apple developer site](https://developer.apple.com/metal/tensorflow-plugin/).
+
 ## Install AmpliGraph
 
 
