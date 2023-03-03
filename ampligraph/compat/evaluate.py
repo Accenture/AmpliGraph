@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def evaluate_performance(X, model, filter_triples=None, verbose=False, filter_unseen=True, entities_subset=None,
+def evaluate_performance(X, model, filter_triples=None, verbose=False, entities_subset=None,
                          corrupt_side='s,o', batch_size=1):
     """Evaluate the performance of an embedding model.
 
