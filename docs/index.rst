@@ -17,7 +17,7 @@ AmpliGraph 2
 
 
 .. note::
-    AmpliGraph 2.0.0 is now available!
+    **AmpliGraph 2.0.0 is now available!**
 
     The new version features TensorFlow 2 back-end and Keras style APIs that makes it faster, easier to use and
     extend the support for multiple features. Further, the data input/output pipeline has changed, and the support for
