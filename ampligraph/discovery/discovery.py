@@ -840,7 +840,7 @@ def find_duplicates(X, model, mode="e", metric='l2', tolerance='auto',
              Each frozenset will contain at least two entities.
 
         """
-        nn = NearestNeighbors(metric='euclidean', radius=tol)
+        nn = NearestNeighbors(metric=metric, radius=tol)
         nn.fit(emb)
         neighbors = nn.radius_neighbors(emb)[1]
         idx_dups = ((i, row) for i, row in enumerate(neighbors) if len(row) > 1)
