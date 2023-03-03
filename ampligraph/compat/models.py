@@ -259,6 +259,8 @@ class ScoringModelBase:
             x_filter = {'test': x_filter}
         elif x_filter is None or not x_filter:
             x_filter = False
+        elif isinstance(x_filter, dict):
+            pass
         else:
             raise ValueError('Incorrect type for x_filter')
 
