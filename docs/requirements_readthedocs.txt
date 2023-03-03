@@ -1,1 +1,2 @@
-tensorflow>=2.6.0
+sphinxcontrib-bibtex
+tensorflow>=2.9.0
