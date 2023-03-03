@@ -185,7 +185,8 @@ def test_find_duplicates():
                   ['a', 'y', 'd'],
                   ['c', 'x', 'd'],
                   ['b', 'y', 'c'],
-                  ['f', 'y', 'e']])
+                  ['f', 'y', 'e'],
+                  ['a', 'z', 'e']])
     model = ScoringBasedEmbeddingModel(eta=5,
                                        k=10,
                                        scoring_type='ComplEx',
@@ -196,7 +197,7 @@ def test_find_duplicates():
     model.fit(X, batch_size=2, epochs=10)
 
     entities = set('a b c d e f'.split())
-    relations = set('x y'.split())
+    relations = set('x y z'.split())
 
     def asserts(tol, dups, ent_rel, subspace):
         assert tol > 0.0
