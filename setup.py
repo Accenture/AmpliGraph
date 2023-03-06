@@ -28,6 +28,7 @@ setup_params = dict(name='ampligraph',
                         'pandas>=0.23.1',
                         'sphinx==5.0.2',
                         'myst-parser==0.18.0',
+                        'docutils<0.19'
                         'sphinx_rtd_theme==1.0.0',
                         'sphinxcontrib-bibtex==2.4.2',
                         'beautifultable>=0.7.0',
