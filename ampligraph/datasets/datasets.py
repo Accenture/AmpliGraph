@@ -19,8 +19,8 @@ from collections import namedtuple
 AMPLIGRAPH_ENV_NAME = 'AMPLIGRAPH_DATA_HOME'
 
 DatasetMetadata = namedtuple('DatasetMetadata', ['dataset_name', 'filename', 'url', 'train_name', 'valid_name',
-                                                 'test_name', 'train_checksum', 'valid_checksum', 'test_checksum', 
-                                                 'test_human_name', 'test_human_checksum', 'test_human_ids_name', 
+                                                 'test_name', 'train_checksum', 'valid_checksum', 'test_checksum',
+                                                 'test_human_name', 'test_human_checksum', 'test_human_ids_name',
                                                  'test_human_ids_checksum', 'mapper_name', 'mapper_checksum',
                                                  'valid_negatives_name', 'valid_negatives_checksum', 'test_negatives_name',
                                                  'test_negatives_checksum'],
@@ -70,13 +70,13 @@ def _clean_data(X, return_idx=False):
 
     if 'valid_negatives' in X:
         valid_negatives = pd.DataFrame(X["valid_negatives"][:, :3], columns=['s', 'p', 'o'])
-        valid_negatives_idx = valid_negatives.s.isin(train_ent) & valid_negatives.o.isin(train_ent) & valid_negatives.p.isin(train_rel)    
+        valid_negatives_idx = valid_negatives.s.isin(train_ent) & valid_negatives.o.isin(train_ent) & valid_negatives.p.isin(train_rel)
         filtered_valid_negatives = valid_negatives[valid_negatives_idx].values
         filtered_X['valid_negatives'] = filtered_valid_negatives
     if 'test_negatives' in X:
         test_negatives = pd.DataFrame(X["test_negatives"][:, :3], columns=['s', 'p', 'o'])
         test_negatives_idx = test_negatives.s.isin(train_ent) & test_negatives.o.isin(train_ent) & test_negatives.p.isin(train_rel)
-        filtered_test_negatives = test[test_negatives_idx].values    
+        filtered_test_negatives = test[test_negatives_idx].values
         filtered_X['test_negatives'] = filtered_test_negatives
 
     valid_idx = valid.s.isin(train_ent) & valid.o.isin(train_ent) & valid.p.isin(train_rel)
@@ -95,7 +95,7 @@ def _clean_data(X, return_idx=False):
     if 'test-human' in X and 'test-human-ids' in X:
         filtered_X['test-human'] = X['test-human']
         filtered_X['test-human-ids'] = X['test-human-ids']
-       
+
     if return_idx:
         return filtered_X, valid_idx, test_idx
     else:
@@ -405,41 +405,41 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
 
 def load_mapper_from_json(directory_path, file_name):
     """Load a mapper from a .json file.
-    
+
     Loads a mapper for a graph serialized in a .json file as:
-    
+
     .. code-block:: text
-    
-       subj1: human_labeled_subj1    
+
+       subj1: human_labeled_subj1
        relationX: human_labeled_relationX
        obj1: human_labeled_obj1
        human_labeled_relationX: description_of_relationX
-    
+
        ...
-    
+
     Parameters
     ----------
-    
+
     directory_path: str
         Folder where the input file is stored.
     file_name : str
         File name.
-    
+
     Returns
     -------
-    
+
     mapper : dict
         Dictionary of mappings between graph entities and predicates and human-readable version of them.
-    
+
     Example
     -------
-    
+
     >>> from ampligraph.datasets import load_mapper_from_json
     >>> mapper = load_mapper_from_json('folder', 'mapper.json')
     >>> mapper['/m/234fsd/']
     'Dog'
     """
-    
+
     logger.debug('Loading mapper from {}.'.format(file_name))
     with open(os.path.join(directory_path, file_name)) as f:
         mapper = json.loads(f.read())
@@ -672,68 +672,68 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
 
 def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False, return_mapper=False):
     """Load the FB15k-237 dataset (with option to load human labeled test subset).
- 
+
     FB15k-237 is a reduced version of FB15K. It was first proposed by :cite:`toutanova2015representing`.
- 
+
     .. warning:: *FB15K-237*'s validation set contains 8 unseen entities over 9 triples. The test set has 29 unseen entities,
          distributed over 28 triples.
- 
+
     The FB15k-237 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
     If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
     If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
     or ``~/ampligraph_datasets``.
- 
+
     The dataset is divided in three splits:
- 
+
     - `train`: 272,115 triples
     - `valid`: 17,535 triples
     - `test`: 20,466 triples
- 
+
     It also contains a subset of the test set with human-readable labels, available here:
- 
+
     - `test-human`
     - `test-human-ids`
- 
+
     ========= ========= ======= ======= ==========  ========  =========
      Dataset  Train     Valid   Test    Test-Human  Entities  Relations
     ========= ========= ======= ======= ==========  ========  =========
     FB15K-237 272,115   17,535  20,466   273        14,541    237
     ========= ========= ======= ======= ==========  ========  =========
- 
- 
+
+
     Parameters
     ----------
     check_md5hash : bool
         If `True` check the md5hash of the files (default: `False`).
- 
+
     clean_unseen : bool
         If `True`, filters triples in validation and test sets that include entities not present in the training set.
- 
+
     add_reciprocal_rels : bool
          Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
          this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
- 
+
     return_mapper : bool
          Whether to return human-readable labels in a form of dictionary in ``X["mapper"]`` field (default: `False`).
- 
+
     Returns
     -------
- 
+
     splits : dict
         The dataset splits: `{'train': train, 'valid': valid, 'test': test, 'test-human':test_human, 'test-human-ids': test_human_ids}`.
         Each split is a ndarray of shape (n, 3).
- 
+
     Example
     -------
- 
+
     >>> from ampligraph.datasets import load_fb15k_237
     >>> X = load_fb15k_237()
     >>> X["train"][2]
     array(['/m/07s9rl0', '/media_common/netflix_genre/titles', '/m/0170z3'],
       dtype=object)
- 
+
     """
- 
+
     if return_mapper:
         fb15k_237 = DatasetMetadata(
             dataset_name='fb15k-237',
@@ -764,7 +764,7 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=F
             valid_checksum='6a94efd530e5f43fcf84f50bc6d37b69',
             test_checksum='f5bdf63db39f455dec0ed259bb6f8628'
         )
- 
+
     if clean_unseen:
         return _clean_data(_load_dataset(fb15k_237,
                                          data_home=None,
@@ -1167,33 +1167,33 @@ def load_from_ntriples(folder_name, file_name, data_home=None, add_reciprocal_re
 
 def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, split_threshold=0.1):                      # FocusE
     """Creates the dataset splits for training models with FocusE layers
-    
+
     Parameters
     ----------
     dataset : dict
         Dictionary of train, test, valid datasets of size (n,m) - where m>3. The first 3 cols are `subject`,
         `predicate`, and `object`. Afterwards, is the numeric values (potentially multiple) associated with each triple.
-    
+
     split_test_into_top_bottom: bool
         Splits the test set by numeric values and returns `test_top_split` and `test_bottom_split` by splitting
         based on sorted numeric values and returning top and bottom k*100% triples, where `k` is specified by
         `split_threshold` argument.
-        
+
     split_threshold: float
         Specifies the top and bottom percentage of triples to return.
-        
+
     Returns
     -------
     splits : dict
         The dataset splits: `{'train': train,
-                             'train_numeric_values': train_numeric_values, 
-                             'valid': valid, 
+                             'train_numeric_values': train_numeric_values,
+                             'valid': valid,
                              'valid_numeric_values': valid_numeric_values,
-                             'test': test, 
+                             'test': test,
                              'test_numeric_values': test_numeric_values,
-                             'test_topk': test_topk, 
+                             'test_topk': test_topk,
                              'test_topk_numeric_values': test_topk_numeric_values,
-                             'test_bottomk': test_bottomk, 
+                             'test_bottomk': test_bottomk,
                              'test_bottomk_numeric_values': test_bottomk_numeric_values}`.
         Each numeric value split contains numeric values associated with the corresponding dataset split and
         is a ndarray of shape (n, 1).
@@ -1206,7 +1206,7 @@ def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, spl
     dataset['train_numeric_values'] = dataset['train'][:, 3:].astype(np.float32)
     dataset['valid_numeric_values'] = dataset['valid'][:, 3:].astype(np.float32)
     dataset['test_numeric_values'] = dataset['test'][:, 3:].astype(np.float32)
-    
+
     dataset['train'] = dataset['train'][:, 0:3]
     dataset['valid'] = dataset['valid'][:, 0:3]
     dataset['test'] = dataset['test'][:, 0:3]
@@ -1214,16 +1214,16 @@ def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, spl
     sorted_indices = np.squeeze(np.argsort(dataset['test_numeric_values'], axis=0))
     dataset['test'] = dataset['test'][sorted_indices]
     dataset['test_numeric_values'] = dataset['test_numeric_values'][sorted_indices]
-    
+
     if split_test_into_top_bottom:
         split_threshold = int(split_threshold * dataset['test'].shape[0])
-        
+
         dataset['test_bottomk'] = dataset['test'][:split_threshold]
         dataset['test_bottomk_numeric_values'] = dataset['test_numeric_values'][:split_threshold]
-        
+
         dataset['test_topk'] = dataset['test'][-split_threshold:]
         dataset['test_topk_numeric_values'] = dataset['test_numeric_values'][-split_threshold:]
-        
+
     return dataset
 
 
@@ -1232,7 +1232,7 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
 
     O*NET20K was originally proposed in :cite:`pai2021learning`.
     It is a subset  of `O*NET <https://www.onetonline.org/>`_, a dataset that includes job descriptions, skills
-    and labeled, binary relations between such concepts. Each triple is labeled with a numeric value that 
+    and labeled, binary relations between such concepts. Each triple is labeled with a numeric value that
     indicates the importance of that link.
 
     O*NET20K dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
@@ -1254,7 +1254,7 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
     ========= ========= ======== =========== ========== ===========
     ONET*20K  461,932    850     2,000       20,643     19
     ========= ========= ======== =========== ========== ===========
-    
+
     Parameters
     ----------
     check_md5hash : bool
@@ -1262,15 +1262,15 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
     clean_unseen : bool
         If `True`, filters triples in validation and test sets that include entities not present in the training
         set.
-        
+
     split_test_into_top_bottom: bool
         Splits the test set by numeric values and returns `test_top_split` and `test_bottom_split` by splitting based
         on sorted numeric values and returning top and bottom k% triples, where `k` is specified by `split_threshold`
         argument.
-        
+
     split_threshold: float
         Specifies the top and bottom percentage of triples to return.
-        
+
     Returns
     -------
     splits : dict
@@ -1291,7 +1291,7 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
         the triples ordered by highest/lowest numeric edge value associated. These are typically used at evaluation time
         aiming at observing a model that assigns the highest rank possible to the `_topk` and the lowest possible to
         the `_bottomk`.
-        
+
     Example
     -------
     >>> from ampligraph.datasets import load_onet20k
@@ -1315,10 +1315,10 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
 
     dataset = _load_dataset(onet20k, data_home=None,
                             check_md5hash=check_md5hash)
-    
+
     if clean_unseen:
         dataset = _clean_data(dataset)
-    
+
     return generate_focusE_dataset_splits(dataset, split_test_into_top_bottom, split_threshold)
 
 
@@ -1346,9 +1346,9 @@ def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
     ========= ========= ======== =========== ========== ===========
     Dataset   Train     Valid    Test        Entities   Relations
     ========= ========= ======== =========== ========== ===========
-    PPI5K     230929    19017    21720       4999       7    
+    PPI5K     230929    19017    21720       4999       7
     ========= ========= ======== =========== ========== ===========
-    
+
     Parameters
     ----------
     check_md5hash : bool
@@ -1356,17 +1356,17 @@ def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
     clean_unseen : bool
         If `True`, filters triples in validation and test sets that include entities not present in the training
         set.
-        
+
     split_test_into_top_bottom: bool
         When set to `True`, the function also returns subsets of the test set that includes only the top-k or
         bottom-k numeric-enriched triples. Splits `test_topk`, `test_bottomk` and their
         numeric values. Such splits are generated by sorting Splits the test set by numeric values and returns
         `test_top_split` and `test_bottom_split` by splitting based on sorted numeric values and returning top
         and bottom k% triples, where `k` is specified by the ``split_threshold`` argument.
-        
+
     split_threshold: float
         Specifies the top and bottom percentage of triples to return.
-        
+
     Returns
     -------
     splits : dict
@@ -1387,7 +1387,7 @@ def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
         the triples ordered by highest/lowest numeric edge value associated. These are typically used at evaluation time
         aiming at observing a model that assigns the highest rank possible to the `_topk` and the lowest possible to
         the `_bottomk`.
-        
+
     Example
     -------
     >>> from ampligraph.datasets import load_ppi5k
@@ -1444,7 +1444,7 @@ def load_nl27k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
     ========= ========= ======== =========== ========== ===========
     NL27K     149,100    12,274    14,026       27,221      405
     ========= ========= ======== =========== ========== ===========
-    
+
     Parameters
     ----------
     check_md5hash : bool
@@ -1452,15 +1452,15 @@ def load_nl27k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
     clean_unseen : bool
         If `True`, filters triples in validation and test sets that include entities not present in the training
         set.
-        
+
     split_test_into_top_bottom: bool
         Splits the test set by numeric values and returns `test_top_split` and `test_bottom_split` by splitting based
         on sorted numeric values and returning top and bottom k% triples, where `k` is specified by `split_threshold`
         argument.
-        
+
     split_threshold: float
         Specifies the top and bottom percentage of triples to return.
-        
+
     Returns
     -------
     splits : dict
@@ -1481,7 +1481,7 @@ def load_nl27k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
         the triples ordered by highest/lowest numeric edge value associated. These are typically used at evaluation time
         aiming at observing a model that assigns the highest rank possible to the `_topk` and the lowest possible to
         the `_bottomk`.
-        
+
     Example
     -------
     >>> from ampligraph.datasets import load_nl27k
@@ -1505,7 +1505,7 @@ def load_nl27k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
 
     dataset = _load_dataset(nl27k, data_home=None,
                             check_md5hash=check_md5hash)
-    
+
     if clean_unseen:
         dataset = _clean_data(dataset)
 
@@ -1538,7 +1538,7 @@ def load_cn15k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
     ========= ========= ======== =========== ========== ===========
     CN15K     199,417    16,829    19,224       15,000      36
     ========= ========= ======== =========== ========== ===========
-    
+
     Parameters
     ----------
     check_md5hash : bool
@@ -1546,15 +1546,15 @@ def load_cn15k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
     clean_unseen : bool
         If `True`, filters triples in validation and test sets that include entities not present in the training
         set.
-        
+
     split_test_into_top_bottom: bool
         Splits the test set by numeric values and returns `test_top_split` and `test_bottom_split` by splitting based
         on sorted numeric values and returning top and bottom k% triples, where `k` is specified by `split_threshold`
         argument.
-        
+
     split_threshold: float
         Specifies the top and bottom percentage of triples to return.
-        
+
     Returns
     -------
     splits : dict
@@ -1599,7 +1599,7 @@ def load_cn15k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
 
     dataset = _load_dataset(cn15k, data_home=None,
                             check_md5hash=check_md5hash)
-    
+
     if clean_unseen:
         dataset = _clean_data(dataset)
 
@@ -1611,7 +1611,7 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
 
     XAI-FB15k-237 is a reduced version of FB15K-237 containing human-readable triples.
 
-    The dataset contains several fields, by default the returned data frame contains only triples, when 
+    The dataset contains several fields, by default the returned data frame contains only triples, when
     option full is equal to True (``full=True``) the full data is returned (it reflects filtering protocol).
 
     Fields:
@@ -1623,7 +1623,7 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
     - subject_label,
     - object_label,
     - object.
-    
+
     All triples are returned 273 x 7.
 
     Full Fields:
@@ -1667,7 +1667,7 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
          - "all" - returns all records,
          - "clear" - returns only triples which all annotators marked as understandable,
          - "not clear" - not understandable triples,
-         - "confusing+" - mostly understandable triples, 
+         - "confusing+" - mostly understandable triples,
          - "confusing-" - mostly not understandable.
 
 
@@ -1717,13 +1717,13 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
                    'object_label_triple2': 'object_label',
                    'object_triple2': 'object'}
         t2 = t2.rename(columns=mapper2)
-        mapper3 = {'subject_triple3': 'subject', 
+        mapper3 = {'subject_triple3': 'subject',
                    'subject_label_triple3': 'subject_label',
                    'object_label_triple3': 'object_label',
                    'object_triple3': 'object'}
         t3 = t3.rename(columns=mapper3)
         t1 = t1.append(t2, ignore_index=True)
-        t1 = t1.append(t3, ignore_index=True)        
+        t1 = t1.append(t3, ignore_index=True)
         return t1
 
 
