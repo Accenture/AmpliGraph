@@ -56,7 +56,7 @@ AmpliGraph includes the following submodules:
 ### Prerequisites
 
 * Linux, macOS, Windows
-* Python ≥ 3.6
+* Python ≥ 3.8
 
 #### Provision a Virtual Environment
 
