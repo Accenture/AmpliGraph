@@ -19,7 +19,7 @@
     name: Install package
     command: |
       . venv/bin/activate
-      venv/bin/python3 -m pip install tensorflow==1.13.1
+      venv/bin/python3 -m pip install tensorflow==2.10
       venv/bin/python3 -m pip install .
 
 version: 2
