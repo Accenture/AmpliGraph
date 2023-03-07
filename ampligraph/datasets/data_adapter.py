@@ -7,7 +7,6 @@
 #
 import contextlib
 from .graph_data_loader import GraphDataLoader, NoBackend
-from .sqlite_adapter import SQLiteAdapter
 from .graph_partitioner import AbstractGraphPartitioner
 from .partitioned_data_manager import get_partition_adapter
 from tensorflow.python.framework import errors

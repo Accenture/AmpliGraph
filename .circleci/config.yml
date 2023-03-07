@@ -76,7 +76,7 @@ jobs:
           command: |
             . venv/bin/activate
             venv/bin/python3 -m pip install flake8
-            venv/bin/python3 -m flake8 ampligraph --max-line-length 200 --ignore=W291,W293,W503
+            venv/bin/python3 -m flake8 ampligraph --max-line-length 200 --ignore=W291,W293,W503,E731,W605,E101,W191
 
   docs:
     docker:

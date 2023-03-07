@@ -24,7 +24,7 @@ DatasetMetadata = namedtuple('DatasetMetadata', ['dataset_name', 'filename', 'ur
                                                  'test_human_ids_checksum', 'mapper_name', 'mapper_checksum',
                                                  'valid_negatives_name', 'valid_negatives_checksum', 'test_negatives_name',
                                                  'test_negatives_checksum'],
-                                                defaults=(None, None, None, None, None, None, None, None, None, None))
+                             defaults=(None, None, None, None, None, None, None, None, None, None))
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -383,8 +383,8 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
     dataset['test'] = test
     if dataset_metadata.valid_negatives_name is not None:
         valid_negatives = load_from_csv(dataset_path,
-                              dataset_metadata.valid_negatives_name,
-                              add_reciprocal_rels=add_reciprocal_rels)
+                                        dataset_metadata.valid_negatives_name,
+                                        add_reciprocal_rels=add_reciprocal_rels)
         dataset['valid_negatives'] = valid_negatives
     if dataset_metadata.test_negatives_name is not None:
         test_negatives = load_from_csv(dataset_path,

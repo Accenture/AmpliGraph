@@ -275,7 +275,7 @@ class ScoringModelBase:
                                  'structural_wt': self.embedding_model_params.get('structural_wt', 0.001)}
             else:
                 msg = "Either X or focusE_numeric_edge_values are not np.array, so focusE is not supported. " \
-                                  "Try using Ampligraph 2 or Ampligraph 1.x APIs!"
+                      "Try using Ampligraph 2 or Ampligraph 1.x APIs!"
                 raise ValueError(msg)
             
         self.model.fit(X,
@@ -433,6 +433,7 @@ class ScoringModelBase:
                                     positive_base_rate,
                                     batch_size,
                                     epochs)
+
     def predict_proba(self, X):
         """
         Predicts probabilities using the Platt scaling model (after calibration).

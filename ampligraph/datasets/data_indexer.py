@@ -31,7 +31,6 @@ import tempfile
 import sqlite3
 import shutil
 import uuid
-from ampligraph.utils import preprocess_focusE_weights
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -411,12 +410,12 @@ class InMemory():
             if isinstance(sample, pd.DataFrame):
                 sample = sample.values
             self.data_shape = sample.shape[1]
-            indexed_data = self.get_indexes_from_a_dictionary(sample[:,:3], order=order)
+            indexed_data = self.get_indexes_from_a_dictionary(sample[:, :3], order=order)
             # focusE
             if sample.shape[1] > 3:
-                    # weights = preprocess_focusE_weights(data=sample[:, :3], weights=sample[:, 3:])
-                    weights = sample[:, 3:]
-                    return np.concatenate([indexed_data, weights], axis=1)
+                # weights = preprocess_focusE_weights(data=sample[:, :3], weights=sample[:, 3:])
+                weights = sample[:, 3:]
+                return np.concatenate([indexed_data, weights], axis=1)
             else:
                 return indexed_data
         else:
@@ -662,9 +661,9 @@ class Shelves():
 
         for chunk in self.data:
             if isinstance(chunk, pd.DataFrame):
-                self.update_shelves(chunk.iloc[:,:3].values, rough=True)
+                self.update_shelves(chunk.iloc[:, :3].values, rough=True)
             else:
-                self.update_shelves(chunk[:,:3], rough=True)
+                self.update_shelves(chunk[:, :3], rough=True)
 
         logger.debug("We need to reindex all the data now so the indexes are continuous among chunks")
         self.reindex()
