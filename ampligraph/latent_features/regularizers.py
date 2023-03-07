@@ -33,7 +33,8 @@ def LP_regularizer(trainable_param, regularizer_parameters={}):
 
     """
     return regularizer_parameters.get("lambda", 0.00001) * tf.reduce_sum(
-        tf.pow(tf.abs(trainable_param), regularizer_parameters.get("p", 2)))
+        tf.pow(tf.abs(trainable_param), regularizer_parameters.get("p", 2))
+    )
 
 
 def get(identifier, hyperparams={}):
@@ -53,13 +54,15 @@ def get(identifier, hyperparams={}):
     """
     if isinstance(identifier, str) and identifier == "l3":
         hyperparams["p"] = 3
-        identifier = partial(LP_regularizer,
-                             regularizer_parameters=hyperparams)
+        identifier = partial(
+            LP_regularizer, regularizer_parameters=hyperparams
+        )
         identifier = tf.keras.regularizers.get(identifier)
         identifier.__name__ = "LP"
     elif isinstance(identifier, str) and identifier == "LP":
-        identifier = partial(LP_regularizer,
-                             regularizer_parameters=hyperparams)
+        identifier = partial(
+            LP_regularizer, regularizer_parameters=hyperparams
+        )
         identifier = tf.keras.regularizers.get(identifier)
         identifier.__name__ = "LP"
     return identifier

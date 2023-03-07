@@ -82,9 +82,6 @@ ScoringBasedEmbeddingModel
       ~ScoringBasedEmbeddingModel.compile
       
       
-      ~ScoringBasedEmbeddingModel.compute_focusE_weights
-      
-      
       
       
       
@@ -117,9 +114,6 @@ ScoringBasedEmbeddingModel
       ~ScoringBasedEmbeddingModel.get_embeddings
       
       
-      ~ScoringBasedEmbeddingModel.get_focusE_params
-      
-      
       ~ScoringBasedEmbeddingModel.get_indexes
       
       
@@ -131,6 +125,7 @@ ScoringBasedEmbeddingModel
       
       
       ~ScoringBasedEmbeddingModel.get_train_embedding_matrix_size
+      
       
       
       
@@ -197,9 +192,6 @@ ScoringBasedEmbeddingModel
       ~ScoringBasedEmbeddingModel.train_step
       
       
-      ~ScoringBasedEmbeddingModel.update_focusE_params
-      
-      
    
       
    .. automethod:: ScoringBasedEmbeddingModel.__init__
@@ -218,8 +210,6 @@ ScoringBasedEmbeddingModel
    .. automethod:: ScoringBasedEmbeddingModel.call
       
    .. automethod:: ScoringBasedEmbeddingModel.compile
-      
-   .. automethod:: ScoringBasedEmbeddingModel.compute_focusE_weights
       
       
       
@@ -245,8 +235,6 @@ ScoringBasedEmbeddingModel
       
    .. automethod:: ScoringBasedEmbeddingModel.get_embeddings
       
-   .. automethod:: ScoringBasedEmbeddingModel.get_focusE_params
-      
    .. automethod:: ScoringBasedEmbeddingModel.get_indexes
       
       
@@ -257,6 +245,7 @@ ScoringBasedEmbeddingModel
       
       
    .. automethod:: ScoringBasedEmbeddingModel.get_train_embedding_matrix_size
+      
       
       
    .. automethod:: ScoringBasedEmbeddingModel.is_fit
@@ -304,8 +293,6 @@ ScoringBasedEmbeddingModel
       
       
    .. automethod:: ScoringBasedEmbeddingModel.train_step
-      
-   .. automethod:: ScoringBasedEmbeddingModel.update_focusE_params
       
    
    
