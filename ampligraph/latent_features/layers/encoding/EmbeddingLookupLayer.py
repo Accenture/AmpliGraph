@@ -12,8 +12,8 @@ import numpy as np
 class EmbeddingLookupLayer(tf.keras.layers.Layer):
     def get_config(self):
         config = super(EmbeddingLookupLayer, self).get_config()
-        
-        config.update({'k': self.k, 
+
+        config.update({'k': self.k,
                        'max_ent_size': self._max_ent_size_internal,
                        'max_rel_size': self._max_rel_size_internal,
                        'entity_kernel_initializer': self.ent_init,
@@ -22,14 +22,14 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
                        'relation_kernel_regularizer': self.rel_regularizer})
 
         return config
-    
-    def __init__(self, k, max_ent_size=None, max_rel_size=None, 
-                 entity_kernel_initializer="glorot_uniform", entity_kernel_regularizer=None, 
-                 relation_kernel_initializer="glorot_uniform", relation_kernel_regularizer=None, 
+
+    def __init__(self, k, max_ent_size=None, max_rel_size=None,
+                 entity_kernel_initializer="glorot_uniform", entity_kernel_regularizer=None,
+                 relation_kernel_initializer="glorot_uniform", relation_kernel_regularizer=None,
                  **kwargs):
         '''
         Initializes the embeddings of the model.
-        
+
         Parameters
         ----------
         k: int
@@ -50,12 +50,12 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
             Regularizer of entity embeddings.
         relation_kernel_regularizer: str or objective function or `tf.keras.regularizers.Regularizer` instance
             Regularizer of relations embeddings.
-        seed: int 
+        seed: int
             Random seed.
 
         '''
         super(EmbeddingLookupLayer, self).__init__(**kwargs)
-        
+
         self._max_ent_size_internal = max_ent_size
         self._max_rel_size_internal = max_rel_size
         self.k = k
@@ -68,38 +68,38 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
 
         self._has_enough_args_to_build_ent_emb = True
         self._has_enough_args_to_build_rel_emb = True
-        
+
         if self.max_ent_size is None:
             self._has_enough_args_to_build_ent_emb = False
-            
+
         if self.max_rel_size is None:
             self._has_enough_args_to_build_rel_emb = False
-            
+
         self.ent_init = entity_kernel_initializer
         self.rel_init = relation_kernel_initializer
-        
+
         self.ent_regularizer = entity_kernel_regularizer
         self.rel_regularizer = relation_kernel_regularizer
-        
+
     def set_ent_rel_initial_value(self, ent_init, rel_init):
         '''
         Sets the initial value of entity and relation embedding matrix.
 
-        This function is mainly used during the partitioned training where the full embedding matrix is 
+        This function is mainly used during the partitioned training where the full embedding matrix is
         initialized outside the model.
         '''
         self.ent_partition = ent_init
         self.rel_partition = rel_init
-        
+
     def set_initializer(self, initializer):
         '''
         Set the initializer of the weights of this layer.
-        
+
         Parameters
         ----------
         initializer: str (name of objective function) or objective function or `tf.keras.initializers.Initializer` or list
             Initializer of the entity and relation embeddings. This is either a single value or a list of size 2.
-            If it is a single value, then both the entities and relations will be initialized based on 
+            If it is a single value, then both the entities and relations will be initialized based on
             the same initializer. If it is a list, the first initializer will be used for entities and the second
             for relations. Any callable with the signature ``init = fn(shape)`` can be interpreted as an objective
             function.
@@ -111,24 +111,24 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
             self.ent_init = tf.keras.initializers.get(initializer[0])
             self.rel_init = tf.keras.initializers.get(initializer[1])
         else:
-            
+
             self.ent_init = tf.keras.initializers.get(initializer)
             self.rel_init = tf.keras.initializers.get(initializer)
-            
+
     def set_regularizer(self, regularizer):
         '''
         Set the regularizer of the weights of this layer.
-        
+
         Parameters
         ----------
         regularizer: str (name of objective function) or objective function or `tf.keras.regularizers.Regularizer` instance or list
             Regularizer of the weights determining entity and relation embeddings.
-            If it is a single value, then both the entities and relations will be regularized based on 
+            If it is a single value, then both the entities and relations will be regularized based on
             the same regularizer. If it is a list, the first regularizer will be used for entities and the second
             for relations.
 
         '''
-            
+
         if isinstance(regularizer, list):
             assert len(regularizer) == 2, \
                 'Incorrect length for regularizer. Expected 2, got {}'.format(len(regularizer))
@@ -137,14 +137,14 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         else:
             self.ent_regularizer = tf.keras.regularizers.get(regularizer)
             self.rel_regularizer = tf.keras.regularizers.get(regularizer)
-        
-    @property 
+
+    @property
     def max_ent_size(self):
         ''' Returns the size of the entity embedding matrix.
         '''
         return self._max_ent_size_internal
-    
-    @max_ent_size.setter 
+
+    @max_ent_size.setter
     def max_ent_size(self, value):
         ''' Setter for the max entity size property.
 
@@ -153,14 +153,14 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         if value is not None and value > 0:
             self._max_ent_size_internal = value
             self._has_enough_args_to_build_ent_emb = True
-    
-    @property 
+
+    @property
     def max_rel_size(self):
         ''' Returns the size of relation embedding matrix.
         '''
         return self._max_rel_size_internal
-    
-    @max_rel_size.setter 
+
+    @max_rel_size.setter
     def max_rel_size(self, value):
         ''' Setter for the max relation size property.
 
@@ -169,14 +169,14 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         if value is not None and value > 0:
             self._max_rel_size_internal = value
             self._has_enough_args_to_build_rel_emb = True
-    
+
     def build(self, input_shape):
         '''Builds the embedding lookup error.
 
         The trainable weights are created based on the hyperparams.
         '''
         # create the trainable variables for entity embeddings
-        if self._has_enough_args_to_build_ent_emb: 
+        if self._has_enough_args_to_build_ent_emb:
             self.ent_emb = self.add_weight(
                 'ent_emb',
                 shape=[self._max_ent_size_internal, self.k],
@@ -190,12 +190,12 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
                 self.ent_emb.assign(np.pad(self.ent_partition, paddings_ent, 'constant', constant_values=0))
                 del self.ent_partition
                 self.ent_partition = None
-        
+
         else:
             raise TypeError('Not enough arguments to build Encoding Layer. Please set max_ent_size property.')
-            
+
         # create the trainable variables for relation embeddings
-        if self._has_enough_args_to_build_rel_emb: 
+        if self._has_enough_args_to_build_rel_emb:
             self.rel_emb = self.add_weight(
                 'rel_emb',
                 shape=[self._max_rel_size_internal, self.k],
@@ -203,7 +203,7 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
                 regularizer=self.rel_regularizer,
                 dtype=tf.float32,
                 trainable=True)
-            
+
             if self.rel_partition is not None:
                 paddings_rel = [[0, self._max_rel_size_internal - self.rel_partition.shape[0]], [0, 0]]
                 self.rel_emb.assign(np.pad(self.rel_partition, paddings_rel, 'constant', constant_values=0))
@@ -211,12 +211,12 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
                 self.rel_partition = None
         else:
             raise TypeError('Not enough arguments to build Encoding Layer. Please set max_rel_size property.')
- 
+
         self.built = True
 
     def partition_change_updates(self, partition_ent_emb, partition_rel_emb):
         ''' Perform the changes that are required when the partition is changed during training.
-        
+
         Parameters
         ----------
         batch_ent_emb:
@@ -225,11 +225,11 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         batch_rel_emb:
             Relation embeddings that need to be trained for the partition
             (all triples of the partition will have an embedding in this matrix).
-        
+
         '''
-        
+
         # if the number of entities in the partition are less than the required size of the embedding matrix
-        # pad it. This is needed because the trainable variable size cant change dynamically. 
+        # pad it. This is needed because the trainable variable size cant change dynamically.
         # Once defined, it stays fixed. Hence padding is needed.
         paddings_ent = tf.constant([[0, self._max_ent_size_internal - partition_ent_emb.shape[0]], [0, 0]])
         paddings_rel = tf.constant([[0, self._max_rel_size_internal - partition_rel_emb.shape[0]], [0, 0]])
@@ -241,12 +241,12 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
     def call(self, triples):
         '''
         Looks up the embeddings of entities and relations of the triples.
-        
+
         Parameters
         ----------
         triples : ndarray, shape (n, 3)
             Batch of input triples.
-        
+
         Returns
         -------
         emb_triples : list
@@ -260,12 +260,12 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
 
     def compute_output_shape(self, input_shape):
         ''' Returns the output shape of outputs of call function.
-        
+
         Parameters
         ----------
         input_shape: list
             Shape of inputs of call function.
-        
+
         Returns
         -------
         output_shape: list
@@ -273,4 +273,4 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         '''
         assert isinstance(input_shape, list)
         batch_size, _ = input_shape
-        return [(batch_size, self.k), (batch_size, self.k), (batch_size, self.k)]   
+        return [(batch_size, self.k), (batch_size, self.k), (batch_size, self.k)]
