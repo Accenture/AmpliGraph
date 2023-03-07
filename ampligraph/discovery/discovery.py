@@ -96,7 +96,7 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
     >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
     >>> open('GoT.csv', 'wb').write(requests.get(url).content)
     >>> X = load_from_csv('.', 'GoT.csv', sep=',')
-    >>> model = ScoringBasedEmbeddingModel(eta=5, 
+    >>> model = ScoringBasedEmbeddingModel(eta=5,
     >>>                                      k=300,
     >>>                                      scoring_type='ComplEx')
     >>> model.compile(optimizer='adam', loss='multiclass_nll')
@@ -106,12 +106,12 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
     >>>              validation_freq=50,
     >>>              validation_batch_size=100,
     >>>              validation_data = dataset['valid'])
-    >>> discover_facts(X, 
-    >>>                model, 
-    >>>                top_n=100, 
-    >>>                strategy='random_uniform', 
-    >>>                max_candidates=100, 
-    >>>                target_rel='ALLIED_WITH', 
+    >>> discover_facts(X,
+    >>>                model,
+    >>>                top_n=100,
+    >>>                strategy='random_uniform',
+    >>>                max_candidates=100,
+    >>>                target_rel='ALLIED_WITH',
     >>>                seed=0)
     Epoch 1/10
     33/33 [==============================] - 1s 27ms/step - loss: 177.7778
@@ -154,7 +154,7 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
     """
     if model.is_backward:
         model = model.model
-        
+
     if not model.is_fitted:
         msg = 'Model is not fitted.'
         logger.error(msg)
@@ -221,7 +221,7 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
         # Get ranks of candidate statements
         # ranks = evaluate_performance(candidates, model=model, filter_triples=X, use_default_protocol=True,
         #                             verbose=False)
-        
+
         ranks = model.evaluate(candidates, use_filter={'test': X}, corrupt_side='s,o', verbose=False)
 
         # Select candidate statements within the top_n predicted ranks standard protocol evaluates against
@@ -590,7 +590,7 @@ ClusteringAndClassificationWithEmbeddings.ipynb
     """
     if model.is_backward:
         model = model.model
-        
+
     if not model.is_fitted:
         msg = "Model has not been fitted."
         logger.error(msg)
@@ -744,7 +744,7 @@ def find_duplicates(X, model, mode="e", metric='l2', tolerance='auto',
     >>> from ampligraph.latent_features import ScoringBasedEmbeddingModel
     >>>
     >>> imdb_triples = np.array(imdb_triples)
-    >>> model = ScoringBasedEmbeddingModel(eta=5, 
+    >>> model = ScoringBasedEmbeddingModel(eta=5,
     >>>                                    k=300,
     >>>                                    scoring_type='ComplEx')
     >>> model.compile(optimizer='adam', loss='multiclass_nll')
@@ -793,7 +793,7 @@ def find_duplicates(X, model, mode="e", metric='l2', tolerance='auto',
 
     if model.is_backward:
         model = model.model
-        
+
     if not model.is_fitted:
         msg = "Model has not been fitted."
         logger.error(msg)
@@ -923,7 +923,7 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
     >>> open('GoT.csv', 'wb').write(requests.get(url).content)
     >>> X = load_from_csv('.', 'GoT.csv', sep=',')
     >>>
-    >>> model = ScoringBasedEmbeddingModel(eta=5, 
+    >>> model = ScoringBasedEmbeddingModel(eta=5,
     >>>                                    k=150,
     >>>                                    scoring_type='TransE')
     >>> model.compile(optimizer='adagrad', loss='pairwise')
@@ -948,7 +948,7 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
 
     if model.is_backward:
         model = model.model
-        
+
     if not model.is_fitted:
         msg = 'Model is not fitted.'
         logger.error(msg)
