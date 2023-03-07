@@ -24,7 +24,7 @@ DatasetMetadata = namedtuple('DatasetMetadata', ['dataset_name', 'filename', 'ur
                                                  'test_human_ids_checksum', 'mapper_name', 'mapper_checksum',
                                                  'valid_negatives_name', 'valid_negatives_checksum', 'test_negatives_name',
                                                  'test_negatives_checksum'],
-                                                 defaults=(None, None, None, None, None, None, None, None, None, None))
+                                                defaults=(None, None, None, None, None, None, None, None, None, None))
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -388,8 +388,8 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
         dataset['valid_negatives'] = valid_negatives
     if dataset_metadata.test_negatives_name is not None:
         test_negatives = load_from_csv(dataset_path,
-                             dataset_metadata.test_negatives_name,
-                             add_reciprocal_rels=add_reciprocal_rels)
+                                       dataset_metadata.test_negatives_name,
+                                       add_reciprocal_rels=add_reciprocal_rels)
         dataset['test_negatives'] = test_negatives
 
     if dataset_metadata.test_human_checksum is not None and dataset_metadata.test_human_ids_checksum is not None:
@@ -442,7 +442,7 @@ def load_mapper_from_json(directory_path, file_name):
     
     logger.debug('Loading mapper from {}.'.format(file_name))
     with open(os.path.join(directory_path, file_name)) as f:
-            mapper = json.loads(f.read())
+        mapper = json.loads(f.read())
     return mapper
 
 
@@ -671,110 +671,109 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
 
 
 def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False, return_mapper=False):
-   """Load the FB15k-237 dataset (with option to load human labeled test subset).
-
-   FB15k-237 is a reduced version of FB15K. It was first proposed by :cite:`toutanova2015representing`.
-
-   .. warning:: *FB15K-237*'s validation set contains 8 unseen entities over 9 triples. The test set has 29 unseen entities,
-        distributed over 28 triples.
-
-   The FB15k-237 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
-   If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
-   If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
-   or ``~/ampligraph_datasets``.
-
-   The dataset is divided in three splits:
-
-   - `train`: 272,115 triples
-   - `valid`: 17,535 triples
-   - `test`: 20,466 triples
-
-   It also contains a subset of the test set with human-readable labels, available here:
-
-   - `test-human`
-   - `test-human-ids`
-
-   ========= ========= ======= ======= ==========  ========  =========
-    Dataset  Train     Valid   Test    Test-Human  Entities  Relations
-   ========= ========= ======= ======= ==========  ========  =========
-   FB15K-237 272,115   17,535  20,466   273        14,541    237
-   ========= ========= ======= ======= ==========  ========  =========
-
-
-   Parameters
-   ----------
-   check_md5hash : bool
-       If `True` check the md5hash of the files (default: `False`).
-
-   clean_unseen : bool
-       If `True`, filters triples in validation and test sets that include entities not present in the training set.
-
-   add_reciprocal_rels : bool
-        Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
-        this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
-
-   return_mapper : bool
-        Whether to return human-readable labels in a form of dictionary in ``X["mapper"]`` field (default: `False`).
-
-   Returns
-   -------
-
-   splits : dict
-       The dataset splits: `{'train': train, 'valid': valid, 'test': test, 'test-human':test_human, 'test-human-ids': test_human_ids}`.
-       Each split is a ndarray of shape (n, 3).
-
-   Example
-   -------
-
-   >>> from ampligraph.datasets import load_fb15k_237
-   >>> X = load_fb15k_237()
-   >>> X["train"][2]
-   array(['/m/07s9rl0', '/media_common/netflix_genre/titles', '/m/0170z3'],
-     dtype=object)
-
-   """
-
-   if return_mapper:
-       fb15k_237 = DatasetMetadata(
-           dataset_name='fb15k-237',
-           filename='fb15k-237_human_interpretability.zip',
-           url='https://ampgraphenc.s3.eu-west-1.amazonaws.com/datasets/fb15k_237_human_interpretability.zip',
-           train_name='train.txt',
-           valid_name='valid.txt',
-           test_name='test.txt',
-           train_checksum='c05b87b9ac00f41901e016a2092d7837',
-           valid_checksum='6a94efd530e5f43fcf84f50bc6d37b69',
-           test_checksum='f5bdf63db39f455dec0ed259bb6f8628',
-           test_human_name='test_human.txt',
-           test_human_ids_name='test_human_ids.txt',
-           mapper_name='mapper.json',
-           test_human_checksum='5f43e8e2fb07846ffaf80877b0734744',
-           test_human_ids_checksum='e731d027b3bf9d4914393d75dae77dda',
-           mapper_checksum='b4dbdfaf1faf075746d2c32946be0234'
-       )
-   else:
-       fb15k_237 = DatasetMetadata(
-           dataset_name='fb15k-237',
-           filename='fb15k-237.zip',
-           url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/fb15k-237.zip',
-           train_name='train.txt',
-           valid_name='valid.txt',
-           test_name='test.txt',
-           train_checksum='c05b87b9ac00f41901e016a2092d7837',
-           valid_checksum='6a94efd530e5f43fcf84f50bc6d37b69',
-           test_checksum='f5bdf63db39f455dec0ed259bb6f8628'
-       )
-
-   if clean_unseen:
-       return _clean_data(_load_dataset(fb15k_237,
-                                        data_home=None,
-                                        check_md5hash=check_md5hash,
-                                        add_reciprocal_rels=add_reciprocal_rels))
-   else:
-       return _load_dataset(fb15k_237,
-                            data_home=None,
-                            check_md5hash=check_md5hash,
-                            add_reciprocal_rels=add_reciprocal_rels)
+    """Load the FB15k-237 dataset (with option to load human labeled test subset).
+ 
+    FB15k-237 is a reduced version of FB15K. It was first proposed by :cite:`toutanova2015representing`.
+ 
+    .. warning:: *FB15K-237*'s validation set contains 8 unseen entities over 9 triples. The test set has 29 unseen entities,
+         distributed over 28 triples.
+ 
+    The FB15k-237 dataset is loaded from file if it exists at the ``AMPLIGRAPH_DATA_HOME`` location.
+    If ``AMPLIGRAPH_DATA_HOME`` is not set, the default  ``~/ampligraph_datasets`` is checked.
+    If the dataset is not found at either location, it is downloaded and placed in ``AMPLIGRAPH_DATA_HOME``
+    or ``~/ampligraph_datasets``.
+ 
+    The dataset is divided in three splits:
+ 
+    - `train`: 272,115 triples
+    - `valid`: 17,535 triples
+    - `test`: 20,466 triples
+ 
+    It also contains a subset of the test set with human-readable labels, available here:
+ 
+    - `test-human`
+    - `test-human-ids`
+ 
+    ========= ========= ======= ======= ==========  ========  =========
+     Dataset  Train     Valid   Test    Test-Human  Entities  Relations
+    ========= ========= ======= ======= ==========  ========  =========
+    FB15K-237 272,115   17,535  20,466   273        14,541    237
+    ========= ========= ======= ======= ==========  ========  =========
+ 
+ 
+    Parameters
+    ----------
+    check_md5hash : bool
+        If `True` check the md5hash of the files (default: `False`).
+ 
+    clean_unseen : bool
+        If `True`, filters triples in validation and test sets that include entities not present in the training set.
+ 
+    add_reciprocal_rels : bool
+         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
+         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
+ 
+    return_mapper : bool
+         Whether to return human-readable labels in a form of dictionary in ``X["mapper"]`` field (default: `False`).
+ 
+    Returns
+    -------
+ 
+    splits : dict
+        The dataset splits: `{'train': train, 'valid': valid, 'test': test, 'test-human':test_human, 'test-human-ids': test_human_ids}`.
+        Each split is a ndarray of shape (n, 3).
+ 
+    Example
+    -------
+ 
+    >>> from ampligraph.datasets import load_fb15k_237
+    >>> X = load_fb15k_237()
+    >>> X["train"][2]
+    array(['/m/07s9rl0', '/media_common/netflix_genre/titles', '/m/0170z3'],
+      dtype=object)
+ 
+    """
+ 
+    if return_mapper:
+        fb15k_237 = DatasetMetadata(
+            dataset_name='fb15k-237',
+            filename='fb15k-237_human_interpretability.zip',
+            url='https://ampgraphenc.s3.eu-west-1.amazonaws.com/datasets/fb15k_237_human_interpretability.zip',
+            train_name='train.txt',
+            valid_name='valid.txt',
+            test_name='test.txt',
+            train_checksum='c05b87b9ac00f41901e016a2092d7837',
+            valid_checksum='6a94efd530e5f43fcf84f50bc6d37b69',
+            test_checksum='f5bdf63db39f455dec0ed259bb6f8628',
+            test_human_name='test_human.txt',
+            test_human_ids_name='test_human_ids.txt',
+            mapper_name='mapper.json',
+            test_human_checksum='5f43e8e2fb07846ffaf80877b0734744',
+            test_human_ids_checksum='e731d027b3bf9d4914393d75dae77dda',
+            mapper_checksum='b4dbdfaf1faf075746d2c32946be0234'
+        )
+    else:
+        fb15k_237 = DatasetMetadata(
+            dataset_name='fb15k-237',
+            filename='fb15k-237.zip',
+            url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/fb15k-237.zip',
+            train_name='train.txt',
+            valid_name='valid.txt',
+            test_name='test.txt',
+            train_checksum='c05b87b9ac00f41901e016a2092d7837',
+            valid_checksum='6a94efd530e5f43fcf84f50bc6d37b69',
+            test_checksum='f5bdf63db39f455dec0ed259bb6f8628'
+        )
+ 
+    if clean_unseen:
+        return _clean_data(_load_dataset(fb15k_237,
+                                         data_home=None,
+                                         check_md5hash=check_md5hash,
+                                         add_reciprocal_rels=add_reciprocal_rels))
+    else:
+        return _load_dataset(fb15k_237, data_home=None,
+                             check_md5hash=check_md5hash,
+                             add_reciprocal_rels=add_reciprocal_rels)
 
 
 def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False):
