@@ -397,7 +397,7 @@ class ScoringModelBase:
     def get_indexes(self, X, type_of="t", order="raw2ind"):
         """Converts given data to indexes or to raw data (according to order).
 
-        It works for both triples (``type_of='t'``), entities 
+        It works for both triples (``type_of='t'``), entities
         (``type_of='e'``), and relations (``type_of='r'``).
 
         Parameters
@@ -539,7 +539,7 @@ class ScoringModelBase:
             For example, if we assume there is a fifty-fifty chance of any
             query to be true, the base rate would be 50%. If ``X_neg`` is
             provided and this is `None`, the relative sizes of ``X_pos``
-            and ``X_neg`` will be used to determine the base rate. 
+            and ``X_neg`` will be used to determine the base rate.
             For example, if we have 50 positive triples and 200 negative
             triples, the positive base rate will be assumed to be
             50/(50+200) = 1/5 = 0.2. This must be a value between 0 and 1.

@@ -78,18 +78,18 @@ def _clean_data(X, return_idx=False):
 
     """
     filtered_X = {}
-    train = pd.DataFrame(X["train"][:, :3], columns=["s", "p", "o"])
+    train = pd.DataFrame(X["train"][:,:3], columns=["s", "p", "o"])
     filtered_X["train"] = X["train"]
 
-    valid = pd.DataFrame(X["valid"][:, :3], columns=["s", "p", "o"])
-    test = pd.DataFrame(X["test"][:, :3], columns=["s", "p", "o"])
+    valid = pd.DataFrame(X["valid"][:,:3], columns=["s", "p", "o"])
+    test = pd.DataFrame(X["test"][:,:3], columns=["s", "p", "o"])
 
     train_ent = np.unique(np.concatenate((train.s, train.o)))
     train_rel = train.p.unique()
 
     if "valid_negatives" in X:
         valid_negatives = pd.DataFrame(
-            X["valid_negatives"][:, :3], columns=["s", "p", "o"]
+            X["valid_negatives"][:,:3], columns=["s", "p", "o"]
         )
         valid_negatives_idx = (
             valid_negatives.s.isin(train_ent)
@@ -100,7 +100,7 @@ def _clean_data(X, return_idx=False):
         filtered_X["valid_negatives"] = filtered_valid_negatives
     if "test_negatives" in X:
         test_negatives = pd.DataFrame(
-            X["test_negatives"][:, :3], columns=["s", "p", "o"]
+            X["test_negatives"][:,:3], columns=["s", "p", "o"]
         )
         test_negatives_idx = (
             test_negatives.s.isin(train_ent)
@@ -152,7 +152,7 @@ def _get_data_home(data_home=None):
     Parameters
     ----------
 
-    data_home : str
+    data_home: str
        The path to the folder that contains the datasets.
 
     Returns
@@ -191,9 +191,9 @@ def _unzip_dataset(remote, source, destination, check_md5hash=False):
     Parameters
     ----------
 
-    source : str
+    source: str
         The path to the zipped file
-    destination : str
+    destination: str
         The destination directory to unzip the files to.
 
     """
@@ -236,14 +236,14 @@ def _fetch_remote_data(remote, download_dir, data_home, check_md5hash=False):
     Parameters
     ----------
 
-    remote : DatasetMetadata
+    remote: DatasetMetadata
         Named tuple containing remote dataset meta information: dataset name, dataset filename,
         url, train filename, validation filename, test filename, train checksum, valid checksum, test checksum.
-    download_dir : str
+    download_dir: str
         The location to download the file to.
-    data_home : str
+    data_home: str
         The location to save the dataset.
-    check_md5hash : bool
+    check_md5hash: bool
         Whether to check the MD5 hash of the dataset file.
 
     """
@@ -263,12 +263,12 @@ def _fetch_dataset(remote, data_home=None, check_md5hash=False):
     Parameters
     ----------
 
-    remote : DatasetMetadata
+    remote: DatasetMetadata
         Named tuple containing remote datasets meta information: dataset name, dataset filename,
         url, train filename, validation filename, test filename, train checksum, valid checksum, test checksum.
-    data_home : str
+    data_home: str
         The location to save the dataset to.
-    check_md5hash : bool
+    check_md5hash: bool
         Whether to check the MD5 hash of the dataset file.
 
     Returns
@@ -295,12 +295,12 @@ def _add_reciprocal_relations(triples_df):
     Parameters
     ----------
 
-    triples_df : Dataframe
+    triples_df: Dataframe
         Dataframe of triples.
 
     Returns
     -------
-    triples_df : Dataframe
+    triples_df: Dataframe
         Dataframe of triples and their reciprocals.
     """
     # create a copy of the original triples to add reciprocal relations
@@ -347,20 +347,20 @@ def load_from_csv(
 
     directory_path: str
         Folder where the input file is stored.
-    file_name : str
+    file_name: str
         File name.
-    sep : str
+    sep: str
         The subject-predicate-object separator (default: ``"\\t"``).
-    header : int or None
+    header: int or None
         The row of the header of the csv file. Same as pandas.read_csv header param.
-    add_reciprocal_rels : bool
+    add_reciprocal_rels: bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
 
     Returns
     -------
-    triples : ndarray, shape (n, 3)
+    triples: ndarray, shape (n, 3)
         The actual triples of the file.
 
     Example
@@ -405,17 +405,17 @@ def _load_dataset(
 
     Parameters
     ----------
-    dataset_metadata : DatasetMetadata
+    dataset_metadata: DatasetMetadata
         Named tuple containing remote datasets meta information: dataset name, dataset filename,
         url, train filename, validation filename, test filename, train checksum, valid checksum, test checksum.
 
-    data_home : str
+    data_home: str
         The location to save the dataset to (default: `None`).
 
-    check_md5hash : bool
+    check_md5hash: bool
         If True, check the md5hash of the files after they are downloaded (default: `False`).
 
-    add_reciprocal_rels : bool
+    add_reciprocal_rels: bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
     """
@@ -427,7 +427,7 @@ def _load_dataset(
             )
         dataset_metadata.dataset_name = dataset_metadata.url[
             dataset_metadata.url.rfind("/")
-            + 1 : dataset_metadata.url.rfind(".")
+            + 1: dataset_metadata.url.rfind(".")
         ]
     dataset_path = _fetch_dataset(dataset_metadata, data_home, check_md5hash)
     train = load_from_csv(
@@ -502,13 +502,13 @@ def load_mapper_from_json(directory_path, file_name):
 
     directory_path: str
         Folder where the input file is stored.
-    file_name : str
+    file_name: str
         File name.
 
     Returns
     -------
 
-    mapper : dict
+    mapper: dict
         Dictionary of mappings between graph entities and predicates and human-readable version of them.
 
     Example
@@ -554,17 +554,17 @@ def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
 
     Parameters
     ----------
-    check_md5hash : bool
+    check_md5hash: bool
         If `True` check the md5hash of the files (default: `False`).
 
-    add_reciprocal_rels : bool
+    add_reciprocal_rels: bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
     Returns
     -------
 
-    splits : dict
+    splits: dict
         The dataset splits `{'train': train, 'valid': valid, 'test': test}`. Each split is a ndarray of shape (n, 3).
 
     Example
@@ -628,20 +628,20 @@ def load_wn18rr(
 
     Parameters
     ----------
-    clean_unseen : bool
+    clean_unseen: bool
         If `True`, filters triples in validation and test sets that include entities not present in the training set.
 
-    check_md5hash : bool
+    check_md5hash: bool
         If `True` check the md5hash of the datset files (default: `False`).
 
-    add_reciprocal_rels : bool
+    add_reciprocal_rels: bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
     Returns
     -------
 
-    splits : dict
+    splits: dict
         The dataset splits: `{'train': train, 'valid': valid, 'test': test}`. Each split is a ndarray of shape (n, 3).
 
     Example
@@ -712,10 +712,10 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
 
     Parameters
     ----------
-    check_md5hash : bool
+    check_md5hash: bool
         If `True` check the md5hash of the files (default: `False`).
 
-    add_reciprocal_rels : bool
+    add_reciprocal_rels: bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
@@ -723,7 +723,7 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
     Returns
     -------
 
-    splits : dict
+    splits: dict
         The dataset splits: `{'train': train, 'valid': valid, 'test': test}`. Each split is a ndarray of shape (n, 3).
 
     Example
@@ -800,23 +800,23 @@ def load_fb15k_237(
 
     Parameters
     ----------
-    check_md5hash : bool
+    check_md5hash: bool
         If `True` check the md5hash of the files (default: `False`).
 
-    clean_unseen : bool
+    clean_unseen: bool
         If `True`, filters triples in validation and test sets that include entities not present in the training set.
 
-    add_reciprocal_rels : bool
+    add_reciprocal_rels: bool
          Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
          this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
-    return_mapper : bool
+    return_mapper: bool
          Whether to return human-readable labels in a form of dictionary in ``X["mapper"]`` field (default: `False`).
 
     Returns
     -------
 
-    splits : dict
+    splits: dict
         The dataset splits: `{'train': train, 'valid': valid, 'test': test, 'test-human':test_human, 'test-human-ids': test_human_ids}`.
         Each split is a ndarray of shape (n, 3).
 
@@ -907,20 +907,20 @@ def load_yago3_10(
 
     Parameters
     ----------
-    check_md5hash : bool
+    check_md5hash: bool
         If `True` check the md5hash of the files (default: `False`).
 
-    clean_unseen : bool
+    clean_unseen: bool
         If `True`, filters triples in validation and test sets that include entities not present in the training set.
 
-    add_reciprocal_rels : bool
+    add_reciprocal_rels: bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default:`False`).
 
     Returns
     -------
 
-    splits : dict
+    splits: dict
         The dataset splits: `{'train': train, 'valid': valid, 'test': test}`. Each split is a ndarray of shape (n, 3).
 
     Example
@@ -998,20 +998,20 @@ def load_wn11(
 
     Parameters
     ----------
-    check_md5hash : bool
+    check_md5hash: bool
         If `True` check the md5hash of the files (default: `False`).
 
-    clean_unseen : bool
+    clean_unseen: bool
         If `True`, filters triples in validation and test sets that include entities not present in the training set.
 
-    add_reciprocal_rels : bool
+    add_reciprocal_rels: bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
     Returns
     -------
 
-    splits : dict
+    splits: dict
         The dataset splits: `{'train': train, 'valid': valid, 'valid_labels': valid_labels,
         'test': test, 'test_labels': test_labels}`.
         Each split containing a dataset is a ndarray of shape (n, 3).
@@ -1105,20 +1105,20 @@ def load_fb13(
 
     Parameters
     ----------
-    check_md5hash : bool
+    check_md5hash: bool
         If `True` check the md5hash of the files (default: `False`).
 
-    clean_unseen : bool
+    clean_unseen: bool
         If `True`, filters triples in validation and test sets that include entities not present in the training set.
 
-    add_reciprocal_rels : bool
+    add_reciprocal_rels: bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: False).
 
     Returns
     -------
 
-    splits : dict
+    splits: dict
         The dataset splits: {'train': train, 'valid': valid, 'valid_labels': valid_labels,
         'test': test, 'test_labels': test_labels}.
         Each split containing a dataset is a ndarray of shape (n, 3).
@@ -1213,19 +1213,19 @@ def load_from_rdf(
     ----------
     folder_name: str
         Base folder where the file is stored.
-    file_name : str
+    file_name: str
         File name.
-    rdf_format : str
+    rdf_format: str
         The RDF serialization format (`nt`, `ttl`, `rdf`/`xml` - see rdflib documentation).
-    data_home : str
+    data_home: str
        The path to the folder that contains the datasets.
-    add_reciprocal_rels : bool
+    add_reciprocal_rels: bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
     Returns
     -------
-        triples : ndarray, shape (n, 3)
+        triples: ndarray, shape (n, 3)
             The actual triples of the file.
     """
 
@@ -1274,17 +1274,17 @@ def load_from_ntriples(
     ----------
     folder_name: str
         Base folder where the file is stored.
-    file_name : str
+    file_name: str
         File name.
-    data_home : str
+    data_home: str
        The path to the folder that contains the datasets.
-    add_reciprocal_rels : bool
+    add_reciprocal_rels: bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
 
     Returns
     -------
-        triples : ndarray, shape (n, 3)
+        triples: ndarray, shape (n, 3)
             The actual triples of the file.
     """
 
@@ -1313,7 +1313,7 @@ def generate_focusE_dataset_splits(
 
     Parameters
     ----------
-    dataset : dict
+    dataset: dict
         Dictionary of train, test, valid datasets of size (n,m) - where m>3. The first 3 cols are `subject`,
         `predicate`, and `object`. Afterwards, is the numeric values (potentially multiple) associated with each triple.
 
@@ -1327,7 +1327,7 @@ def generate_focusE_dataset_splits(
 
     Returns
     -------
-    splits : dict
+    splits: dict
         The dataset splits: `{'train': train,
                              'train_numeric_values': train_numeric_values,
                              'valid': valid,
@@ -1417,9 +1417,9 @@ def load_onet20k(
 
     Parameters
     ----------
-    check_md5hash : bool
+    check_md5hash: bool
         If `True` check the md5hash of the files (default: `False`).
-    clean_unseen : bool
+    clean_unseen: bool
         If `True`, filters triples in validation and test sets that include entities not present in the training
         set.
 
@@ -1433,7 +1433,7 @@ def load_onet20k(
 
     Returns
     -------
-    splits : dict
+    splits: dict
         The dataset splits: `{'train': train,
         'valid': valid,
         'test': test,
@@ -1519,9 +1519,9 @@ def load_ppi5k(
 
     Parameters
     ----------
-    check_md5hash : bool
+    check_md5hash: bool
         If `True` check the md5hash of the files (default: `False`).
-    clean_unseen : bool
+    clean_unseen: bool
         If `True`, filters triples in validation and test sets that include entities not present in the training
         set.
 
@@ -1537,7 +1537,7 @@ def load_ppi5k(
 
     Returns
     -------
-    splits : dict
+    splits: dict
         The dataset splits: `{'train': train,
         'valid': valid,
         'test': test,
@@ -1621,9 +1621,9 @@ def load_nl27k(
 
     Parameters
     ----------
-    check_md5hash : bool
+    check_md5hash: bool
         If `True` check the md5hash of the files (default: `False`).
-    clean_unseen : bool
+    clean_unseen: bool
         If `True`, filters triples in validation and test sets that include entities not present in the training
         set.
 
@@ -1637,7 +1637,7 @@ def load_nl27k(
 
     Returns
     -------
-    splits : dict
+    splits: dict
         The dataset splits: `{'train': train,
         'valid': valid,
         'test': test,
@@ -1721,9 +1721,9 @@ def load_cn15k(
 
     Parameters
     ----------
-    check_md5hash : bool
+    check_md5hash: bool
         If `True`, check the md5hash of the files (default: `False`).
-    clean_unseen : bool
+    clean_unseen: bool
         If `True`, filters triples in validation and test sets that include entities not present in the training
         set.
 
@@ -1737,7 +1737,7 @@ def load_cn15k(
 
     Returns
     -------
-    splits : dict
+    splits: dict
         The dataset splits: `{'train': train,
         'valid': valid,
         'test': test,
@@ -1852,7 +1852,7 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
              - "confusing-" - mostly not understandable.
 
 
-        X : pandas data frame containing triples (full=False), records with predicates (full=True).
+        X: pandas data frame containing triples (full=False), records with predicates (full=True).
 
         Example
         -------
@@ -1991,22 +1991,22 @@ def load_codex(
 
     Parameters
     ----------
-    clean_unseen : bool
+    clean_unseen: bool
         If `True`, filters triples in validation and test sets that include entities not present in the training set.
 
-    check_md5hash : bool
+    check_md5hash: bool
         If `True`, check the `md5hash` of the datset files (default: `False`).
 
-    add_reciprocal_rels : bool
+    add_reciprocal_rels: bool
         Flag which specifies whether to add reciprocal relations. For every <s, p, o> in the dataset
         this creates a corresponding triple with reciprocal relation <o, p_reciprocal, s> (default: `False`).
-    return_mapper : bool
+    return_mapper: bool
         Whether to return human-readable labels in a form of dictionary in ``X["mapper"]`` field (default: `False`).
 
     Returns
     -------
 
-    splits : dict
+    splits: dict
         The dataset splits: `{'train': train, 'valid': valid, 'valid_negatives': valid_negatives', 'test': test, 'test_negatives': test_negatives}`.
         Each split is a ndarray of shape (n, 3).
 

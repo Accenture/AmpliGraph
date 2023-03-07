@@ -428,8 +428,8 @@ class GeneralPartitionDataManager(PartitionDataManager):
             ent_partition = shelve.open(self.ent_map_fname, writeback=True)
             for i, key in enumerate(self.ent_original_ids):
                 ent_partition[str(key)] = [
-                    self.all_ent_opt_params[i : i + 1],
-                    self.all_ent_embs[i : i + 1],
+                    self.all_ent_opt_params[i: i + 1],
+                    self.all_ent_embs[i: i + 1],
                 ]
 
         finally:
@@ -440,8 +440,8 @@ class GeneralPartitionDataManager(PartitionDataManager):
             rel_partition = shelve.open(self.rel_map_fname, writeback=True)
             for i, key in enumerate(self.rel_original_ids):
                 rel_partition[str(key)] = [
-                    self.all_rel_opt_params[i : i + 1],
-                    self.all_rel_embs[i : i + 1],
+                    self.all_rel_opt_params[i: i + 1],
+                    self.all_rel_embs[i: i + 1],
                 ]
 
         finally:
@@ -801,11 +801,11 @@ class BucketPartitionDataManager(PartitionDataManager):
             # respective buckets
             opt_params = [
                 self.all_ent_opt_params[: self.split_opt_idx],
-                self.all_ent_opt_params[self.split_opt_idx :],
+                self.all_ent_opt_params[self.split_opt_idx:],
             ]
             emb_params = [
                 self.all_ent_embs[: self.split_emb_idx],
-                self.all_ent_embs[self.split_emb_idx :],
+                self.all_ent_embs[self.split_emb_idx:],
             ]
 
             s[source_bucket] = [opt_params[0], emb_params[0]]

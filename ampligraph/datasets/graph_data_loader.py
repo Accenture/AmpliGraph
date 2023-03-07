@@ -487,7 +487,7 @@ class NoBackend:
             # if the last batch is smaller than the batch_size
             if start_index + batch_size >= length:
                 batch_size = length - start_index
-            out = self.data[start_index : start_index + batch_size, :3]
+            out = self.data[start_index: start_index + batch_size,:3]
             if self.use_filter:
                 # get the filter values
                 participating_entities = self._get_complementary_entities(
@@ -496,7 +496,7 @@ class NoBackend:
 
             # focusE
             if self.data_shape > 3:
-                weights = self.data[start_index : start_index + batch_size, 3:]
+                weights = self.data[start_index: start_index + batch_size, 3:]
                 # weights = preprocess_focusE_weights(data=out,
                 #                                     weights=weights)
                 if self.use_filter:
