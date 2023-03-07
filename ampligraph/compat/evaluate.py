@@ -73,7 +73,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, entities_
             * We compute the rank of the test triple by comparing against ALL the corruptions.
             * We then compute the number of False Negatives that are ranked higher than the test triple; and then
               subtract this value from the above computed rank to yield the final filtered rank.
-              
+
             **Execution Time:** This method takes ~4 minutes on FB15K using ComplEx
             (Intel Xeon Gold 6142, 64 GB Ubuntu 16.04 box, Tesla V100 16GB).
 
@@ -142,7 +142,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, entities_
     """
     logger.debug('Evaluating the performance of the embedding model.')
     assert corrupt_side in ['s', 'o', 's+o', 's,o'], 'Invalid value for corrupt_side.'
-    
+
     if isinstance(filter_triples, np.ndarray) or isinstance(filter_triples, list):
         filter_triples = {'valid': filter_triples}
     elif filter_triples is None or not filter_triples:
@@ -151,7 +151,7 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, entities_
         pass
     else:
         raise ValueError('Incorrect type for filter_triples')
-    
+
     return model.evaluate(x=X,
                           batch_size=batch_size,
                           verbose=verbose,
