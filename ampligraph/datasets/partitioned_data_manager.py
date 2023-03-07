@@ -5,17 +5,20 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-from .graph_partitioner import PARTITION_ALGO_REGISTRY, AbstractGraphPartitioner
-import numpy as np
-import shelve
-import tensorflow as tf
 import abc
-import logging
-import tempfile
-import os
-from datetime import datetime
-import shutil
 import glob
+import logging
+import os
+import shelve
+import shutil
+import tempfile
+from datetime import datetime
+
+import numpy as np
+import tensorflow as tf
+
+from .graph_partitioner import (PARTITION_ALGO_REGISTRY,
+                                AbstractGraphPartitioner)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

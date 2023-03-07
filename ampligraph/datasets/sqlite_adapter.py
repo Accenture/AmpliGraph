@@ -16,18 +16,20 @@ DEFAULT_CHUNKSIZE: int
     should be set according to available
     hardware capabilities (default: 30000).
 """
-from .data_indexer import DataIndexer
-from ampligraph.utils.profiling import get_human_readable_size
-import sqlite3
-from sqlite3 import Error
-import numpy as np
-from urllib.request import pathname2url
-import os
-import pandas as pd
 import logging
+import os
+import sqlite3
 import tempfile
+from sqlite3 import Error
+from urllib.request import pathname2url
+
+import numpy as np
+import pandas as pd
 import tensorflow as tf
 
+from ampligraph.utils.profiling import get_human_readable_size
+
+from .data_indexer import DataIndexer
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

@@ -5,8 +5,9 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-import numpy as np
 import logging
+
+import numpy as np
 
 """This module contains learning-to-rank metrics to evaluate the performance of neural graph embedding models."""
 

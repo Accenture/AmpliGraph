@@ -6,15 +6,15 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 
-from collections.abc import Iterable
-from itertools import product, islice
 import logging
-import pandas as pd
+from collections.abc import Iterable
+from itertools import islice, product
+
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 
-
-from ..evaluation import mrr_score, hits_at_n_score, mr_score
+from ..evaluation import hits_at_n_score, mr_score, mrr_score
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -624,8 +624,9 @@ def select_best_model_ranking(
         >>>                           early_stopping=True)
 
     """
-    from ..compat import evaluate_performance
     from importlib import import_module
+
+    from ..compat import evaluate_performance
     compat_module = import_module('ampligraph.compat')
     model_class = getattr(compat_module, model_class)
 

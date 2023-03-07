@@ -6,8 +6,8 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 import tracemalloc
-from time import time
 from functools import wraps
+from time import time
 
 
 def get_memory_size():

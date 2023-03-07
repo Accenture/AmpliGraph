@@ -10,9 +10,9 @@
 
 """
 
-from .model_utils import save_model, restore_model,\
-create_tensorboard_visualizations, write_metadata_tsv, dataframe_to_triples,\
-preprocess_focusE_weights
+from .model_utils import (create_tensorboard_visualizations,
+                          dataframe_to_triples, preprocess_focusE_weights,
+                          restore_model, save_model, write_metadata_tsv)
 
 __all__ = ['save_model', 'restore_model', 'create_tensorboard_visualizations',
            'write_metadata_tsv', 'dataframe_to_triples',

@@ -21,16 +21,17 @@ Example
    https://docs.ampligraph.org/en/1.3.1/generated/ampligraph.evaluation.to_idx.html?highlight=to_idx
 
 """
-from datetime import datetime
-import numpy as np
+import logging
 import os
 import shelve
-import pandas as pd
-import logging
-import tempfile
-import sqlite3
 import shutil
+import sqlite3
+import tempfile
 import uuid
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

@@ -6,11 +6,13 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 import contextlib
+
+import tqdm
+from tensorflow.python.framework import errors
+
 from .graph_data_loader import GraphDataLoader, NoBackend
 from .graph_partitioner import AbstractGraphPartitioner
 from .partitioned_data_manager import get_partition_adapter
-from tensorflow.python.framework import errors
-import tqdm
 
 
 class DataHandler():

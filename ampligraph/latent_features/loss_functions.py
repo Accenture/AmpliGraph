@@ -5,10 +5,11 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-import tensorflow as tf
 import abc
 import logging
+
 import six
+import tensorflow as tf
 from tensorflow.python.keras import metrics as metrics_mod
 from tensorflow.python.keras.utils import losses_utils
 from tensorflow.python.ops import math_ops

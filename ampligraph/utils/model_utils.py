@@ -5,17 +5,17 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-import os
-import pickle
-from time import gmtime, strftime
 import glob
 import logging
+import os
+import pickle
+import shutil
+from time import gmtime, strftime
 
-import tensorflow as tf
-from tensorboard.plugins import projector
 import numpy as np
 import pandas as pd
-import shutil
+import tensorflow as tf
+from tensorboard.plugins import projector
 
 """This module contains utility functions for neural knowledge graph embedding models.
 """
@@ -82,11 +82,11 @@ def restore_model(model_name_path=None):
     model_name_path : str
         Name of the path to the model.
     '''
-    from ampligraph.latent_features.optimizers import OptimizerWrapper
-    from ampligraph.latent_features.loss_functions import LOSS_REGISTRY
-    from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
-    from ampligraph.latent_features import ScoringBasedEmbeddingModel
     from ampligraph.compat.models import BACK_COMPAT_MODELS
+    from ampligraph.latent_features import ScoringBasedEmbeddingModel
+    from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
+    from ampligraph.latent_features.loss_functions import LOSS_REGISTRY
+    from ampligraph.latent_features.optimizers import OptimizerWrapper
 
     if model_name_path is None:
         logger.warning("There is no model name specified. \

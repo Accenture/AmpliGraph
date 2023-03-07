@@ -16,15 +16,18 @@ PARTITION_ALGO_REGISTRY : dict
     Dictionary containing the names of the strategies as key and reference to the strategy class as a value.
 
 """
-import numpy as np
-from abc import ABC
-from ampligraph.utils.profiling import timing_and_memory
-from .graph_data_loader import GraphDataLoader
-from datetime import datetime
-import shelve
-import os
 import logging
+import os
+import shelve
 import tempfile
+from abc import ABC
+from datetime import datetime
+
+import numpy as np
+
+from ampligraph.utils.profiling import timing_and_memory
+
+from .graph_data_loader import GraphDataLoader
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

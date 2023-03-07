@@ -5,16 +5,17 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-import pandas as pd
-import os
+import hashlib
 import json
-import numpy as np
 import logging
+import os
 import urllib
 import zipfile
-from pathlib import Path
-import hashlib
 from collections import namedtuple
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
 
 AMPLIGRAPH_ENV_NAME = 'AMPLIGRAPH_DATA_HOME'
 

@@ -6,10 +6,11 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 
-import tensorflow as tf
 import numpy as np
-from ampligraph.latent_features.models import ScoringBasedEmbeddingModel
+import tensorflow as tf
+
 from ampligraph.latent_features.loss_functions import get as get_loss
+from ampligraph.latent_features.models import ScoringBasedEmbeddingModel
 from ampligraph.latent_features.optimizers import get as get_optimizer
 from ampligraph.latent_features.regularizers import get as get_regularizer
 

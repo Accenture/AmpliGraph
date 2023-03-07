@@ -7,9 +7,10 @@
 #
 """AmpliGraph is a library for relational learning on knowledge graphs."""
 import logging.config
-import pkg_resources
 
+import pkg_resources
 import tensorflow as tf
+
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 __version__ = '2.0-dev'

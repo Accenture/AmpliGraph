@@ -24,28 +24,31 @@ Options:
 """
 
 import os
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-from docopt import docopt
-import ampligraph.datasets
-from ampligraph.evaluation import hits_at_n_score, mr_score, mrr_score
-from ampligraph.compat import evaluate_performance
-from ampligraph.utils import save_model
-from schema import Schema, And, Use
 import argparse
+import datetime
 import itertools
 import json
-import sys
-import yaml
 import logging
+import sys
 import time
-import datetime
-import numpy as np
-from beautifultable import BeautifulTable
-from tqdm import tqdm
 import warnings
 
+import numpy as np
 import tensorflow as tf
+import yaml
+from beautifultable import BeautifulTable
+from docopt import docopt
+from schema import And, Schema, Use
+from tqdm import tqdm
+
+import ampligraph.datasets
+from ampligraph.compat import evaluate_performance
+from ampligraph.evaluation import hits_at_n_score, mr_score, mrr_score
+from ampligraph.utils import save_model
+
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 SUPPORT_DATASETS = ["fb15k", "fb15k-237", "wn18", "wn18rr", "yago310", "ppi5k"]                                         # FocusE

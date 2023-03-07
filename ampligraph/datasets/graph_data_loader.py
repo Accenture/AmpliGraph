@@ -11,14 +11,16 @@ This module provides GraphDataLoader class that can be parametrized with an arti
 (:class:`~ampligraph.datasets.graph_data_loader.NoBackend`) or with a SQLite backend that stores and reads data
 on-disk (:class:`~ampligraph.datasets.sqlite_adapter.SQLiteAdapter`).
 """
-from .source_identifier import DataSourceIdentifier
-from .data_indexer import DataIndexer
-from datetime import datetime
-import numpy as np
 import logging
 import tempfile
-import tensorflow as tf
 import uuid
+from datetime import datetime
+
+import numpy as np
+import tensorflow as tf
+
+from .data_indexer import DataIndexer
+from .source_identifier import DataSourceIdentifier
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

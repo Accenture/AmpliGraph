@@ -5,10 +5,11 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-import tensorflow as tf
 import abc
 import logging
+
 import six
+import tensorflow as tf
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

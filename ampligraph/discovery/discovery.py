@@ -7,11 +7,12 @@
 #
 
 import logging
+
+import networkx as nx
 import numpy as np
+from scipy import optimize, spatial
 from sklearn.cluster import DBSCAN
 from sklearn.neighbors import NearestNeighbors
-from scipy import optimize, spatial
-import networkx as nx
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

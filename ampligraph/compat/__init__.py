@@ -6,6 +6,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 """Provides backward compatibility to AmpliGraph 1 APIs."""
-from .models import TransE, ComplEx, DistMult, HolE
 from .evaluate import evaluate_performance
+from .models import ComplEx, DistMult, HolE, TransE
+
 __all__ = ['evaluate_performance', 'TransE', 'ComplEx', 'DistMult', 'HolE']

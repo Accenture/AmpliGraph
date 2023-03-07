@@ -15,10 +15,11 @@ knowledge graph completion, entity resolution, and link-based clustering,
 just to cite a few :cite:`nickel2016review`.
 
 """
+from .loss_functions import (AbsoluteMarginLoss, NLLLoss, NLLMulticlass,
+                             PairwiseLoss, SelfAdversarialLoss)
 from .models import ScoringBasedEmbeddingModel
-from .loss_functions import PairwiseLoss, NLLLoss, AbsoluteMarginLoss,\
-SelfAdversarialLoss, NLLMulticlass
 from .regularizers import LP_regularizer
+
 __all__ = [
     'layers',
     'models',

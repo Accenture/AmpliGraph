@@ -9,13 +9,15 @@
 
 This module provides reporting capabilities for partitioning strategies.
 """
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.pyplot import cm
 import copy
 import logging
-from .graph_partitioner import RandomVerticesGraphPartitioner
+
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.pyplot import cm
+
 from .datasets import load_fb15k_237
+from .graph_partitioner import RandomVerticesGraphPartitioner
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

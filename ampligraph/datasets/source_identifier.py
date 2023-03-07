@@ -11,12 +11,12 @@ This module provides the main class and the supporting functions for automatic
 identification of data source (whether it is csv, tar.gz or numpy array)
 and provides adequate loader for the data source identified.
 """
-import pandas as pd
-from collections.abc import Iterable
-import numpy as np
-from itertools import chain, islice
 import logging
+from collections.abc import Iterable
+from itertools import chain, islice
 
+import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
