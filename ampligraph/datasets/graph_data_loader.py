@@ -13,7 +13,6 @@ on-disk (:class:`~ampligraph.datasets.sqlite_adapter.SQLiteAdapter`).
 """
 from .source_identifier import DataSourceIdentifier
 from .data_indexer import DataIndexer
-from ampligraph.utils.model_utils import preprocess_focusE_weights
 from datetime import datetime
 import numpy as np
 import logging
@@ -60,7 +59,6 @@ class NoBackend():
             self.root_directory = root_directory
         self.use_filter = use_filter
         self.sources = {}
-
 
     def _add_dataset(self, data_source, dataset_type):
         msg = "Adding datasets to NoBackend not possible."
@@ -559,8 +557,8 @@ class GraphDataLoader():
 
         elif backend is None or backend == NoBackend:
             self.backend = NoBackend(self.identifier, use_indexer=self.use_indexer, remap=self.remap,
-                                        name=self.name, parent=self.parent, in_memory=self.in_memory, 
-                                        use_filter=self.use_filter)
+                                     name=self.name, parent=self.parent, in_memory=self.in_memory, 
+                                     use_filter=self.use_filter)
         else:
             self.backend = backend
 

@@ -1692,7 +1692,7 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
     r = requests.get(url, allow_redirects=True)
     open('xai_fb15k_237.csv', 'wb').write(r.content)
 
-    mapper = {"all":"all", "clear":3, "not clear":0, "confusing+":2, "confusing-":1}
+    mapper = {"all": "all", "clear": 3, "not clear": 0, "confusing+": 2, "confusing-": 1}
     if subset != "all":
         if subset in mapper:
             X = pd.read_csv('xai_fb15k_237.csv', sep=',')
@@ -1705,17 +1705,26 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
     if full:
         return X
     else:
-        t1 = X[['predicate','predicate label', 'predicates_description', 'subject_triple1', 'subject_label_triple1', 'object_label_triple1', 'object_triple1']]
-        t2 =     X[['predicate','predicate label', 'predicates_description', 'subject_triple2', 'subject_label_triple2', 'object_label_triple2', 'object_triple2']]
-        t3 =    X[['predicate','predicate label', 'predicates_description', 'subject_triple3', 'subject_label_triple3', 'object_label_triple3', 'object_triple3']]
-        mapper1 = {'subject_triple1':'subject', 'subject_label_triple1':'subject_label', 'object_label_triple1':'object_label', 'object_triple1':'object'}
+        t1 = X[['predicate', 'predicate label', 'predicates_description', 'subject_triple1', 'subject_label_triple1', 'object_label_triple1', 'object_triple1']]
+        t2 = X[['predicate', 'predicate label', 'predicates_description', 'subject_triple2', 'subject_label_triple2', 'object_label_triple2', 'object_triple2']]
+        t3 = X[['predicate', 'predicate label', 'predicates_description', 'subject_triple3', 'subject_label_triple3', 'object_label_triple3', 'object_triple3']]
+        mapper1 = {'subject_triple1': 'subject',
+                   'subject_label_triple1': 'subject_label',
+                   'object_label_triple1': 'object_label',
+                   'object_triple1': 'object'}
         t1 = t1.rename(columns=mapper1)
-        mapper2 = {'subject_triple2':'subject', 'subject_label_triple2':'subject_label', 'object_label_triple2':'object_label', 'object_triple2':'object'}
+        mapper2 = {'subject_triple2': 'subject',
+                   'subject_label_triple2': 'subject_label',
+                   'object_label_triple2': 'object_label',
+                   'object_triple2': 'object'}
         t2 = t2.rename(columns=mapper2)
-        mapper3 = {'subject_triple3':'subject', 'subject_label_triple3':'subject_label', 'object_label_triple3':'object_label', 'object_triple3':'object'}
+        mapper3 = {'subject_triple3': 'subject', 
+                   'subject_label_triple3': 'subject_label',
+                   'object_label_triple3': 'object_label',
+                   'object_triple3': 'object'}
         t3 = t3.rename(columns=mapper3)
-        t1 = t1.append(t2, ignore_index = True)
-        t1 = t1.append(t3, ignore_index = True)        
+        t1 = t1.append(t2, ignore_index=True)
+        t1 = t1.append(t3, ignore_index=True)        
         return t1
 
 
@@ -1800,8 +1809,8 @@ def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False
         valid_checksum='0fd5e85f41e0ba3ef6c10093cbe2a435',
         test_checksum='7186374c5ca7075d268ccf316927041d',
         mapper_checksum='9cf7209df69562dff36ae94f95f67e82' if return_mapper else None,
-        test_negatives_checksum = '2dc6755e9cc54145e782480c5bb2ef44',
-        valid_negatives_checksum = '381300fbd297df9db2fd05bb6cfc1f2d'
+        test_negatives_checksum='2dc6755e9cc54145e782480c5bb2ef44',
+        valid_negatives_checksum='381300fbd297df9db2fd05bb6cfc1f2d'
     )
 
     if clean_unseen:
