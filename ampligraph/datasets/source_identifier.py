@@ -40,7 +40,12 @@ def load_csv(data_source, chunk_size=None, sep='\t', verbose=False, **kwargs):
         data: ndarray or iter
             Either a numpy array with data or a lazy iterator if ``chunk_size`` was provided.
     """
-    data = pd.read_csv(data_source, sep=sep, chunksize=chunk_size, header=None, **kwargs)
+    data = pd.read_csv(
+        data_source,
+        sep=sep,
+        chunksize=chunk_size,
+        header=None,
+        **kwargs)
     logger.debug("data type: {}".format(type(data)))
     logger.debug("CSV loaded, into iterator data.")
 
@@ -73,7 +78,11 @@ def load_json(data_source, orient='records', chunksize=None):
             Either a numpy array with data or a lazy iterator if ``chunk_size`` was provided.
     """
     if chunksize is not None:
-        data = pd.read_json(data_source, orient=orient, lines=True, chunksize=chunksize)
+        data = pd.read_json(
+            data_source,
+            orient=orient,
+            lines=True,
+            chunksize=chunksize)
     else:
         data = pd.read_json(data_source, orient=orient)
     logger.debug("data type: {}".format(type(data)))
@@ -115,6 +124,7 @@ class DataSourceIdentifier():
        >>>loader = identifier.fetch_loader()
        >>>X = loader("data.csv")
     """
+
     def __init__(self, data_source, verbose=False):
         """Initialise DataSourceIdentifier.
 
@@ -135,7 +145,8 @@ class DataSourceIdentifier():
 
     def fetch_loader(self):
         """Returns adequate loader required to read identified file."""
-        logger.debug("Return adequate loader that provides loading of data source.")
+        logger.debug(
+            "Return adequate loader that provides loading of data source.")
         return self.supported_types[self.src]
 
     def get_src(self):
@@ -145,9 +156,13 @@ class DataSourceIdentifier():
     def _identify(self):
         """Identifies the data file type based on the file name."""
         if isinstance(self.data_source, str):
-            self.src = self.data_source.split(".")[-1] if "." in self.data_source else None
+            self.src = self.data_source.split(
+                ".")[-1] if "." in self.data_source else None
             if self.src is not None and self.src not in self.supported_types:
-                logger.debug("File type not supported! Supported types: {}".format(", ".join(self.supported_types)))
+                logger.debug(
+                    "File type not supported! Supported types: {}".format(
+                        ", ".join(
+                            self.supported_types)))
                 self.src = None
         else:
             logger.debug("data_source is an object")

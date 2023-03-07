@@ -40,7 +40,8 @@ def register_partitioning_manager(name):
     def insert_in_registry(class_handle):
         """Checks if partition manager already exists and if not registers it."""
         if name in PARTITION_MANAGER_REGISTRY.keys():
-            msg = "Partitioning Manager with name {} already exists!".format(name)
+            msg = "Partitioning Manager with name {} already exists!".format(
+                name)
             logger.error(msg)
             raise Exception(msg)
 
@@ -52,8 +53,17 @@ def register_partitioning_manager(name):
 
 
 class PartitionDataManager(abc.ABC):
-    def __init__(self, dataset_loader, model, strategy='Bucket', partitioner_k=3, root_directory=None,
-                 ent_map_fname=None, ent_meta_fname=None, rel_map_fname=None, rel_meta_fname=None):
+    def __init__(
+            self,
+            dataset_loader,
+            model,
+            strategy='Bucket',
+            partitioner_k=3,
+            root_directory=None,
+            ent_map_fname=None,
+            ent_meta_fname=None,
+            rel_map_fname=None,
+            rel_meta_fname=None):
         """Initializes the Partitioning Data Manager.
 
         Uses/Creates partitioner and generates and manages partition related parameters.
@@ -78,7 +88,8 @@ class PartitionDataManager(abc.ABC):
         if ent_map_fname is not None and ent_meta_fname is not None and \
                 rel_map_fname is not None and rel_meta_fname is not None:
             self.root_directory = os.path.dirname(ent_map_fname)
-            self.timestamp = os.path.basename(ent_map_fname).split('_')[-1][:-4]
+            self.timestamp = os.path.basename(
+                ent_map_fname).split('_')[-1][:-4]
             self.ent_map_fname = ent_map_fname
             self.ent_meta_fname = ent_meta_fname
             self.rel_map_fname = rel_map_fname
@@ -90,24 +101,38 @@ class PartitionDataManager(abc.ABC):
             else:
                 self.root_directory = tempfile.gettempdir()
             self.timestamp = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p")
-            self.ent_map_fname = os.path.join(self.root_directory, 'ent_partition_{}'.format(self.timestamp))
-            self.ent_meta_fname = os.path.join(self.root_directory, 'ent_metadata_{}'.format(self.timestamp))
-            self.rel_map_fname = os.path.join(self.root_directory, 'rel_partition_{}'.format(self.timestamp))
-            self.rel_meta_fname = os.path.join(self.root_directory, 'rel_metadata_{}'.format(self.timestamp))
+            self.ent_map_fname = os.path.join(
+                self.root_directory,
+                'ent_partition_{}'.format(
+                    self.timestamp))
+            self.ent_meta_fname = os.path.join(
+                self.root_directory,
+                'ent_metadata_{}'.format(
+                    self.timestamp))
+            self.rel_map_fname = os.path.join(
+                self.root_directory,
+                'rel_partition_{}'.format(
+                    self.timestamp))
+            self.rel_meta_fname = os.path.join(
+                self.root_directory,
+                'rel_metadata_{}'.format(
+                    self.timestamp))
 
         if isinstance(dataset_loader, AbstractGraphPartitioner):
             self.partitioner = dataset_loader
             self.partitioner_k = self.partitioner._k
         else:
             print('Partitioning may take a while...')
-            self.partitioner = PARTITION_ALGO_REGISTRY.get(strategy)(dataset_loader, k=self.partitioner_k)
+            self.partitioner = PARTITION_ALGO_REGISTRY.get(
+                strategy)(dataset_loader, k=self.partitioner_k)
 
         self.num_ents = self.partitioner._data.backend.mapper.backend.ents_length
         self.num_rels = self.partitioner._data.backend.mapper.backend.rels_length
         self.max_ent_size = 0
         for i in range(len(self.partitioner.partitions)):
-            self.max_ent_size = max(self.max_ent_size,
-                                    self.partitioner.partitions[i].backend.mapper.backend.ents_length)
+            self.max_ent_size = max(
+                self.max_ent_size,
+                self.partitioner.partitions[i].backend.mapper.backend.ents_length)
 
         self._generate_partition_params()
 
@@ -125,10 +150,22 @@ class PartitionDataManager(abc.ABC):
             self._copy_files(self.ent_meta_fname)
             self._copy_files(self.rel_map_fname)
             self._copy_files(self.rel_meta_fname)
-            self.ent_map_fname = os.path.join(self.root_directory, 'ent_partition_{}'.format(self.timestamp))
-            self.ent_meta_fname = os.path.join(self.root_directory, 'ent_metadata_{}'.format(self.timestamp))
-            self.rel_map_fname = os.path.join(self.root_directory, 'rel_partition_{}'.format(self.timestamp))
-            self.rel_meta_fname = os.path.join(self.root_directory, 'rel_metadata_{}'.format(self.timestamp))
+            self.ent_map_fname = os.path.join(
+                self.root_directory,
+                'ent_partition_{}'.format(
+                    self.timestamp))
+            self.ent_meta_fname = os.path.join(
+                self.root_directory,
+                'ent_metadata_{}'.format(
+                    self.timestamp))
+            self.rel_map_fname = os.path.join(
+                self.root_directory,
+                'rel_partition_{}'.format(
+                    self.timestamp))
+            self.rel_meta_fname = os.path.join(
+                self.root_directory,
+                'rel_metadata_{}'.format(
+                    self.timestamp))
         except shutil.SameFileError:
             pass
 
@@ -251,8 +288,14 @@ class GeneralPartitionDataManager(PartitionDataManager):
 
         Handles data generation and informs the model about changes in partition.
     '''
-    def __init__(self, dataset_loader, model, strategy='RandomEdges', partitioner_k=3,
-                 root_directory=None):
+
+    def __init__(
+            self,
+            dataset_loader,
+            model,
+            strategy='RandomEdges',
+            partitioner_k=3,
+            root_directory=None):
         """Initialize the Partitioning Data Manager.
 
         Uses/Creates partitioner and generates partition related parameters.
@@ -268,8 +311,14 @@ class GeneralPartitionDataManager(PartitionDataManager):
         root_directory: str
             Directory where the partition manager files will be stored.
         """
-        super(GeneralPartitionDataManager, self).__init__(dataset_loader, model,
-                                                          strategy, partitioner_k, root_directory)
+        super(
+            GeneralPartitionDataManager,
+            self).__init__(
+            dataset_loader,
+            model,
+            strategy,
+            partitioner_k,
+            root_directory)
 
     def _generate_partition_params(self):
         ''' Generates the metadata needed for persisting and loading partition embeddings and other parameters.
@@ -283,11 +332,18 @@ class GeneralPartitionDataManager(PartitionDataManager):
         # for each partition
         for part_num in range(self.partitioner_k):
             with shelve.open(self.ent_map_fname, writeback=True) as ent_partition:
-                # create the key (entity index) and value (optim params and embs)
+                # create the key (entity index) and value (optim params and
+                # embs)
                 for i in range(update_part_size * part_num,
-                               min(update_part_size * (part_num + 1), self.num_ents)):
+                               min(update_part_size * (part_num + 1),
+                                   self.num_ents)):
                     out_dict_key = str(i)
-                    opt_param = np.zeros(shape=(1, num_optimizer_hyperparams, self.internal_k), dtype=np.float32)
+                    opt_param = np.zeros(
+                        shape=(
+                            1,
+                            num_optimizer_hyperparams,
+                            self.internal_k),
+                        dtype=np.float32)
                     # ent_emb = xavier(self.num_ents, self.internal_k, num_ents_bucket)
                     ent_emb = self._model.encoding_layer.ent_init(
                         shape=(1, self.internal_k),
@@ -299,8 +355,14 @@ class GeneralPartitionDataManager(PartitionDataManager):
         with shelve.open(self.rel_map_fname, writeback=True) as rel_partition:
             for i in range(self.num_rels):
                 out_dict_key = str(i)
-                # TODO change the hardcoding from 3 to actual hyperparam of optim
-                opt_param = np.zeros(shape=(1, num_optimizer_hyperparams, self.internal_k), dtype=np.float32)
+                # TODO change the hardcoding from 3 to actual hyperparam of
+                # optim
+                opt_param = np.zeros(
+                    shape=(
+                        1,
+                        num_optimizer_hyperparams,
+                        self.internal_k),
+                    dtype=np.float32)
                 # rel_emb = xavier(self.num_rels, self.internal_k, self.num_rels)
                 rel_emb = self._model.encoding_layer.rel_init(
                     shape=(1, self.internal_k),
@@ -318,8 +380,10 @@ class GeneralPartitionDataManager(PartitionDataManager):
             Partition number of the current partition that was trained.
         '''
         # set the trained params back for persisting (exclude paddings)
-        self.all_ent_embs = self._model.encoding_layer.ent_emb.numpy()[:len(self.ent_original_ids), :]
-        self.all_rel_embs = self._model.encoding_layer.rel_emb.numpy()[:len(self.rel_original_ids), :]
+        self.all_ent_embs = self._model.encoding_layer.ent_emb.numpy()[
+            :len(self.ent_original_ids), :]
+        self.all_rel_embs = self._model.encoding_layer.rel_emb.numpy()[
+            :len(self.rel_original_ids), :]
 
         # get the optimizer params related to the embeddings
         ent_opt_hyperparams, rel_opt_hyperparams = self._model.optimizer.get_entity_relation_hyperparams()
@@ -336,8 +400,10 @@ class GeneralPartitionDataManager(PartitionDataManager):
             # get all the different params related to entities and relations
             # eg: beta1, beta2 related to embeddings (when using adam)
             for i in range(num_opt_hyperparams):
-                original_ent_hyperparams.append(ent_opt_hyperparams[i][:len(self.ent_original_ids)])
-                original_rel_hyperparams.append(rel_opt_hyperparams[i][:len(self.rel_original_ids)])
+                original_ent_hyperparams.append(
+                    ent_opt_hyperparams[i][:len(self.ent_original_ids)])
+                original_rel_hyperparams.append(
+                    rel_opt_hyperparams[i][:len(self.rel_original_ids)])
 
             # store for persistance
             self.all_rel_opt_params = np.stack(original_rel_hyperparams, 1)
@@ -349,7 +415,8 @@ class GeneralPartitionDataManager(PartitionDataManager):
             # persist entity related embs and optim params
             ent_partition = shelve.open(self.ent_map_fname, writeback=True)
             for i, key in enumerate(self.ent_original_ids):
-                ent_partition[str(key)] = [self.all_ent_opt_params[i:i + 1], self.all_ent_embs[i:i + 1]]
+                ent_partition[str(key)] = [
+                    self.all_ent_opt_params[i:i + 1], self.all_ent_embs[i:i + 1]]
 
         finally:
             ent_partition.close()
@@ -358,7 +425,8 @@ class GeneralPartitionDataManager(PartitionDataManager):
             # persist relation related embs and optim params
             rel_partition = shelve.open(self.rel_map_fname, writeback=True)
             for i, key in enumerate(self.rel_original_ids):
-                rel_partition[str(key)] = [self.all_rel_opt_params[i:i + 1], self.all_rel_embs[i:i + 1]]
+                rel_partition[str(key)] = [
+                    self.all_rel_opt_params[i:i + 1], self.all_rel_embs[i:i + 1]]
 
         finally:
             rel_partition.close()
@@ -373,7 +441,8 @@ class GeneralPartitionDataManager(PartitionDataManager):
         partition_number: int
             Partition number of the next partition will be trained.
         '''
-        # from the graph data loader of the current partition get the original entity ids
+        # from the graph data loader of the current partition get the original
+        # entity ids
         ent_count_in_partition = graph_data_loader.backend.mapper.get_entities_count()
         self.ent_original_ids = graph_data_loader.backend.mapper.get_indexes(
             np.arange(ent_count_in_partition),
@@ -393,7 +462,8 @@ class GeneralPartitionDataManager(PartitionDataManager):
                 self.all_ent_opt_params.append(partition[key][0])
                 self.all_ent_embs.append(partition[key][1])
             self.all_ent_embs = np.concatenate(self.all_ent_embs, 0)
-            self.all_ent_opt_params = np.concatenate(self.all_ent_opt_params, 0)
+            self.all_ent_opt_params = np.concatenate(
+                self.all_ent_opt_params, 0)
 
         rel_count_in_partition = graph_data_loader.backend.mapper.get_relations_count()
         self.rel_original_ids = graph_data_loader.backend.mapper.get_indexes(
@@ -414,7 +484,8 @@ class GeneralPartitionDataManager(PartitionDataManager):
                 self.all_rel_opt_params.append(partition[key][0])
                 self.all_rel_embs.append(partition[key][1])
             self.all_rel_embs = np.concatenate(self.all_rel_embs, 0)
-            self.all_rel_opt_params = np.concatenate(self.all_rel_opt_params, 0)
+            self.all_rel_opt_params = np.concatenate(
+                self.all_rel_opt_params, 0)
 
         # notify the model about the partition change
         self._model.partition_change_updates(len(self.ent_original_ids),
@@ -431,22 +502,32 @@ class GeneralPartitionDataManager(PartitionDataManager):
             num_opt_hyperparams = self._model.optimizer.get_hyperparam_count()
             for i in range(num_opt_hyperparams):
                 rel_hyperparam_i = self.all_rel_opt_params[:, i, :]
-                rel_hyperparam_i = np.pad(rel_hyperparam_i,
-                                          ((0, self.num_rels - rel_hyperparam_i.shape[0]), (0, 0)),
-                                          'constant',
-                                          constant_values=(0))
+                rel_hyperparam_i = np.pad(
+                    rel_hyperparam_i,
+                    ((0,
+                      self.num_rels -
+                      rel_hyperparam_i.shape[0]),
+                     (0,
+                      0)),
+                    'constant',
+                    constant_values=(0))
                 rel_optim_hyperparams.append(rel_hyperparam_i)
 
                 ent_hyperparam_i = self.all_ent_opt_params[:, i, :]
-                ent_hyperparam_i = np.pad(ent_hyperparam_i,
-                                          ((0, self.max_ent_size - ent_hyperparam_i.shape[0]), (0, 0)),
-                                          'constant',
-                                          constant_values=(0))
+                ent_hyperparam_i = np.pad(
+                    ent_hyperparam_i,
+                    ((0,
+                      self.max_ent_size -
+                      ent_hyperparam_i.shape[0]),
+                     (0,
+                      0)),
+                    'constant',
+                    constant_values=(0))
                 ent_optim_hyperparams.append(ent_hyperparam_i)
 
             # notify the optimizer and update the optimizer hyperparams
-            self._model.optimizer.set_entity_relation_hyperparams(ent_optim_hyperparams,
-                                                                  rel_optim_hyperparams)
+            self._model.optimizer.set_entity_relation_hyperparams(
+                ent_optim_hyperparams, rel_optim_hyperparams)
 
     def on_complete(self):
         ''' Activities to be performed at the end of training.
@@ -457,7 +538,8 @@ class GeneralPartitionDataManager(PartitionDataManager):
         for part_num in range(self.partitioner_k):
             with shelve.open(self.ent_map_fname, writeback=True) as ent_partition:
                 for i in range(update_part_size * part_num,
-                               min(update_part_size * (part_num + 1), self.num_ents)):
+                               min(update_part_size * (part_num + 1),
+                                   self.num_ents)):
                     ent_partition[str(i)] = ent_partition[str(i)][1][0]
 
         # create relation embeddings and optimizer hyperparams for all relations
@@ -473,7 +555,14 @@ class BucketPartitionDataManager(PartitionDataManager):
 
     Handles data generation and informs model about changes in partition.
     '''
-    def __init__(self, dataset_loader, model, strategy='Bucket', partitioner_k=3, root_directory=None):
+
+    def __init__(
+            self,
+            dataset_loader,
+            model,
+            strategy='Bucket',
+            partitioner_k=3,
+            root_directory=None):
         """Initialize the Partitioning Data Manager.
         Uses/Creates partitioner and generates partition related parameters.
 
@@ -488,7 +577,14 @@ class BucketPartitionDataManager(PartitionDataManager):
         root_directory: str
             Directory where the partition manager files will be stored.
         """
-        super(BucketPartitionDataManager, self).__init__(dataset_loader, model, strategy, partitioner_k, root_directory)
+        super(
+            BucketPartitionDataManager,
+            self).__init__(
+            dataset_loader,
+            model,
+            strategy,
+            partitioner_k,
+            root_directory)
 
     def _generate_partition_params(self):
         ''' Generates the metadata needed for persisting and loading partition embeddings and other parameters.
@@ -505,8 +601,14 @@ class BucketPartitionDataManager(PartitionDataManager):
                     out_dict_key = str(i)
                     num_ents_bucket = bucket['indexes'].shape[0]
                     # print(num_ents_bucket)
-                    # TODO change the hardcoding from 3 to actual hyperparam of optim
-                    opt_param = np.zeros(shape=(num_ents_bucket, num_optimizer_hyperparams, self.internal_k), dtype=np.float32)
+                    # TODO change the hardcoding from 3 to actual hyperparam of
+                    # optim
+                    opt_param = np.zeros(
+                        shape=(
+                            num_ents_bucket,
+                            num_optimizer_hyperparams,
+                            self.internal_k),
+                        dtype=np.float32)
                     ent_emb = self._model.encoding_layer.ent_init(
                         shape=(num_ents_bucket, self.internal_k),
                         dtype=tf.float32).numpy()
@@ -517,7 +619,12 @@ class BucketPartitionDataManager(PartitionDataManager):
         with shelve.open(self.rel_map_fname, writeback=True) as rel_partition:
             out_dict_key = str(0)
             # TODO change the hardcoding from 3 to actual hyperparam of optim
-            opt_param = np.zeros(shape=(self.num_rels, num_optimizer_hyperparams, self.internal_k), dtype=np.float32)
+            opt_param = np.zeros(
+                shape=(
+                    self.num_rels,
+                    num_optimizer_hyperparams,
+                    self.internal_k),
+                dtype=np.float32)
             rel_emb = self._model.encoding_layer.rel_init(
                 shape=(self.num_rels, self.internal_k),
                 dtype=tf.float32).numpy()
@@ -527,7 +634,8 @@ class BucketPartitionDataManager(PartitionDataManager):
         for i in range(len(self.partitioner.partitions)):
             # get the source and dest bucket
             # print(self.partitioner.partitions[i].backend.mapper.metadata['name'])
-            splits = self.partitioner.partitions[i].backend.mapper.metadata['name'].split('-')
+            splits = self.partitioner.partitions[i].backend.mapper.metadata['name'].split(
+                '-')
             source_bucket = splits[0][-1]
             dest_bucket = splits[1]
             all_keys_merged_buckets = []
@@ -540,9 +648,12 @@ class BucketPartitionDataManager(PartitionDataManager):
 
             # since we would be concatenating the bucket embeddings, let's find what 0, 1, 2 etc indices of
             # embedding matrix means.
-            # bucket entity value to ent_emb matrix index mappings eg: 2001 -> 0, 2002->1, 2003->2, ...
+            # bucket entity value to ent_emb matrix index mappings eg: 2001 ->
+            # 0, 2002->1, 2003->2, ...
             merged_bucket_to_ent_mat_mappings = {}
-            for key, val in zip(all_keys_merged_buckets, np.arange(0, len(all_keys_merged_buckets))):
+            for key, val in zip(
+                all_keys_merged_buckets, np.arange(
+                    0, len(all_keys_merged_buckets))):
                 merged_bucket_to_ent_mat_mappings[key] = val
             emb_mat_order = []
 
@@ -552,22 +663,27 @@ class BucketPartitionDataManager(PartitionDataManager):
             # data_index -> original_ent_index -> ent_emb_matrix mappings (a->b->c) 0->2002->1, 1->2003->2
             # (because 2001 may not exist in this partition)
             # a->b mapping
-            num_ents_bucket = self.partitioner.partitions[i].backend.mapper.get_entities_count()
+            num_ents_bucket = self.partitioner.partitions[i].backend.mapper.get_entities_count(
+            )
             sorted_partition_keys = np.arange(num_ents_bucket)
             sorted_partition_values = self.partitioner.partitions[i].backend.mapper.get_indexes(
                 sorted_partition_keys, type_of='e', order="ind2raw")
             for val in sorted_partition_values:
 
                 # a->b->c mapping
-                emb_mat_order.append(merged_bucket_to_ent_mat_mappings[int(val)])
+                emb_mat_order.append(
+                    merged_bucket_to_ent_mat_mappings[int(val)])
 
             # store it
             with shelve.open(self.ent_meta_fname, writeback=True) as metadata:
                 metadata[str(i)] = emb_mat_order
 
             rel_mat_order = []
-            # with shelve.open(self.partitioner.partitions[i].backend.mapper.metadata['relations']) as rel_sh:
-            num_rels_bucket = self.partitioner.partitions[i].backend.mapper.get_relations_count()
+            # with
+            # shelve.open(self.partitioner.partitions[i].backend.mapper.metadata['relations'])
+            # as rel_sh:
+            num_rels_bucket = self.partitioner.partitions[i].backend.mapper.get_relations_count(
+            )
             sorted_partition_keys = np.arange(num_rels_bucket)
             sorted_partition_values = self.partitioner.partitions[i].backend.mapper.get_indexes(
                 sorted_partition_keys, type_of='r', order="ind2raw")
@@ -610,12 +726,16 @@ class BucketPartitionDataManager(PartitionDataManager):
             # get all the different params related to entities and relations
             # eg: beta1, beta2 related to embeddings (when using adam)
             for i in range(num_opt_hyperparams):
-                original_ent_hyperparams.append(ent_opt_hyperparams[i][:len(self.ent_original_ids)])
-                original_rel_hyperparams.append(rel_opt_hyperparams[i][:len(self.rel_original_ids)])
+                original_ent_hyperparams.append(
+                    ent_opt_hyperparams[i][:len(self.ent_original_ids)])
+                original_rel_hyperparams.append(
+                    rel_opt_hyperparams[i][:len(self.rel_original_ids)])
 
             # store for persistance
-            self.all_rel_opt_params[self.rel_original_ids, :, :] = np.stack(original_rel_hyperparams, 1)
-            self.all_ent_opt_params[self.ent_original_ids, :, :] = np.stack(original_ent_hyperparams, 1)
+            self.all_rel_opt_params[self.rel_original_ids, :, :] = np.stack(
+                original_rel_hyperparams, 1)
+            self.all_ent_opt_params[self.ent_original_ids, :, :] = np.stack(
+                original_ent_hyperparams, 1)
 
         # Open the buckets related to the partition and concat
         splits = graph_data_loader.backend.mapper.metadata['name'].split('-')
@@ -626,7 +746,8 @@ class BucketPartitionDataManager(PartitionDataManager):
             # persist entity related embs and optim params
             s = shelve.open(self.ent_map_fname, writeback=True)
 
-            # split and save self.all_ent_opt_params and self.all_ent_embs into respective buckets
+            # split and save self.all_ent_opt_params and self.all_ent_embs into
+            # respective buckets
             opt_params = [self.all_ent_opt_params[:self.split_opt_idx],
                           self.all_ent_opt_params[self.split_opt_idx:]]
             emb_params = [self.all_ent_embs[:self.split_emb_idx],
@@ -682,10 +803,12 @@ class BucketPartitionDataManager(PartitionDataManager):
             source_bucket_params = s[source_bucket]
             dest_source_bucket_params = s[dest_bucket]
             # full ent embs
-            self.all_ent_embs = np.concatenate([source_bucket_params[1], dest_source_bucket_params[1]])
+            self.all_ent_embs = np.concatenate(
+                [source_bucket_params[1], dest_source_bucket_params[1]])
             self.split_emb_idx = source_bucket_params[1].shape[0]
 
-            self.all_ent_opt_params = np.concatenate([source_bucket_params[0], dest_source_bucket_params[0]])
+            self.all_ent_opt_params = np.concatenate(
+                [source_bucket_params[0], dest_source_bucket_params[0]])
             self.split_opt_idx = source_bucket_params[0].shape[0]
 
             # now select only partition embeddings
@@ -706,7 +829,8 @@ class BucketPartitionDataManager(PartitionDataManager):
             s.close()
 
         # notify the model about the partition change
-        self._model.partition_change_updates(len(self.ent_original_ids), ent_embs, rel_embs)
+        self._model.partition_change_updates(
+            len(self.ent_original_ids), ent_embs, rel_embs)
 
         # Optimizer params will exist only after it has been persisted once
         if self._model.current_epoch > 1 or (
@@ -719,22 +843,32 @@ class BucketPartitionDataManager(PartitionDataManager):
             num_opt_hyperparams = self._model.optimizer.get_hyperparam_count()
             for i in range(num_opt_hyperparams):
                 rel_hyperparam_i = rel_opt_params[:, i, :]
-                rel_hyperparam_i = np.pad(rel_hyperparam_i,
-                                          ((0, self.num_rels - rel_hyperparam_i.shape[0]), (0, 0)),
-                                          'constant',
-                                          constant_values=(0))
+                rel_hyperparam_i = np.pad(
+                    rel_hyperparam_i,
+                    ((0,
+                      self.num_rels -
+                      rel_hyperparam_i.shape[0]),
+                     (0,
+                      0)),
+                    'constant',
+                    constant_values=(0))
                 rel_optim_hyperparams.append(rel_hyperparam_i)
 
                 ent_hyperparam_i = ent_opt_params[:, i, :]
-                ent_hyperparam_i = np.pad(ent_hyperparam_i,
-                                          ((0, self.max_ent_size - ent_hyperparam_i.shape[0]), (0, 0)),
-                                          'constant',
-                                          constant_values=(0))
+                ent_hyperparam_i = np.pad(
+                    ent_hyperparam_i,
+                    ((0,
+                      self.max_ent_size -
+                      ent_hyperparam_i.shape[0]),
+                     (0,
+                      0)),
+                    'constant',
+                    constant_values=(0))
                 ent_optim_hyperparams.append(ent_hyperparam_i)
 
             # notify the optimizer and update the optimizer hyperparams
-            self._model.optimizer.set_entity_relation_hyperparams(ent_optim_hyperparams,
-                                                                  rel_optim_hyperparams)
+            self._model.optimizer.set_entity_relation_hyperparams(
+                ent_optim_hyperparams, rel_optim_hyperparams)
 
     def on_complete(self):
         ''' Activities to be performed on end of training.
@@ -747,7 +881,8 @@ class BucketPartitionDataManager(PartitionDataManager):
                 with shelve.open(self.ent_map_fname, writeback=True) as ent_partition:
                     # get the bucket embeddings
                     # split and store separately
-                    for key, val in zip(bucket['indexes'], ent_partition[str(i)][1]):
+                    for key, val in zip(
+                            bucket['indexes'], ent_partition[str(i)][1]):
                         ent_partition[str(key)] = val
                     if i != 0:
                         del ent_partition[str(i)]
@@ -776,7 +911,8 @@ def get_partition_adapter(dataset_loader, model, strategy='Bucket',
             dataset_loader, model, dataset_loader.name, dataset_loader._k, root_directory)
 
     else:
-        partitioner = PARTITION_ALGO_REGISTRY.get(strategy)(dataset_loader, k=partitioning_k)
+        partitioner = PARTITION_ALGO_REGISTRY.get(
+            strategy)(dataset_loader, k=partitioning_k)
         partitioner_manager = PARTITION_MANAGER_REGISTRY.get(partitioner.manager)(
             partitioner, model, strategy, partitioning_k, root_directory)
 

@@ -80,10 +80,11 @@ class DataHandler():
             # if use partitioning then pass the graph data loader to partitioner and use
             # partitioned data manager
             assert model is not None, "Please pass the model to data_handler for partitioning!"
-            self._adapter = get_partition_adapter(self._adapter,
-                                                  self._model,
-                                                  strategy='Bucket',
-                                                  partitioning_k=partitioning_k)
+            self._adapter = get_partition_adapter(
+                self._adapter,
+                self._model,
+                strategy='Bucket',
+                partitioning_k=partitioning_k)
 
             self.using_partitioning = True
 
@@ -110,7 +111,11 @@ class DataHandler():
 
     def enumerate_epochs(self, use_tqdm=False):
         '''Manages the (reloading) data adapter before epoch starts.'''
-        for epoch in tqdm.tqdm(range(self._initial_epoch, self._epochs), disable=not use_tqdm):
+        for epoch in tqdm.tqdm(
+                range(
+                    self._initial_epoch,
+                    self._epochs),
+                disable=not use_tqdm):
             self._adapter.reload()
             yield epoch, iter(self._adapter.get_tf_generator())
             self._adapter.on_epoch_end()
