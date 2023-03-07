@@ -82,7 +82,7 @@ class PartitioningReporter:
         if avg_size:
             edge_cut_proportion = (edge_cut * 100) / avg_size  # edge cut with respect to the average partition size
         return edge_cut, edge_cut_proportion
-    
+
     def get_edge_imbalance(self, avg_size, max_size):
         """Calculates edge imbalance of partitions.
 
@@ -103,7 +103,7 @@ class PartitioningReporter:
         return edge_imb
 
     def get_vertex_imbalance_and_count(self, partitions, vertex_count=False):
-        """Calculates vertex imbalance of partitions, vertex count - counts number 
+        """Calculates vertex imbalance of partitions, vertex count - counts number
            of vertices in each partition that estimates the size of partition.
 
 
@@ -185,7 +185,7 @@ class PartitioningReporter:
         logger.debug("Ideal data size: {}".format(ideal_size))
         percentage_dev = ((np.sum([np.abs(ideal_size - size) for size in sizes]) / k) / ideal_size) * 100
         return percentage_dev
-    
+
     def get_edges_count(self, partitions):
         """Counts number of edges in each partition that estimates the size of partition.
 
@@ -206,7 +206,7 @@ class PartitioningReporter:
             info.append(edges)
 
         return info
- 
+
     def get_modularity(self):
         """Calculates modularity of partitions.
         """
@@ -262,7 +262,7 @@ class PartitioningReporter:
         metrics["PERCENTAGE_DEV_VERTICES"] = self.get_average_deviation_from_ideal_size_vertices(partitioning)
         partitioner.clean()
         return metrics
-    
+
     def report(self, visualize=True, barh=True):  # TODO: include plotting parameters
         """Collect individual reports for every partitioning.
 
@@ -336,8 +336,7 @@ class PartitioningReporter:
                     plt.xticks(rotation=70)
                     ind += 1
             plt.show()
-
-        return reports                       
+        return reports
 
 
 def compare_partitionings(list_of_partitioners, data, num_partitions=2, visualize=True):
@@ -391,7 +390,7 @@ def main():
     data = GraphDataLoader(sample, backend=SQLiteAdapter, in_memory=False)
     partitioners = [RandomVerticesGraphPartitioner]
     report = compare_partitionings(partitioners, data, visualize=False)
-    print(report)    
+    print(report)
 #   Expected output:
 #    {'RandomVerticesGraphPartitioner': {'EDGE_IMB': 0.40953499098494706,
 #     'VERTEX_IMB': 0.03495702005730661,
