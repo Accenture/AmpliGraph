@@ -17,7 +17,6 @@ DEFAULT_CHUNKSIZE: int
 """
 from .data_indexer import DataIndexer
 from ampligraph.utils.profiling import get_human_readable_size
-from ampligraph.utils.model_utils import preprocess_focusE_weights
 import sqlite3
 from sqlite3 import Error
 import numpy as np
@@ -207,7 +206,7 @@ class SQLiteAdapter():
                 "CREATE INDEX triples_table_subject_idx ON triples_table (subject);",
                 "CREATE INDEX triples_table_object_idx ON triples_table (object);"
             ]
-        else: # focusE
+        else:  # focusE
             db_schema = [
                 """CREATE TABLE triples_table (subject integer,
                                         predicate integer,
@@ -439,7 +438,7 @@ class SQLiteAdapter():
         data = self.loader(data_source, chunk_size=self.chunk_size)
 
         self.reload_data()
-        for chunk in data: # chunk is a numpy array of size (n,m) with m=3/4
+        for chunk in data:  # chunk is a numpy array of size (n,m) with m=3/4
             if chunk.shape[1] > 3:
                 # weights = preprocess_focusE_weights(data=chunk[:, :3], weights=chunk[:, 3:]) # weights normalization
                 weights = chunk[:, 3:]
@@ -721,7 +720,7 @@ class SQLiteAdapter():
             tables = self._execute_query("SELECT name FROM sqlite_master WHERE type='table';")
             tables_names = ", ".join(table[0] for table in tables)
             print(summary.format(*get_human_readable_size(file_size), tables_names))            
-            types = {"integer": "int", "float":"float", "string": "str"}                                                # float aggiunto per focusE
+            types = {"integer": "int", "float": "float", "string": "str"}                                                # float aggiunto per focusE
             for table_name in tables:
                 result = self._execute_query("PRAGMA table_info('%s')" % table_name)
                 cols_name_type = ["{} ({}):".format(x[1], types[x[2]] if x[2] in types else x[2]) for x in result]      # FocusE

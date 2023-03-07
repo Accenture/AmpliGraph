@@ -186,7 +186,9 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
         This strategy first splits entities into :math:`k` buckets and creates:
 
         + `k` partitions where the `i`-th includes triples such that subject and object belong to the `i`-th partition.
-        + :math:`\\frac{(k^2-k)}{2}` partitions indexed by :math:`(i,j)` with :math:`i,j=1,...,k`, :math:`i \\neq j` where the  :math:`(i,j)`-th partition contains triples such that the subject belongs to the :math:`i`-th partition and the object to the :math:`j`-th partition or viceversa.
+        + :math:`\\frac{(k^2-k)}{2}` partitions indexed by :math:`(i,j)` with :math:`i,j=1,...,k`, :math:`i \\neq j` where
+          the  :math:`(i,j)`-th partition contains triples such that the subject belongs to the :math:`i`-th partition 
+          and the object to the :math:`j`-th partition or viceversa.
 
         Example
         -------
