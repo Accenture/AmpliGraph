@@ -17,6 +17,7 @@ logger.setLevel(logging.DEBUG)
 class OptimizerWrapper(abc.ABC):
     """Wrapper around tensorflow optimizer.
     """
+
     def __init__(self, optimizer=None):
         """Initialize the tensorflow Optimizer and wraps it so that it can be used with graph partitioning.
 
@@ -76,7 +77,9 @@ class OptimizerWrapper(abc.ABC):
             # workaround - see the issue:
             # https://github.com/tensorflow/tensorflow/issues/28090
             with gradient_tape:
-                loss += (0.0000 * (tf.reduce_sum(ent_emb) + tf.reduce_sum(rel_emb)))
+                loss += (0.0000 *
+                         (tf.reduce_sum(ent_emb) +
+                          tf.reduce_sum(rel_emb)))
 
         # Compute gradient of loss wrt trainable vars
         gradients = gradient_tape.gradient(loss, all_trainable_vars)
@@ -116,7 +119,8 @@ class OptimizerWrapper(abc.ABC):
 
         return ent_hyperparams, rel_hyperparams
 
-    def set_entity_relation_hyperparams(self, ent_hyperparams, rel_hyperparams):
+    def set_entity_relation_hyperparams(
+            self, ent_hyperparams, rel_hyperparams):
         ''' Sets optimizer hyperparams related to entity and relation embeddings (for partitioned training).
 
         Parameters
@@ -127,7 +131,10 @@ class OptimizerWrapper(abc.ABC):
             Relation embedding related optimizer hyperparameters.
         '''
         optim_weights = self.optimizer.get_weights()
-        for i, j in zip(range(1, len(optim_weights), self.num_optimized_vars), range(len(ent_hyperparams))):
+        for i, j in zip(
+            range(
+                1, len(optim_weights), self.num_optimized_vars), range(
+                len(ent_hyperparams))):
             optim_weights[i] = ent_hyperparams[j]
             optim_weights[i + 1] = rel_hyperparams[j]
         self.optimizer.set_weights(optim_weights)
@@ -187,4 +194,6 @@ def get(identifier):
         optimizer = tf.keras.optimizers.get(identifier)
         return OptimizerWrapper(optimizer)
     else:
-        raise ValueError('Could not interpret optimizer identifier:', identifier)
+        raise ValueError(
+            'Could not interpret optimizer identifier:',
+            identifier)
