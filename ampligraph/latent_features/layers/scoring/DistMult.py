@@ -12,32 +12,32 @@ from .AbstractScoringLayer import register_layer, AbstractScoringLayer
 @register_layer('DistMult')
 class DistMult(AbstractScoringLayer):
     r"""DistMult scoring layer.
-    
+
     The model as described in :cite:`yang2014embedding`.
-    
+
     The bilinear diagonal DistMult model uses the trilinear dot product as scoring function:
-    
+
     .. math::
         f_{DistMult}=\langle \mathbf{r}_p, \mathbf{e}_s, \mathbf{e}_o \rangle
-        
+
     where :math:`\mathbf{e}_{s}` is the embedding of the subject, :math:`\mathbf{r}_{p}` the embedding
     of the predicate and :math:`\mathbf{e}_{o}` the embedding of the object.
     """
     def get_config(self):
         config = super(DistMult, self).get_config()
         return config
-    
+
     def __init__(self, k):
         super(DistMult, self).__init__(k)
 
     def _compute_scores(self, triples):
         ''' Compute scores using the distmult scoring function.
-        
+
         Parameters
         ----------
         triples: array-like, shape (n, 3)
             Batch of input triples.
-        
+
         Returns
         -------
         scores: tf.Tensor, shape (n,1)
@@ -51,14 +51,14 @@ class DistMult(AbstractScoringLayer):
         ''' Compute subject corruption scores.
 
         Evaluate the inputs against subject corruptions and scores of the corruptions.
-        
+
         Parameters
         ----------
         triples: array-like, shape (n, k)
             Batch of input embeddings.
         ent_matrix: array-like, shape (m, k)
             Slice of embedding matrix (corruptions).
-        
+
         Returns
         -------
         scores: tf.Tensor, shape (n, 1)
@@ -74,14 +74,14 @@ class DistMult(AbstractScoringLayer):
         ''' Compute object corruption scores.
 
         Evaluate the inputs against object corruptions and scores of the corruptions.
-        
+
         Parameters
         ----------
         triples: array-like, shape (n, k)
             Batch of input embeddings.
         ent_matrix: array-like, shape (m, k)
             Slice of embedding matrix (corruptions).
-        
+
         Returns
         -------
         scores: tf.Tensor, shape (n, 1)
