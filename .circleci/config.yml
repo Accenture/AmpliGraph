@@ -1,7 +1,7 @@
 .common-values:
 
   docker-image: &docker-image circleci/python:3.10
-
+  resource_class: medium+
   restore-cache: &restore-cache
     keys:
       - v1-dependencies-{{ checksum "setup.py" }}-{{ checksum "requirements.txt" }}
