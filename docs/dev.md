@@ -31,7 +31,7 @@ fair evalaution and comparison acros models.
 
 You can add your own model by raising a pull request.
 
-To get started, [read the documentation on how current models have been implemented](ampligraph.latent_features.html#models).
+To get started, [read the documentation on how current models have been implemented](ampligraph.latent_features.html#anatomy-of-a-model).
 
 
 ## Clone and Install in editable mode
