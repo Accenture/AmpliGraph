@@ -16,18 +16,18 @@ class Random(AbstractScoringLayer):
     def get_config(self):
         config = super(Random, self).get_config()
         return config
-    
+
     def __init__(self, k):
         super(Random, self).__init__(k)
 
     def _compute_scores(self, triples):
         ''' Compute scores using the transE scoring function.
-        
+
         Parameters
         ----------
         triples: array-like, shape (n, 3)
             Batch of input triples.
-        
+
         Returns
         -------
         scores: tf.Tensor, shape (n,1)
@@ -41,14 +41,14 @@ class Random(AbstractScoringLayer):
         ''' Compute subject corruption scores.
 
         Evaluate the inputs against subject corruptions and scores of the corruptions.
-        
+
         Parameters
         ----------
         triples: array-like, shape (n, k)
             Batch of input embeddings.
         ent_matrix: array-like, shape (m, k)
             Slice of embedding matrix (corruptions).
-        
+
         Returns
         -------
         scores: tf.Tensor, shape (n, 1)
@@ -61,14 +61,14 @@ class Random(AbstractScoringLayer):
         ''' Compute object corruption scores.
 
         Evaluate the inputs against object corruptions and scores of the corruptions.
-        
+
         Parameters
         ----------
         triples: array-like, shape (n, k)
             Batch of input embeddings.
         ent_matrix: array-like, shape (m, k)
             Slice of embedding matrix (corruptions).
-        
+
         Returns
         -------
         scores: tf.Tensor, shape (n, 1)
