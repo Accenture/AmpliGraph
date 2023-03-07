@@ -9,7 +9,7 @@ import tensorflow as tf
 from .AbstractScoringLayer import register_layer, AbstractScoringLayer
 
 
-@register_layer('DistMult')
+@register_layer("DistMult")
 class DistMult(AbstractScoringLayer):
     r"""DistMult scoring layer.
 
@@ -32,7 +32,7 @@ class DistMult(AbstractScoringLayer):
         super(DistMult, self).__init__(k)
 
     def _compute_scores(self, triples):
-        ''' Compute scores using the distmult scoring function.
+        """Compute scores using the distmult scoring function.
 
         Parameters
         ----------
@@ -43,13 +43,13 @@ class DistMult(AbstractScoringLayer):
         -------
         scores: tf.Tensor, shape (n,1)
             Tensor of scores of inputs.
-        '''
+        """
         # compute scores as sum(s * p * o)
         scores = tf.reduce_sum(triples[0] * triples[1] * triples[2], 1)
         return scores
 
     def _get_subject_corruption_scores(self, triples, ent_matrix):
-        ''' Compute subject corruption scores.
+        """Compute subject corruption scores.
 
         Evaluate the inputs against subject corruptions and scores of the corruptions.
 
@@ -64,21 +64,17 @@ class DistMult(AbstractScoringLayer):
         -------
         scores: tf.Tensor, shape (n, 1)
             Scores of subject corruptions (corruptions defined by `ent_embs` matrix).
-        '''
+        """
         rel_emb, obj_emb = triples[1], triples[2]
         # compute the score by broadcasting the corruption embeddings(ent_matrix) and using the scoring function
         # compute scores as sum(s_corr * p * o)
         sub_corr_score = tf.reduce_sum(
-            ent_matrix *
-            tf.expand_dims(
-                rel_emb *
-                obj_emb,
-                1),
-            2)
+            ent_matrix * tf.expand_dims(rel_emb * obj_emb, 1), 2
+        )
         return sub_corr_score
 
     def _get_object_corruption_scores(self, triples, ent_matrix):
-        ''' Compute object corruption scores.
+        """Compute object corruption scores.
 
         Evaluate the inputs against object corruptions and scores of the corruptions.
 
@@ -93,13 +89,11 @@ class DistMult(AbstractScoringLayer):
         -------
         scores: tf.Tensor, shape (n, 1)
             Scores of object corruptions (corruptions defined by `ent_embs` matrix).
-        '''
+        """
         sub_emb, rel_emb = triples[0], triples[1]
         # compute the score by broadcasting the corruption embeddings(ent_matrix) and using the scoring function
         # compute scores as sum(s * p * o_corr)
         obj_corr_score = tf.reduce_sum(
-            tf.expand_dims(
-                sub_emb * rel_emb,
-                1) * ent_matrix,
-            2)
+            tf.expand_dims(sub_emb * rel_emb, 1) * ent_matrix, 2
+        )
         return obj_corr_score

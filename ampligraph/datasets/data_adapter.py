@@ -15,17 +15,20 @@ from .graph_partitioner import AbstractGraphPartitioner
 from .partitioned_data_manager import get_partition_adapter
 
 
-class DataHandler():
-    def __init__(self, x,
-                 model=None,
-                 batch_size=1,
-                 dataset_type="train",
-                 epochs=1,
-                 initial_epoch=0,
-                 use_indexer=True,
-                 use_filter=True,
-                 partitioning_k=1):
-        '''Initializes the DataHandler
+class DataHandler:
+    def __init__(
+        self,
+        x,
+        model=None,
+        batch_size=1,
+        dataset_type="train",
+        epochs=1,
+        initial_epoch=0,
+        use_indexer=True,
+        use_filter=True,
+        partitioning_k=1,
+    ):
+        """Initializes the DataHandler
 
         Parameters
         ----------
@@ -49,7 +52,7 @@ class DataHandler():
         partitioning_k: int
             Number of partitions to create.
             May be overridden if `x` is an ``AbstractGraphPartitioner`` instance
-        '''
+        """
         self._initial_epoch = initial_epoch
         self._epochs = epochs
         self._model = model
@@ -57,7 +60,7 @@ class DataHandler():
         self.using_partitioning = False
 
         if partitioning_k <= 0:
-            raise ValueError('Incorrect value specified to partitioning_k')
+            raise ValueError("Incorrect value specified to partitioning_k")
 
         if isinstance(x, GraphDataLoader):
             self._adapter = x
@@ -70,23 +73,28 @@ class DataHandler():
             partitioning_k = x._k
         else:
             # use graph data loader by default
-            self._adapter = GraphDataLoader(x,
-                                            backend=NoBackend,
-                                            batch_size=batch_size,
-                                            dataset_type=dataset_type,
-                                            use_indexer=use_indexer,
-                                            use_filter=use_filter,
-                                            in_memory=True)
+            self._adapter = GraphDataLoader(
+                x,
+                backend=NoBackend,
+                batch_size=batch_size,
+                dataset_type=dataset_type,
+                use_indexer=use_indexer,
+                use_filter=use_filter,
+                in_memory=True,
+            )
             self._parent_adapter = self._adapter
         if partitioning_k > 1:
             # if use partitioning then pass the graph data loader to partitioner and use
             # partitioned data manager
-            assert model is not None, "Please pass the model to data_handler for partitioning!"
+            assert (
+                model is not None
+            ), "Please pass the model to data_handler for partitioning!"
             self._adapter = get_partition_adapter(
                 self._adapter,
                 self._model,
-                strategy='Bucket',
-                partitioning_k=partitioning_k)
+                strategy="Bucket",
+                partitioning_k=partitioning_k,
+            )
 
             self.using_partitioning = True
 
@@ -100,7 +108,7 @@ class DataHandler():
                 self._inferred_steps = self._current_iter
 
     def steps(self):
-        '''Counts the number of steps in an epoch.'''
+        """Counts the number of steps in an epoch."""
         self._current_iter = 0
         while self._inferred_steps is None or self._current_iter < self._inferred_steps:
             self._current_iter += 1
@@ -108,16 +116,14 @@ class DataHandler():
 
     @property
     def inferred_steps(self):
-        '''Returns the number of steps in the batch.'''
+        """Returns the number of steps in the batch."""
         return self._inferred_steps
 
     def enumerate_epochs(self, use_tqdm=False):
-        '''Manages the (reloading) data adapter before epoch starts.'''
+        """Manages the (reloading) data adapter before epoch starts."""
         for epoch in tqdm.tqdm(
-                range(
-                    self._initial_epoch,
-                    self._epochs),
-                disable=not use_tqdm):
+            range(self._initial_epoch, self._epochs), disable=not use_tqdm
+        ):
             self._adapter.reload()
             yield epoch, iter(self._adapter.get_tf_generator())
             self._adapter.on_epoch_end()
@@ -125,7 +131,7 @@ class DataHandler():
         self._adapter.on_complete()
 
     def get_mapper(self):
-        '''Returns the mapper of the main data loader class.'''
+        """Returns the mapper of the main data loader class."""
         return self._parent_adapter.backend.mapper
 
     def get_update_partitioner_metadata(self, filepath):

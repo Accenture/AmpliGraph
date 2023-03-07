@@ -12,7 +12,7 @@ import tensorflow as tf
 
 
 def LP_regularizer(trainable_param, regularizer_parameters={}):
-    '''Norm :math:`L^{p}` regularizer.
+    """Norm :math:`L^{p}` regularizer.
 
     It is passed to the model as the ``entity_relation_regularizer`` argument of the
     :meth:`~ampligraph.latent_features.models.ScoringBasedEmbeddingModel.compile` method.
@@ -31,13 +31,14 @@ def LP_regularizer(trainable_param, regularizer_parameters={}):
     regularizer: tf.keras.regularizer
         Regularizer instance from the `tf.keras.regularizer` class.
 
-    '''
-    return regularizer_parameters.get('lambda', 0.00001) * tf.reduce_sum(
-        tf.pow(tf.abs(trainable_param), regularizer_parameters.get('p', 2)))
+    """
+    return regularizer_parameters.get("lambda", 0.00001) * tf.reduce_sum(
+        tf.pow(tf.abs(trainable_param), regularizer_parameters.get("p", 2))
+    )
 
 
 def get(identifier, hyperparams={}):
-    ''' Get the regularizer specified by the identifier.
+    """Get the regularizer specified by the identifier.
 
     Parameters
     ----------
@@ -50,18 +51,14 @@ def get(identifier, hyperparams={}):
     regularizer: tf.keras.regularizer
         Regularizer instance of the `tf.keras.regularizer` class.
 
-    '''
-    if isinstance(identifier, str) and identifier == 'l3':
-        hyperparams['p'] = 3
-        identifier = partial(
-            LP_regularizer,
-            regularizer_parameters=hyperparams)
+    """
+    if isinstance(identifier, str) and identifier == "l3":
+        hyperparams["p"] = 3
+        identifier = partial(LP_regularizer, regularizer_parameters=hyperparams)
         identifier = tf.keras.regularizers.get(identifier)
-        identifier.__name__ = 'LP'
-    elif isinstance(identifier, str) and identifier == 'LP':
-        identifier = partial(
-            LP_regularizer,
-            regularizer_parameters=hyperparams)
+        identifier.__name__ = "LP"
+    elif isinstance(identifier, str) and identifier == "LP":
+        identifier = partial(LP_regularizer, regularizer_parameters=hyperparams)
         identifier = tf.keras.regularizers.get(identifier)
-        identifier.__name__ = 'LP'
+        identifier.__name__ = "LP"
     return identifier

@@ -9,7 +9,7 @@ from .AbstractScoringLayer import register_layer
 from .ComplEx import ComplEx
 
 
-@register_layer('HolE')
+@register_layer("HolE")
 class HolE(ComplEx):
     r"""Holographic Embeddings (HolE) scoring layer.
 
@@ -29,7 +29,7 @@ class HolE(ComplEx):
         super(HolE, self).__init__(k)
 
     def _compute_scores(self, triples):
-        '''Compute scores using HolE scoring function.
+        """Compute scores using HolE scoring function.
 
         Parameters
         ----------
@@ -40,12 +40,12 @@ class HolE(ComplEx):
         -------
         scores: tf.Tensor(n,1)
             Tensor of scores of inputs.
-        '''
+        """
         # HolE scoring is 2/k * complex_score
         return (2 / (self.internal_k / 2)) * (super()._compute_scores(triples))
 
     def _get_subject_corruption_scores(self, triples, ent_matrix):
-        ''' Compute subject corruption scores.
+        """Compute subject corruption scores.
 
         Evaluate the inputs against subject corruptions and scores of the corruptions.
 
@@ -60,13 +60,14 @@ class HolE(ComplEx):
         -------
         scores: tf.Tensor, shape (n,1)
             Scores of subject corruptions (corruptions defined by `ent_embs` matrix).
-        '''
+        """
         # HolE scoring is 2/k * complex_score
-        return (2 / (self.internal_k / 2)) * \
-            (super()._get_subject_corruption_scores(triples, ent_matrix))
+        return (2 / (self.internal_k / 2)) * (
+            super()._get_subject_corruption_scores(triples, ent_matrix)
+        )
 
     def _get_object_corruption_scores(self, triples, ent_matrix):
-        ''' Compute object corruption scores.
+        """Compute object corruption scores.
 
         Evaluate the inputs against object corruptions and scores of the corruptions.
 
@@ -81,7 +82,8 @@ class HolE(ComplEx):
         -------
         scores: tf.Tensor, shape (n,1)
             Scores of object corruptions (corruptions defined by `ent_embs` matrix).
-        '''
+        """
         # HolE scoring is 2/k * complex_score
-        return (2 / (self.internal_k / 2)) * \
-            (super()._get_object_corruption_scores(triples, ent_matrix))
+        return (2 / (self.internal_k / 2)) * (
+            super()._get_object_corruption_scores(triples, ent_matrix)
+        )

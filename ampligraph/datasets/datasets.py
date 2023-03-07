@@ -17,38 +17,33 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-AMPLIGRAPH_ENV_NAME = 'AMPLIGRAPH_DATA_HOME'
+AMPLIGRAPH_ENV_NAME = "AMPLIGRAPH_DATA_HOME"
 
-DatasetMetadata = namedtuple('DatasetMetadata',
-                             ['dataset_name',
-                              'filename',
-                              'url',
-                              'train_name',
-                              'valid_name',
-                              'test_name',
-                              'train_checksum',
-                              'valid_checksum',
-                              'test_checksum',
-                              'test_human_name',
-                              'test_human_checksum',
-                              'test_human_ids_name',
-                              'test_human_ids_checksum',
-                              'mapper_name',
-                              'mapper_checksum',
-                              'valid_negatives_name',
-                              'valid_negatives_checksum',
-                              'test_negatives_name',
-                              'test_negatives_checksum'],
-                             defaults=(None,
-                                       None,
-                                       None,
-                                       None,
-                                       None,
-                                       None,
-                                       None,
-                                       None,
-                                       None,
-                                       None))
+DatasetMetadata = namedtuple(
+    "DatasetMetadata",
+    [
+        "dataset_name",
+        "filename",
+        "url",
+        "train_name",
+        "valid_name",
+        "test_name",
+        "train_checksum",
+        "valid_checksum",
+        "test_checksum",
+        "test_human_name",
+        "test_human_checksum",
+        "test_human_ids_name",
+        "test_human_ids_checksum",
+        "mapper_name",
+        "mapper_checksum",
+        "valid_negatives_name",
+        "valid_negatives_checksum",
+        "test_negatives_name",
+        "test_negatives_checksum",
+    ],
+    defaults=(None, None, None, None, None, None, None, None, None, None),
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -83,48 +78,56 @@ def _clean_data(X, return_idx=False):
 
     """
     filtered_X = {}
-    train = pd.DataFrame(X["train"][:, :3], columns=['s', 'p', 'o'])
-    filtered_X['train'] = X["train"]
+    train = pd.DataFrame(X["train"][:, :3], columns=["s", "p", "o"])
+    filtered_X["train"] = X["train"]
 
-    valid = pd.DataFrame(X["valid"][:, :3], columns=['s', 'p', 'o'])
-    test = pd.DataFrame(X["test"][:, :3], columns=['s', 'p', 'o'])
+    valid = pd.DataFrame(X["valid"][:, :3], columns=["s", "p", "o"])
+    test = pd.DataFrame(X["test"][:, :3], columns=["s", "p", "o"])
 
     train_ent = np.unique(np.concatenate((train.s, train.o)))
     train_rel = train.p.unique()
 
-    if 'valid_negatives' in X:
+    if "valid_negatives" in X:
         valid_negatives = pd.DataFrame(
-            X["valid_negatives"][:, :3], columns=['s', 'p', 'o'])
-        valid_negatives_idx = valid_negatives.s.isin(train_ent) & valid_negatives.o.isin(
-            train_ent) & valid_negatives.p.isin(train_rel)
+            X["valid_negatives"][:, :3], columns=["s", "p", "o"]
+        )
+        valid_negatives_idx = (
+            valid_negatives.s.isin(train_ent)
+            & valid_negatives.o.isin(train_ent)
+            & valid_negatives.p.isin(train_rel)
+        )
         filtered_valid_negatives = valid_negatives[valid_negatives_idx].values
-        filtered_X['valid_negatives'] = filtered_valid_negatives
-    if 'test_negatives' in X:
+        filtered_X["valid_negatives"] = filtered_valid_negatives
+    if "test_negatives" in X:
         test_negatives = pd.DataFrame(
-            X["test_negatives"][:, :3], columns=['s', 'p', 'o'])
-        test_negatives_idx = test_negatives.s.isin(train_ent) & test_negatives.o.isin(
-            train_ent) & test_negatives.p.isin(train_rel)
+            X["test_negatives"][:, :3], columns=["s", "p", "o"]
+        )
+        test_negatives_idx = (
+            test_negatives.s.isin(train_ent)
+            & test_negatives.o.isin(train_ent)
+            & test_negatives.p.isin(train_rel)
+        )
         filtered_test_negatives = test[test_negatives_idx].values
-        filtered_X['test_negatives'] = filtered_test_negatives
+        filtered_X["test_negatives"] = filtered_test_negatives
 
-    valid_idx = valid.s.isin(train_ent) & valid.o.isin(
-        train_ent) & valid.p.isin(train_rel)
-    test_idx = test.s.isin(train_ent) & test.o.isin(
-        train_ent) & test.p.isin(train_rel)
+    valid_idx = (
+        valid.s.isin(train_ent) & valid.o.isin(train_ent) & valid.p.isin(train_rel)
+    )
+    test_idx = test.s.isin(train_ent) & test.o.isin(train_ent) & test.p.isin(train_rel)
 
     # filtered_valid = valid[valid_idx].values
     # filtered_test = test[test_idx].values
     filtered_valid = X["valid"][valid_idx]
     filtered_test = X["test"][test_idx]
 
-    filtered_X['valid'] = filtered_valid
-    filtered_X['test'] = filtered_test
+    filtered_X["valid"] = filtered_valid
+    filtered_X["test"] = filtered_test
 
-    if 'mapper' in X:
-        filtered_X['mapper'] = X['mapper']
-    if 'test-human' in X and 'test-human-ids' in X:
-        filtered_X['test-human'] = X['test-human']
-        filtered_X['test-human-ids'] = X['test-human-ids']
+    if "mapper" in X:
+        filtered_X["mapper"] = X["mapper"]
+    if "test-human" in X and "test-human-ids" in X:
+        filtered_X["test-human"] = X["test-human"]
+        filtered_X["test-human-ids"] = X["test-human-ids"]
 
     if return_idx:
         return filtered_X, valid_idx, test_idx
@@ -156,19 +159,19 @@ def _get_data_home(data_home=None):
 
     if data_home is None:
         data_home = os.environ.get(
-            AMPLIGRAPH_ENV_NAME, os.path.join(
-                '~', 'ampligraph_datasets'))
+            AMPLIGRAPH_ENV_NAME, os.path.join("~", "ampligraph_datasets")
+        )
     data_home = os.path.expanduser(data_home)
     if not os.path.exists(data_home):
         os.makedirs(data_home)
-    logger.debug('data_home is set to {}'.format(data_home))
+    logger.debug("data_home is set to {}".format(data_home))
     return data_home
 
 
 def _md5(file_path):
     md5hash = hashlib.md5()
     chunk_size = 4096
-    with open(file_path, 'rb') as f:
+    with open(file_path, "rb") as f:
         content_buffer = f.read(chunk_size)
         while content_buffer:
             md5hash.update(content_buffer)
@@ -190,27 +193,30 @@ def _unzip_dataset(remote, source, destination, check_md5hash=False):
     """
 
     # TODO - add error checking
-    with zipfile.ZipFile(source, 'r') as zip_ref:
-        logger.debug('Unzipping {} to {}'.format(source, destination))
+    with zipfile.ZipFile(source, "r") as zip_ref:
+        logger.debug("Unzipping {} to {}".format(source, destination))
         zip_ref.extractall(destination)
     if check_md5hash:
         for file_name, remote_checksum in [
-            [
-                remote.train_name, remote.train_checksum], [
-                remote.valid_name, remote.valid_checksum], [
-                remote.test_name, remote.test_checksum], [
-                    remote.test_human_name, remote.test_human_checksum], [
-                        remote.test_human_ids_name, remote.test_human_ids_checksum], [
-                            remote.mapper_name, remote.mapper_checksum], [
-                                remote.valid_negatives_name, remote.valid_negatives_checksum], [
-                                    remote.test_negatives_name, remote.test_negatives_checksum], ]:
-            file_path = os.path.join(
-                destination, remote.dataset_name, file_name)
+            [remote.train_name, remote.train_checksum],
+            [remote.valid_name, remote.valid_checksum],
+            [remote.test_name, remote.test_checksum],
+            [remote.test_human_name, remote.test_human_checksum],
+            [remote.test_human_ids_name, remote.test_human_ids_checksum],
+            [remote.mapper_name, remote.mapper_checksum],
+            [remote.valid_negatives_name, remote.valid_negatives_checksum],
+            [remote.test_negatives_name, remote.test_negatives_checksum],
+        ]:
+            file_path = os.path.join(destination, remote.dataset_name, file_name)
             checksum = _md5(file_path)
             if checksum != remote_checksum:
                 os.remove(source)
-                msg = '{} has an md5 checksum of ({}) which is different from the expected ({}), ' \
-                      'the file may be corrupted.'.format(file_path, checksum, remote_checksum)
+                msg = (
+                    "{} has an md5 checksum of ({}) which is different from the expected ({}), "
+                    "the file may be corrupted.".format(
+                        file_path, checksum, remote_checksum
+                    )
+                )
                 logger.error(msg)
                 raise IOError(msg)
     os.remove(source)
@@ -234,7 +240,7 @@ def _fetch_remote_data(remote, download_dir, data_home, check_md5hash=False):
 
     """
 
-    file_path = '{}.zip'.format(download_dir)
+    file_path = "{}.zip".format(download_dir)
     if not Path(file_path).exists():
         urllib.request.urlretrieve(remote.url, file_path)
         # TODO - add error checking
@@ -267,7 +273,7 @@ def _fetch_dataset(remote, data_home=None, check_md5hash=False):
     dataset_dir = os.path.join(data_home, remote.dataset_name)
     if not os.path.exists(dataset_dir):
         if remote.url is None:
-            msg = 'No dataset at {} and no url provided.'.format(dataset_dir)
+            msg = "No dataset at {} and no url provided.".format(dataset_dir)
             logger.error(msg)
             raise Exception(msg)
 
@@ -306,11 +312,8 @@ def _add_reciprocal_relations(triples_df):
 
 
 def load_from_csv(
-        directory_path,
-        file_name,
-        sep='\t',
-        header=None,
-        add_reciprocal_rels=False):
+    directory_path, file_name, sep="\t", header=None, add_reciprocal_rels=False
+):
     """Load a knowledge graph from a .csv file.
 
     Loads a knowledge graph serialized in a .csv file filtering duplicated statements. In the .csv file, each line
@@ -365,13 +368,15 @@ def load_from_csv(
 
     """
 
-    logger.debug('Loading data from {}.'.format(file_name))
-    df = pd.read_csv(os.path.join(directory_path, file_name),
-                     sep=sep,
-                     header=header,
-                     names=None,
-                     dtype=str)
-    logger.debug('Dropping duplicates.')
+    logger.debug("Loading data from {}.".format(file_name))
+    df = pd.read_csv(
+        os.path.join(directory_path, file_name),
+        sep=sep,
+        header=header,
+        names=None,
+        dtype=str,
+    )
+    logger.debug("Dropping duplicates.")
     df = df.drop_duplicates()
     if add_reciprocal_rels:
         df = _add_reciprocal_relations(df)
@@ -380,10 +385,8 @@ def load_from_csv(
 
 
 def _load_dataset(
-        dataset_metadata,
-        data_home=None,
-        check_md5hash=False,
-        add_reciprocal_rels=False):
+    dataset_metadata, data_home=None, check_md5hash=False, add_reciprocal_rels=False
+):
     """Load a dataset from the details provided.
 
     DatasetMetadata = namedtuple('DatasetMetadata', ['dataset_name', 'filename', 'url', 'train_name', 'valid_name',
@@ -409,45 +412,58 @@ def _load_dataset(
     if dataset_metadata.dataset_name is None:
         if dataset_metadata.url is None:
             raise ValueError(
-                'The dataset name or url must be provided to load a dataset.')
-        dataset_metadata.dataset_name = dataset_metadata.url[dataset_metadata.url.rfind(
-            '/') + 1:dataset_metadata .url.rfind('.')]
+                "The dataset name or url must be provided to load a dataset."
+            )
+        dataset_metadata.dataset_name = dataset_metadata.url[
+            dataset_metadata.url.rfind("/") + 1 : dataset_metadata.url.rfind(".")
+        ]
     dataset_path = _fetch_dataset(dataset_metadata, data_home, check_md5hash)
-    train = load_from_csv(dataset_path,
-                          dataset_metadata.train_name,
-                          add_reciprocal_rels=add_reciprocal_rels)
-    dataset['train'] = train
-    valid = load_from_csv(dataset_path,
-                          dataset_metadata.valid_name,
-                          add_reciprocal_rels=add_reciprocal_rels)
-    dataset['valid'] = valid
-    test = load_from_csv(dataset_path,
-                         dataset_metadata.test_name,
-                         add_reciprocal_rels=add_reciprocal_rels)
-    dataset['test'] = test
+    train = load_from_csv(
+        dataset_path,
+        dataset_metadata.train_name,
+        add_reciprocal_rels=add_reciprocal_rels,
+    )
+    dataset["train"] = train
+    valid = load_from_csv(
+        dataset_path,
+        dataset_metadata.valid_name,
+        add_reciprocal_rels=add_reciprocal_rels,
+    )
+    dataset["valid"] = valid
+    test = load_from_csv(
+        dataset_path,
+        dataset_metadata.test_name,
+        add_reciprocal_rels=add_reciprocal_rels,
+    )
+    dataset["test"] = test
     if dataset_metadata.valid_negatives_name is not None:
         valid_negatives = load_from_csv(
             dataset_path,
             dataset_metadata.valid_negatives_name,
-            add_reciprocal_rels=add_reciprocal_rels)
-        dataset['valid_negatives'] = valid_negatives
+            add_reciprocal_rels=add_reciprocal_rels,
+        )
+        dataset["valid_negatives"] = valid_negatives
     if dataset_metadata.test_negatives_name is not None:
-        test_negatives = load_from_csv(dataset_path,
-                                       dataset_metadata.test_negatives_name,
-                                       add_reciprocal_rels=add_reciprocal_rels)
-        dataset['test_negatives'] = test_negatives
+        test_negatives = load_from_csv(
+            dataset_path,
+            dataset_metadata.test_negatives_name,
+            add_reciprocal_rels=add_reciprocal_rels,
+        )
+        dataset["test_negatives"] = test_negatives
 
-    if dataset_metadata.test_human_checksum is not None and dataset_metadata.test_human_ids_checksum is not None:
-        test_human = load_from_csv(
-            dataset_path, dataset_metadata.test_human_name)
-        dataset['test-human'] = test_human
+    if (
+        dataset_metadata.test_human_checksum is not None
+        and dataset_metadata.test_human_ids_checksum is not None
+    ):
+        test_human = load_from_csv(dataset_path, dataset_metadata.test_human_name)
+        dataset["test-human"] = test_human
         test_human_ids = load_from_csv(
-            dataset_path, dataset_metadata.test_human_ids_name)
-        dataset['test-human-ids'] = test_human_ids
+            dataset_path, dataset_metadata.test_human_ids_name
+        )
+        dataset["test-human-ids"] = test_human_ids
     if dataset_metadata.mapper_checksum is not None:
-        mapper = load_mapper_from_json(
-            dataset_path, dataset_metadata.mapper_name)
-        dataset['mapper'] = mapper
+        mapper = load_mapper_from_json(dataset_path, dataset_metadata.mapper_name)
+        dataset["mapper"] = mapper
     return dataset
 
 
@@ -488,7 +504,7 @@ def load_mapper_from_json(directory_path, file_name):
     'Dog'
     """
 
-    logger.debug('Loading mapper from {}.'.format(file_name))
+    logger.debug("Loading mapper from {}.".format(file_name))
     with open(os.path.join(directory_path, file_name)) as f:
         mapper = json.loads(f.read())
     return mapper
@@ -547,27 +563,26 @@ def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
     """
 
     wn18 = DatasetMetadata(
-        dataset_name='wn18',
-        filename='wn18.zip',
-        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wn18.zip',
-        train_name='train.txt',
-        valid_name='valid.txt',
-        test_name='test.txt',
-        train_checksum='7d68324d293837ac165c3441a6c8b0eb',
-        valid_checksum='f4f66fec0ca83b5ebe7ad7003404e61d',
-        test_checksum='b035247a8916c7ec3443fa949e1ff02c'
+        dataset_name="wn18",
+        filename="wn18.zip",
+        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wn18.zip",
+        train_name="train.txt",
+        valid_name="valid.txt",
+        test_name="test.txt",
+        train_checksum="7d68324d293837ac165c3441a6c8b0eb",
+        valid_checksum="f4f66fec0ca83b5ebe7ad7003404e61d",
+        test_checksum="b035247a8916c7ec3443fa949e1ff02c",
     )
 
-    return _load_dataset(wn18,
-                         data_home=None,
-                         check_md5hash=check_md5hash,
-                         add_reciprocal_rels=add_reciprocal_rels)
+    return _load_dataset(
+        wn18,
+        data_home=None,
+        check_md5hash=check_md5hash,
+        add_reciprocal_rels=add_reciprocal_rels,
+    )
 
 
-def load_wn18rr(
-        check_md5hash=False,
-        clean_unseen=True,
-        add_reciprocal_rels=False):
+def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False):
     """Load the WN18RR dataset.
 
     The dataset is described in :cite:`DettmersMS018`.
@@ -622,15 +637,16 @@ def load_wn18rr(
     """
 
     wn18rr = DatasetMetadata(
-        dataset_name='wn18RR',
-        filename='wn18RR.zip',
-        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wn18RR.zip',
-        train_name='train.txt',
-        valid_name='valid.txt',
-        test_name='test.txt',
-        train_checksum='35e81af3ae233327c52a87f23b30ad3c',
-        valid_checksum='74a2ee9eca9a8d31f1a7d4d95b5e0887',
-        test_checksum='2b45ba1ba436b9d4ff27f1d3511224c9')
+        dataset_name="wn18RR",
+        filename="wn18RR.zip",
+        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wn18RR.zip",
+        train_name="train.txt",
+        valid_name="valid.txt",
+        test_name="test.txt",
+        train_checksum="35e81af3ae233327c52a87f23b30ad3c",
+        valid_checksum="74a2ee9eca9a8d31f1a7d4d95b5e0887",
+        test_checksum="2b45ba1ba436b9d4ff27f1d3511224c9",
+    )
 
     if clean_unseen:
         return _clean_data(
@@ -638,12 +654,16 @@ def load_wn18rr(
                 wn18rr,
                 data_home=None,
                 check_md5hash=check_md5hash,
-                add_reciprocal_rels=add_reciprocal_rels))
+                add_reciprocal_rels=add_reciprocal_rels,
+            )
+        )
     else:
-        return _load_dataset(wn18rr,
-                             data_home=None,
-                             check_md5hash=check_md5hash,
-                             add_reciprocal_rels=add_reciprocal_rels)
+        return _load_dataset(
+            wn18rr,
+            data_home=None,
+            check_md5hash=check_md5hash,
+            add_reciprocal_rels=add_reciprocal_rels,
+        )
 
 
 def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
@@ -705,28 +725,31 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
     """
 
     FB15K = DatasetMetadata(
-        dataset_name='fb15k',
-        filename='fb15k.zip',
-        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/fb15k.zip',
-        train_name='train.txt',
-        valid_name='valid.txt',
-        test_name='test.txt',
-        train_checksum='5a87195e68d7797af00e137a7f6929f2',
-        valid_checksum='275835062bb86a86477a3c402d20b814',
-        test_checksum='71098693b0efcfb8ac6cd61cf3a3b505'
+        dataset_name="fb15k",
+        filename="fb15k.zip",
+        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/fb15k.zip",
+        train_name="train.txt",
+        valid_name="valid.txt",
+        test_name="test.txt",
+        train_checksum="5a87195e68d7797af00e137a7f6929f2",
+        valid_checksum="275835062bb86a86477a3c402d20b814",
+        test_checksum="71098693b0efcfb8ac6cd61cf3a3b505",
     )
 
-    return _load_dataset(FB15K,
-                         data_home=None,
-                         check_md5hash=check_md5hash,
-                         add_reciprocal_rels=add_reciprocal_rels)
+    return _load_dataset(
+        FB15K,
+        data_home=None,
+        check_md5hash=check_md5hash,
+        add_reciprocal_rels=add_reciprocal_rels,
+    )
 
 
 def load_fb15k_237(
-        check_md5hash=False,
-        clean_unseen=True,
-        add_reciprocal_rels=False,
-        return_mapper=False):
+    check_md5hash=False,
+    clean_unseen=True,
+    add_reciprocal_rels=False,
+    return_mapper=False,
+):
     """Load the FB15k-237 dataset (with option to load human labeled test subset).
 
     FB15k-237 is a reduced version of FB15K. It was first proposed by :cite:`toutanova2015representing`.
@@ -792,32 +815,34 @@ def load_fb15k_237(
 
     if return_mapper:
         fb15k_237 = DatasetMetadata(
-            dataset_name='fb15k-237',
-            filename='fb15k-237_human_interpretability.zip',
-            url='https://ampgraphenc.s3.eu-west-1.amazonaws.com/datasets/fb15k_237_human_interpretability.zip',
-            train_name='train.txt',
-            valid_name='valid.txt',
-            test_name='test.txt',
-            train_checksum='c05b87b9ac00f41901e016a2092d7837',
-            valid_checksum='6a94efd530e5f43fcf84f50bc6d37b69',
-            test_checksum='f5bdf63db39f455dec0ed259bb6f8628',
-            test_human_name='test_human.txt',
-            test_human_ids_name='test_human_ids.txt',
-            mapper_name='mapper.json',
-            test_human_checksum='5f43e8e2fb07846ffaf80877b0734744',
-            test_human_ids_checksum='e731d027b3bf9d4914393d75dae77dda',
-            mapper_checksum='b4dbdfaf1faf075746d2c32946be0234')
+            dataset_name="fb15k-237",
+            filename="fb15k-237_human_interpretability.zip",
+            url="https://ampgraphenc.s3.eu-west-1.amazonaws.com/datasets/fb15k_237_human_interpretability.zip",
+            train_name="train.txt",
+            valid_name="valid.txt",
+            test_name="test.txt",
+            train_checksum="c05b87b9ac00f41901e016a2092d7837",
+            valid_checksum="6a94efd530e5f43fcf84f50bc6d37b69",
+            test_checksum="f5bdf63db39f455dec0ed259bb6f8628",
+            test_human_name="test_human.txt",
+            test_human_ids_name="test_human_ids.txt",
+            mapper_name="mapper.json",
+            test_human_checksum="5f43e8e2fb07846ffaf80877b0734744",
+            test_human_ids_checksum="e731d027b3bf9d4914393d75dae77dda",
+            mapper_checksum="b4dbdfaf1faf075746d2c32946be0234",
+        )
     else:
         fb15k_237 = DatasetMetadata(
-            dataset_name='fb15k-237',
-            filename='fb15k-237.zip',
-            url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/fb15k-237.zip',
-            train_name='train.txt',
-            valid_name='valid.txt',
-            test_name='test.txt',
-            train_checksum='c05b87b9ac00f41901e016a2092d7837',
-            valid_checksum='6a94efd530e5f43fcf84f50bc6d37b69',
-            test_checksum='f5bdf63db39f455dec0ed259bb6f8628')
+            dataset_name="fb15k-237",
+            filename="fb15k-237.zip",
+            url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/fb15k-237.zip",
+            train_name="train.txt",
+            valid_name="valid.txt",
+            test_name="test.txt",
+            train_checksum="c05b87b9ac00f41901e016a2092d7837",
+            valid_checksum="6a94efd530e5f43fcf84f50bc6d37b69",
+            test_checksum="f5bdf63db39f455dec0ed259bb6f8628",
+        )
 
     if clean_unseen:
         return _clean_data(
@@ -825,17 +850,19 @@ def load_fb15k_237(
                 fb15k_237,
                 data_home=None,
                 check_md5hash=check_md5hash,
-                add_reciprocal_rels=add_reciprocal_rels))
+                add_reciprocal_rels=add_reciprocal_rels,
+            )
+        )
     else:
-        return _load_dataset(fb15k_237, data_home=None,
-                             check_md5hash=check_md5hash,
-                             add_reciprocal_rels=add_reciprocal_rels)
+        return _load_dataset(
+            fb15k_237,
+            data_home=None,
+            check_md5hash=check_md5hash,
+            add_reciprocal_rels=add_reciprocal_rels,
+        )
 
 
-def load_yago3_10(
-        check_md5hash=False,
-        clean_unseen=True,
-        add_reciprocal_rels=False):
+def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False):
     """Load the YAGO3-10 dataset.
 
     The dataset is a split of YAGO3 :cite:`mahdisoltani2013yago3`,
@@ -886,15 +913,16 @@ def load_yago3_10(
 
     """
     yago3_10 = DatasetMetadata(
-        dataset_name='YAGO3-10',
-        filename='YAGO3-10.zip',
-        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/YAGO3-10.zip',
-        train_name='train.txt',
-        valid_name='valid.txt',
-        test_name='test.txt',
-        train_checksum='a9da8f583ec3920570eeccf07199229a',
-        valid_checksum='2d679a906f2b1ac29d74d5c948c1ad09',
-        test_checksum='14bf97890b2fee774dbce5f326acd189')
+        dataset_name="YAGO3-10",
+        filename="YAGO3-10.zip",
+        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/YAGO3-10.zip",
+        train_name="train.txt",
+        valid_name="valid.txt",
+        test_name="test.txt",
+        train_checksum="a9da8f583ec3920570eeccf07199229a",
+        valid_checksum="2d679a906f2b1ac29d74d5c948c1ad09",
+        test_checksum="14bf97890b2fee774dbce5f326acd189",
+    )
 
     if clean_unseen:
         return _clean_data(
@@ -902,18 +930,19 @@ def load_yago3_10(
                 yago3_10,
                 data_home=None,
                 check_md5hash=check_md5hash,
-                add_reciprocal_rels=add_reciprocal_rels))
+                add_reciprocal_rels=add_reciprocal_rels,
+            )
+        )
     else:
-        return _load_dataset(yago3_10,
-                             data_home=None,
-                             check_md5hash=check_md5hash,
-                             add_reciprocal_rels=add_reciprocal_rels)
+        return _load_dataset(
+            yago3_10,
+            data_home=None,
+            check_md5hash=check_md5hash,
+            add_reciprocal_rels=add_reciprocal_rels,
+        )
 
 
-def load_wn11(
-        check_md5hash=False,
-        clean_unseen=True,
-        add_reciprocal_rels=False):
+def load_wn11(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False):
     """Load the WordNet11 (WN11) dataset.
 
     WordNet was originally proposed in `WordNet: a lexical database for English` :cite:`miller1995wordnet`.
@@ -978,43 +1007,43 @@ def load_wn11(
 
     """
     wn11 = DatasetMetadata(
-        dataset_name='wordnet11',
-        filename='wordnet11.zip',
-        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wordnet11.zip',
-        train_name='train.txt',
-        valid_name='dev.txt',
-        test_name='test.txt',
-        train_checksum='2429c672c89e33ad4fa8e1a3ade416e4',
-        valid_checksum='87bf86e225e79294a2524089614b96aa',
-        test_checksum='24113b464f8042c339e3e6833c1cebdf')
+        dataset_name="wordnet11",
+        filename="wordnet11.zip",
+        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wordnet11.zip",
+        train_name="train.txt",
+        valid_name="dev.txt",
+        test_name="test.txt",
+        train_checksum="2429c672c89e33ad4fa8e1a3ade416e4",
+        valid_checksum="87bf86e225e79294a2524089614b96aa",
+        test_checksum="24113b464f8042c339e3e6833c1cebdf",
+    )
 
-    dataset = _load_dataset(wn11, data_home=None,
-                            check_md5hash=check_md5hash,
-                            add_reciprocal_rels=add_reciprocal_rels)
+    dataset = _load_dataset(
+        wn11,
+        data_home=None,
+        check_md5hash=check_md5hash,
+        add_reciprocal_rels=add_reciprocal_rels,
+    )
 
-    valid_labels = dataset['valid'][:, 3]
-    test_labels = dataset['test'][:, 3]
+    valid_labels = dataset["valid"][:, 3]
+    test_labels = dataset["test"][:, 3]
 
-    dataset['valid'] = dataset['valid'][:, 0:3]
-    dataset['test'] = dataset['test'][:, 0:3]
+    dataset["valid"] = dataset["valid"][:, 0:3]
+    dataset["test"] = dataset["test"][:, 0:3]
 
-    dataset['valid_labels'] = valid_labels == '1'
-    dataset['test_labels'] = test_labels == '1'
+    dataset["valid_labels"] = valid_labels == "1"
+    dataset["test_labels"] = test_labels == "1"
 
     if clean_unseen:
-        clean_dataset, valid_idx, test_idx = _clean_data(
-            dataset, return_idx=True)
-        clean_dataset['valid_labels'] = dataset['valid_labels'][valid_idx]
-        clean_dataset['test_labels'] = dataset['test_labels'][test_idx]
+        clean_dataset, valid_idx, test_idx = _clean_data(dataset, return_idx=True)
+        clean_dataset["valid_labels"] = dataset["valid_labels"][valid_idx]
+        clean_dataset["test_labels"] = dataset["test_labels"][test_idx]
         return clean_dataset
     else:
         return dataset
 
 
-def load_fb13(
-        check_md5hash=False,
-        clean_unseen=True,
-        add_reciprocal_rels=False):
+def load_fb13(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False):
     """Load the Freebase13 (FB13) dataset.
 
     FB13 is a subset of Freebase :cite:`bollacker2008freebase`
@@ -1081,35 +1110,37 @@ def load_fb13(
 
     """
     fb13 = DatasetMetadata(
-        dataset_name='freebase13',
-        filename='freebase13.zip',
-        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/freebase13.zip',
-        train_name='train.txt',
-        valid_name='dev.txt',
-        test_name='test.txt',
-        train_checksum='9099ebcd85ab3ce723cfaaf34f74dceb',
-        valid_checksum='c4ef7b244baa436a97c2a5e57d4ba7ed',
-        test_checksum='f9af2eac7c5a86996c909bdffd295528')
+        dataset_name="freebase13",
+        filename="freebase13.zip",
+        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/freebase13.zip",
+        train_name="train.txt",
+        valid_name="dev.txt",
+        test_name="test.txt",
+        train_checksum="9099ebcd85ab3ce723cfaaf34f74dceb",
+        valid_checksum="c4ef7b244baa436a97c2a5e57d4ba7ed",
+        test_checksum="f9af2eac7c5a86996c909bdffd295528",
+    )
 
-    dataset = _load_dataset(fb13,
-                            data_home=None,
-                            check_md5hash=check_md5hash,
-                            add_reciprocal_rels=add_reciprocal_rels)
+    dataset = _load_dataset(
+        fb13,
+        data_home=None,
+        check_md5hash=check_md5hash,
+        add_reciprocal_rels=add_reciprocal_rels,
+    )
 
-    valid_labels = dataset['valid'][:, 3]
-    test_labels = dataset['test'][:, 3]
+    valid_labels = dataset["valid"][:, 3]
+    test_labels = dataset["test"][:, 3]
 
-    dataset['valid'] = dataset['valid'][:, 0:3]
-    dataset['test'] = dataset['test'][:, 0:3]
+    dataset["valid"] = dataset["valid"][:, 0:3]
+    dataset["test"] = dataset["test"][:, 0:3]
 
-    dataset['valid_labels'] = valid_labels == '1'
-    dataset['test_labels'] = test_labels == '1'
+    dataset["valid_labels"] = valid_labels == "1"
+    dataset["test_labels"] = test_labels == "1"
 
     if clean_unseen:
-        clean_dataset, valid_idx, test_idx = _clean_data(
-            dataset, return_idx=True)
-        clean_dataset['valid_labels'] = dataset['valid_labels'][valid_idx]
-        clean_dataset['test_labels'] = dataset['test_labels'][test_idx]
+        clean_dataset, valid_idx, test_idx = _clean_data(dataset, return_idx=True)
+        clean_dataset["valid_labels"] = dataset["valid_labels"][valid_idx]
+        clean_dataset["test_labels"] = dataset["test_labels"][test_idx]
         return clean_dataset
     else:
         return dataset
@@ -1126,11 +1157,8 @@ def load_all_datasets(check_md5hash=False):
 
 
 def load_from_rdf(
-        folder_name,
-        file_name,
-        rdf_format='nt',
-        data_home=None,
-        add_reciprocal_rels=False):
+    folder_name, file_name, rdf_format="nt", data_home=None, add_reciprocal_rels=False
+):
     """Load an RDF file.
 
     Loads an RDF knowledge graph using rdflib_ APIs.
@@ -1169,17 +1197,16 @@ def load_from_rdf(
             The actual triples of the file.
     """
 
-    logger.debug('Loading rdf data from {}.'.format(file_name))
+    logger.debug("Loading rdf data from {}.".format(file_name))
     data_home = _get_data_home(data_home)
     from rdflib import Graph
+
     g = Graph()
     g.parse(
-        os.path.join(
-            data_home,
-            folder_name,
-            file_name),
+        os.path.join(data_home, folder_name, file_name),
         format=rdf_format,
-        publicID='http://test#')
+        publicID="http://test#",
+    )
     triples = pd.DataFrame(np.array(g))
     triples = triples.drop_duplicates()
     if add_reciprocal_rels:
@@ -1189,10 +1216,8 @@ def load_from_rdf(
 
 
 def load_from_ntriples(
-        folder_name,
-        file_name,
-        data_home=None,
-        add_reciprocal_rels=False):
+    folder_name, file_name, data_home=None, add_reciprocal_rels=False
+):
     """Load a dataset of RDF ntriples.
 
     Loads an RDF knowledge graph serialized as ntriples, without building an RDF graph in memory.
@@ -1231,14 +1256,16 @@ def load_from_ntriples(
             The actual triples of the file.
     """
 
-    logger.debug('Loading rdf ntriples from {}.'.format(file_name))
+    logger.debug("Loading rdf ntriples from {}.".format(file_name))
     data_home = _get_data_home(data_home)
-    df = pd.read_csv(os.path.join(data_home, folder_name, file_name),
-                     sep=' ',
-                     header=None,
-                     names=None,
-                     dtype=str,
-                     usecols=[0, 1, 2])
+    df = pd.read_csv(
+        os.path.join(data_home, folder_name, file_name),
+        sep=" ",
+        header=None,
+        names=None,
+        dtype=str,
+        usecols=[0, 1, 2],
+    )
 
     if add_reciprocal_rels:
         df = _add_reciprocal_relations(df)
@@ -1248,9 +1275,8 @@ def load_from_ntriples(
 
 # FocusE
 def generate_focusE_dataset_splits(
-        dataset,
-        split_test_into_top_bottom=True,
-        split_threshold=0.1):
+    dataset, split_test_into_top_bottom=True, split_threshold=0.1
+):
     """Creates the dataset splits for training models with FocusE layers
 
     Parameters
@@ -1288,40 +1314,40 @@ def generate_focusE_dataset_splits(
         aiming at observing a model that assigns the highest rank possible to the `_topk` and the lowest possible to
         the `_bottomk`.
     """
-    dataset['train_numeric_values'] = dataset['train'][:,
-                                                       3:].astype(np.float32)
-    dataset['valid_numeric_values'] = dataset['valid'][:,
-                                                       3:].astype(np.float32)
-    dataset['test_numeric_values'] = dataset['test'][:, 3:].astype(np.float32)
+    dataset["train_numeric_values"] = dataset["train"][:, 3:].astype(np.float32)
+    dataset["valid_numeric_values"] = dataset["valid"][:, 3:].astype(np.float32)
+    dataset["test_numeric_values"] = dataset["test"][:, 3:].astype(np.float32)
 
-    dataset['train'] = dataset['train'][:, 0:3]
-    dataset['valid'] = dataset['valid'][:, 0:3]
-    dataset['test'] = dataset['test'][:, 0:3]
+    dataset["train"] = dataset["train"][:, 0:3]
+    dataset["valid"] = dataset["valid"][:, 0:3]
+    dataset["test"] = dataset["test"][:, 0:3]
 
-    sorted_indices = np.squeeze(
-        np.argsort(
-            dataset['test_numeric_values'],
-            axis=0))
-    dataset['test'] = dataset['test'][sorted_indices]
-    dataset['test_numeric_values'] = dataset['test_numeric_values'][sorted_indices]
+    sorted_indices = np.squeeze(np.argsort(dataset["test_numeric_values"], axis=0))
+    dataset["test"] = dataset["test"][sorted_indices]
+    dataset["test_numeric_values"] = dataset["test_numeric_values"][sorted_indices]
 
     if split_test_into_top_bottom:
-        split_threshold = int(split_threshold * dataset['test'].shape[0])
+        split_threshold = int(split_threshold * dataset["test"].shape[0])
 
-        dataset['test_bottomk'] = dataset['test'][:split_threshold]
-        dataset['test_bottomk_numeric_values'] = dataset['test_numeric_values'][:split_threshold]
+        dataset["test_bottomk"] = dataset["test"][:split_threshold]
+        dataset["test_bottomk_numeric_values"] = dataset["test_numeric_values"][
+            :split_threshold
+        ]
 
-        dataset['test_topk'] = dataset['test'][-split_threshold:]
-        dataset['test_topk_numeric_values'] = dataset['test_numeric_values'][-split_threshold:]
+        dataset["test_topk"] = dataset["test"][-split_threshold:]
+        dataset["test_topk_numeric_values"] = dataset["test_numeric_values"][
+            -split_threshold:
+        ]
 
     return dataset
 
 
 def load_onet20k(
-        check_md5hash=False,
-        clean_unseen=True,
-        split_test_into_top_bottom=True,
-        split_threshold=0.1):
+    check_md5hash=False,
+    clean_unseen=True,
+    split_test_into_top_bottom=True,
+    split_threshold=0.1,
+):
     """Load the O*NET20K dataset.
 
     O*NET20K was originally proposed in :cite:`pai2021learning`.
@@ -1396,31 +1422,33 @@ def load_onet20k(
     [0.6257143]
     """
     onet20k = DatasetMetadata(
-        dataset_name='onet20k',
-        filename='onet20k.zip',
-        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/onet20k.zip',
-        train_name='train.tsv',
-        valid_name='valid.tsv',
-        test_name='test.tsv',
-        train_checksum='516220427a9a18516fd7a804a6944d64',
-        valid_checksum='d7806951ac3d916c5c5a0304eea064d2',
-        test_checksum='e5baec19037cb0bddc5a2fe3c0f4445a')
+        dataset_name="onet20k",
+        filename="onet20k.zip",
+        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/onet20k.zip",
+        train_name="train.tsv",
+        valid_name="valid.tsv",
+        test_name="test.tsv",
+        train_checksum="516220427a9a18516fd7a804a6944d64",
+        valid_checksum="d7806951ac3d916c5c5a0304eea064d2",
+        test_checksum="e5baec19037cb0bddc5a2fe3c0f4445a",
+    )
 
-    dataset = _load_dataset(onet20k, data_home=None,
-                            check_md5hash=check_md5hash)
+    dataset = _load_dataset(onet20k, data_home=None, check_md5hash=check_md5hash)
 
     if clean_unseen:
         dataset = _clean_data(dataset)
 
     return generate_focusE_dataset_splits(
-        dataset, split_test_into_top_bottom, split_threshold)
+        dataset, split_test_into_top_bottom, split_threshold
+    )
 
 
 def load_ppi5k(
-        check_md5hash=False,
-        clean_unseen=True,
-        split_test_into_top_bottom=True,
-        split_threshold=0.1):
+    check_md5hash=False,
+    clean_unseen=True,
+    split_test_into_top_bottom=True,
+    split_threshold=0.1,
+):
     """Load the PPI5K dataset.
 
     Originally proposed in :cite:`chen2019embedding`, PPI5K is a subset of the protein-protein
@@ -1496,32 +1524,33 @@ def load_ppi5k(
     [0.329]
     """
     ppi5k = DatasetMetadata(
-        dataset_name='ppi5k',
-        filename='ppi5k.zip',
-        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/ppi5k.zip',
-        train_name='train.tsv',
-        valid_name='valid.tsv',
-        test_name='test.tsv',
-        train_checksum='d8b54de3482c0d043118cbd05f2666cf',
-        valid_checksum='2bd094118f4be1f4f6d6a1d4707271c1',
-        test_checksum='7e6e345f496ed9a0cc58b91d4877ddd6'
+        dataset_name="ppi5k",
+        filename="ppi5k.zip",
+        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/ppi5k.zip",
+        train_name="train.tsv",
+        valid_name="valid.tsv",
+        test_name="test.tsv",
+        train_checksum="d8b54de3482c0d043118cbd05f2666cf",
+        valid_checksum="2bd094118f4be1f4f6d6a1d4707271c1",
+        test_checksum="7e6e345f496ed9a0cc58b91d4877ddd6",
     )
 
-    dataset = _load_dataset(ppi5k, data_home=None,
-                            check_md5hash=check_md5hash)
+    dataset = _load_dataset(ppi5k, data_home=None, check_md5hash=check_md5hash)
 
     if clean_unseen:
         dataset = _clean_data(dataset)
 
     return generate_focusE_dataset_splits(
-        dataset, split_test_into_top_bottom, split_threshold)
+        dataset, split_test_into_top_bottom, split_threshold
+    )
 
 
 def load_nl27k(
-        check_md5hash=False,
-        clean_unseen=True,
-        split_test_into_top_bottom=True,
-        split_threshold=0.1):
+    check_md5hash=False,
+    clean_unseen=True,
+    split_test_into_top_bottom=True,
+    split_threshold=0.1,
+):
     """Load the NL27K dataset.
 
     NL27K was originally proposed in :cite:`chen2019embedding`. It is a subset of the Never Ending Language
@@ -1595,32 +1624,33 @@ def load_nl27k(
     [0.859375]
     """
     nl27k = DatasetMetadata(
-        dataset_name='nl27k',
-        filename='nl27k.zip',
-        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/nl27k.zip',
-        train_name='train.tsv',
-        valid_name='valid.tsv',
-        test_name='test.tsv',
-        train_checksum='d4ce775401d299074d98e046f13e7283',
-        valid_checksum='00177fa6b9f5cec18814ee599c02eae3',
-        test_checksum='2ba17f29119688d93c9d29ab40f63b3e'
+        dataset_name="nl27k",
+        filename="nl27k.zip",
+        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/nl27k.zip",
+        train_name="train.tsv",
+        valid_name="valid.tsv",
+        test_name="test.tsv",
+        train_checksum="d4ce775401d299074d98e046f13e7283",
+        valid_checksum="00177fa6b9f5cec18814ee599c02eae3",
+        test_checksum="2ba17f29119688d93c9d29ab40f63b3e",
     )
 
-    dataset = _load_dataset(nl27k, data_home=None,
-                            check_md5hash=check_md5hash)
+    dataset = _load_dataset(nl27k, data_home=None, check_md5hash=check_md5hash)
 
     if clean_unseen:
         dataset = _clean_data(dataset)
 
     return generate_focusE_dataset_splits(
-        dataset, split_test_into_top_bottom, split_threshold)
+        dataset, split_test_into_top_bottom, split_threshold
+    )
 
 
 def load_cn15k(
-        check_md5hash=False,
-        clean_unseen=True,
-        split_test_into_top_bottom=True,
-        split_threshold=0.1):
+    check_md5hash=False,
+    clean_unseen=True,
+    split_test_into_top_bottom=True,
+    split_threshold=0.1,
+):
     """Load the CN15K dataset.
 
     CN15K was originally proposed in :cite:`chen2019embedding`, it is a subset of ConceptNet :cite:`CN`,
@@ -1694,165 +1724,185 @@ def load_cn15k(
     [0.8927088]
     """
     cn15k = DatasetMetadata(
-        dataset_name='cn15k',
-        filename='cn15k.zip',
-        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/cn15k.zip',
-        train_name='train.tsv',
-        valid_name='valid.tsv',
-        test_name='test.tsv',
-        train_checksum='8bf2ecc8f34e7b3b544afc30abaac478',
-        valid_checksum='15b63ebd7428a262ad5fe869cc944208',
-        test_checksum='29df4b8d24a3d89fc7c1032b9c508112'
+        dataset_name="cn15k",
+        filename="cn15k.zip",
+        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/cn15k.zip",
+        train_name="train.tsv",
+        valid_name="valid.tsv",
+        test_name="test.tsv",
+        train_checksum="8bf2ecc8f34e7b3b544afc30abaac478",
+        valid_checksum="15b63ebd7428a262ad5fe869cc944208",
+        test_checksum="29df4b8d24a3d89fc7c1032b9c508112",
     )
 
-    dataset = _load_dataset(cn15k, data_home=None,
-                            check_md5hash=check_md5hash)
+    dataset = _load_dataset(cn15k, data_home=None, check_md5hash=check_md5hash)
 
     if clean_unseen:
         dataset = _clean_data(dataset)
 
     return generate_focusE_dataset_splits(
-        dataset, split_test_into_top_bottom, split_threshold)
+        dataset, split_test_into_top_bottom, split_threshold
+    )
 
 
 def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
     """Load the XAI FB15k-237 experiment log
 
-    XAI-FB15k-237 is a reduced version of FB15K-237 containing human-readable triples.
+        XAI-FB15k-237 is a reduced version of FB15K-237 containing human-readable triples.
 
-    The dataset contains several fields, by default the returned data frame contains only triples, when
-    option full is equal to True (``full=True``) the full data is returned (it reflects filtering protocol).
+        The dataset contains several fields, by default the returned data frame contains only triples, when
+        option full is equal to True (``full=True``) the full data is returned (it reflects filtering protocol).
 
-    Fields:
+        Fields:
 
-    - predicate,
-    - predicate label,
-    - predicates_description,
-    - subject,
-    - subject_label,
-    - object_label,
-    - object.
+        - predicate,
+        - predicate label,
+        - predicates_description,
+        - subject,
+        - subject_label,
+        - object_label,
+        - object.
 
-    All triples are returned 273 x 7.
+        All triples are returned 273 x 7.
 
-    Full Fields:
+        Full Fields:
 
-    *note: some field can have 3 forms, these are marked with X, X = {1,2,3} for 3 triples,
-           that were displayed to the annotators with a given predicate.
+        *note: some field can have 3 forms, these are marked with X, X = {1,2,3} for 3 triples,
+               that were displayed to the annotators with a given predicate.
 
-    - predicate: evaluated predicate,
-    - predicate label: human label for predicate,
-    - predicates_description: human description of what the predicate means,
-    - question triple X: textual form of triple 1 containing predicate,
-    - subject_tripleX: subject of triple X,
-    - object_tripleX: object of triple X,
-    - subject_label_tripleX: human label of subject of triple X,
-    - object_label_tripleX: human label of object of triple X,
-    - avg rank triple X: avergae rank that the triple obtain among models,
-    - std rank triple X: standard deviation of rank that the triple obtain among models,
-    - avg O rank triple X: average object rank that the triple obtain among models,
-    - std O rank triple X: standard deviation of object rank that the triple obtain among models,
-    - avg S rank triple X: average subject rank that the triple obtain among models,
-    - std S rank triple X: standard deviation of subject rank that the triple obtain among models,
-    - evaluated: summed score of 3 evaluators for a predicate (when each evaluator gave score 0 - not understandable or 1- understandable):
-             0 - triples with this predicate are not understandable - full agreement between annotators.
-             1 - triples with this predicate are mostly understandable - partial agreement between annotators.
-             2 - triples with this predicate are mostly not understandable - partial agreement between annotators.
-             3 - triples with this predicate are clearly understandable - full agreement between annotators.
+        - predicate: evaluated predicate,
+        - predicate label: human label for predicate,
+        - predicates_description: human description of what the predicate means,
+        - question triple X: textual form of triple 1 containing predicate,
+        - subject_tripleX: subject of triple X,
+        - object_tripleX: object of triple X,
+        - subject_label_tripleX: human label of subject of triple X,
+        - object_label_tripleX: human label of object of triple X,
+        - avg rank triple X: avergae rank that the triple obtain among models,
+        - std rank triple X: standard deviation of rank that the triple obtain among models,
+        - avg O rank triple X: average object rank that the triple obtain among models,
+        - std O rank triple X: standard deviation of object rank that the triple obtain among models,
+        - avg S rank triple X: average subject rank that the triple obtain among models,
+        - std S rank triple X: standard deviation of subject rank that the triple obtain among models,
+        - evaluated: summed score of 3 evaluators for a predicate (when each evaluator gave score 0 - not understandable or 1- understandable):
+                 0 - triples with this predicate are not understandable - full agreement between annotators.
+                 1 - triples with this predicate are mostly understandable - partial agreement between annotators.
+                 2 - triples with this predicate are mostly not understandable - partial agreement between annotators.
+                 3 - triples with this predicate are clearly understandable - full agreement between annotators.
 
-   All predicates are returned 91 x 37 records each containing 3 triples.
+       All predicates are returned 91 x 37 records each containing 3 triples.
 
-    ============= ========= ==========
-    Dataset       Entities  Relations
-    ============= ========= ==========
-    XAI-FB15K-237  446       91
-    ============= ========= ==========
-
-
-    Parameters
-    ----------
-    full [False]: wether to return full dataset or reduced view with triples.
-    subset ["all"]: subset of records to be returned:
-         - "all" - returns all records,
-         - "clear" - returns only triples which all annotators marked as understandable,
-         - "not clear" - not understandable triples,
-         - "confusing+" - mostly understandable triples,
-         - "confusing-" - mostly not understandable.
+        ============= ========= ==========
+        Dataset       Entities  Relations
+        ============= ========= ==========
+        XAI-FB15K-237  446       91
+        ============= ========= ==========
 
 
-    X : pandas data frame containing triples (full=False), records with predicates (full=True).
+        Parameters
+        ----------
+        full [False]: wether to return full dataset or reduced view with triples.
+        subset ["all"]: subset of records to be returned:
+             - "all" - returns all records,
+             - "clear" - returns only triples which all annotators marked as understandable,
+             - "not clear" - not understandable triples,
+             - "confusing+" - mostly understandable triples,
+             - "confusing-" - mostly not understandable.
 
-    Example
-    -------
 
-    >>> from ampligraph.datasets import _load_xai_fb15k_237_experiment_log
-    >>> X = _load_xai_fb15k_237_experiment_log()
-    >>> X.head(2)
+        X : pandas data frame containing triples (full=False), records with predicates (full=True).
 
-    predicate 	                        predicate label 	predicates_description 	                        subject 	subject_label 	object_label 	object
-0 	/media_common/netflix_genre/titles 	Titles 	                Titles that have this Genre in Netflix@en 	/m/07c52 	Television 	Friends 	/m/030cx
-1 	/film/film/edited_by 	                Edited by 	        NaN 	                                        /m/0cc5qkt 	War Horse 	Michael Kahn 	/m/03q8ch
+        Example
+        -------
+
+        >>> from ampligraph.datasets import _load_xai_fb15k_237_experiment_log
+        >>> X = _load_xai_fb15k_237_experiment_log()
+        >>> X.head(2)
+
+        predicate 	                        predicate label 	predicates_description 	                        subject 	subject_label 	object_label 	object
+    0 	/media_common/netflix_genre/titles 	Titles 	                Titles that have this Genre in Netflix@en 	/m/07c52 	Television 	Friends 	/m/030cx
+    1 	/film/film/edited_by 	                Edited by 	        NaN 	                                        /m/0cc5qkt 	War Horse 	Michael Kahn 	/m/03q8ch
 
     """
     import requests
-    url = 'https://ampgraphenc.s3-eu-west-1.amazonaws.com/datasets/xai_fb15k_237.csv'
+
+    url = "https://ampgraphenc.s3-eu-west-1.amazonaws.com/datasets/xai_fb15k_237.csv"
 
     r = requests.get(url, allow_redirects=True)
-    open('xai_fb15k_237.csv', 'wb').write(r.content)
+    open("xai_fb15k_237.csv", "wb").write(r.content)
 
     mapper = {
         "all": "all",
         "clear": 3,
         "not clear": 0,
         "confusing+": 2,
-        "confusing-": 1}
+        "confusing-": 1,
+    }
     if subset != "all":
         if subset in mapper:
-            X = pd.read_csv('xai_fb15k_237.csv', sep=',')
-            X = X[X['evaluated'] == mapper[subset]]
+            X = pd.read_csv("xai_fb15k_237.csv", sep=",")
+            X = X[X["evaluated"] == mapper[subset]]
         else:
             print("No such option!")
     else:
-        X = pd.read_csv('xai_fb15k_237.csv', sep=',')
+        X = pd.read_csv("xai_fb15k_237.csv", sep=",")
 
     if full:
         return X
     else:
-        t1 = X[['predicate',
-                'predicate label',
-                'predicates_description',
-                'subject_triple1',
-                'subject_label_triple1',
-                'object_label_triple1',
-                'object_triple1']]
-        t2 = X[['predicate',
-                'predicate label',
-                'predicates_description',
-                'subject_triple2',
-                'subject_label_triple2',
-                'object_label_triple2',
-                'object_triple2']]
-        t3 = X[['predicate',
-                'predicate label',
-                'predicates_description',
-                'subject_triple3',
-                'subject_label_triple3',
-                'object_label_triple3',
-                'object_triple3']]
-        mapper1 = {'subject_triple1': 'subject',
-                   'subject_label_triple1': 'subject_label',
-                   'object_label_triple1': 'object_label',
-                   'object_triple1': 'object'}
+        t1 = X[
+            [
+                "predicate",
+                "predicate label",
+                "predicates_description",
+                "subject_triple1",
+                "subject_label_triple1",
+                "object_label_triple1",
+                "object_triple1",
+            ]
+        ]
+        t2 = X[
+            [
+                "predicate",
+                "predicate label",
+                "predicates_description",
+                "subject_triple2",
+                "subject_label_triple2",
+                "object_label_triple2",
+                "object_triple2",
+            ]
+        ]
+        t3 = X[
+            [
+                "predicate",
+                "predicate label",
+                "predicates_description",
+                "subject_triple3",
+                "subject_label_triple3",
+                "object_label_triple3",
+                "object_triple3",
+            ]
+        ]
+        mapper1 = {
+            "subject_triple1": "subject",
+            "subject_label_triple1": "subject_label",
+            "object_label_triple1": "object_label",
+            "object_triple1": "object",
+        }
         t1 = t1.rename(columns=mapper1)
-        mapper2 = {'subject_triple2': 'subject',
-                   'subject_label_triple2': 'subject_label',
-                   'object_label_triple2': 'object_label',
-                   'object_triple2': 'object'}
+        mapper2 = {
+            "subject_triple2": "subject",
+            "subject_label_triple2": "subject_label",
+            "object_label_triple2": "object_label",
+            "object_triple2": "object",
+        }
         t2 = t2.rename(columns=mapper2)
-        mapper3 = {'subject_triple3': 'subject',
-                   'subject_label_triple3': 'subject_label',
-                   'object_label_triple3': 'object_label',
-                   'object_triple3': 'object'}
+        mapper3 = {
+            "subject_triple3": "subject",
+            "subject_label_triple3": "subject_label",
+            "object_label_triple3": "object_label",
+            "object_triple3": "object",
+        }
         t3 = t3.rename(columns=mapper3)
         t1 = t1.append(t2, ignore_index=True)
         t1 = t1.append(t3, ignore_index=True)
@@ -1860,10 +1910,11 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
 
 
 def load_codex(
-        check_md5hash=False,
-        clean_unseen=True,
-        add_reciprocal_rels=False,
-        return_mapper=False):
+    check_md5hash=False,
+    clean_unseen=True,
+    add_reciprocal_rels=False,
+    return_mapper=False,
+):
     """Load the CoDEx-M dataset.
 
     The dataset is described in :cite:`safavi_codex_2020`.
@@ -1931,21 +1982,22 @@ def load_codex(
     """
 
     codex = DatasetMetadata(
-        dataset_name='codex',
-        filename='codex.zip',
-        url='https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/codex.zip',
-        train_name='train.txt',
-        valid_name='valid.txt',
-        test_name='test.txt',
-        valid_negatives_name='valid_negatives.txt',
-        test_negatives_name='test_negatives.txt',
-        mapper_name='mapper.json' if return_mapper else None,
-        train_checksum='d507616dd7b9f6ddbacf83766efaa1dd',
-        valid_checksum='0fd5e85f41e0ba3ef6c10093cbe2a435',
-        test_checksum='7186374c5ca7075d268ccf316927041d',
-        mapper_checksum='9cf7209df69562dff36ae94f95f67e82' if return_mapper else None,
-        test_negatives_checksum='2dc6755e9cc54145e782480c5bb2ef44',
-        valid_negatives_checksum='381300fbd297df9db2fd05bb6cfc1f2d')
+        dataset_name="codex",
+        filename="codex.zip",
+        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/codex.zip",
+        train_name="train.txt",
+        valid_name="valid.txt",
+        test_name="test.txt",
+        valid_negatives_name="valid_negatives.txt",
+        test_negatives_name="test_negatives.txt",
+        mapper_name="mapper.json" if return_mapper else None,
+        train_checksum="d507616dd7b9f6ddbacf83766efaa1dd",
+        valid_checksum="0fd5e85f41e0ba3ef6c10093cbe2a435",
+        test_checksum="7186374c5ca7075d268ccf316927041d",
+        mapper_checksum="9cf7209df69562dff36ae94f95f67e82" if return_mapper else None,
+        test_negatives_checksum="2dc6755e9cc54145e782480c5bb2ef44",
+        valid_negatives_checksum="381300fbd297df9db2fd05bb6cfc1f2d",
+    )
 
     if clean_unseen:
         return _clean_data(
@@ -1953,9 +2005,13 @@ def load_codex(
                 codex,
                 data_home=None,
                 check_md5hash=check_md5hash,
-                add_reciprocal_rels=add_reciprocal_rels))
+                add_reciprocal_rels=add_reciprocal_rels,
+            )
+        )
     else:
-        return _load_dataset(codex,
-                             data_home=None,
-                             check_md5hash=check_md5hash,
-                             add_reciprocal_rels=add_reciprocal_rels)
+        return _load_dataset(
+            codex,
+            data_home=None,
+            check_md5hash=check_md5hash,
+            add_reciprocal_rels=add_reciprocal_rels,
+        )

@@ -19,13 +19,14 @@ logger.setLevel(logging.DEBUG)
 
 
 def discover_facts(
-        X,
-        model,
-        top_n=10,
-        strategy='random_uniform',
-        max_candidates=100,
-        target_rel=None,
-        seed=0):
+    X,
+    model,
+    top_n=10,
+    strategy="random_uniform",
+    max_candidates=100,
+    target_rel=None,
+    seed=0,
+):
     """
     Discover new facts from an existing knowledge graph.
 
@@ -164,42 +165,44 @@ def discover_facts(
         model = model.model
 
     if not model.is_fitted:
-        msg = 'Model is not fitted.'
+        msg = "Model is not fitted."
         logger.error(msg)
         raise ValueError(msg)
 
     # if not model.is_fitted_on(X):
     #    msg = 'Model might not be fitted on this data.'
     #    logger.warning(msg)
-        # raise ValueError(msg)
+    # raise ValueError(msg)
 
     if strategy not in [
-        'random_uniform',
-        'entity_frequency',
-        'graph_degree',
-        'cluster_coefficient',
-        'cluster_triangles',
-            'cluster_squares']:
-        msg = '%s is not a valid strategy.' % strategy
+        "random_uniform",
+        "entity_frequency",
+        "graph_degree",
+        "cluster_coefficient",
+        "cluster_triangles",
+        "cluster_squares",
+    ]:
+        msg = "%s is not a valid strategy." % strategy
         logger.error(msg)
         raise ValueError(msg)
 
-    if strategy == 'exhaustive':
-        msg = 'Strategy is `exhaustive`, ignoring max_candidates.'
+    if strategy == "exhaustive":
+        msg = "Strategy is `exhaustive`, ignoring max_candidates."
         logger.info(msg)
 
     if isinstance(max_candidates, float):
         logger.debug(
-            'Converting max_candidates float value {} to int value {}'.format(
-                max_candidates, int(
-                    max_candidates * len(X))))
+            "Converting max_candidates float value {} to int value {}".format(
+                max_candidates, int(max_candidates * len(X))
+            )
+        )
         max_candidates = int(max_candidates * len(X))
 
     if isinstance(target_rel, str):
         target_rel = [target_rel]
 
     if target_rel is None:
-        msg = 'No target relation specified. Using all relations to generate candidate statements.'
+        msg = "No target relation specified. Using all relations to generate candidate statements."
         logger.info(msg)
         rel_list = [x for x in model.data_indexer.backend.get_all_relations()]
     else:
@@ -209,8 +212,7 @@ def discover_facts(
                 missing_rels.append(rel)
 
         if len(missing_rels) > 0:
-            msg = 'Target relation(s) not found in model: {}'.format(
-                missing_rels)
+            msg = "Target relation(s) not found in model: {}".format(missing_rels)
             logger.error(msg)
             raise ValueError(msg)
 
@@ -227,24 +229,21 @@ def discover_facts(
 
     # Iterate through relations
     for relation in rel_list:
-
-        logger.info('Generating candidates for relation: %s' % relation)
+        logger.info("Generating candidates for relation: %s" % relation)
 
         candidates = generate_candidates(
-            X, strategy, relation, max_candidates, seed=seed)
+            X, strategy, relation, max_candidates, seed=seed
+        )
 
-        logger.debug('Generated %d candidate statements.' % len(candidates))
+        logger.debug("Generated %d candidate statements." % len(candidates))
 
         # Get ranks of candidate statements
         # ranks = evaluate_performance(candidates, model=model, filter_triples=X, use_default_protocol=True,
         #                             verbose=False)
 
         ranks = model.evaluate(
-            candidates,
-            use_filter={
-                'test': X},
-            corrupt_side='s,o',
-            verbose=False)
+            candidates, use_filter={"test": X}, corrupt_side="s,o", verbose=False
+        )
 
         # Select candidate statements within the top_n predicted ranks standard protocol evaluates against
         # corruptions on both sides, we just average the ranks here
@@ -254,100 +253,104 @@ def discover_facts(
         discoveries.append(candidates[preds])
         discovery_ranks.append(avg_ranks[preds])
 
-    logger.info('Discovered %d facts' % len(discoveries))
+    logger.info("Discovered %d facts" % len(discoveries))
 
     return np.hstack(discoveries), np.hstack(discovery_ranks)
 
 
 def generate_candidates(
-        X,
-        strategy,
-        target_rel,
-        max_candidates,
-        consolidate_sides=False,
-        seed=0):
-    """ Generate candidate statements from an existing knowledge graph using a defined strategy.
+    X, strategy, target_rel, max_candidates, consolidate_sides=False, seed=0
+):
+    """Generate candidate statements from an existing knowledge graph using a defined strategy.
 
-        Parameters
-        ----------
-        X: np.array, shape (n, 3)
-            Triples from which to discover new facts.
-        strategy: str
-            The candidates generation strategy.
-            - `'random_uniform'` : generates `N` candidates (:math:`N <= max_candidates`) based on a uniform random
-                sampling of head and tail entities.
-            - `'entity_frequency'` : generates candidates by sampling entities with low frequency.
-            - `'graph_degree'` : generates candidates by sampling entities with a low graph degree.
-            - `'cluster_coefficient'` : generates candidates by sampling entities with a low clustering coefficient.
-            - `'cluster_triangles'` : generates candidates by sampling entities with a low number of cluster triangles.
-            - `'cluster_squares'` : generates candidates by sampling entities with a low number of cluster squares.
-        max_candidates: int or float
-            The maximum numbers of candidates generated by ``strategy``.
-            Can be an absolute number or a percentage [0,1].
-            This does not guarantee the number of candidates generated.
-        target_rel : str
-            Target relation to focus on. The function will generate candidate
-             statements only with this specific relation type.
-        consolidate_sides: bool
-            If `True` will generate candidate statements as a product of unique head and tail entities, otherwise will
-            consider head and tail entities separately (default: `False`).
-        seed : int
-            Seed to use for reproducible results.
+    Parameters
+    ----------
+    X: np.array, shape (n, 3)
+        Triples from which to discover new facts.
+    strategy: str
+        The candidates generation strategy.
+        - `'random_uniform'` : generates `N` candidates (:math:`N <= max_candidates`) based on a uniform random
+            sampling of head and tail entities.
+        - `'entity_frequency'` : generates candidates by sampling entities with low frequency.
+        - `'graph_degree'` : generates candidates by sampling entities with a low graph degree.
+        - `'cluster_coefficient'` : generates candidates by sampling entities with a low clustering coefficient.
+        - `'cluster_triangles'` : generates candidates by sampling entities with a low number of cluster triangles.
+        - `'cluster_squares'` : generates candidates by sampling entities with a low number of cluster squares.
+    max_candidates: int or float
+        The maximum numbers of candidates generated by ``strategy``.
+        Can be an absolute number or a percentage [0,1].
+        This does not guarantee the number of candidates generated.
+    target_rel : str
+        Target relation to focus on. The function will generate candidate
+         statements only with this specific relation type.
+    consolidate_sides: bool
+        If `True` will generate candidate statements as a product of unique head and tail entities, otherwise will
+        consider head and tail entities separately (default: `False`).
+    seed : int
+        Seed to use for reproducible results.
 
-        Returns
-        -------
-        X_candidates : ndarray, shape (n, 3)
-            A list of candidate statements.
+    Returns
+    -------
+    X_candidates : ndarray, shape (n, 3)
+        A list of candidate statements.
 
 
-        Example
-        -------
-        >>> import numpy as np
-        >>> from ampligraph.discovery.discovery import generate_candidates
-        >>>
-        >>> X = np.array([['a', 'y', 'b'],
-        >>>               ['b', 'y', 'a'],
-        >>>               ['a', 'y', 'c'],
-        >>>               ['c', 'y', 'a'],
-        >>>               ['a', 'y', 'd'],
-        >>>               ['c', 'y', 'd'],
-        >>>               ['b', 'y', 'c'],
-        >>>               ['f', 'y', 'e']])
+    Example
+    -------
+    >>> import numpy as np
+    >>> from ampligraph.discovery.discovery import generate_candidates
+    >>>
+    >>> X = np.array([['a', 'y', 'b'],
+    >>>               ['b', 'y', 'a'],
+    >>>               ['a', 'y', 'c'],
+    >>>               ['c', 'y', 'a'],
+    >>>               ['a', 'y', 'd'],
+    >>>               ['c', 'y', 'd'],
+    >>>               ['b', 'y', 'c'],
+    >>>               ['f', 'y', 'e']])
 
-        >>> X_candidates = generate_candidates(X, strategy='graph_degree', target_rel='y', max_candidates=3)
-        >>> ([['a', 'y', 'e'],
-        >>>  ['f', 'y', 'a'],
-        >>>  ['c', 'y', 'e']])
+    >>> X_candidates = generate_candidates(X, strategy='graph_degree', target_rel='y', max_candidates=3)
+    >>> ([['a', 'y', 'e'],
+    >>>  ['f', 'y', 'a'],
+    >>>  ['c', 'y', 'e']])
 
     """
-    if X.shape[1] > 3:  # exception needed if weights are given in input together with triples
+    if (
+        X.shape[1] > 3
+    ):  # exception needed if weights are given in input together with triples
         X = X[:, :3]
-    if strategy not in ['random_uniform', 'entity_frequency',
-                        'graph_degree', 'cluster_coefficient',
-                        'cluster_triangles', 'cluster_squares']:
-        msg = '%s is not a valid candidate generation strategy.' % strategy
+    if strategy not in [
+        "random_uniform",
+        "entity_frequency",
+        "graph_degree",
+        "cluster_coefficient",
+        "cluster_triangles",
+        "cluster_squares",
+    ]:
+        msg = "%s is not a valid candidate generation strategy." % strategy
         raise ValueError(msg)
 
     if target_rel not in np.unique(X[:, 1]):
         # No error as may be case where target_rel is not in X
-        msg = 'Target relation is not found in triples.'
+        msg = "Target relation is not found in triples."
         logger.warning(msg)
 
     if not isinstance(max_candidates, (float, int)):
-        msg = 'Parameter max_candidates must be a float or int.'
+        msg = "Parameter max_candidates must be a float or int."
         raise ValueError(msg)
 
     if max_candidates <= 0:
-        msg = 'Parameter max_candidates must be a positive integer ' \
-              'or float in range (0,1].'
+        msg = (
+            "Parameter max_candidates must be a positive integer "
+            "or float in range (0,1]."
+        )
         raise ValueError(msg)
 
     if isinstance(max_candidates, float):
         max_candidates = int(max_candidates * len(X))
 
     def _filter_candidates(X_candidates, X, remove_reflexive=True):
-        """ Inner function to filter candidate statements from X_candidates that are in X.
-        """
+        """Inner function to filter candidate statements from X_candidates that are in X."""
         X_candidates = _setdiff2d(X_candidates, X)
         # Filter statements that are ['x', rel, 'x']
         if remove_reflexive:
@@ -367,10 +370,9 @@ def generate_candidates(
         e_s = np.unique(X[:, 0])
         e_o = np.unique(X[:, 2])
 
-    logger.info('Generating candidates using {} strategy.'.format(strategy))
+    logger.info("Generating candidates using {} strategy.".format(strategy))
 
-    if strategy == 'random_uniform':
-
+    if strategy == "random_uniform":
         # Take close to sqrt of max_candidates so that: len(meshgrid result) ==
         # max_candidates
         # +10 to allow for reduction in sampled array due to filtering
@@ -385,19 +387,17 @@ def generate_candidates(
             sample_e_s = np.random.choice(e_s, size=sample_size, replace=False)
             sample_e_o = np.random.choice(e_o, size=sample_size, replace=False)
 
-            gen_candidates = np.array(np.meshgrid(
-                sample_e_s, target_rel, sample_e_o)).T.reshape(-1, 3)
+            gen_candidates = np.array(
+                np.meshgrid(sample_e_s, target_rel, sample_e_o)
+            ).T.reshape(-1, 3)
             gen_candidates = _filter_candidates(gen_candidates, X)
 
             # Select either all of gen_candidates or just enough to fill
             # X_candidates
-            select_idx = min(
-                len(gen_candidates),
-                len(X_candidates) - start_idx)
+            select_idx = min(len(gen_candidates), len(X_candidates) - start_idx)
             end_idx = start_idx + select_idx
 
-            X_candidates[start_idx:end_idx,
-                         :] = gen_candidates[0:select_idx, :]
+            X_candidates[start_idx:end_idx, :] = gen_candidates[0:select_idx, :]
             start_idx = end_idx
 
             num_retries += 1
@@ -407,24 +407,28 @@ def generate_candidates(
         # end_idx will equal max_candidates in most cases, but could be less
         return X_candidates[0:end_idx, :]
 
-    elif strategy == 'entity_frequency':
-
+    elif strategy == "entity_frequency":
         # Get entity counts and sort them in ascending order
         if consolidate_sides:
-            e_s_counts = np.array(
-                np.unique(X[:, [0, 2]], return_counts=True)).T
+            e_s_counts = np.array(np.unique(X[:, [0, 2]], return_counts=True)).T
             e_o_counts = e_s_counts
         else:
             e_s_counts = np.array(np.unique(X[:, 0], return_counts=True)).T
             e_o_counts = np.array(np.unique(X[:, 2], return_counts=True)).T
 
-        e_s_weights = e_s_counts[:, 1].astype(
-            np.float64) / np.sum(e_s_counts[:, 1].astype(np.float64))
-        e_o_weights = e_o_counts[:, 1].astype(
-            np.float64) / np.sum(e_o_counts[:, 1].astype(np.float64))
+        e_s_weights = e_s_counts[:, 1].astype(np.float64) / np.sum(
+            e_s_counts[:, 1].astype(np.float64)
+        )
+        e_o_weights = e_o_counts[:, 1].astype(np.float64) / np.sum(
+            e_o_counts[:, 1].astype(np.float64)
+        )
 
-    elif strategy in ['graph_degree', 'cluster_coefficient', 'cluster_triangles', 'cluster_squares']:
-
+    elif strategy in [
+        "graph_degree",
+        "cluster_coefficient",
+        "cluster_triangles",
+        "cluster_squares",
+    ]:
         # Create networkx graph
         G = nx.Graph()
         for row in X:
@@ -432,13 +436,13 @@ def generate_candidates(
             G.add_edge(row[0], row[2], name=row[1])
 
         # Calculate node metrics
-        if strategy == 'graph_degree':
+        if strategy == "graph_degree":
             C = {i: j for i, j in G.degree()}
-        elif strategy == 'cluster_coefficient':
+        elif strategy == "cluster_coefficient":
             C = nx.algorithms.cluster.clustering(G)
-        elif strategy == 'cluster_triangles':
+        elif strategy == "cluster_triangles":
             C = nx.algorithms.cluster.triangles(G)
-        elif strategy == 'cluster_squares':
+        elif strategy == "cluster_squares":
             C = nx.algorithms.cluster.square_clustering(G)
 
         e_s_weights = np.array([C[x] for x in e_s], dtype=np.float64)
@@ -458,14 +462,16 @@ def generate_candidates(
     start_idx, end_idx = 0, 0
 
     while end_idx <= max_candidates - 1:
-
         sample_e_s = np.random.choice(
-            e_s, size=sample_size, replace=True, p=e_s_weights)
+            e_s, size=sample_size, replace=True, p=e_s_weights
+        )
         sample_e_o = np.random.choice(
-            e_o, size=sample_size, replace=True, p=e_o_weights)
+            e_o, size=sample_size, replace=True, p=e_o_weights
+        )
 
-        gen_candidates = np.array(np.meshgrid(
-            sample_e_s, target_rel, sample_e_o)).T.reshape(-1, 3)
+        gen_candidates = np.array(
+            np.meshgrid(sample_e_s, target_rel, sample_e_o)
+        ).T.reshape(-1, 3)
         gen_candidates = _filter_candidates(gen_candidates, X)
 
         # Select either all of gen_candidates or just enough to fill
@@ -486,7 +492,7 @@ def generate_candidates(
 
 
 def _setdiff2d(A, B):
-    """ Utility function equivalent to numpy.setdiff1d on 2d arrays.
+    """Utility function equivalent to numpy.setdiff1d on 2d arrays.
 
     Parameters
     ----------
@@ -503,10 +509,10 @@ def _setdiff2d(A, B):
     """
 
     if len(A.shape) != 2 or len(B.shape) != 2:
-        raise RuntimeError('Input arrays must be 2-dimensional.')
+        raise RuntimeError("Input arrays must be 2-dimensional.")
 
     tmp = np.prod(np.swapaxes(A[:, :, None], 1, 2) == B, axis=2)
-    return A[~ np.sum(np.cumsum(tmp, axis=0) * tmp == 1, axis=1).astype(bool)]
+    return A[~np.sum(np.cumsum(tmp, axis=0) * tmp == 1, axis=1).astype(bool)]
 
 
 def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="e"):
@@ -650,7 +656,8 @@ ClusteringAndClassificationWithEmbeddings.ipynb
     modes = ("t", "e", "r")
     if mode not in modes:
         msg = "Argument `mode` must be one of the following: {}.".format(
-            ", ".join(modes))
+            ", ".join(modes)
+        )
         logger.error(msg)
         raise ValueError(msg)
 
@@ -664,9 +671,9 @@ ClusteringAndClassificationWithEmbeddings.ipynb
         raise ValueError(msg)
 
     if mode == "t":
-        s = model.get_embeddings(X[:, 0], embedding_type='e')
-        p = model.get_embeddings(X[:, 1], embedding_type='r')
-        o = model.get_embeddings(X[:, 2], embedding_type='e')
+        s = model.get_embeddings(X[:, 0], embedding_type="e")
+        p = model.get_embeddings(X[:, 1], embedding_type="r")
+        o = model.get_embeddings(X[:, 2], embedding_type="e")
         emb = np.hstack((s, p, o))
     else:
         emb = model.get_embeddings(X, embedding_type=mode)
@@ -674,8 +681,15 @@ ClusteringAndClassificationWithEmbeddings.ipynb
     return clustering_algorithm.fit_predict(emb)
 
 
-def find_duplicates(X, model, mode="e", metric='l2', tolerance='auto',
-                    expected_fraction_duplicates=0.1, verbose=False):
+def find_duplicates(
+    X,
+    model,
+    mode="e",
+    metric="l2",
+    tolerance="auto",
+    expected_fraction_duplicates=0.1,
+    verbose=False,
+):
     r"""
     Find duplicate entities, relations or triples in a graph based on their embeddings.
 
@@ -849,7 +863,8 @@ def find_duplicates(X, model, mode="e", metric='l2', tolerance='auto',
     modes = ("t", "e", "r")
     if mode not in modes:
         msg = "Argument `mode` must be one of the following: {}.".format(
-            ", ".join(modes))
+            ", ".join(modes)
+        )
         logger.error(msg)
         raise ValueError(msg)
 
@@ -864,38 +879,36 @@ def find_duplicates(X, model, mode="e", metric='l2', tolerance='auto',
         raise ValueError(msg)
 
     if mode == "t":
-        s = model.get_embeddings(X[:, 0], embedding_type='e')
-        p = model.get_embeddings(X[:, 1], embedding_type='r')
-        o = model.get_embeddings(X[:, 2], embedding_type='e')
+        s = model.get_embeddings(X[:, 0], embedding_type="e")
+        p = model.get_embeddings(X[:, 1], embedding_type="r")
+        o = model.get_embeddings(X[:, 2], embedding_type="e")
         emb = np.hstack((s, p, o))
     else:
         emb = model.get_embeddings(X, embedding_type=mode)
 
     def get_dups(tol):
         """
-         Given tolerance, finds duplicate entities in a graph based on their embeddings.
+        Given tolerance, finds duplicate entities in a graph based on their embeddings.
 
-         Parameters
-         ----------
-         tol: float
-             Minimum distance (depending on the chosen metric) to define one entity as the duplicate of another.
+        Parameters
+        ----------
+        tol: float
+            Minimum distance (depending on the chosen metric) to define one entity as the duplicate of another.
 
-         Returns
-         -------
-         duplicates : set of frozensets
-             Each entry in the duplicates set is a frozenset containing all entities that were found to be duplicates
-             according to the metric and tolerance.
-             Each frozenset will contain at least two entities.
+        Returns
+        -------
+        duplicates : set of frozensets
+            Each entry in the duplicates set is a frozenset containing all entities that were found to be duplicates
+            according to the metric and tolerance.
+            Each frozenset will contain at least two entities.
 
         """
         nn = NearestNeighbors(metric=metric, radius=tol)
         nn.fit(emb)
         neighbors = nn.radius_neighbors(emb)[1]
-        idx_dups = ((i, row)
-                    for i, row in enumerate(neighbors) if len(row) > 1)
+        idx_dups = ((i, row) for i, row in enumerate(neighbors) if len(row) > 1)
         if mode == "t":
-            dups = {frozenset(tuple(X[idx]) for idx in row)
-                    for i, row in idx_dups}
+            dups = {frozenset(tuple(X[idx]) for idx in row) for i, row in idx_dups}
         else:
             dups = {frozenset(X[idx] for idx in row) for i, row in idx_dups}
         return dups
@@ -910,28 +923,32 @@ def find_duplicates(X, model, mode="e", metric='l2', tolerance='auto',
         duplicates = get_dups(tol)
         fraction_duplicates = len(set().union(*duplicates)) / len(emb)
         if verbose:
-            info['Nfeval'] += 1
+            info["Nfeval"] += 1
             logger.info(
                 "Eval {}: tol: {}, duplicate fraction: {}".format(
-                    info['Nfeval'], tol, fraction_duplicates))
+                    info["Nfeval"], tol, fraction_duplicates
+                )
+            )
         return fraction_duplicates - expected_fraction_duplicates
 
-    if tolerance == 'auto':
+    if tolerance == "auto":
         max_distance = spatial.distance_matrix(emb, emb).max()
         tolerance = optimize.bisect(
-            opt, 0.0, max_distance, xtol=1e-3, maxiter=50, args=({'Nfeval': 0}, ))
+            opt, 0.0, max_distance, xtol=1e-3, maxiter=50, args=({"Nfeval": 0},)
+        )
 
     return get_dups(tolerance), tolerance
 
 
 def query_topn(
-        model,
-        top_n=10,
-        head=None,
-        relation=None,
-        tail=None,
-        ents_to_consider=None,
-        rels_to_consider=None):
+    model,
+    top_n=10,
+    head=None,
+    relation=None,
+    tail=None,
+    ents_to_consider=None,
+    rels_to_consider=None,
+):
     """Queries the model with two elements of a triple and returns the top_n results of
     all possible completions ordered by score predicted by the model.
 
@@ -1010,78 +1027,79 @@ def query_topn(
         model = model.model
 
     if not model.is_fitted:
-        msg = 'Model is not fitted.'
+        msg = "Model is not fitted."
         logger.error(msg)
         raise ValueError(msg)
 
     if not np.sum([head is None, relation is None, tail is None]) == 1:
-        msg = 'Exactly one of `head`, `relation` or `tail` arguments must be None.'
+        msg = "Exactly one of `head`, `relation` or `tail` arguments must be None."
         logger.error(msg)
         raise ValueError(msg)
 
     if head:
         if head not in list(model.data_indexer.backend.get_all_entities()):
-            msg = 'Head entity `{}` not seen by model'.format(head)
+            msg = "Head entity `{}` not seen by model".format(head)
             logger.error(msg)
             raise ValueError(msg)
 
     if relation:
-        if relation not in list(
-                model.data_indexer.backend.get_all_relations()):
-            msg = 'Relation `{}` not seen by model'.format(relation)
+        if relation not in list(model.data_indexer.backend.get_all_relations()):
+            msg = "Relation `{}` not seen by model".format(relation)
             logger.error(msg)
             raise ValueError(msg)
 
     if tail:
         if tail not in list(model.data_indexer.backend.get_all_entities()):
-            msg = 'Tail entity `{}` not seen by model'.format(tail)
+            msg = "Tail entity `{}` not seen by model".format(tail)
             logger.error(msg)
             raise ValueError(msg)
 
     if ents_to_consider is not None:
         if head and tail:
-            msg = 'Cannot specify `ents_to_consider` and both `subject` and `object` arguments.'
+            msg = "Cannot specify `ents_to_consider` and both `subject` and `object` arguments."
             logger.error(msg)
             raise ValueError(msg)
         if not isinstance(ents_to_consider, (list, np.ndarray)):
-            msg = '`ents_to_consider` must be a list or numpy array.'
+            msg = "`ents_to_consider` must be a list or numpy array."
             logger.error(msg)
             raise ValueError(msg)
-        if not all(x in list(model.data_indexer.backend.get_all_entities())
-                   for x in ents_to_consider):
-            msg = 'Entities in `ents_to_consider` have not been seen by the model.'
+        if not all(
+            x in list(model.data_indexer.backend.get_all_entities())
+            for x in ents_to_consider
+        ):
+            msg = "Entities in `ents_to_consider` have not been seen by the model."
             logger.error(msg)
             raise ValueError(msg)
         if len(ents_to_consider) < top_n:
-            msg = '`ents_to_consider` contains less than top_n values, return set will be truncated.'
+            msg = "`ents_to_consider` contains less than top_n values, return set will be truncated."
             logger.warning(msg)
 
     if rels_to_consider is not None:
         if relation:
-            msg = 'Cannot specify both `rels_to_consider` and `relation` arguments.'
+            msg = "Cannot specify both `rels_to_consider` and `relation` arguments."
             logger.error(msg)
             raise ValueError(msg)
         if not isinstance(rels_to_consider, (list, np.ndarray)):
-            msg = '`rels_to_consider` must be a list or numpy array.'
+            msg = "`rels_to_consider` must be a list or numpy array."
             logger.error(msg)
             raise ValueError(msg)
-        if not all(x in list(model.data_indexer.backend.get_all_relations())
-                   for x in rels_to_consider):
-            msg = 'Relations in `rels_to_consider` have not been seen by the model.'
+        if not all(
+            x in list(model.data_indexer.backend.get_all_relations())
+            for x in rels_to_consider
+        ):
+            msg = "Relations in `rels_to_consider` have not been seen by the model."
             logger.error(msg)
             raise ValueError(msg)
         if len(rels_to_consider) < top_n:
-            msg = '`rels_to_consider` contains less than top_n values, return set will be truncated.'
+            msg = "`rels_to_consider` contains less than top_n values, return set will be truncated."
             logger.warning(msg)
 
     # Complete triples from entity and relation dict
     if relation is None:
-        rels = rels_to_consider or list(
-            model.data_indexer.backend.get_all_relations())
+        rels = rels_to_consider or list(model.data_indexer.backend.get_all_relations())
         triples = np.array([[head, x, tail] for x in rels])
     else:
-        ents = ents_to_consider or list(
-            model.data_indexer.backend.get_all_entities())
+        ents = ents_to_consider or list(model.data_indexer.backend.get_all_entities())
         if head:
             triples = np.array([[head, relation, x] for x in ents])
         else:

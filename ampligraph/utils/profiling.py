@@ -19,7 +19,7 @@ def get_memory_size():
         Memory size used in total.
     """
     snapshot = tracemalloc.take_snapshot()
-    stats = snapshot.statistics('lineno', cumulative=True)
+    stats = snapshot.statistics("lineno", cumulative=True)
     total = sum(stat.size for stat in stats)
     return total
 
@@ -66,6 +66,7 @@ def timing_and_memory(f):
     --------
     passing **kwargs in function parameters
     """
+
     @wraps(f)
     def wrapper(*args, **kwargs):
         tracemalloc.start()
@@ -75,17 +76,20 @@ def timing_and_memory(f):
         end = time()
         mem_after = get_memory_size()
         mem_diff = mem_after - mem_before
-        print("{}: memory before: {:.5}{}, after: {:.5}{},\
+        print(
+            "{}: memory before: {:.5}{}, after: {:.5}{},\
               consumed: {:.5}{}; exec time: {:.5}s".format(
-            f.__name__,
-            *get_human_readable_size(mem_before),
-            *get_human_readable_size(mem_after),
-            *get_human_readable_size(mem_diff),
-            end - start))
+                f.__name__,
+                *get_human_readable_size(mem_before),
+                *get_human_readable_size(mem_after),
+                *get_human_readable_size(mem_diff),
+                end - start
+            )
+        )
 
-        if 'log' in kwargs:
-            name = kwargs.get('log_name', f.__name__.upper())
-            kwargs['log'][name] = {'time': end - start,
-                                   'memory-bytes': mem_diff}
+        if "log" in kwargs:
+            name = kwargs.get("log_name", f.__name__.upper())
+            kwargs["log"][name] = {"time": end - start, "memory-bytes": mem_diff}
         return result
+
     return wrapper

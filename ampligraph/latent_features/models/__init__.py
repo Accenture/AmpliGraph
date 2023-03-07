@@ -7,4 +7,4 @@
 #
 from .ScoringBasedEmbeddingModel import ScoringBasedEmbeddingModel
 
-__all__ = ['ScoringBasedEmbeddingModel']
+__all__ = ["ScoringBasedEmbeddingModel"]

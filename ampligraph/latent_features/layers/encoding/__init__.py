@@ -7,4 +7,4 @@
 #
 from .EmbeddingLookupLayer import EmbeddingLookupLayer
 
-__all__ = ['EmbeddingLookupLayer']
+__all__ = ["EmbeddingLookupLayer"]

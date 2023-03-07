@@ -9,4 +9,4 @@
 from .evaluate import evaluate_performance
 from .models import ComplEx, DistMult, HolE, TransE
 
-__all__ = ['evaluate_performance', 'TransE', 'ComplEx', 'DistMult', 'HolE']
+__all__ = ["evaluate_performance", "TransE", "ComplEx", "DistMult", "HolE"]

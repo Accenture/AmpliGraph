@@ -41,7 +41,7 @@ DEFAULT_LABEL_SMOOTHING = None
 DEFAULT_LABEL_WEIGHTING = False
 
 # default reduction of corruption loss per sample
-DEFAULT_REDUCTION = 'sum'
+DEFAULT_REDUCTION = "sum"
 
 
 def register_loss(name, external_params=None):
@@ -58,16 +58,16 @@ def register_loss(name, external_params=None):
 
 
 def clip_before_exp(value):
-    """Clip the value for stability of exponential.
-    """
-    return tf.clip_by_value(value,
-                            clip_value_min=DEFAULT_CLIP_EXP_LOWER,
-                            clip_value_max=DEFAULT_CLIP_EXP_UPPER)
+    """Clip the value for stability of exponential."""
+    return tf.clip_by_value(
+        value,
+        clip_value_min=DEFAULT_CLIP_EXP_LOWER,
+        clip_value_max=DEFAULT_CLIP_EXP_UPPER,
+    )
 
 
 class Loss(abc.ABC):
-    """Abstract class for the loss function.
-    """
+    """Abstract class for the loss function."""
 
     name = ""
     external_params = []
@@ -87,28 +87,32 @@ class Loss(abc.ABC):
             Other Keys are described in the `hyperparameters` section.
         """
         self._loss_parameters = {}
-        self._loss_parameters['reduction'] = hyperparam_dict.get(
-            'reduction', DEFAULT_REDUCTION)
-        assert self._loss_parameters['reduction'] in [
-            'sum', 'mean'], 'Invalid value for reduction!'
+        self._loss_parameters["reduction"] = hyperparam_dict.get(
+            "reduction", DEFAULT_REDUCTION
+        )
+        assert self._loss_parameters["reduction"] in [
+            "sum",
+            "mean",
+        ], "Invalid value for reduction!"
         self._dependencies = []
         self._user_losses = self.name
         self._user_loss_weights = None
 
-        self._loss_metric = metrics_mod.Mean(name='loss')  # Total loss.
+        self._loss_metric = metrics_mod.Mean(name="loss")  # Total loss.
 
         # perform check to see if all the required external hyperparams are
         # passed
         try:
             self._init_hyperparams(hyperparam_dict)
             if verbose:
-                logger.info('\n--------- Loss ---------')
-                logger.info('Name : {}'.format(self.name))
+                logger.info("\n--------- Loss ---------")
+                logger.info("Name : {}".format(self.name))
                 for key, value in self._loss_parameters.items():
-                    logger.info('{} : {}'.format(key, value))
+                    logger.info("{} : {}".format(key, value))
         except KeyError as e:
-            msg = 'Some of the hyperparams for loss were not passed to the loss function.\n{}'.format(
-                e)
+            msg = "Some of the hyperparams for loss were not passed to the loss function.\n{}".format(
+                e
+            )
             logger.error(msg)
             raise Exception(msg)
 
@@ -118,8 +122,8 @@ class Loss(abc.ABC):
         return [self._loss_metric]
 
     def _reduce_sample_loss(self, loss):
-        ''' Aggregates the loss of each sample either by adding or taking the mean w.r.t. the number of corruptions.'''
-        if self._loss_parameters['reduction'] == 'sum':
+        """Aggregates the loss of each sample either by adding or taking the mean w.r.t. the number of corruptions."""
+        if self._loss_parameters["reduction"] == "sum":
             return tf.reduce_sum(loss, 0)
         else:
             return tf.reduce_mean(loss, 0)
@@ -132,7 +136,7 @@ class Loss(abc.ABC):
         hyperparam_dict : dict
             The Loss will check the keys to get the corresponding parameters.
         """
-        msg = 'This function is a placeholder in an abstract class.'
+        msg = "This function is a placeholder in an abstract class."
         logger.error(msg)
         raise NotImplementedError(msg)
 
@@ -154,7 +158,7 @@ class Loss(abc.ABC):
         loss : tf.Tensor
             The loss value that must be minimized.
         """
-        msg = 'This function is a placeholder in an abstract class.'
+        msg = "This function is a placeholder in an abstract class."
         logger.error(msg)
         raise NotImplementedError(msg)
 
@@ -173,16 +177,12 @@ class Loss(abc.ABC):
         scores_pos : tf.Tensor
             Broadcasted `score_pos`.
         """
-        scores_pos = tf.reshape(tf.tile(scores_pos, [eta]), [
-                                eta, tf.shape(scores_pos)[0]])
+        scores_pos = tf.reshape(
+            tf.tile(scores_pos, [eta]), [eta, tf.shape(scores_pos)[0]]
+        )
         return scores_pos
 
-    def __call__(
-            self,
-            scores_pos,
-            scores_neg,
-            eta,
-            regularization_losses=None):
+    def __call__(self, scores_pos, scores_neg, eta, regularization_losses=None):
         """Interface to external world.
 
         This function does the input checks, preprocesses input and finally applies loss function.
@@ -212,7 +212,8 @@ class Loss(abc.ABC):
         loss_values.append(tf.reduce_sum(loss))
         if regularization_losses:
             regularization_losses = losses_utils.cast_losses_to_common_dtype(
-                regularization_losses)
+                regularization_losses
+            )
             reg_loss = math_ops.add_n(regularization_losses)
             loss_values.append(reg_loss)
 
@@ -222,7 +223,7 @@ class Loss(abc.ABC):
         return total_loss
 
 
-@register_loss("pairwise", ['margin'])
+@register_loss("pairwise", ["margin"])
 class PairwiseLoss(Loss):
     r"""Pairwise, max-margin loss.
 
@@ -275,8 +276,7 @@ class PairwiseLoss(Loss):
 
             - `"margin"`: (str) - Margin to be used in pairwise loss computation (default: 1).
         """
-        self._loss_parameters['margin'] = hyperparam_dict.get(
-            'margin', DEFAULT_MARGIN)
+        self._loss_parameters["margin"] = hyperparam_dict.get("margin", DEFAULT_MARGIN)
 
     @tf.function(experimental_relax_shapes=True)
     def _apply_loss(self, scores_pos, scores_neg):
@@ -296,11 +296,9 @@ class PairwiseLoss(Loss):
 
         """
         margin = tf.constant(
-            self._loss_parameters['margin'],
-            dtype=tf.float32,
-            name='margin')
-        loss = self._reduce_sample_loss(
-            tf.maximum(margin - scores_pos + scores_neg, 0))
+            self._loss_parameters["margin"], dtype=tf.float32, name="margin"
+        )
+        loss = self._reduce_sample_loss(tf.maximum(margin - scores_pos + scores_neg, 0))
         return loss
 
 
@@ -378,7 +376,7 @@ class NLLLoss(Loss):
         return self._reduce_sample_loss(tf.math.log(1 + tf.exp(scores)))
 
 
-@register_loss("absolute_margin", ['margin'])
+@register_loss("absolute_margin", ["margin"])
 class AbsoluteMarginLoss(Loss):
     r"""Absolute margin, max-margin loss.
 
@@ -430,8 +428,7 @@ class AbsoluteMarginLoss(Loss):
 
            `"margin"`: (str) - Margin to be used in loss computation (default: 1).
         """
-        self._loss_parameters['margin'] = hyperparam_dict.get(
-            'margin', DEFAULT_MARGIN)
+        self._loss_parameters["margin"] = hyperparam_dict.get("margin", DEFAULT_MARGIN)
 
     @tf.function(experimental_relax_shapes=True)
     def _apply_loss(self, scores_pos, scores_neg):
@@ -451,17 +448,13 @@ class AbsoluteMarginLoss(Loss):
 
         """
         margin = tf.constant(
-            self._loss_parameters['margin'],
-            dtype=tf.float32,
-            name='margin')
-        loss = self._reduce_sample_loss(
-            tf.maximum(
-                margin + scores_neg,
-                0) - scores_pos)
+            self._loss_parameters["margin"], dtype=tf.float32, name="margin"
+        )
+        loss = self._reduce_sample_loss(tf.maximum(margin + scores_neg, 0) - scores_pos)
         return loss
 
 
-@register_loss("self_adversarial", ['margin', 'alpha'])
+@register_loss("self_adversarial", ["margin", "alpha"])
 class SelfAdversarialLoss(Loss):
     r"""Self Adversarial Sampling loss.
 
@@ -526,42 +519,45 @@ class SelfAdversarialLoss(Loss):
             - `"margin"`` (int) - Margin to be used in adversarial loss computation (default: 3).
             - `"alpha"`: (float) - Temperature of sampling (default: 0.5).
         """
-        self._loss_parameters['margin'] = hyperparam_dict.get(
-            'margin', DEFAULT_MARGIN_ADVERSARIAL)
-        self._loss_parameters['alpha'] = hyperparam_dict.get(
-            'alpha', DEFAULT_ALPHA_ADVERSARIAL)
+        self._loss_parameters["margin"] = hyperparam_dict.get(
+            "margin", DEFAULT_MARGIN_ADVERSARIAL
+        )
+        self._loss_parameters["alpha"] = hyperparam_dict.get(
+            "alpha", DEFAULT_ALPHA_ADVERSARIAL
+        )
 
     @tf.function(experimental_relax_shapes=True)
     def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
 
-       Parameters
-       ----------
-       scores_pos : tf.Tensor, shape (n, 1)
-           A tensor of scores assigned to positive statements.
-       scores_neg : tf.Tensor, shape (eta, n)
-           A tensor of scores assigned to negative statements.
+        Parameters
+        ----------
+        scores_pos : tf.Tensor, shape (n, 1)
+            A tensor of scores assigned to positive statements.
+        scores_neg : tf.Tensor, shape (eta, n)
+            A tensor of scores assigned to negative statements.
 
-       Returns
-       -------
-       loss : tf.Tensor
-           The loss value that must be minimized.
+        Returns
+        -------
+        loss : tf.Tensor
+            The loss value that must be minimized.
 
-       """
+        """
         margin = tf.constant(
-            self._loss_parameters['margin'],
-            dtype=tf.float32,
-            name='margin')
+            self._loss_parameters["margin"], dtype=tf.float32, name="margin"
+        )
         alpha = tf.constant(
-            self._loss_parameters['alpha'],
-            dtype=tf.float32,
-            name='alpha')
+            self._loss_parameters["alpha"], dtype=tf.float32, name="alpha"
+        )
 
         p_neg = tf.nn.softmax(alpha * scores_neg, axis=0)
 
         # Compute Loss based on eg 5
-        loss = -tf.math.log_sigmoid(margin - tf.negative(scores_pos)) - self._reduce_sample_loss(
-            tf.multiply(p_neg, tf.math.log_sigmoid(tf.negative(scores_neg) - margin)))
+        loss = -tf.math.log_sigmoid(
+            margin - tf.negative(scores_pos)
+        ) - self._reduce_sample_loss(
+            tf.multiply(p_neg, tf.math.log_sigmoid(tf.negative(scores_neg) - margin))
+        )
 
         return loss
 
@@ -622,19 +618,19 @@ class NLLMulticlass(Loss):
     def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
 
-       Parameters
-       ----------
-       scores_pos : tf.Tensor, shape (n, 1)
-           A tensor of scores assigned to positive statements.
-       scores_neg : tf.Tensor, shape (eta, n)
-           A tensor of scores assigned to negative statements.
+        Parameters
+        ----------
+        scores_pos : tf.Tensor, shape (n, 1)
+            A tensor of scores assigned to positive statements.
+        scores_neg : tf.Tensor, shape (eta, n)
+            A tensor of scores assigned to negative statements.
 
-       Returns
-       -------
-       loss : float
-           The loss value that must be minimized.
+        Returns
+        -------
+        loss : float
+            The loss value that must be minimized.
 
-       """
+        """
         # Fix for numerical instability of multiclass loss
         scores_pos = clip_before_exp(scores_pos)
         scores_neg = clip_before_exp(scores_neg)
@@ -665,10 +661,8 @@ class LossFunctionWrapper(Loss):
     True
     """
 
-    def __init__(self,
-                 user_defined_loss,
-                 name=None):
-        ''' Initializes the LossFunctionWrapper.
+    def __init__(self, user_defined_loss, name=None):
+        """Initializes the LossFunctionWrapper.
 
         Parameters
         ----------
@@ -676,7 +670,7 @@ class LossFunctionWrapper(Loss):
             Handle to loss function (should take 2 parameters as input).
         name: str
             Name of the loss function.
-        '''
+        """
         super(LossFunctionWrapper, self).__init__()
         self._user_losses = user_defined_loss
         self.name = name
@@ -695,24 +689,24 @@ class LossFunctionWrapper(Loss):
     def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
 
-       Parameters
-       ----------
-       scores_pos : tf.Tensor, shape (n, 1)
-           A tensor of scores assigned to positive statements.
-       scores_neg : tf.Tensor, shape (eta, n)
-           A tensor of scores assigned to negative statements.
+        Parameters
+        ----------
+        scores_pos : tf.Tensor, shape (n, 1)
+            A tensor of scores assigned to positive statements.
+        scores_neg : tf.Tensor, shape (eta, n)
+            A tensor of scores assigned to negative statements.
 
-       Returns
-       -------
-       loss : float
-           The loss value that must be minimized.
+        Returns
+        -------
+        loss : float
+            The loss value that must be minimized.
 
-       """
+        """
         return self._user_losses(scores_pos, scores_neg)
 
 
 def get(identifier, hyperparams={}):
-    '''
+    """
     Get the loss function specified by the identifier.
 
     Parameters
@@ -743,18 +737,16 @@ def get(identifier, hyperparams={}):
     >>> udf_loss = lfs.get(user_defined_loss)
     >>> isinstance(udf_loss, Loss)
     True
-    '''
+    """
     if isinstance(identifier, Loss):
         return identifier
     elif isinstance(identifier, six.string_types):
         if identifier not in LOSS_REGISTRY.keys():
-            raise ValueError(
-                'Could not interpret loss identifier:',
-                identifier)
+            raise ValueError("Could not interpret loss identifier:", identifier)
         return LOSS_REGISTRY.get(identifier)(hyperparams)
     elif callable(identifier):
         loss_name = identifier.__name__
         wrapped_callable = LossFunctionWrapper(identifier, loss_name)
         return wrapped_callable
     else:
-        raise ValueError('Could not interpret loss identifier:', identifier)
+        raise ValueError("Could not interpret loss identifier:", identifier)

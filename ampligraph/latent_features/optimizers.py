@@ -16,8 +16,7 @@ logger.setLevel(logging.DEBUG)
 
 
 class OptimizerWrapper(abc.ABC):
-    """Wrapper around tensorflow optimizer.
-    """
+    """Wrapper around tensorflow optimizer."""
 
     def __init__(self, optimizer=None):
         """Initialize the tensorflow Optimizer and wraps it so that it can be used with graph partitioning.
@@ -35,9 +34,11 @@ class OptimizerWrapper(abc.ABC):
 
         # workaround for Adagrad/Adadelta/Ftrl optimizers to work on gpu
         self.gpu_workaround = False
-        if isinstance(self.optimizer, tf.keras.optimizers.Adadelta) or \
-            isinstance(self.optimizer, tf.keras.optimizers.Adagrad) or \
-                isinstance(self.optimizer, tf.keras.optimizers.Ftrl):
+        if (
+            isinstance(self.optimizer, tf.keras.optimizers.Adadelta)
+            or isinstance(self.optimizer, tf.keras.optimizers.Adagrad)
+            or isinstance(self.optimizer, tf.keras.optimizers.Ftrl)
+        ):
             self.gpu_workaround = True
 
         if isinstance(self.optimizer, tf.keras.optimizers.Adam):
@@ -54,7 +55,7 @@ class OptimizerWrapper(abc.ABC):
         self.is_partitioned_training = value
 
     def minimize(self, loss, ent_emb, rel_emb, gradient_tape, other_vars=[]):
-        '''Minimizes the loss with respect to entity and relation embeddings and other trainable variables.
+        """Minimizes the loss with respect to entity and relation embeddings and other trainable variables.
 
         Parameters
         ----------
@@ -68,7 +69,7 @@ class OptimizerWrapper(abc.ABC):
             Gradient tape under which the loss computation was tracked.
         other_vars: list
             List of all the other trainable variables.
-        '''
+        """
         all_trainable_vars = [ent_emb, rel_emb]
         all_trainable_vars.extend(other_vars)
         # Total number of trainable variables in the graph
@@ -78,9 +79,7 @@ class OptimizerWrapper(abc.ABC):
             # workaround - see the issue:
             # https://github.com/tensorflow/tensorflow/issues/28090
             with gradient_tape:
-                loss += (0.0000 *
-                         (tf.reduce_sum(ent_emb) +
-                          tf.reduce_sum(rel_emb)))
+                loss += 0.0000 * (tf.reduce_sum(ent_emb) + tf.reduce_sum(rel_emb))
 
         # Compute gradient of loss wrt trainable vars
         gradients = gradient_tape.gradient(loss, all_trainable_vars)
@@ -95,14 +94,14 @@ class OptimizerWrapper(abc.ABC):
         #        self.number_hyperparams += 1
 
     def get_hyperparam_count(self):
-        ''' Number of hyperparams of the optimizer being used.
+        """Number of hyperparams of the optimizer being used.
 
-            E.g., `adam` has `beta1` and `beta2`; if we use the `amsgrad` argument then it has also a third.
-        '''
+        E.g., `adam` has `beta1` and `beta2`; if we use the `amsgrad` argument then it has also a third.
+        """
         return self.number_hyperparams
 
     def get_entity_relation_hyperparams(self):
-        ''' Get optimizer hyperparams related to entity and relation embeddings (for partitioned training).
+        """Get optimizer hyperparams related to entity and relation embeddings (for partitioned training).
 
         Returns
         -------
@@ -110,7 +109,7 @@ class OptimizerWrapper(abc.ABC):
             Entity embedding related optimizer hyperparameters.
         rel_hyperparams: np.array
             Relation embedding related optimizer hyperparameters.
-        '''
+        """
         optim_weights = self.optimizer.get_weights()
         ent_hyperparams = []
         rel_hyperparams = []
@@ -120,9 +119,8 @@ class OptimizerWrapper(abc.ABC):
 
         return ent_hyperparams, rel_hyperparams
 
-    def set_entity_relation_hyperparams(
-            self, ent_hyperparams, rel_hyperparams):
-        ''' Sets optimizer hyperparams related to entity and relation embeddings (for partitioned training).
+    def set_entity_relation_hyperparams(self, ent_hyperparams, rel_hyperparams):
+        """Sets optimizer hyperparams related to entity and relation embeddings (for partitioned training).
 
         Parameters
         ----------
@@ -130,12 +128,12 @@ class OptimizerWrapper(abc.ABC):
             Entity embedding related optimizer hyperparameters.
         rel_hyperparams: np.array
             Relation embedding related optimizer hyperparameters.
-        '''
+        """
         optim_weights = self.optimizer.get_weights()
         for i, j in zip(
-            range(
-                1, len(optim_weights), self.num_optimized_vars), range(
-                len(ent_hyperparams))):
+            range(1, len(optim_weights), self.num_optimized_vars),
+            range(len(ent_hyperparams)),
+        ):
             optim_weights[i] = ent_hyperparams[j]
             optim_weights[i + 1] = rel_hyperparams[j]
         self.optimizer.set_weights(optim_weights)
@@ -163,16 +161,16 @@ class OptimizerWrapper(abc.ABC):
     @classmethod
     def from_config(cls, config):
         new_config = {}
-        new_config['class_name'] = config['name']
+        new_config["class_name"] = config["name"]
 
-        del config['name']
-        new_config['config'] = config
+        del config["name"]
+        new_config["config"] = config
         optimizer = tf.keras.optimizers.get(new_config)
         return optimizer
 
 
 def get(identifier):
-    '''
+    """
     Get the optimizer specified by the identifier.
 
     Parameters
@@ -186,7 +184,7 @@ def get(identifier):
         Instance of `tf.optimizers.Optimizer` wrapped around by `OptimizerWrapper` so that graph partitioning
         is supported.
 
-    '''
+    """
     if isinstance(identifier, tf.optimizers.Optimizer):
         return OptimizerWrapper(identifier)
     elif isinstance(identifier, OptimizerWrapper):
@@ -195,6 +193,4 @@ def get(identifier):
         optimizer = tf.keras.optimizers.get(identifier)
         return OptimizerWrapper(optimizer)
     else:
-        raise ValueError(
-            'Could not interpret optimizer identifier:',
-            identifier)
+        raise ValueError("Could not interpret optimizer identifier:", identifier)

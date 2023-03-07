@@ -5,4 +5,4 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-__all__ = ['scoring', 'encoding', 'corruption_generation', 'calibration']
+__all__ = ["scoring", "encoding", "corruption_generation", "calibration"]

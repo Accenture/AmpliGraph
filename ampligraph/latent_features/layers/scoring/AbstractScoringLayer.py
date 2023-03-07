@@ -6,6 +6,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 import tensorflow as tf
+
 # Precision for floating point comparison
 COMPARISION_PRECISION = 1e3
 
@@ -15,7 +16,7 @@ SCORING_LAYER_REGISTRY = {}
 
 
 def register_layer(name, external_params=None, class_params=None):
-    '''Register the scoring function using this decorator.
+    """Register the scoring function using this decorator.
 
     Parameters
     -----------
@@ -25,16 +26,19 @@ def register_layer(name, external_params=None, class_params=None):
         If there are any scoring function hyperparams, register their names.
     class_params: dict
         Parameters that may be used internally across various models.
-    '''
+    """
     if external_params is None:
         external_params = []
     if class_params is None:
         class_params = {}
 
     def insert_in_registry(class_handle):
-        assert name not in SCORING_LAYER_REGISTRY.keys(
+        assert (
+            name not in SCORING_LAYER_REGISTRY.keys()
         ), "Scoring Layer with name {} \
-        already exists!".format(name)
+        already exists!".format(
+            name
+        )
 
         # store the class handle in the registry with name as key
         SCORING_LAYER_REGISTRY[name] = class_handle
@@ -51,8 +55,7 @@ def register_layer(name, external_params=None, class_params=None):
 
 
 class AbstractScoringLayer(tf.keras.layers.Layer):
-    ''' Abstract class for scoring layer.
-    '''
+    """Abstract class for scoring layer."""
 
     def get_config(self):
         config = super(AbstractScoringLayer, self).get_config()
@@ -60,19 +63,19 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         return config
 
     def __init__(self, k):
-        '''Initializes the scoring layer.
+        """Initializes the scoring layer.
 
         Parameters
         ----------
         k: int
             Embedding size.
-        '''
+        """
         super(AbstractScoringLayer, self).__init__()
         # store the embedding size. (concrete models may overwrite this)
         self.internal_k = k
 
     def call(self, triples):
-        ''' Interface to the external world.
+        """Interface to the external world.
         Computes the scores of the triples.
 
         Parameters
@@ -84,11 +87,11 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         -------
         scores: tf.Tensor, shape (n,1)
             Tensor of scores of inputs.
-        '''
+        """
         return self._compute_scores(triples)
 
     def _compute_scores(self, triples):
-        ''' Abstract function to compute scores. Override this method in concrete classes.
+        """Abstract function to compute scores. Override this method in concrete classes.
 
         Parameters
         -----------
@@ -99,11 +102,11 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         --------
         scores: tf.Tensor, shape (n,1)
             Tensor of scores of inputs.
-        '''
-        raise NotImplementedError('Abstract method not implemented!')
+        """
+        raise NotImplementedError("Abstract method not implemented!")
 
     def _get_object_corruption_scores(self, triples, ent_matrix):
-        ''' Abstract function to compute object corruption scores.
+        """Abstract function to compute object corruption scores.
 
         Evaluate the inputs against object corruptions and scores of the corruptions.
 
@@ -118,11 +121,11 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         --------
         scores: tf.Tensor, shape (n,1)
             Scores of object corruptions (corruptions defined by `ent_embs` matrix).
-        '''
-        raise NotImplementedError('Abstract method not implemented!')
+        """
+        raise NotImplementedError("Abstract method not implemented!")
 
     def _get_subject_corruption_scores(self, triples, ent_matrix):
-        ''' Abstract function to compute subject corruption scores.
+        """Abstract function to compute subject corruption scores.
 
         Evaluate the inputs against subject corruptions and scores of the corruptions.
 
@@ -137,20 +140,21 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         --------
         scores: tf.Tensor, shape (n,1)
             Scores of subject corruptions (corruptions defined by `ent_embs` matrix).
-        '''
-        raise NotImplementedError('Abstract method not implemented!')
+        """
+        raise NotImplementedError("Abstract method not implemented!")
 
     def get_ranks(
-            self,
-            triples,
-            ent_matrix,
-            start_ent_id,
-            end_ent_id,
-            filters,
-            mapping_dict,
-            corrupt_side='s,o',
-            comparison_type='worst'):
-        ''' Computes the ranks of triples against their corruptions.
+        self,
+        triples,
+        ent_matrix,
+        start_ent_id,
+        end_ent_id,
+        filters,
+        mapping_dict,
+        corrupt_side="s,o",
+        comparison_type="worst",
+    ):
+        """Computes the ranks of triples against their corruptions.
 
         Ranks are computed by corrupting triple subject and/or object with the embeddings in ent_matrix.
 
@@ -178,7 +182,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         --------
         ranks: tf.Tensor, shape (n,2)
             Ranks of triple against subject and object corruptions (corruptions defined by `ent_embs` matrix).
-        '''
+        """
         # compute the score of true positives
         triple_score = self._compute_scores(triples)
 
@@ -188,47 +192,34 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
 
         out_ranks = tf.TensorArray(tf.int32, size=0, dynamic_size=True)
         filter_index = 0
-        if tf.strings.regex_full_match(corrupt_side, '.*s.*'):
-
+        if tf.strings.regex_full_match(corrupt_side, ".*s.*"):
             # compute the score by corrupting the subject side of triples by
             # ent_matrix
-            sub_corr_score = self._get_subject_corruption_scores(
-                triples, ent_matrix)
+            sub_corr_score = self._get_subject_corruption_scores(triples, ent_matrix)
             # Handle the floating point comparison by multiplying by reqd precision and casting to int
             # before comparing
-            sub_corr_score = tf.cast(
-                sub_corr_score * COMPARISION_PRECISION, tf.int32)
+            sub_corr_score = tf.cast(sub_corr_score * COMPARISION_PRECISION, tf.int32)
 
             # if pos score: 0.5, corr_score: 0.5, 0.5, 0.3, 0.6, 0.5, 0.5
-            if comparison_type == 'best':
+            if comparison_type == "best":
                 # returns: 1 i.e. only. 1 corruption is having score greater
                 # than positive (optimistic)
                 sub_rank = tf.reduce_sum(
-                    tf.cast(
-                        tf.expand_dims(
-                            triple_score,
-                            1) < sub_corr_score,
-                        tf.int32),
-                    1)
-            elif comparison_type == 'middle':
-
+                    tf.cast(tf.expand_dims(triple_score, 1) < sub_corr_score, tf.int32),
+                    1,
+                )
+            elif comparison_type == "middle":
                 # returns: 3 i.e. 1 + (4/2) i.e. only 1  corruption is having score greater than positive
                 # and 4 corruptions are having same (middle rank is 4/2 = 1),
                 # so 1+2=3
                 sub_rank = tf.reduce_sum(
-                    tf.cast(
-                        tf.expand_dims(
-                            triple_score,
-                            1) < sub_corr_score,
-                        tf.int32),
-                    1)
+                    tf.cast(tf.expand_dims(triple_score, 1) < sub_corr_score, tf.int32),
+                    1,
+                )
                 part = tf.cast(
-                    tf.expand_dims(
-                        triple_score,
-                        1) == sub_corr_score,
-                    tf.int32)
-                sub_rank += tf.cast(tf.math.ceil(tf.reduce_sum(part,
-                                    1) / 2), tf.int32)
+                    tf.expand_dims(triple_score, 1) == sub_corr_score, tf.int32
+                )
+                sub_rank += tf.cast(tf.math.ceil(tf.reduce_sum(part, 1) / 2), tf.int32)
             else:
                 # returns: 5 i.e. 5 corruptions are having score >= positive
                 # as you can see this strategy returns the worst rank
@@ -238,11 +229,10 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                 # corruptions and get rank.
                 sub_rank = tf.reduce_sum(
                     tf.cast(
-                        tf.expand_dims(
-                            triple_score,
-                            1) <= sub_corr_score,
-                        tf.int32),
-                    1)
+                        tf.expand_dims(triple_score, 1) <= sub_corr_score, tf.int32
+                    ),
+                    1,
+                )
 
             if filters.shape[0] > 0:
                 # tf.print(tf.shape(triple_score)[0])
@@ -252,83 +242,71 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
 
                     if mapping_dict.size() > 0:
                         filter_ids = mapping_dict.lookup(filter_ids)
-                        filter_ids = tf.reshape(filter_ids, (-1, ))
+                        filter_ids = tf.reshape(filter_ids, (-1,))
 
-                        filter_ids_selector = tf.math.greater_equal(
-                            filter_ids, 0)
-                        filter_ids = tf.boolean_mask(filter_ids,
-                                                     filter_ids_selector,
-                                                     axis=0)
+                        filter_ids_selector = tf.math.greater_equal(filter_ids, 0)
+                        filter_ids = tf.boolean_mask(
+                            filter_ids, filter_ids_selector, axis=0
+                        )
 
                     # This is done for partitioning (where the full emb matrix is not used)
                     # this gets only the filter ids of the current partition
                     # being used for generating corruption
                     filter_ids_selector = tf.logical_and(
-                        filter_ids >= start_ent_id, filter_ids <= end_ent_id)
+                        filter_ids >= start_ent_id, filter_ids <= end_ent_id
+                    )
 
-                    filter_ids = tf.boolean_mask(
-                        filter_ids, filter_ids_selector)
+                    filter_ids = tf.boolean_mask(filter_ids, filter_ids_selector)
                     # from entity id convert to index in the current partition
                     filter_ids = filter_ids - start_ent_id
 
                     # get the score of the corruptions which are actually True
                     # positives
                     score_filter = tf.gather(
-                        tf.squeeze(
-                            tf.gather_nd(
-                                sub_corr_score, [
-                                    [i]])), filter_ids)
+                        tf.squeeze(tf.gather_nd(sub_corr_score, [[i]])), filter_ids
+                    )
                     # check how many of those were ranked higher than the test
                     # triple
                     num_filters_ranked_higher = tf.reduce_sum(
-                        tf.cast(tf.gather(triple_score, [i]) <= score_filter, tf.int32))
+                        tf.cast(tf.gather(triple_score, [i]) <= score_filter, tf.int32)
+                    )
                     # adjust the rank of the test triple accordingly
                     sub_rank = tf.tensor_scatter_nd_sub(
-                        sub_rank, [[i]], [num_filters_ranked_higher])
+                        sub_rank, [[i]], [num_filters_ranked_higher]
+                    )
 
             out_ranks = out_ranks.write(out_ranks.size(), sub_rank)
 
-        if tf.strings.regex_full_match(corrupt_side, '.*o.*'):
+        if tf.strings.regex_full_match(corrupt_side, ".*o.*"):
             # compute the score by corrupting the object side of triples by
             # ent_matrix
-            obj_corr_score = self._get_object_corruption_scores(
-                triples, ent_matrix)
+            obj_corr_score = self._get_object_corruption_scores(triples, ent_matrix)
 
             # Handle the floating point comparison by multiplying by reqd precision and casting to int
             # before comparing
-            obj_corr_score = tf.cast(
-                obj_corr_score * COMPARISION_PRECISION, tf.int32)
+            obj_corr_score = tf.cast(obj_corr_score * COMPARISION_PRECISION, tf.int32)
 
             # if pos score: 0.5, corr_score: 0.5, 0.5, 0.3, 0.6, 0.5, 0.5
-            if comparison_type == 'best':
+            if comparison_type == "best":
                 # returns: 1 i.e. only. 1 corruption is having score greater
                 # than positive (optimistic)
                 obj_rank = tf.reduce_sum(
-                    tf.cast(
-                        tf.expand_dims(
-                            triple_score,
-                            1) < obj_corr_score,
-                        tf.int32),
-                    1)
-            elif comparison_type == 'middle':
-                print('middle')
+                    tf.cast(tf.expand_dims(triple_score, 1) < obj_corr_score, tf.int32),
+                    1,
+                )
+            elif comparison_type == "middle":
+                print("middle")
                 # returns: 3 i.e. 1 + (4/2) i.e. only 1  corruption is having score greater than positive
                 # and 4 corruptions are having same (middle rank is 4/2 = 1),
                 # so 1+2=3
                 obj_rank = tf.reduce_sum(
-                    tf.cast(
-                        tf.expand_dims(
-                            triple_score,
-                            1) < obj_corr_score,
-                        tf.int32),
-                    1)
+                    tf.cast(tf.expand_dims(triple_score, 1) < obj_corr_score, tf.int32),
+                    1,
+                )
                 part = tf.cast(
-                    tf.expand_dims(
-                        triple_score,
-                        1) == obj_corr_score,
-                    tf.int32)
-                obj_rank += tf.cast(tf.math.ceil(tf.reduce_sum(part,
-                                    1) / 2), tf.int32)
+                    tf.expand_dims(triple_score, 1) == obj_corr_score, tf.int32
+                )
+                obj_rank += tf.cast(tf.math.ceil(tf.reduce_sum(part, 1) / 2), tf.int32)
             else:
                 # returns: 5 i.e. 5 corruptions are having score >= positive
                 # as you can see this strategy returns the worst rank
@@ -338,11 +316,10 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                 # corruptions and get rank.
                 obj_rank = tf.reduce_sum(
                     tf.cast(
-                        tf.expand_dims(
-                            triple_score,
-                            1) <= obj_corr_score,
-                        tf.int32),
-                    1)
+                        tf.expand_dims(triple_score, 1) <= obj_corr_score, tf.int32
+                    ),
+                    1,
+                )
 
             if filters.shape[0] > 0:
                 for i in tf.range(tf.shape(triple_score)[0]):
@@ -355,38 +332,37 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
 
                     if mapping_dict.size() > 0:
                         filter_ids = mapping_dict.lookup(filter_ids)
-                        filter_ids = tf.reshape(filter_ids, (-1, ))
+                        filter_ids = tf.reshape(filter_ids, (-1,))
 
-                        filter_ids_selector = tf.math.greater_equal(
-                            filter_ids, 0)
-                        filter_ids = tf.boolean_mask(filter_ids,
-                                                     filter_ids_selector,
-                                                     axis=0)
+                        filter_ids_selector = tf.math.greater_equal(filter_ids, 0)
+                        filter_ids = tf.boolean_mask(
+                            filter_ids, filter_ids_selector, axis=0
+                        )
 
                     # This is done for patritioning (where the full emb matrix is not used)
                     # this gets only the filter ids of the current partition
                     # being used for generating corruption
                     filter_ids_selector = tf.logical_and(
-                        filter_ids >= start_ent_id, filter_ids <= end_ent_id)
-                    filter_ids = tf.boolean_mask(
-                        filter_ids, filter_ids_selector)
+                        filter_ids >= start_ent_id, filter_ids <= end_ent_id
+                    )
+                    filter_ids = tf.boolean_mask(filter_ids, filter_ids_selector)
                     # from entity id convert to index in the current partition
                     filter_ids = filter_ids - start_ent_id
 
                     # get the score of the corruptions which are actually True
                     # positives
                     score_filter = tf.gather(
-                        tf.squeeze(
-                            tf.gather_nd(
-                                obj_corr_score, [
-                                    [i]])), filter_ids)
+                        tf.squeeze(tf.gather_nd(obj_corr_score, [[i]])), filter_ids
+                    )
                     # check how many of those were ranked higher than the test
                     # triple
                     num_filters_ranked_higher = tf.reduce_sum(
-                        tf.cast(tf.gather(triple_score, [i]) <= score_filter, tf.int32))
+                        tf.cast(tf.gather(triple_score, [i]) <= score_filter, tf.int32)
+                    )
                     # adjust the rank of the test triple accordingly
                     obj_rank = tf.tensor_scatter_nd_sub(
-                        obj_rank, [[i]], [num_filters_ranked_higher])
+                        obj_rank, [[i]], [num_filters_ranked_higher]
+                    )
 
             out_ranks = out_ranks.write(out_ranks.size(), obj_rank)
 
@@ -394,7 +370,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         return out_ranks
 
     def compute_output_shape(self, input_shape):
-        ''' Returns the output shape of the outputs of the call function.
+        """Returns the output shape of the outputs of the call function.
 
         Parameters
         -----------
@@ -405,7 +381,7 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
         --------
         output_shape: tuple
             Shape of outputs of call function.
-        '''
+        """
         assert isinstance(input_shape, list)
         batch_size, _ = input_shape
         return [batch_size, 1]

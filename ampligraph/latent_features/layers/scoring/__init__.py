@@ -11,4 +11,4 @@ from .HolE import HolE
 from .ComplEx import ComplEx
 from .Random import Random
 
-__all__ = ['TransE', 'DistMult', 'HolE', 'ComplEx', 'Random']
+__all__ = ["TransE", "DistMult", "HolE", "ComplEx", "Random"]
