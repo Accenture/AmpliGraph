@@ -4,6 +4,9 @@
 
 [![Documentation Status](https://readthedocs.org/projects/ampligraph/badge/?version=latest)](http://ampligraph.readthedocs.io/?badge=latest)
 
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/Accenture/AmpliGraph/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/Accenture/AmpliGraph/tree/main)
+
+
 [Join the conversation on Slack](https://join.slack.com/t/ampligraph/shared_invite/enQtNTc2NTI0MzUxMTM5LTRkODk0MjI2OWRlZjdjYmExY2Q3M2M3NGY0MGYyMmI4NWYyMWVhYTRjZDhkZjA1YTEyMzBkMGE4N2RmNTRiZDg)
 ![](docs/img/slack_logo.png)
 
