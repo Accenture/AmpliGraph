@@ -17,7 +17,14 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates=100, target_rel=None, seed=0):
+def discover_facts(
+        X,
+        model,
+        top_n=10,
+        strategy='random_uniform',
+        max_candidates=100,
+        target_rel=None,
+        seed=0):
     """
     Discover new facts from an existing knowledge graph.
 
@@ -165,8 +172,13 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
     #    logger.warning(msg)
         # raise ValueError(msg)
 
-    if strategy not in ['random_uniform', 'entity_frequency', 'graph_degree', 'cluster_coefficient',
-                        'cluster_triangles', 'cluster_squares']:
+    if strategy not in [
+        'random_uniform',
+        'entity_frequency',
+        'graph_degree',
+        'cluster_coefficient',
+        'cluster_triangles',
+            'cluster_squares']:
         msg = '%s is not a valid strategy.' % strategy
         logger.error(msg)
         raise ValueError(msg)
@@ -176,8 +188,10 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
         logger.info(msg)
 
     if isinstance(max_candidates, float):
-        logger.debug('Converting max_candidates float value {} to int value {}'.format(max_candidates,
-                                                                                       int(max_candidates * len(X))))
+        logger.debug(
+            'Converting max_candidates float value {} to int value {}'.format(
+                max_candidates, int(
+                    max_candidates * len(X))))
         max_candidates = int(max_candidates * len(X))
 
     if isinstance(target_rel, str):
@@ -194,7 +208,8 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
                 missing_rels.append(rel)
 
         if len(missing_rels) > 0:
-            msg = 'Target relation(s) not found in model: {}'.format(missing_rels)
+            msg = 'Target relation(s) not found in model: {}'.format(
+                missing_rels)
             logger.error(msg)
             raise ValueError(msg)
 
@@ -214,7 +229,8 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
 
         logger.info('Generating candidates for relation: %s' % relation)
 
-        candidates = generate_candidates(X, strategy, relation, max_candidates, seed=seed)
+        candidates = generate_candidates(
+            X, strategy, relation, max_candidates, seed=seed)
 
         logger.debug('Generated %d candidate statements.' % len(candidates))
 
@@ -222,7 +238,12 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
         # ranks = evaluate_performance(candidates, model=model, filter_triples=X, use_default_protocol=True,
         #                             verbose=False)
 
-        ranks = model.evaluate(candidates, use_filter={'test': X}, corrupt_side='s,o', verbose=False)
+        ranks = model.evaluate(
+            candidates,
+            use_filter={
+                'test': X},
+            corrupt_side='s,o',
+            verbose=False)
 
         # Select candidate statements within the top_n predicted ranks standard protocol evaluates against
         # corruptions on both sides, we just average the ranks here
@@ -237,7 +258,13 @@ def discover_facts(X, model, top_n=10, strategy='random_uniform', max_candidates
     return np.hstack(discoveries), np.hstack(discovery_ranks)
 
 
-def generate_candidates(X, strategy, target_rel, max_candidates, consolidate_sides=False, seed=0):
+def generate_candidates(
+        X,
+        strategy,
+        target_rel,
+        max_candidates,
+        consolidate_sides=False,
+        seed=0):
     """ Generate candidate statements from an existing knowledge graph using a defined strategy.
 
         Parameters
@@ -343,10 +370,13 @@ def generate_candidates(X, strategy, target_rel, max_candidates, consolidate_sid
 
     if strategy == 'random_uniform':
 
-        # Take close to sqrt of max_candidates so that: len(meshgrid result) == max_candidates
-        sample_size = int(np.sqrt(max_candidates) + 10)  # +10 to allow for reduction in sampled array due to filtering
+        # Take close to sqrt of max_candidates so that: len(meshgrid result) ==
+        # max_candidates
+        # +10 to allow for reduction in sampled array due to filtering
+        sample_size = int(np.sqrt(max_candidates) + 10)
 
-        X_candidates = np.zeros([max_candidates, 3], dtype=object)  # Pre-allocate X_candidates array
+        # Pre-allocate X_candidates array
+        X_candidates = np.zeros([max_candidates, 3], dtype=object)
         num_retries, max_retries = 0, 5  # Retry up to 5 times to reach max_candidates
         start_idx, end_idx = 0, 0  #
 
@@ -354,14 +384,19 @@ def generate_candidates(X, strategy, target_rel, max_candidates, consolidate_sid
             sample_e_s = np.random.choice(e_s, size=sample_size, replace=False)
             sample_e_o = np.random.choice(e_o, size=sample_size, replace=False)
 
-            gen_candidates = np.array(np.meshgrid(sample_e_s, target_rel, sample_e_o)).T.reshape(-1, 3)
+            gen_candidates = np.array(np.meshgrid(
+                sample_e_s, target_rel, sample_e_o)).T.reshape(-1, 3)
             gen_candidates = _filter_candidates(gen_candidates, X)
 
-            # Select either all of gen_candidates or just enough to fill X_candidates
-            select_idx = min(len(gen_candidates), len(X_candidates) - start_idx)
+            # Select either all of gen_candidates or just enough to fill
+            # X_candidates
+            select_idx = min(
+                len(gen_candidates),
+                len(X_candidates) - start_idx)
             end_idx = start_idx + select_idx
 
-            X_candidates[start_idx:end_idx, :] = gen_candidates[0:select_idx, :]
+            X_candidates[start_idx:end_idx,
+                         :] = gen_candidates[0:select_idx, :]
             start_idx = end_idx
 
             num_retries += 1
@@ -375,14 +410,17 @@ def generate_candidates(X, strategy, target_rel, max_candidates, consolidate_sid
 
         # Get entity counts and sort them in ascending order
         if consolidate_sides:
-            e_s_counts = np.array(np.unique(X[:, [0, 2]], return_counts=True)).T
+            e_s_counts = np.array(
+                np.unique(X[:, [0, 2]], return_counts=True)).T
             e_o_counts = e_s_counts
         else:
             e_s_counts = np.array(np.unique(X[:, 0], return_counts=True)).T
             e_o_counts = np.array(np.unique(X[:, 2], return_counts=True)).T
 
-        e_s_weights = e_s_counts[:, 1].astype(np.float64) / np.sum(e_s_counts[:, 1].astype(np.float64))
-        e_o_weights = e_o_counts[:, 1].astype(np.float64) / np.sum(e_o_counts[:, 1].astype(np.float64))
+        e_s_weights = e_s_counts[:, 1].astype(
+            np.float64) / np.sum(e_s_counts[:, 1].astype(np.float64))
+        e_o_weights = e_o_counts[:, 1].astype(
+            np.float64) / np.sum(e_o_counts[:, 1].astype(np.float64))
 
     elif strategy in ['graph_degree', 'cluster_coefficient', 'cluster_triangles', 'cluster_squares']:
 
@@ -408,22 +446,29 @@ def generate_candidates(X, strategy, target_rel, max_candidates, consolidate_sid
         e_s_weights = e_s_weights / np.sum(e_s_weights)
         e_o_weights = e_o_weights / np.sum(e_o_weights)
 
-    # Take close to sqrt of max_candidates so that: len(meshgrid result) == max_candidates
-    sample_size = int(np.sqrt(max_candidates) + 10)  # +10 to allow for reduction in sampled array due to filtering
+    # Take close to sqrt of max_candidates so that: len(meshgrid result) ==
+    # max_candidates
+    # +10 to allow for reduction in sampled array due to filtering
+    sample_size = int(np.sqrt(max_candidates) + 10)
 
-    X_candidates = np.zeros([max_candidates, 3], dtype=object)  # Pre-allocate X_candidates array
+    # Pre-allocate X_candidates array
+    X_candidates = np.zeros([max_candidates, 3], dtype=object)
     num_retries, max_retries = 0, 5  # Retry up to 5 times to reach max_candidates
     start_idx, end_idx = 0, 0
 
     while end_idx <= max_candidates - 1:
 
-        sample_e_s = np.random.choice(e_s, size=sample_size, replace=True, p=e_s_weights)
-        sample_e_o = np.random.choice(e_o, size=sample_size, replace=True, p=e_o_weights)
+        sample_e_s = np.random.choice(
+            e_s, size=sample_size, replace=True, p=e_s_weights)
+        sample_e_o = np.random.choice(
+            e_o, size=sample_size, replace=True, p=e_o_weights)
 
-        gen_candidates = np.array(np.meshgrid(sample_e_s, target_rel, sample_e_o)).T.reshape(-1, 3)
+        gen_candidates = np.array(np.meshgrid(
+            sample_e_s, target_rel, sample_e_o)).T.reshape(-1, 3)
         gen_candidates = _filter_candidates(gen_candidates, X)
 
-        # Select either all of gen_candidates or just enough to fill X_candidates
+        # Select either all of gen_candidates or just enough to fill
+        # X_candidates
         select_idx = min(len(gen_candidates), len(X_candidates) - start_idx)
         end_idx = start_idx + select_idx
 
@@ -603,7 +648,8 @@ ClusteringAndClassificationWithEmbeddings.ipynb
 
     modes = ("t", "e", "r")
     if mode not in modes:
-        msg = "Argument `mode` must be one of the following: {}.".format(", ".join(modes))
+        msg = "Argument `mode` must be one of the following: {}.".format(
+            ", ".join(modes))
         logger.error(msg)
         raise ValueError(msg)
 
@@ -801,7 +847,8 @@ def find_duplicates(X, model, mode="e", metric='l2', tolerance='auto',
 
     modes = ("t", "e", "r")
     if mode not in modes:
-        msg = "Argument `mode` must be one of the following: {}.".format(", ".join(modes))
+        msg = "Argument `mode` must be one of the following: {}.".format(
+            ", ".join(modes))
         logger.error(msg)
         raise ValueError(msg)
 
@@ -843,9 +890,11 @@ def find_duplicates(X, model, mode="e", metric='l2', tolerance='auto',
         nn = NearestNeighbors(metric=metric, radius=tol)
         nn.fit(emb)
         neighbors = nn.radius_neighbors(emb)[1]
-        idx_dups = ((i, row) for i, row in enumerate(neighbors) if len(row) > 1)
+        idx_dups = ((i, row)
+                    for i, row in enumerate(neighbors) if len(row) > 1)
         if mode == "t":
-            dups = {frozenset(tuple(X[idx]) for idx in row) for i, row in idx_dups}
+            dups = {frozenset(tuple(X[idx]) for idx in row)
+                    for i, row in idx_dups}
         else:
             dups = {frozenset(X[idx] for idx in row) for i, row in idx_dups}
         return dups
@@ -861,17 +910,27 @@ def find_duplicates(X, model, mode="e", metric='l2', tolerance='auto',
         fraction_duplicates = len(set().union(*duplicates)) / len(emb)
         if verbose:
             info['Nfeval'] += 1
-            logger.info("Eval {}: tol: {}, duplicate fraction: {}".format(info['Nfeval'], tol, fraction_duplicates))
+            logger.info(
+                "Eval {}: tol: {}, duplicate fraction: {}".format(
+                    info['Nfeval'], tol, fraction_duplicates))
         return fraction_duplicates - expected_fraction_duplicates
 
     if tolerance == 'auto':
         max_distance = spatial.distance_matrix(emb, emb).max()
-        tolerance = optimize.bisect(opt, 0.0, max_distance, xtol=1e-3, maxiter=50, args=({'Nfeval': 0}, ))
+        tolerance = optimize.bisect(
+            opt, 0.0, max_distance, xtol=1e-3, maxiter=50, args=({'Nfeval': 0}, ))
 
     return get_dups(tolerance), tolerance
 
 
-def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_consider=None, rels_to_consider=None):
+def query_topn(
+        model,
+        top_n=10,
+        head=None,
+        relation=None,
+        tail=None,
+        ents_to_consider=None,
+        rels_to_consider=None):
     """Queries the model with two elements of a triple and returns the top_n results of
     all possible completions ordered by score predicted by the model.
 
@@ -966,7 +1025,8 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
             raise ValueError(msg)
 
     if relation:
-        if relation not in list(model.data_indexer.backend.get_all_relations()):
+        if relation not in list(
+                model.data_indexer.backend.get_all_relations()):
             msg = 'Relation `{}` not seen by model'.format(relation)
             logger.error(msg)
             raise ValueError(msg)
@@ -986,7 +1046,8 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
             msg = '`ents_to_consider` must be a list or numpy array.'
             logger.error(msg)
             raise ValueError(msg)
-        if not all(x in list(model.data_indexer.backend.get_all_entities()) for x in ents_to_consider):
+        if not all(x in list(model.data_indexer.backend.get_all_entities())
+                   for x in ents_to_consider):
             msg = 'Entities in `ents_to_consider` have not been seen by the model.'
             logger.error(msg)
             raise ValueError(msg)
@@ -1003,7 +1064,8 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
             msg = '`rels_to_consider` must be a list or numpy array.'
             logger.error(msg)
             raise ValueError(msg)
-        if not all(x in list(model.data_indexer.backend.get_all_relations()) for x in rels_to_consider):
+        if not all(x in list(model.data_indexer.backend.get_all_relations())
+                   for x in rels_to_consider):
             msg = 'Relations in `rels_to_consider` have not been seen by the model.'
             logger.error(msg)
             raise ValueError(msg)
@@ -1013,10 +1075,12 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
 
     # Complete triples from entity and relation dict
     if relation is None:
-        rels = rels_to_consider or list(model.data_indexer.backend.get_all_relations())
+        rels = rels_to_consider or list(
+            model.data_indexer.backend.get_all_relations())
         triples = np.array([[head, x, tail] for x in rels])
     else:
-        ents = ents_to_consider or list(model.data_indexer.backend.get_all_entities())
+        ents = ents_to_consider or list(
+            model.data_indexer.backend.get_all_entities())
         if head:
             triples = np.array([[head, relation, x] for x in ents])
         else:
@@ -1025,7 +1089,8 @@ def query_topn(model, top_n=10, head=None, relation=None, tail=None, ents_to_con
     # Get scores for completed triples
     scores = model.predict(triples)
 
-    # Join triples and scores, sort ascending by scores, then take top_n results
+    # Join triples and scores, sort ascending by scores, then take top_n
+    # results
     topn_idx = np.squeeze(np.argsort(scores, axis=0)[::-1][:top_n])
     scores_out = np.array(scores)[topn_idx]
     triples_out = np.copy(triples[topn_idx, :])

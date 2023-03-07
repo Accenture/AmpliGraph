@@ -15,4 +15,8 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 __version__ = '2.0-dev'
 __all__ = ['datasets', 'latent_features', 'discovery', 'evaluation', 'utils']
 
-logging.config.fileConfig(pkg_resources.resource_filename(__name__, 'logger.conf'), disable_existing_loggers=False)
+logging.config.fileConfig(
+    pkg_resources.resource_filename(
+        __name__,
+        'logger.conf'),
+    disable_existing_loggers=False)

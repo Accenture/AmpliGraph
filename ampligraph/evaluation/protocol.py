@@ -22,7 +22,12 @@ logger.setLevel(logging.DEBUG)
 TOO_MANY_ENTITIES_TH = 50000
 
 
-def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False, filtered_test_predicates=None):
+def train_test_split_no_unseen(
+        X,
+        test_size=100,
+        seed=0,
+        allow_duplication=False,
+        filtered_test_predicates=None):
     """ Split into train and test sets.
 
         This function carves out a test set that contains only entities
@@ -108,18 +113,19 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
         X_train = None
         X_test_candidates = X
 
-    if type(test_size) is float:
+    if isinstance(test_size, float):
         test_size = int(len(X_test_candidates) * test_size)
 
-    entities, entity_cnt = np.unique(np.concatenate([X_test_candidates[:, 0],
-                                                     X_test_candidates[:, 2]]), return_counts=True)
+    entities, entity_cnt = np.unique(np.concatenate(
+        [X_test_candidates[:, 0], X_test_candidates[:, 2]]), return_counts=True)
     rels, rels_cnt = np.unique(X_test_candidates[:, 1], return_counts=True)
     dict_entities = dict(zip(entities, entity_cnt))
     dict_rels = dict(zip(rels, rels_cnt))
     idx_test = []
     idx_train = []
 
-    all_indices_shuffled = np.random.permutation(np.arange(X_test_candidates.shape[0]))
+    all_indices_shuffled = np.random.permutation(
+        np.arange(X_test_candidates.shape[0]))
 
     for i, idx in enumerate(all_indices_shuffled):
         test_triple = X_test_candidates[idx]
@@ -144,7 +150,8 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
                 break
 
         else:
-            # since removing this triple results in unseen entities, add it to training
+            # since removing this triple results in unseen entities, add it to
+            # training
             dict_entities[test_triple[0]] = dict_entities[test_triple[0]] + 1
             dict_rels[test_triple[1]] = dict_rels[test_triple[1]] + 1
             dict_entities[test_triple[2]] = dict_entities[test_triple[2]] + 1
@@ -154,17 +161,20 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
         # if we cannot get the test set of required size that means we cannot get unique triples
         # in the test set without creating unseen entities
         if allow_duplication:
-            # if duplication is allowed, randomly choose from the existing test set and create duplicates
-            duplicate_idx = np.random.choice(idx_test, size=(test_size - len(idx_test))).tolist()
+            # if duplication is allowed, randomly choose from the existing test
+            # set and create duplicates
+            duplicate_idx = np.random.choice(
+                idx_test, size=(test_size - len(idx_test))).tolist()
             idx_test.extend(list(duplicate_idx))
         else:
             # throw an exception since we cannot get unique triples in the test set without creating
             # unseen entities
-            raise Exception("Cannot create a test split of the desired size. "
-                            "Some entities will not occur in both training and test set. "
-                            "Set allow_duplication=True,"
-                            "remove filter on test predicates or "
-                            "set test_size to a smaller value.")
+            raise Exception(
+                "Cannot create a test split of the desired size. "
+                "Some entities will not occur in both training and test set. "
+                "Set allow_duplication=True,"
+                "remove filter on test predicates or "
+                "set test_size to a smaller value.")
 
     if X_train is None:
         X_train = X_test_candidates[idx_train]
@@ -196,13 +206,15 @@ def filter_unseen_entities(X, model, verbose=False):
         filtered X : ndarray, shape (n, 3)
             An array of test triples containing no unseen entities.
     """
-    logger.debug('Finding entities in the dataset that are not previously seen by model')
+    logger.debug(
+        'Finding entities in the dataset that are not previously seen by model')
     ent_seen = np.unique(list(model.ent_to_idx.keys()))
     df = pd.DataFrame(X, columns=['s', 'p', 'o'])
     filtered_df = df[df.s.isin(ent_seen) & df.o.isin(ent_seen)]
     n_removed_ents = df.shape[0] - filtered_df.shape[0]
     if n_removed_ents > 0:
-        msg = 'Removing {} triples containing unseen entities. '.format(n_removed_ents)
+        msg = 'Removing {} triples containing unseen entities. '.format(
+            n_removed_ents)
         if verbose:
             logger.info(msg)
         logger.debug(msg)
@@ -217,11 +229,13 @@ def _flatten_nested_keys(dictionary):
         E.g., {"a": {"b": [1], "c": [2]}} becomes {("a", "b"): [1], ("a", "c"): [2]}
     """
     # Find the parameters that are nested dictionaries
-    nested_keys = {k for k, v in dictionary.items() if type(v) is dict}
+    nested_keys = {k for k, v in dictionary.items() if isinstance(v, dict)}
     # Flatten them into tuples
-    flattened_nested_keys = {(nk, k): dictionary[nk][k] for nk in nested_keys for k in dictionary[nk]}
+    flattened_nested_keys = {
+        (nk, k): dictionary[nk][k] for nk in nested_keys for k in dictionary[nk]}
     # Get original dictionary without the nested keys
-    dictionary_without_nested_keys = {k: v for k, v in dictionary.items() if k not in nested_keys}
+    dictionary_without_nested_keys = {
+        k: v for k, v in dictionary.items() if k not in nested_keys}
     # Return merged dicts
     return {**dictionary_without_nested_keys, **flattened_nested_keys}
 
@@ -233,11 +247,18 @@ def _unflatten_nested_keys(dictionary):
         E.g., {("a", "b"): [1], ("a", "c"): [2]} becomes {"a": {"b": [1], "c": [2]}}
     """
     # Find the parameters that are nested dictionaries
-    nested_keys = {k[0] for k in dictionary if type(k) is tuple}
+    nested_keys = {k[0] for k in dictionary if isinstance(k, tuple)}
     # Select the parameters which were originally nested and unflatten them
-    nested_dict = {nk: {k[1]: v for k, v in dictionary.items() if k[0] == nk} for nk in nested_keys}
+    nested_dict = {
+        nk: {
+            k[1]: v for k,
+            v in dictionary.items() if k[0] == nk} for nk in nested_keys}
     # Get original dictionary without the nested keys
-    dictionary_without_nested_keys = {k: v for k, v in dictionary.items() if type(k) is not tuple}
+    dictionary_without_nested_keys = {
+        k: v for k,
+        v in dictionary.items() if not isinstance(
+            k,
+            tuple)}
     # Return merged dicts
     return {**dictionary_without_nested_keys, **nested_dict}
 
@@ -262,7 +283,8 @@ def _get_param_hash(param):
             Hash of the param dictionary.
     """
     # Remove parameters that are not used by particular configurations
-    # For example, if the regularization is None, there is no need for the regularization lambda
+    # For example, if the regularization is None, there is no need for the
+    # regularization lambda
     flattened_params = _flatten_nested_keys(_unflatten_nested_keys(param))
 
     return hash(frozenset(flattened_params.items()))
@@ -274,6 +296,7 @@ class ParamHistory(object):
 
     To achieve that, we hash each parameter configuration, removing unused parameters first.
     """
+
     def __init__(self):
         """The param history is a set of hashes."""
         self.param_hash_history = set()
@@ -308,7 +331,8 @@ def _next_hyperparam(param_grid):
     """
     param_history = ParamHistory()
 
-    # Flatten nested dictionaries so we can apply itertools.product to get all possible parameter combinations
+    # Flatten nested dictionaries so we can apply itertools.product to get all
+    # possible parameter combinations
     flattened_param_grid = _flatten_nested_keys(param_grid)
 
     for values in product(*flattened_param_grid.values()):
@@ -320,7 +344,8 @@ def _next_hyperparam(param_grid):
             continue
         else:
             param_history.add(param)
-            # Yields nested configuration (unflattened) without useless parameters
+            # Yields nested configuration (unflattened) without useless
+            # parameters
             yield _unflatten_nested_keys(param)
 
 
@@ -346,9 +371,9 @@ def _sample_parameters(param_grid):
     for k, v in param_grid.items():
         if callable(v):
             param[k] = v()
-        elif type(v) is dict:
+        elif isinstance(v, dict):
             param[k] = _sample_parameters(v)
-        elif isinstance(v, Iterable) and type(v) is not str:
+        elif isinstance(v, Iterable) and not isinstance(v, str):
             param[k] = np.random.choice(v)
         else:
             param[k] = v
@@ -399,17 +424,30 @@ def _scalars_into_lists(param_grid):
             param_grid = {"k": [50, 100], "eta": lambda: np.random.choice([1, 2, 3]}
     """
     for k, v in param_grid.items():
-        if not (callable(v) or isinstance(v, Iterable)) or type(v) is str:
+        if not (callable(v) or isinstance(v, Iterable)) or isinstance(v, str):
             param_grid[k] = [v]
-        elif type(v) is dict:
+        elif isinstance(v, dict):
             _scalars_into_lists(v)
 
 
-def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid, max_combinations=None,
-                              param_grid_random_seed=0, use_filter=True, early_stopping=False,
-                              early_stopping_params=None, use_test_for_selection=False, entities_subset=None,
-                              corrupt_side='s,o', focusE=False, focusE_params={},
-                              retrain_best_model=False, verbose=False):
+def select_best_model_ranking(
+        model_class,
+        X_train,
+        X_valid,
+        X_test,
+        param_grid,
+        max_combinations=None,
+        param_grid_random_seed=0,
+        use_filter=True,
+        early_stopping=False,
+        early_stopping_params=None,
+        use_test_for_selection=False,
+        entities_subset=None,
+        corrupt_side='s,o',
+        focusE=False,
+        focusE_params={},
+        retrain_best_model=False,
+        verbose=False):
     """ Model selection routine for embedding models via either grid search or random search.
 
         For grid search, pass a fixed ``param_grid`` and leave ``max_combinations`` as `None`
@@ -591,23 +629,29 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     compat_module = import_module('ampligraph.compat')
     model_class = getattr(compat_module, model_class)
 
-    logger.debug('Starting gridsearch over hyperparameters. {}'.format(param_grid))
+    logger.debug(
+        'Starting gridsearch over hyperparameters. {}'.format(param_grid))
 
     if early_stopping_params is None:
         early_stopping_params = {}
 
-    # Verify missing parameters for the model class (default values will be used)
-    undeclared_args = set(model_class.__init__.__code__.co_varnames[1:]) - set(param_grid.keys())
+    # Verify missing parameters for the model class (default values will be
+    # used)
+    undeclared_args = set(
+        model_class.__init__.__code__.co_varnames[1:]) - set(param_grid.keys())
     if len(undeclared_args) != 0:
-        logger.debug("The following arguments were not defined in the parameter grid"
-                     " and thus the default values will be used: {}".format(', '.join(undeclared_args)))
+        logger.debug(
+            "The following arguments were not defined in the parameter grid"
+            " and thus the default values will be used: {}".format(
+                ', '.join(undeclared_args)))
 
     param_grid["model_name"] = model_class.name
     _scalars_into_lists(param_grid)
 
     if max_combinations is not None:
         np.random.seed(param_grid_random_seed)
-        model_params_combinations = islice(_next_hyperparam_random(param_grid), max_combinations)
+        model_params_combinations = islice(
+            _next_hyperparam_random(param_grid), max_combinations)
     else:
         model_params_combinations = _next_hyperparam(param_grid)
         max_combinations = 1
@@ -616,7 +660,8 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
                 max_combinations *= len(param)
             elif isinstance(param, dict):
                 try:
-                    max_combinations *= int(np.prod([len(el) for el in param.values() if isinstance(el, list)]))
+                    max_combinations *= int(np.prod([len(el)
+                                            for el in param.values() if isinstance(el, list)]))
                 except Exception as e:
                     logger.debug("Exception " + e)
 
@@ -628,7 +673,8 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         try:
             early_stopping_params['x_valid']
         except KeyError:
-            logger.debug('Early stopping enable but no x_valid parameter set. Setting x_valid to {}'.format(X_valid))
+            logger.debug(
+                'Early stopping enable but no x_valid parameter set. Setting x_valid to {}'.format(X_valid))
             early_stopping_params['x_valid'] = X_valid
 
     focusE_numeric_edge_values = None
@@ -636,7 +682,8 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         assert isinstance(X_train, np.ndarray) and X_train.shape[1] > 3, "Weights are missing! Concatenate them to X_train" \
                                                                          "in order to use FocusE!"
         focusE_numeric_edge_values = X_train[:, 3:]
-        param_grid["embedding_model_params"] = {**param_grid["embedding_model_params"], **focusE_params}
+        param_grid["embedding_model_params"] = {
+            **param_grid["embedding_model_params"], **focusE_params}
 
     if use_filter:
         X_filter = {'train': X_train,
@@ -662,7 +709,9 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
 
     print("Grid search initialized successfully, training starting!")
     print('Maximum number of combinations: ', max_combinations)
-    for model_params in tqdm(model_params_combinations, total=max_combinations):
+    for model_params in tqdm(
+            model_params_combinations,
+            total=max_combinations):
         print()
         current_result = {
             "model_name": model_params["model_name"],
@@ -677,10 +726,13 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
                       focusE_numeric_edge_values=focusE_numeric_edge_values,
                       verbose=verbose)
 
-            ranks = evaluate_performance(selection_dataset, model=model,
-                                         filter_triples=X_filter, verbose=verbose,
-                                         entities_subset=entities_subset,
-                                         corrupt_side=corrupt_side)
+            ranks = evaluate_performance(
+                selection_dataset,
+                model=model,
+                filter_triples=X_filter,
+                verbose=verbose,
+                entities_subset=entities_subset,
+                corrupt_side=corrupt_side)
 
             curr_mrr, mr, hits_1, hits_3, hits_10 = evaluation(ranks)
 
@@ -693,8 +745,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
             }
 
             info = 'mr: {} mrr: {} hits 1: {} hits 3: {} hits 10: {}, model: {}, params: {}'.format(
-                mr, curr_mrr, hits_1, hits_3, hits_10, type(model).__name__, model_params
-            )
+                mr, curr_mrr, hits_1, hits_3, hits_10, type(model).__name__, model_params)
 
             logger.debug(info)
             if verbose:
@@ -710,7 +761,8 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
             }
 
             if verbose:
-                logger.error('Exception occurred for parameters:{}'.format(model_params))
+                logger.error(
+                    'Exception occurred for parameters:{}'.format(model_params))
                 logger.error(str(e))
             else:
                 pass
@@ -723,18 +775,26 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
                                                                                  "data for retraining the best model," \
                                                                                  "but weights are missing." \
                                                                                  "Concatenate them to X_valid!"
-                focusE_numeric_edge_values = np.concatenate([focusE_numeric_edge_values, X_valid[:, 3:]], axis=0)
-            best_model.fit(np.concatenate((X_train, X_valid)),
-                           early_stopping,
-                           early_stopping_params,
-                           focusE_numeric_edge_values=focusE_numeric_edge_values)
+                focusE_numeric_edge_values = np.concatenate(
+                    [focusE_numeric_edge_values, X_valid[:, 3:]], axis=0)
+            best_model.fit(
+                np.concatenate(
+                    (X_train,
+                     X_valid)),
+                early_stopping,
+                early_stopping_params,
+                focusE_numeric_edge_values=focusE_numeric_edge_values)
 
-        ranks_test = evaluate_performance(X_test, model=best_model,
-                                          filter_triples=X_filter, verbose=verbose,
-                                          entities_subset=entities_subset,
-                                          corrupt_side=corrupt_side)
+        ranks_test = evaluate_performance(
+            X_test,
+            model=best_model,
+            filter_triples=X_filter,
+            verbose=verbose,
+            entities_subset=entities_subset,
+            corrupt_side=corrupt_side)
 
-        test_mrr, test_mr, test_hits_1, test_hits_3, test_hits_10 = evaluation(ranks_test)
+        test_mrr, test_mr, test_hits_1, test_hits_3, test_hits_10 = evaluation(
+            ranks_test)
 
         info = \
             'Best model test results: mr: {} mrr: {} hits 1: {} hits 3: {} hits 10: {}, model: {}, params: {}'.format(
