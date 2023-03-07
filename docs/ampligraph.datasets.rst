@@ -18,9 +18,9 @@ use the :class:`GraphDataLoader` class instead (see the
     :toctree: generated
     :template: function.rst
 
-    load_from_csv
-    load_from_ntriples
-    load_from_rdf
+    ~datasets.load_from_csv
+    ~datasets.load_from_ntriples
+    ~datasets.load_from_rdf
     
     
 Benchmark Datasets Loaders
@@ -36,14 +36,14 @@ Benchmark Datasets Loaders
     :toctree: generated
     :template: function.rst
 
-    load_fb15k_237
-    load_wn18rr
-    load_yago3_10
-    load_wn11
-    load_fb13
-    load_codex
-    load_fb15k
-    load_wn18
+    ~datasets.load_fb15k_237
+    ~datasets.load_wn18rr
+    ~datasets.load_yago3_10
+    ~datasets.load_wn11
+    ~datasets.load_fb13
+    ~datasets.load_codex
+    ~datasets.load_fb15k
+    ~datasets.load_wn18
 
 
 **Datasets Summary**
@@ -98,10 +98,10 @@ at the location set in the ``AMPLIGRAPH_DATA_HOME``.
     :toctree: generated
     :template: function.rst
 
-    load_onet20k
-    load_ppi5k
-    load_nl27k
-    load_cn15k
+    ~datasets.load_onet20k
+    ~datasets.load_ppi5k
+    ~datasets.load_nl27k
+    ~datasets.load_cn15k
     
 
 **Datasets Summary**
