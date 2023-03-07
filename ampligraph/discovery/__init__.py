@@ -19,7 +19,7 @@ completions ordered by predicted score.
 
 """
 
-from .discovery import discover_facts, find_clusters, find_duplicates,
+from .discovery import discover_facts, find_clusters, find_duplicates,\
 query_topn
 
 __all__ = ['discover_facts', 'find_clusters', 'find_duplicates', 'query_topn']

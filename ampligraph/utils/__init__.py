@@ -5,12 +5,15 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-"""This module contains utility functions for neural knowledge graph embedding models.
+"""This module contains utility functions for neural knowledge graph
+   embedding models.
 
 """
 
-from .model_utils import save_model, restore_model, create_tensorboard_visualizations, \
-    write_metadata_tsv, dataframe_to_triples, preprocess_focusE_weights
+from .model_utils import save_model, restore_model,\
+create_tensorboard_visualizations, write_metadata_tsv, dataframe_to_triples,\
+preprocess_focusE_weights
 
 __all__ = ['save_model', 'restore_model', 'create_tensorboard_visualizations',
-           'write_metadata_tsv', 'dataframe_to_triples', 'preprocess_focusE_weights']
+           'write_metadata_tsv', 'dataframe_to_triples',
+           'preprocess_focusE_weights']

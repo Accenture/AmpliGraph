@@ -11,7 +11,7 @@ implementation of the learning-to-rank-based evaluation protocol
 used in literature."""
 
 from .metrics import mrr_score, mr_score, hits_at_n_score, rank_score
-from .protocol import select_best_model_ranking, train_test_split_no_unseen,
+from .protocol import select_best_model_ranking, train_test_split_no_unseen,\
 filter_unseen_entities
 
 __all__ = [

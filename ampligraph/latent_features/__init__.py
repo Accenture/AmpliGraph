@@ -16,7 +16,7 @@ just to cite a few :cite:`nickel2016review`.
 
 """
 from .models import ScoringBasedEmbeddingModel
-from .loss_functions import PairwiseLoss, NLLLoss, AbsoluteMarginLoss,
+from .loss_functions import PairwiseLoss, NLLLoss, AbsoluteMarginLoss,\
 SelfAdversarialLoss, NLLMulticlass
 from .regularizers import LP_regularizer
 __all__ = [
