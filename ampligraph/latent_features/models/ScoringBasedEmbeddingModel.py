@@ -438,7 +438,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         elif non_linearity == 'sigmoid':
             non_linearity = tf.sigmoid
         elif non_linearity == 'softplus':
-            non_linearity = lambda x: (tf.math.log(1 + 9999 * tf.exp(x)))
+            def non_linearity(x):
+                return (tf.math.log(1 + 9999 * tf.exp(x)))
         else:
             raise ValueError('Invalid focusE non-linearity')
 
