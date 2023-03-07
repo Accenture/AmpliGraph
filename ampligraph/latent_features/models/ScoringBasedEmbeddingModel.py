@@ -438,15 +438,15 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         elif non_linearity == 'sigmoid':
             non_linearity = tf.sigmoid
         elif non_linearity == 'softplus':
-            non_linearity = lambda x: (tf.math.log(1 + 9999*tf.exp(x)))
+            non_linearity = lambda x: (tf.math.log(1 + 9999 * tf.exp(x)))
         else:
             raise ValueError('Invalid focusE non-linearity')
 
         # Get the stop_epoch for the decay
         stop_epoch = dict_params.get('stop_epoch', 251)
-        assert stop_epoch >= 0,\
-                "Invalid value for focusE stop_epoch: expected a value >=0 but got {}".format(stop_epoch)
-
+        msg = "Invalid value for focusE stop_epoch: expected a value >=0 but got {}".format(stop_epoch)
+        assert stop_epoch >= 0, msg
+                
         # Get structural_wt
         structure_weight = dict_params.get('structural_wt', 0.001)
         assert (structure_weight <= 1) and (structure_weight >= 0), \
@@ -684,7 +684,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                                           'structural_wt': structure_weight
                                           }
                 else:
-                    print("Data shape is {}: not only triples were given, but focusE is not active!". \
+                    print("Data shape is {}: not only triples were given, but focusE is not active!".
                           format(self.data_shape))
 
             # Container that configures and calls `tf.keras.Callback`s.
@@ -815,8 +815,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
            ['/m/06v8s0', '/m/027rn']
         """
         return self.data_indexer.get_indexes(X, type_of, order)
-        
-        
+            
     def get_count(self, concept_type='e'):
         ''' Returns the count of entities and relations that were present during training.
         
@@ -866,8 +865,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         '''
         assert self.is_fitted, 'Model is not fit on the data yet!'
         return {'e': self.encoding_layer.ent_emb.shape,
-                'r': self.encoding_layer.rel_emb.shape,
-               }
+                'r': self.encoding_layer.rel_emb.shape}
         
     def save(self,
              filepath,

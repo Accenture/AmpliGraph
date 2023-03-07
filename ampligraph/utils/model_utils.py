@@ -327,6 +327,7 @@ def dataframe_to_triples(X, schema):
         triples.extend([[si, p, oi] for si, oi in zip(X[s], X[o])])
     return np.array(triples)
 
+
 def preprocess_focusE_weights(data, weights, normalize=True):
     '''Preprocessing of focusE weights.
 
@@ -356,9 +357,8 @@ def preprocess_focusE_weights(data, weights, normalize=True):
     for reln in unique_relations:
         for col_idx in range(weights.shape[1]):
             # here nans signify unknown numeric values
-            if np.sum(
-                    pd.isna(weights[data[:, 1] == reln, col_idx])
-                    ) != weights[data[:, 1] == reln, col_idx].shape[0]:
+            suma = np.sum(pd.isna(weights[data[:, 1] == reln, col_idx]))
+            if suma != weights[data[:, 1] == reln, col_idx].shape[0]:
                 min_val = np.nanmin(weights[data[:, 1] == reln, col_idx].astype(np.float32))
                 max_val = np.nanmax(weights[data[:, 1] == reln, col_idx].astype(np.float32))
                 if min_val == max_val:
@@ -366,8 +366,8 @@ def preprocess_focusE_weights(data, weights, normalize=True):
                     continue
                 # Normalization of the weights
                 if normalize:
-                    weights[data[:, 1] == reln, col_idx] = \
-                            (weights[data[:, 1] == reln, col_idx].astype(float) - min_val) / (max_val - min_val)
+                    val = (weights[data[:, 1] == reln, col_idx].astype(float) - min_val) / (max_val - min_val)
+                    weights[data[:, 1] == reln, col_idx] = val
             else:
                 pass  # all the weights are nans
     weights = np.mean(weights, axis=1).reshape(-1, 1)

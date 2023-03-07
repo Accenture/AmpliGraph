@@ -11,6 +11,7 @@ class experimentalWarning(Warning):
     def __str__(self):
         return repr(self.message)
 
+
 def experimental(func):
     """
     Decorator - a function that accepts another function
