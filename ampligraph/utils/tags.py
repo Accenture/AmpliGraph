@@ -2,7 +2,7 @@ import warnings
 
 
 class experimentalWarning(Warning):
-    """Warning that is triggered when the 
+    """Warning that is triggered when the
        experimental function is run.
     """
     def __init__(self, message):
