@@ -1,6 +1,6 @@
 .common-values:
 
-  docker-image: &docker-image circleci/python:3.10.6
+  docker-image: &docker-image circleci/python:3.10
 
   restore-cache: &restore-cache
     keys:
