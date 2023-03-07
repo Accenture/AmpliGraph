@@ -74,6 +74,7 @@ class DataIndexer():
          [1 0 2]
          [2 1 3]]
        """
+
     def __init__(self, X, backend="in_memory", **kwargs):
         '''Initialises the DataIndexer.'''
         logger.debug("Initialisation of DataIndexer.")
@@ -194,9 +195,16 @@ def register_indexer_backend(name):
 
 @register_indexer_backend("in_memory")
 class InMemory():
-    def __init__(self, data, entities_dict=None, reversed_entities_dict=None,
-                 relations_dict=None, reversed_relations_dict=None,
-                 root_directory=tempfile.gettempdir(), name="main_partition", **kwargs):
+    def __init__(
+            self,
+            data,
+            entities_dict=None,
+            reversed_entities_dict=None,
+            relations_dict=None,
+            reversed_relations_dict=None,
+            root_directory=tempfile.gettempdir(),
+            name="main_partition",
+            **kwargs):
         """Initialise backend by creating mappings.
 
            Parameters
@@ -254,19 +262,23 @@ class InMemory():
                 isinstance(self.relations_dict, dict) and \
                 isinstance(self.reversed_relations_dict, dict):
             self._update_properties()
-            logger.debug("The mappings initialised from in-memory dictionaries.")
+            logger.debug(
+                "The mappings initialised from in-memory dictionaries.")
         elif self.entities_dict is None and \
                 self.reversed_entities_dict is None and \
                 self.relations_dict is None and \
                 self.reversed_relations_dict is None:
-            logger.debug("The mappings will be created for data in {}.".format(self.name))
+            logger.debug(
+                "The mappings will be created for data in {}.".format(
+                    self.name))
 
             if isinstance(self.data, np.ndarray):
                 self.update_dictionary_mappings()
             else:
                 self.update_dictionary_mappings_in_chunks()
         else:
-            logger.debug("Provided initialization objects are not supported. Can't Initialise mappings.")
+            logger.debug(
+                "Provided initialization objects are not supported. Can't Initialise mappings.")
         self.mapped = True
 
     def _update_properties(self):
@@ -354,23 +366,22 @@ class InMemory():
 
         if self.rev_ents_length != self.ents_length:
             msg = "Reversed entities index size not equal to index size ({} and {})".format(
-                self.rev_ents_length,
-                self.ents_length)
+                self.rev_ents_length, self.ents_length)
             logger.error(msg)
             raise Exception(msg)
 
         if self.rev_rels_length != self.rels_length:
             msg = "Reversed relations index size not equal to index size ({} and {})".format(
-                self.rev_rels_length,
-                self.rels_length)
+                self.rev_rels_length, self.rels_length)
             logger.error(msg)
             raise Exception(msg)
 
-        logger.debug("Mappings updated with: {} ents, {} rev_ents, {} rels and {} rev_rels".format(
-            self.ents_length,
-            self.rev_ents_length,
-            self.rels_length,
-            self.rev_rels_length))
+        logger.debug(
+            "Mappings updated with: {} ents, {} rev_ents, {} rels and {} rev_rels".format(
+                self.ents_length,
+                self.rev_ents_length,
+                self.rels_length,
+                self.rev_rels_length))
 
     def update_dictionary_mappings_in_chunks(self):
         """Update dictionary mappings chunk by chunk."""
@@ -402,7 +413,8 @@ class InMemory():
                 of indexes.
         """
         if type_of not in ["t", "e", "r"]:
-            msg = "Type (type_of) should be one of the following: t, e, r, instead got {}".format(type_of)
+            msg = "Type (type_of) should be one of the following: t, e, r, instead got {}".format(
+                type_of)
             logger.error(msg)
             raise Exception(msg)
 
@@ -410,7 +422,8 @@ class InMemory():
             if isinstance(sample, pd.DataFrame):
                 sample = sample.values
             self.data_shape = sample.shape[1]
-            indexed_data = self.get_indexes_from_a_dictionary(sample[:, :3], order=order)
+            indexed_data = self.get_indexes_from_a_dictionary(
+                sample[:, :3], order=order)
             # focusE
             if sample.shape[1] > 3:
                 # weights = preprocess_focusE_weights(data=sample[:, :3], weights=sample[:, 3:])
@@ -419,7 +432,8 @@ class InMemory():
             else:
                 return indexed_data
         else:
-            return self.get_indexes_from_a_dictionary_single(sample, type_of=type_of, order=order)
+            return self.get_indexes_from_a_dictionary_single(
+                sample, type_of=type_of, order=order)
 
     def get_indexes_from_a_dictionary(self, sample, order="raw2ind"):
         """Get indexed triples from an in-memory dictionary.
@@ -447,7 +461,8 @@ class InMemory():
             relations = self.relations_dict
             dtype = str
         else:
-            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(order)
+            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(
+                order)
             logger.error(msg)
             raise Exception(msg)
         if entities is None and relations is None:
@@ -472,7 +487,8 @@ class InMemory():
                 invalid_keys += 1
 
         if invalid_keys > 0:
-            print('\n{} triples containing invalid keys skipped!'.format(invalid_keys))
+            print(
+                '\n{} triples containing invalid keys skipped!'.format(invalid_keys))
 
         subjects = np.array(subjects, dtype=dtype)
         objects = np.array(objects, dtype=dtype)
@@ -481,7 +497,8 @@ class InMemory():
         merged = np.stack([subjects, predicates, objects], axis=1)
         return merged
 
-    def get_indexes_from_a_dictionary_single(self, sample, type_of="e", order="raw2ind"):
+    def get_indexes_from_a_dictionary_single(
+            self, sample, type_of="e", order="raw2ind"):
         """Get indexed elements (entities, relations) or raw data from an in-memory dictionary.
 
            Parameters
@@ -511,7 +528,8 @@ class InMemory():
             relations = self.relations_dict
             dtype = str
         else:
-            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(order)
+            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(
+                order)
             logger.error(msg)
             raise Exception(msg)
 
@@ -528,7 +546,8 @@ class InMemory():
             return elements
         else:
             if type_of not in ["r", "e"]:
-                msg = "No such option, should be r (relations) or e (entities), instead got {}".format(type_of)
+                msg = "No such option, should be r (relations) or e (entities), instead got {}".format(
+                    type_of)
                 logger.error(msg)
                 raise Exception(msg)
 
@@ -615,27 +634,37 @@ class Shelves():
             This method also dispatches to the adequate functions to create persistent or in-memory dictionaries.
         """
 
-        if isinstance(self.entities_dict, str) and self.shelve_exists(self.entities_dict) and \
-                isinstance(self.reversed_entities_dict, str) and self.shelve_exists(
-                    self.reversed_entities_dict) and \
-                isinstance(self.relations_dict, str) and self.shelve_exists(
-                    self.relations_dict) and \
-                isinstance(self.reversed_relations_dict, str) and self.shelve_exists(
-                    self.reversed_relations_dict):
+        if isinstance(
+                self.entities_dict,
+                str) and self.shelve_exists(
+                self.entities_dict) and isinstance(
+                self.reversed_entities_dict,
+                str) and self.shelve_exists(
+                    self.reversed_entities_dict) and isinstance(
+                        self.relations_dict,
+                        str) and self.shelve_exists(
+                            self.relations_dict) and isinstance(
+                                self.reversed_relations_dict,
+                                str) and self.shelve_exists(
+                self.reversed_relations_dict):
             self._update_properties()
-            logger.debug("The mappings initialised from persistent dictionaries (shelves).")
+            logger.debug(
+                "The mappings initialised from persistent dictionaries (shelves).")
         elif self.entities_dict is None and \
                 self.reversed_entities_dict is None and \
                 self.relations_dict is None and \
                 self.reversed_relations_dict is None:
-            logger.debug("The mappings will be created for data in {}.".format(self.name))
+            logger.debug(
+                "The mappings will be created for data in {}.".format(
+                    self.name))
 
             if isinstance(self.data, np.ndarray):
                 self.create_persistent_mappings_from_nparray()
             else:
                 self.create_persistent_mappings_in_chunks()
         else:
-            logger.debug("Provided initialization objects are not supported. Can't Initialise mappings.")
+            logger.debug(
+                "Provided initialization objects are not supported. Can't Initialise mappings.")
         self.mapped = True
 
     def create_persistent_mappings_in_chunks(self):
@@ -650,14 +679,26 @@ class Shelves():
            Remember to use mappings for entities with entities and relations with relations!
         """
         date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p")
-        self.entities_dict = os.path.join(self.root_directory,
-                                          "entities_{}_{}.shf".format(self.name, date))
-        self.reversed_entities_dict = os.path.join(self.root_directory,
-                                                   "reversed_entities_{}_{}.shf".format(self.name, date))
-        self.relations_dict = os.path.join(self.root_directory,
-                                           "relations_{}_{}.shf".format(self.name, date))
-        self.reversed_relations_dict = os.path.join(self.root_directory,
-                                                    "reversed_relations_{}_{}.shf".format(self.name, date))
+        self.entities_dict = os.path.join(
+            self.root_directory,
+            "entities_{}_{}.shf".format(
+                self.name,
+                date))
+        self.reversed_entities_dict = os.path.join(
+            self.root_directory,
+            "reversed_entities_{}_{}.shf".format(
+                self.name,
+                date))
+        self.relations_dict = os.path.join(
+            self.root_directory,
+            "relations_{}_{}.shf".format(
+                self.name,
+                date))
+        self.reversed_relations_dict = os.path.join(
+            self.root_directory,
+            "reversed_relations_{}_{}.shf".format(
+                self.name,
+                date))
 
         for chunk in self.data:
             if isinstance(chunk, pd.DataFrame):
@@ -665,11 +706,16 @@ class Shelves():
             else:
                 self.update_shelves(chunk[:, :3], rough=True)
 
-        logger.debug("We need to reindex all the data now so the indexes are continuous among chunks")
+        logger.debug(
+            "We need to reindex all the data now so the indexes are continuous among chunks")
         self.reindex()
 
         self.files_id = "_{}_{}.shf".format(self.name, date)
-        files = ["entities", "reversed_entities", "relations", "reversed_relations"]
+        files = [
+            "entities",
+            "reversed_entities",
+            "relations",
+            "reversed_relations"]
         logger.debug("Mappings are created in the following files:\n{}\n{}\n{}\n{}".format(
             *[x + self.files_id for x in files]))
         self.metadata.update({"entities_shelf": self.entities_dict,
@@ -737,12 +783,15 @@ class Shelves():
                 logger.error(msg)
                 raise Exception(msg)
         else:
-            logger.debug("In a rough mode, the sizes may not be equal due to duplicates, \
+            logger.debug(
+                "In a rough mode, the sizes may not be equal due to duplicates, \
             it will be fixed in reindexing at the later stage.")
-            logger.debug("Reversed entities index size and index size {} and {}".format(
-                self.rev_ents_length, self.ents_length))
-            logger.debug("Reversed relations index size and index size: {} and {}".format(
-                self.rev_rels_length, self.rels_length))
+            logger.debug(
+                "Reversed entities index size and index size {} and {}".format(
+                    self.rev_ents_length, self.ents_length))
+            logger.debug(
+                "Reversed relations index size and index size: {} and {}".format(
+                    self.rev_rels_length, self.rels_length))
 
     def create_persistent_mappings_from_nparray(self):
         """Creates shelves for mappings from entities and relations to indexes and the reverse mappings.
@@ -757,16 +806,32 @@ class Shelves():
         """
 
         date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p")
-        self.entities_dict = os.path.join(self.root_directory,
-                                          "entities_{}_{}.shf".format(self.name, date))
-        self.reversed_entities_dict = os.path.join(self.root_directory,
-                                                   "reversed_entities_{}_{}.shf".format(self.name, date))
-        self.relations_dict = os.path.join(self.root_directory,
-                                           "relations_{}_{}.shf".format(self.name, date))
-        self.reversed_relations_dict = os.path.join(self.root_directory,
-                                                    "reversed_relations_{}_{}.shf".format(self.name, date))
+        self.entities_dict = os.path.join(
+            self.root_directory,
+            "entities_{}_{}.shf".format(
+                self.name,
+                date))
+        self.reversed_entities_dict = os.path.join(
+            self.root_directory,
+            "reversed_entities_{}_{}.shf".format(
+                self.name,
+                date))
+        self.relations_dict = os.path.join(
+            self.root_directory,
+            "relations_{}_{}.shf".format(
+                self.name,
+                date))
+        self.reversed_relations_dict = os.path.join(
+            self.root_directory,
+            "reversed_relations_{}_{}.shf".format(
+                self.name,
+                date))
         self.files_id = "_{}_{}.shf".format(self.name, date)
-        files = ["entities", "reversed_entities", "relations", "reversed_relations"]
+        files = [
+            "entities",
+            "reversed_entities",
+            "relations",
+            "reversed_relations"]
         logger.debug("Mappings are created in the following files:\n{}\n{}\n{}\n{}".format(
             *[x + self.files_id for x in files]))
         self.metadata.update({"entities_shelf": self.entities_dict,
@@ -780,8 +845,11 @@ class Shelves():
         """Update shelves with sample or full data when sample not provided."""
         if sample is None:
             sample = self.data
-            if self.shelve_exists(self.entities_dict) or self.shelve_exists(self.reversed_entities_dict) or\
-               self.shelve_exists(self.relations_dict) or self.shelve_exists(self.reversed_relations_dict):
+            if self.shelve_exists(
+                self.entities_dict) or self.shelve_exists(
+                self.reversed_entities_dict) or self.shelve_exists(
+                self.relations_dict) or self.shelve_exists(
+                    self.reversed_relations_dict):
                 msg = "Shelves exists for some reason and are not empty!"
                 logger.error(msg)
                 raise Exception(msg)
@@ -793,7 +861,8 @@ class Shelves():
         start_ents = self._get_starting_index_ents()
         logger.debug("Start index entities: {}".format(start_ents))
         new_indexes_ents = range(start_ents, start_ents + len(entities))
-        # maximum new index, usually less when multiple chunks provided due to chunks
+        # maximum new index, usually less when multiple chunks provided due to
+        # chunks
         if not len(new_indexes_ents) == len(entities):
             msg = "Etimated indexes length for entities not equal to entities length ({} and {})".format(
                 len(new_indexes_ents), len(entities))
@@ -809,17 +878,27 @@ class Shelves():
             logger.error(msg)
             raise Exception(msg)
         # print("new indexes rels: ", new_indexes_rels)
-        logger.debug("index rels size: {} and rels size: {}".format(len(new_indexes_rels), len(predicates)))
-        logger.debug("index ents size: {} and entss size: {}".format(len(new_indexes_ents), len(entities)))
+        logger.debug(
+            "index rels size: {} and rels size: {}".format(
+                len(new_indexes_rels),
+                len(predicates)))
+        logger.debug(
+            "index ents size: {} and entss size: {}".format(
+                len(new_indexes_ents),
+                len(entities)))
 
         with shelve.open(self.entities_dict, writeback=True) as ents:
             with shelve.open(self.reversed_entities_dict, writeback=True) as reverse_ents:
                 with shelve.open(self.relations_dict, writeback=True) as rels:
                     with shelve.open(self.reversed_relations_dict, writeback=True) as reverse_rels:
-                        reverse_ents.update({str(value): str(key) for key, value in zip(new_indexes_ents, entities)})
-                        ents.update({str(key): str(value) for key, value in zip(new_indexes_ents, entities)})
-                        reverse_rels.update({str(value): str(key) for key, value in zip(new_indexes_rels, predicates)})
-                        rels.update({str(key): str(value) for key, value in zip(new_indexes_rels, predicates)})
+                        reverse_ents.update(
+                            {str(value): str(key) for key, value in zip(new_indexes_ents, entities)})
+                        ents.update({str(key): str(value) for key,
+                                    value in zip(new_indexes_ents, entities)})
+                        reverse_rels.update(
+                            {str(value): str(key) for key, value in zip(new_indexes_rels, predicates)})
+                        rels.update({str(key): str(value) for key, value in zip(
+                            new_indexes_rels, predicates)})
         self._update_properties(rough=rough)
 
     def shelve_exists(self, name):
@@ -901,20 +980,23 @@ class Shelves():
                 of indexes.
         """
         if type_of not in ["t", "e", "r"]:
-            msg = "Type (type_of) should be one of the following: t, e, r, instead got {}".format(type_of)
+            msg = "Type (type_of) should be one of the following: t, e, r, instead got {}".format(
+                type_of)
             logger.error(msg)
             raise Exception(msg)
 
         if type_of == "t":
             self.data_shape = sample.shape[1]
-            indexed_data = self.get_indexes_from_shelves(sample[:, :3], order=order)
+            indexed_data = self.get_indexes_from_shelves(
+                sample[:, :3], order=order)
             if sample.shape[1] > 3:
                 weights = sample[:, 3:]
                 # weights = preprocess_focusE_weights(data=sample[:, :3], weights=sample[:, 3:])
                 return np.concatenate([indexed_data, weights], axis=1)
             return indexed_data
         else:
-            return self.get_indexes_from_shelves_single(sample, type_of=type_of, order=order)
+            return self.get_indexes_from_shelves_single(
+                sample, type_of=type_of, order=order)
 
     def get_indexes_from_shelves(self, sample, order="raw2ind"):
         """Get indexed triples or raw data from shelves.
@@ -946,7 +1028,8 @@ class Shelves():
             relations = self.relations_dict
             dtype = str
         else:
-            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(order)
+            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(
+                order)
             logger.error(msg)
             raise Exception(msg)
 
@@ -969,12 +1052,14 @@ class Shelves():
                         invalid_keys += 1
 
                 if invalid_keys > 0:
-                    print('\n{} triples containing invalid keys skipped!'.format(invalid_keys))
+                    print(
+                        '\n{} triples containing invalid keys skipped!'.format(invalid_keys))
 
                 out = np.array((subjects, predicates, objects), dtype=dtype).T
                 return out
 
-    def get_indexes_from_shelves_single(self, sample, type_of="e", order="raw2ind"):
+    def get_indexes_from_shelves_single(
+            self, sample, type_of="e", order="raw2ind"):
         """Get indexed elements or raw data from shelves for entities or relations.
 
            Parameters
@@ -1002,7 +1087,8 @@ class Shelves():
             relations = self.relations_dict
             dtype = str
         else:
-            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(order)
+            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(
+                order)
             logger.error(msg)
             raise Exception(msg)
 
@@ -1016,7 +1102,8 @@ class Shelves():
             return np.array(elements, dtype=dtype)
         else:
             if type_of not in ["r", "e"]:
-                msg = "No such option, should be r (relations) or e (entities), instead got {}".format(type_of)
+                msg = "No such option, should be r (relations) or e (entities), instead got {}".format(
+                    type_of)
                 logger.error(msg)
                 raise Exception(msg)
 
@@ -1038,7 +1125,13 @@ class Shelves():
 
 @register_indexer_backend("sqlite")
 class SQLite():
-    def __init__(self, data, db_file=None, root_directory=None, name="main_partition", **kwargs):
+    def __init__(
+            self,
+            data,
+            db_file=None,
+            root_directory=None,
+            name="main_partition",
+            **kwargs):
         """Initialise backend by creating mappings.
 
            Parameters
@@ -1058,7 +1151,8 @@ class SQLite():
             self.mapped = True
         else:
             date = datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p")
-            self.db_file = os.path.join(self.root_directory, name + date + str(uuid.uuid4()) + ".db")
+            self.db_file = os.path.join(
+                self.root_directory, name + date + str(uuid.uuid4()) + ".db")
 
             if os.path.exists(self.db_file):
                 os.remove(self.db_file)
@@ -1117,7 +1211,10 @@ class SQLite():
         '''Get the metadata update for the database.'''
         self.root_directory = path
         self.root_directory = '.' if self.root_directory == '' else self.root_directory
-        new_file_name = os.path.join(self.root_directory, os.path.basename(self.db_file))
+        new_file_name = os.path.join(
+            self.root_directory,
+            os.path.basename(
+                self.db_file))
         if not os.path.exists(new_file_name):
             shutil.copyfile(self.db_file, new_file_name)
         self.db_file = new_file_name
@@ -1164,7 +1261,8 @@ class SQLite():
 
             tab = 'tmp_{}'
             values_placeholder = "({})".format(", ".join(["?"] * 1))
-            query = 'INSERT OR IGNORE INTO {} VALUES {};'.format(tab.format(table), values_placeholder)
+            query = 'INSERT OR IGNORE INTO {} VALUES {};'.format(
+                tab.format(table), values_placeholder)
             with sqlite3.connect(self.db_file) as conn:
                 c = conn.cursor()
                 tmp = [(str(v),) for v in elems]
@@ -1189,7 +1287,8 @@ class SQLite():
             logger.debug("Table is empty or not such table exists.")
             return maxi
         elif not isinstance(maxi, list) or not isinstance(maxi[0], tuple):
-            raise ValueError("Cannot get max for the table with provided condition.")
+            raise ValueError(
+                "Cannot get max for the table with provided condition.")
         logger.debug("Maximal value: {}.".format(maxi[0][0]))
         return maxi[0][0]
 
@@ -1221,9 +1320,10 @@ class SQLite():
     def index_data(self, table):
         """Create new table with persisted id of elements."""
         logger.debug("Index data in SQLite.")
-        query = ["CREATE TABLE IF NOT EXISTS {0}(id INTEGER PRIMARY KEY, name TEXT NOT NULL);".format(table),
-                 "INSERT INTO {0}(id, name) SELECT rowid - 1, name FROM tmp_{0};".format(table),
-                 "DROP TABLE tmp_{0};".format(table)]
+        query = [
+            "CREATE TABLE IF NOT EXISTS {0}(id INTEGER PRIMARY KEY, name TEXT NOT NULL);".format(table),
+            "INSERT INTO {0}(id, name) SELECT rowid - 1, name FROM tmp_{0};".format(table),
+            "DROP TABLE tmp_{0};".format(table)]
         with sqlite3.connect(self.db_file) as conn:
             c = conn.cursor()
             for q in query:
@@ -1240,7 +1340,8 @@ class SQLite():
                 self.update_db(sample=chunk.iloc[:, :3].values)
             else:
                 self.update_db(chunk[:, :3])
-        logger.debug("We need to reindex all the data now so the indexes are continuous among chunks")
+        logger.debug(
+            "We need to reindex all the data now so the indexes are continuous among chunks")
         self.index_data('entities')
         self.index_data('relations')
 
@@ -1270,7 +1371,8 @@ class SQLite():
                 of indexes.
         """
         if type_of not in ["t", "e", "r"]:
-            msg = "Type (type_of) should be one of the following: t, e, r, instead got {}".format(type_of)
+            msg = "Type (type_of) should be one of the following: t, e, r, instead got {}".format(
+                type_of)
             logger.error(msg)
             raise Exception(msg)
 
@@ -1283,7 +1385,8 @@ class SQLite():
                 return np.concatenate([indexed_data, weights], axis=1)
             return indexed_data
         else:
-            out, _ = self.get_indexes_from_db_single(sample, type_of=type_of, order=order)
+            out, _ = self.get_indexes_from_db_single(
+                sample, type_of=type_of, order=order)
             return out
 
     def get_indexes_from_db(self, sample, order="raw2ind"):
@@ -1307,26 +1410,33 @@ class SQLite():
         if isinstance(sample, pd.DataFrame):
             sample = sample.values
 
-        subjects, subject_present = self.get_indexes_from_db_single(sample[:, 0], type_of='e', order=order)
-        objects, objects_present = self.get_indexes_from_db_single(sample[:, 2], type_of='e', order=order)
-        predicates, predicates_present = self.get_indexes_from_db_single(sample[:, 1], type_of='r', order=order)
+        subjects, subject_present = self.get_indexes_from_db_single(
+            sample[:, 0], type_of='e', order=order)
+        objects, objects_present = self.get_indexes_from_db_single(
+            sample[:, 2], type_of='e', order=order)
+        predicates, predicates_present = self.get_indexes_from_db_single(
+            sample[:, 1], type_of='r', order=order)
         if order == "raw2ind":
             dtype = int
         elif order == "ind2raw":
             dtype = str
         else:
-            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(order)
+            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(
+                order)
             logger.error(msg)
             raise Exception(msg)
 
-        present = np.array(subject_present) & np.array(objects_present) & np.array(predicates_present)
+        present = np.array(subject_present) & np.array(
+            objects_present) & np.array(predicates_present)
         out = np.array((subjects, predicates, objects), dtype=dtype).T
         before = out.shape[0]
         out = out[present]
         after = out.shape[0]
 
         if before - after > 0:
-            print('\n{} triples containing invalid keys skipped!'.format(before - after))
+            print(
+                '\n{} triples containing invalid keys skipped!'.format(
+                    before - after))
 
         return out
 
@@ -1357,7 +1467,8 @@ class SQLite():
         elif type_of == 'r':
             table = 'relations'
         else:
-            msg = "No such option, should be r (relations) or e (entities), instead got {}".format(type_of)
+            msg = "No such option, should be r (relations) or e (entities), instead got {}".format(
+                type_of)
             logger.error(msg)
             raise Exception(msg)
 
@@ -1385,12 +1496,14 @@ class SQLite():
                     return out_values, present
 
                 except Exception as e:
-                    logger.debug("Query failed. The error '{}' occurred".format(e))
+                    logger.debug(
+                        "Query failed. The error '{}' occurred".format(e))
                     logger.debug(query)
                     logger.debug(output)
                     return []
         elif order == 'ind2raw':
-            query = "select * from {0} where id in ({1});".format(table, ','.join('"{}"'.format(v) for v in sample))
+            query = "select * from {0} where id in ({1});".format(
+                table, ','.join('"{}"'.format(v) for v in sample))
             with sqlite3.connect(self.db_file) as conn:
                 cursor = conn.cursor()
                 output = None
@@ -1412,10 +1525,12 @@ class SQLite():
                     return out_values, present
 
                 except Exception as e:
-                    logger.debug("Query failed. The error '{}' occurred".format(e))
+                    logger.debug(
+                        "Query failed. The error '{}' occurred".format(e))
                     return []
         else:
-            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(order)
+            msg = "No such order available options: ind2raw, raw2ind, instead got {}.".format(
+                order)
             logger.error(msg)
             raise Exception(msg)
 
@@ -1437,7 +1552,8 @@ class SQLite():
             logger.debug("Table is empty or not such table exists.")
             return count
         elif not isinstance(count, list) or not isinstance(count[0], tuple):
-            raise ValueError("Cannot get count for the table with provided condition.")
+            raise ValueError(
+                "Cannot get count for the table with provided condition.")
         logger.debug("Count is {}.".format(count[0][0]))
         return count[0][0]
 

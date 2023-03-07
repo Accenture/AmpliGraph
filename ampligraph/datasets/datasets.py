@@ -18,13 +18,36 @@ from collections import namedtuple
 
 AMPLIGRAPH_ENV_NAME = 'AMPLIGRAPH_DATA_HOME'
 
-DatasetMetadata = namedtuple('DatasetMetadata', ['dataset_name', 'filename', 'url', 'train_name', 'valid_name',
-                                                 'test_name', 'train_checksum', 'valid_checksum', 'test_checksum',
-                                                 'test_human_name', 'test_human_checksum', 'test_human_ids_name',
-                                                 'test_human_ids_checksum', 'mapper_name', 'mapper_checksum',
-                                                 'valid_negatives_name', 'valid_negatives_checksum', 'test_negatives_name',
-                                                 'test_negatives_checksum'],
-                             defaults=(None, None, None, None, None, None, None, None, None, None))
+DatasetMetadata = namedtuple('DatasetMetadata',
+                             ['dataset_name',
+                              'filename',
+                              'url',
+                              'train_name',
+                              'valid_name',
+                              'test_name',
+                              'train_checksum',
+                              'valid_checksum',
+                              'test_checksum',
+                              'test_human_name',
+                              'test_human_checksum',
+                              'test_human_ids_name',
+                              'test_human_ids_checksum',
+                              'mapper_name',
+                              'mapper_checksum',
+                              'valid_negatives_name',
+                              'valid_negatives_checksum',
+                              'test_negatives_name',
+                              'test_negatives_checksum'],
+                             defaults=(None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None))
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -69,18 +92,24 @@ def _clean_data(X, return_idx=False):
     train_rel = train.p.unique()
 
     if 'valid_negatives' in X:
-        valid_negatives = pd.DataFrame(X["valid_negatives"][:, :3], columns=['s', 'p', 'o'])
-        valid_negatives_idx = valid_negatives.s.isin(train_ent) & valid_negatives.o.isin(train_ent) & valid_negatives.p.isin(train_rel)
+        valid_negatives = pd.DataFrame(
+            X["valid_negatives"][:, :3], columns=['s', 'p', 'o'])
+        valid_negatives_idx = valid_negatives.s.isin(train_ent) & valid_negatives.o.isin(
+            train_ent) & valid_negatives.p.isin(train_rel)
         filtered_valid_negatives = valid_negatives[valid_negatives_idx].values
         filtered_X['valid_negatives'] = filtered_valid_negatives
     if 'test_negatives' in X:
-        test_negatives = pd.DataFrame(X["test_negatives"][:, :3], columns=['s', 'p', 'o'])
-        test_negatives_idx = test_negatives.s.isin(train_ent) & test_negatives.o.isin(train_ent) & test_negatives.p.isin(train_rel)
+        test_negatives = pd.DataFrame(
+            X["test_negatives"][:, :3], columns=['s', 'p', 'o'])
+        test_negatives_idx = test_negatives.s.isin(train_ent) & test_negatives.o.isin(
+            train_ent) & test_negatives.p.isin(train_rel)
         filtered_test_negatives = test[test_negatives_idx].values
         filtered_X['test_negatives'] = filtered_test_negatives
 
-    valid_idx = valid.s.isin(train_ent) & valid.o.isin(train_ent) & valid.p.isin(train_rel)
-    test_idx = test.s.isin(train_ent) & test.o.isin(train_ent) & test.p.isin(train_rel)
+    valid_idx = valid.s.isin(train_ent) & valid.o.isin(
+        train_ent) & valid.p.isin(train_rel)
+    test_idx = test.s.isin(train_ent) & test.o.isin(
+        train_ent) & test.p.isin(train_rel)
 
     # filtered_valid = valid[valid_idx].values
     # filtered_test = test[test_idx].values
@@ -125,7 +154,9 @@ def _get_data_home(data_home=None):
     """
 
     if data_home is None:
-        data_home = os.environ.get(AMPLIGRAPH_ENV_NAME, os.path.join('~', 'ampligraph_datasets'))
+        data_home = os.environ.get(
+            AMPLIGRAPH_ENV_NAME, os.path.join(
+                '~', 'ampligraph_datasets'))
     data_home = os.path.expanduser(data_home)
     if not os.path.exists(data_home):
         os.makedirs(data_home)
@@ -162,16 +193,18 @@ def _unzip_dataset(remote, source, destination, check_md5hash=False):
         logger.debug('Unzipping {} to {}'.format(source, destination))
         zip_ref.extractall(destination)
     if check_md5hash:
-        for file_name, remote_checksum in [[remote.train_name, remote.train_checksum],
-                                           [remote.valid_name, remote.valid_checksum],
-                                           [remote.test_name, remote.test_checksum],
-                                           [remote.test_human_name, remote.test_human_checksum],
-                                           [remote.test_human_ids_name, remote.test_human_ids_checksum],
-                                           [remote.mapper_name, remote.mapper_checksum],
-                                           [remote.valid_negatives_name, remote.valid_negatives_checksum],
-                                           [remote.test_negatives_name, remote.test_negatives_checksum],
-                                           ]:
-            file_path = os.path.join(destination, remote.dataset_name, file_name)
+        for file_name, remote_checksum in [
+            [
+                remote.train_name, remote.train_checksum], [
+                remote.valid_name, remote.valid_checksum], [
+                remote.test_name, remote.test_checksum], [
+                    remote.test_human_name, remote.test_human_checksum], [
+                        remote.test_human_ids_name, remote.test_human_ids_checksum], [
+                            remote.mapper_name, remote.mapper_checksum], [
+                                remote.valid_negatives_name, remote.valid_negatives_checksum], [
+                                    remote.test_negatives_name, remote.test_negatives_checksum], ]:
+            file_path = os.path.join(
+                destination, remote.dataset_name, file_name)
             checksum = _md5(file_path)
             if checksum != remote_checksum:
                 os.remove(source)
@@ -271,7 +304,12 @@ def _add_reciprocal_relations(triples_df):
     return triples_df
 
 
-def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciprocal_rels=False):
+def load_from_csv(
+        directory_path,
+        file_name,
+        sep='\t',
+        header=None,
+        add_reciprocal_rels=False):
     """Load a knowledge graph from a .csv file.
 
     Loads a knowledge graph serialized in a .csv file filtering duplicated statements. In the .csv file, each line
@@ -340,7 +378,11 @@ def load_from_csv(directory_path, file_name, sep='\t', header=None, add_reciproc
     return df.values
 
 
-def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_reciprocal_rels=False):
+def _load_dataset(
+        dataset_metadata,
+        data_home=None,
+        check_md5hash=False,
+        add_reciprocal_rels=False):
     """Load a dataset from the details provided.
 
     DatasetMetadata = namedtuple('DatasetMetadata', ['dataset_name', 'filename', 'url', 'train_name', 'valid_name',
@@ -365,9 +407,10 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
     dataset = {}
     if dataset_metadata.dataset_name is None:
         if dataset_metadata.url is None:
-            raise ValueError('The dataset name or url must be provided to load a dataset.')
-        dataset_metadata.dataset_name = dataset_metadata.url[dataset_metadata.url.rfind('/') + 1:dataset_metadata
-                                                             .url.rfind('.')]
+            raise ValueError(
+                'The dataset name or url must be provided to load a dataset.')
+        dataset_metadata.dataset_name = dataset_metadata.url[dataset_metadata.url.rfind(
+            '/') + 1:dataset_metadata .url.rfind('.')]
     dataset_path = _fetch_dataset(dataset_metadata, data_home, check_md5hash)
     train = load_from_csv(dataset_path,
                           dataset_metadata.train_name,
@@ -382,9 +425,10 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
                          add_reciprocal_rels=add_reciprocal_rels)
     dataset['test'] = test
     if dataset_metadata.valid_negatives_name is not None:
-        valid_negatives = load_from_csv(dataset_path,
-                                        dataset_metadata.valid_negatives_name,
-                                        add_reciprocal_rels=add_reciprocal_rels)
+        valid_negatives = load_from_csv(
+            dataset_path,
+            dataset_metadata.valid_negatives_name,
+            add_reciprocal_rels=add_reciprocal_rels)
         dataset['valid_negatives'] = valid_negatives
     if dataset_metadata.test_negatives_name is not None:
         test_negatives = load_from_csv(dataset_path,
@@ -393,12 +437,15 @@ def _load_dataset(dataset_metadata, data_home=None, check_md5hash=False, add_rec
         dataset['test_negatives'] = test_negatives
 
     if dataset_metadata.test_human_checksum is not None and dataset_metadata.test_human_ids_checksum is not None:
-        test_human = load_from_csv(dataset_path, dataset_metadata.test_human_name)
+        test_human = load_from_csv(
+            dataset_path, dataset_metadata.test_human_name)
         dataset['test-human'] = test_human
-        test_human_ids = load_from_csv(dataset_path, dataset_metadata.test_human_ids_name)
+        test_human_ids = load_from_csv(
+            dataset_path, dataset_metadata.test_human_ids_name)
         dataset['test-human-ids'] = test_human_ids
     if dataset_metadata.mapper_checksum is not None:
-        mapper = load_mapper_from_json(dataset_path, dataset_metadata.mapper_name)
+        mapper = load_mapper_from_json(
+            dataset_path, dataset_metadata.mapper_name)
         dataset['mapper'] = mapper
     return dataset
 
@@ -516,7 +563,10 @@ def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
                          add_reciprocal_rels=add_reciprocal_rels)
 
 
-def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False):
+def load_wn18rr(
+        check_md5hash=False,
+        clean_unseen=True,
+        add_reciprocal_rels=False):
     """Load the WN18RR dataset.
 
     The dataset is described in :cite:`DettmersMS018`.
@@ -579,14 +629,15 @@ def load_wn18rr(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fals
         test_name='test.txt',
         train_checksum='35e81af3ae233327c52a87f23b30ad3c',
         valid_checksum='74a2ee9eca9a8d31f1a7d4d95b5e0887',
-        test_checksum='2b45ba1ba436b9d4ff27f1d3511224c9'
-    )
+        test_checksum='2b45ba1ba436b9d4ff27f1d3511224c9')
 
     if clean_unseen:
-        return _clean_data(_load_dataset(wn18rr,
-                                         data_home=None,
-                                         check_md5hash=check_md5hash,
-                                         add_reciprocal_rels=add_reciprocal_rels))
+        return _clean_data(
+            _load_dataset(
+                wn18rr,
+                data_home=None,
+                check_md5hash=check_md5hash,
+                add_reciprocal_rels=add_reciprocal_rels))
     else:
         return _load_dataset(wn18rr,
                              data_home=None,
@@ -670,7 +721,11 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
                          add_reciprocal_rels=add_reciprocal_rels)
 
 
-def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False, return_mapper=False):
+def load_fb15k_237(
+        check_md5hash=False,
+        clean_unseen=True,
+        add_reciprocal_rels=False,
+        return_mapper=False):
     """Load the FB15k-237 dataset (with option to load human labeled test subset).
 
     FB15k-237 is a reduced version of FB15K. It was first proposed by :cite:`toutanova2015representing`.
@@ -750,8 +805,7 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=F
             mapper_name='mapper.json',
             test_human_checksum='5f43e8e2fb07846ffaf80877b0734744',
             test_human_ids_checksum='e731d027b3bf9d4914393d75dae77dda',
-            mapper_checksum='b4dbdfaf1faf075746d2c32946be0234'
-        )
+            mapper_checksum='b4dbdfaf1faf075746d2c32946be0234')
     else:
         fb15k_237 = DatasetMetadata(
             dataset_name='fb15k-237',
@@ -762,21 +816,25 @@ def load_fb15k_237(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=F
             test_name='test.txt',
             train_checksum='c05b87b9ac00f41901e016a2092d7837',
             valid_checksum='6a94efd530e5f43fcf84f50bc6d37b69',
-            test_checksum='f5bdf63db39f455dec0ed259bb6f8628'
-        )
+            test_checksum='f5bdf63db39f455dec0ed259bb6f8628')
 
     if clean_unseen:
-        return _clean_data(_load_dataset(fb15k_237,
-                                         data_home=None,
-                                         check_md5hash=check_md5hash,
-                                         add_reciprocal_rels=add_reciprocal_rels))
+        return _clean_data(
+            _load_dataset(
+                fb15k_237,
+                data_home=None,
+                check_md5hash=check_md5hash,
+                add_reciprocal_rels=add_reciprocal_rels))
     else:
         return _load_dataset(fb15k_237, data_home=None,
                              check_md5hash=check_md5hash,
                              add_reciprocal_rels=add_reciprocal_rels)
 
 
-def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False):
+def load_yago3_10(
+        check_md5hash=False,
+        clean_unseen=True,
+        add_reciprocal_rels=False):
     """Load the YAGO3-10 dataset.
 
     The dataset is a split of YAGO3 :cite:`mahdisoltani2013yago3`,
@@ -835,14 +893,15 @@ def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fa
         test_name='test.txt',
         train_checksum='a9da8f583ec3920570eeccf07199229a',
         valid_checksum='2d679a906f2b1ac29d74d5c948c1ad09',
-        test_checksum='14bf97890b2fee774dbce5f326acd189'
-    )
+        test_checksum='14bf97890b2fee774dbce5f326acd189')
 
     if clean_unseen:
-        return _clean_data(_load_dataset(yago3_10,
-                                         data_home=None,
-                                         check_md5hash=check_md5hash,
-                                         add_reciprocal_rels=add_reciprocal_rels))
+        return _clean_data(
+            _load_dataset(
+                yago3_10,
+                data_home=None,
+                check_md5hash=check_md5hash,
+                add_reciprocal_rels=add_reciprocal_rels))
     else:
         return _load_dataset(yago3_10,
                              data_home=None,
@@ -850,7 +909,10 @@ def load_yago3_10(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=Fa
                              add_reciprocal_rels=add_reciprocal_rels)
 
 
-def load_wn11(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False):
+def load_wn11(
+        check_md5hash=False,
+        clean_unseen=True,
+        add_reciprocal_rels=False):
     """Load the WordNet11 (WN11) dataset.
 
     WordNet was originally proposed in `WordNet: a lexical database for English` :cite:`miller1995wordnet`.
@@ -923,8 +985,7 @@ def load_wn11(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
         test_name='test.txt',
         train_checksum='2429c672c89e33ad4fa8e1a3ade416e4',
         valid_checksum='87bf86e225e79294a2524089614b96aa',
-        test_checksum='24113b464f8042c339e3e6833c1cebdf'
-    )
+        test_checksum='24113b464f8042c339e3e6833c1cebdf')
 
     dataset = _load_dataset(wn11, data_home=None,
                             check_md5hash=check_md5hash,
@@ -940,7 +1001,8 @@ def load_wn11(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
     dataset['test_labels'] = test_labels == '1'
 
     if clean_unseen:
-        clean_dataset, valid_idx, test_idx = _clean_data(dataset, return_idx=True)
+        clean_dataset, valid_idx, test_idx = _clean_data(
+            dataset, return_idx=True)
         clean_dataset['valid_labels'] = dataset['valid_labels'][valid_idx]
         clean_dataset['test_labels'] = dataset['test_labels'][test_idx]
         return clean_dataset
@@ -948,7 +1010,10 @@ def load_wn11(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
         return dataset
 
 
-def load_fb13(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False):
+def load_fb13(
+        check_md5hash=False,
+        clean_unseen=True,
+        add_reciprocal_rels=False):
     """Load the Freebase13 (FB13) dataset.
 
     FB13 is a subset of Freebase :cite:`bollacker2008freebase`
@@ -1023,8 +1088,7 @@ def load_fb13(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
         test_name='test.txt',
         train_checksum='9099ebcd85ab3ce723cfaaf34f74dceb',
         valid_checksum='c4ef7b244baa436a97c2a5e57d4ba7ed',
-        test_checksum='f9af2eac7c5a86996c909bdffd295528'
-    )
+        test_checksum='f9af2eac7c5a86996c909bdffd295528')
 
     dataset = _load_dataset(fb13,
                             data_home=None,
@@ -1041,7 +1105,8 @@ def load_fb13(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False)
     dataset['test_labels'] = test_labels == '1'
 
     if clean_unseen:
-        clean_dataset, valid_idx, test_idx = _clean_data(dataset, return_idx=True)
+        clean_dataset, valid_idx, test_idx = _clean_data(
+            dataset, return_idx=True)
         clean_dataset['valid_labels'] = dataset['valid_labels'][valid_idx]
         clean_dataset['test_labels'] = dataset['test_labels'][test_idx]
         return clean_dataset
@@ -1059,7 +1124,12 @@ def load_all_datasets(check_md5hash=False):
     load_fb13(check_md5hash)
 
 
-def load_from_rdf(folder_name, file_name, rdf_format='nt', data_home=None, add_reciprocal_rels=False):
+def load_from_rdf(
+        folder_name,
+        file_name,
+        rdf_format='nt',
+        data_home=None,
+        add_reciprocal_rels=False):
     """Load an RDF file.
 
     Loads an RDF knowledge graph using rdflib_ APIs.
@@ -1102,7 +1172,13 @@ def load_from_rdf(folder_name, file_name, rdf_format='nt', data_home=None, add_r
     data_home = _get_data_home(data_home)
     from rdflib import Graph
     g = Graph()
-    g.parse(os.path.join(data_home, folder_name, file_name), format=rdf_format, publicID='http://test#')
+    g.parse(
+        os.path.join(
+            data_home,
+            folder_name,
+            file_name),
+        format=rdf_format,
+        publicID='http://test#')
     triples = pd.DataFrame(np.array(g))
     triples = triples.drop_duplicates()
     if add_reciprocal_rels:
@@ -1111,7 +1187,11 @@ def load_from_rdf(folder_name, file_name, rdf_format='nt', data_home=None, add_r
     return triples.values
 
 
-def load_from_ntriples(folder_name, file_name, data_home=None, add_reciprocal_rels=False):
+def load_from_ntriples(
+        folder_name,
+        file_name,
+        data_home=None,
+        add_reciprocal_rels=False):
     """Load a dataset of RDF ntriples.
 
     Loads an RDF knowledge graph serialized as ntriples, without building an RDF graph in memory.
@@ -1165,7 +1245,11 @@ def load_from_ntriples(folder_name, file_name, data_home=None, add_reciprocal_re
     return df.values
 
 
-def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, split_threshold=0.1):                      # FocusE
+# FocusE
+def generate_focusE_dataset_splits(
+        dataset,
+        split_test_into_top_bottom=True,
+        split_threshold=0.1):
     """Creates the dataset splits for training models with FocusE layers
 
     Parameters
@@ -1203,15 +1287,20 @@ def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, spl
         aiming at observing a model that assigns the highest rank possible to the `_topk` and the lowest possible to
         the `_bottomk`.
     """
-    dataset['train_numeric_values'] = dataset['train'][:, 3:].astype(np.float32)
-    dataset['valid_numeric_values'] = dataset['valid'][:, 3:].astype(np.float32)
+    dataset['train_numeric_values'] = dataset['train'][:,
+                                                       3:].astype(np.float32)
+    dataset['valid_numeric_values'] = dataset['valid'][:,
+                                                       3:].astype(np.float32)
     dataset['test_numeric_values'] = dataset['test'][:, 3:].astype(np.float32)
 
     dataset['train'] = dataset['train'][:, 0:3]
     dataset['valid'] = dataset['valid'][:, 0:3]
     dataset['test'] = dataset['test'][:, 0:3]
 
-    sorted_indices = np.squeeze(np.argsort(dataset['test_numeric_values'], axis=0))
+    sorted_indices = np.squeeze(
+        np.argsort(
+            dataset['test_numeric_values'],
+            axis=0))
     dataset['test'] = dataset['test'][sorted_indices]
     dataset['test_numeric_values'] = dataset['test_numeric_values'][sorted_indices]
 
@@ -1227,7 +1316,11 @@ def generate_focusE_dataset_splits(dataset, split_test_into_top_bottom=True, spl
     return dataset
 
 
-def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
+def load_onet20k(
+        check_md5hash=False,
+        clean_unseen=True,
+        split_test_into_top_bottom=True,
+        split_threshold=0.1):
     """Load the O*NET20K dataset.
 
     O*NET20K was originally proposed in :cite:`pai2021learning`.
@@ -1310,8 +1403,7 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
         test_name='test.tsv',
         train_checksum='516220427a9a18516fd7a804a6944d64',
         valid_checksum='d7806951ac3d916c5c5a0304eea064d2',
-        test_checksum='e5baec19037cb0bddc5a2fe3c0f4445a'
-    )
+        test_checksum='e5baec19037cb0bddc5a2fe3c0f4445a')
 
     dataset = _load_dataset(onet20k, data_home=None,
                             check_md5hash=check_md5hash)
@@ -1319,10 +1411,15 @@ def load_onet20k(check_md5hash=False, clean_unseen=True, split_test_into_top_bot
     if clean_unseen:
         dataset = _clean_data(dataset)
 
-    return generate_focusE_dataset_splits(dataset, split_test_into_top_bottom, split_threshold)
+    return generate_focusE_dataset_splits(
+        dataset, split_test_into_top_bottom, split_threshold)
 
 
-def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
+def load_ppi5k(
+        check_md5hash=False,
+        clean_unseen=True,
+        split_test_into_top_bottom=True,
+        split_threshold=0.1):
     """Load the PPI5K dataset.
 
     Originally proposed in :cite:`chen2019embedding`, PPI5K is a subset of the protein-protein
@@ -1415,10 +1512,15 @@ def load_ppi5k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
     if clean_unseen:
         dataset = _clean_data(dataset)
 
-    return generate_focusE_dataset_splits(dataset, split_test_into_top_bottom, split_threshold)
+    return generate_focusE_dataset_splits(
+        dataset, split_test_into_top_bottom, split_threshold)
 
 
-def load_nl27k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
+def load_nl27k(
+        check_md5hash=False,
+        clean_unseen=True,
+        split_test_into_top_bottom=True,
+        split_threshold=0.1):
     """Load the NL27K dataset.
 
     NL27K was originally proposed in :cite:`chen2019embedding`. It is a subset of the Never Ending Language
@@ -1509,10 +1611,15 @@ def load_nl27k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
     if clean_unseen:
         dataset = _clean_data(dataset)
 
-    return generate_focusE_dataset_splits(dataset, split_test_into_top_bottom, split_threshold)
+    return generate_focusE_dataset_splits(
+        dataset, split_test_into_top_bottom, split_threshold)
 
 
-def load_cn15k(check_md5hash=False, clean_unseen=True, split_test_into_top_bottom=True, split_threshold=0.1):
+def load_cn15k(
+        check_md5hash=False,
+        clean_unseen=True,
+        split_test_into_top_bottom=True,
+        split_threshold=0.1):
     """Load the CN15K dataset.
 
     CN15K was originally proposed in :cite:`chen2019embedding`, it is a subset of ConceptNet :cite:`CN`,
@@ -1603,7 +1710,8 @@ def load_cn15k(check_md5hash=False, clean_unseen=True, split_test_into_top_botto
     if clean_unseen:
         dataset = _clean_data(dataset)
 
-    return generate_focusE_dataset_splits(dataset, split_test_into_top_bottom, split_threshold)
+    return generate_focusE_dataset_splits(
+        dataset, split_test_into_top_bottom, split_threshold)
 
 
 def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
@@ -1691,7 +1799,12 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
     r = requests.get(url, allow_redirects=True)
     open('xai_fb15k_237.csv', 'wb').write(r.content)
 
-    mapper = {"all": "all", "clear": 3, "not clear": 0, "confusing+": 2, "confusing-": 1}
+    mapper = {
+        "all": "all",
+        "clear": 3,
+        "not clear": 0,
+        "confusing+": 2,
+        "confusing-": 1}
     if subset != "all":
         if subset in mapper:
             X = pd.read_csv('xai_fb15k_237.csv', sep=',')
@@ -1704,9 +1817,27 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
     if full:
         return X
     else:
-        t1 = X[['predicate', 'predicate label', 'predicates_description', 'subject_triple1', 'subject_label_triple1', 'object_label_triple1', 'object_triple1']]
-        t2 = X[['predicate', 'predicate label', 'predicates_description', 'subject_triple2', 'subject_label_triple2', 'object_label_triple2', 'object_triple2']]
-        t3 = X[['predicate', 'predicate label', 'predicates_description', 'subject_triple3', 'subject_label_triple3', 'object_label_triple3', 'object_triple3']]
+        t1 = X[['predicate',
+                'predicate label',
+                'predicates_description',
+                'subject_triple1',
+                'subject_label_triple1',
+                'object_label_triple1',
+                'object_triple1']]
+        t2 = X[['predicate',
+                'predicate label',
+                'predicates_description',
+                'subject_triple2',
+                'subject_label_triple2',
+                'object_label_triple2',
+                'object_triple2']]
+        t3 = X[['predicate',
+                'predicate label',
+                'predicates_description',
+                'subject_triple3',
+                'subject_label_triple3',
+                'object_label_triple3',
+                'object_triple3']]
         mapper1 = {'subject_triple1': 'subject',
                    'subject_label_triple1': 'subject_label',
                    'object_label_triple1': 'object_label',
@@ -1727,7 +1858,11 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
         return t1
 
 
-def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False, return_mapper=False):
+def load_codex(
+        check_md5hash=False,
+        clean_unseen=True,
+        add_reciprocal_rels=False,
+        return_mapper=False):
     """Load the CoDEx-M dataset.
 
     The dataset is described in :cite:`safavi_codex_2020`.
@@ -1809,14 +1944,15 @@ def load_codex(check_md5hash=False, clean_unseen=True, add_reciprocal_rels=False
         test_checksum='7186374c5ca7075d268ccf316927041d',
         mapper_checksum='9cf7209df69562dff36ae94f95f67e82' if return_mapper else None,
         test_negatives_checksum='2dc6755e9cc54145e782480c5bb2ef44',
-        valid_negatives_checksum='381300fbd297df9db2fd05bb6cfc1f2d'
-    )
+        valid_negatives_checksum='381300fbd297df9db2fd05bb6cfc1f2d')
 
     if clean_unseen:
-        return _clean_data(_load_dataset(codex,
-                                         data_home=None,
-                                         check_md5hash=check_md5hash,
-                                         add_reciprocal_rels=add_reciprocal_rels))
+        return _clean_data(
+            _load_dataset(
+                codex,
+                data_home=None,
+                check_md5hash=check_md5hash,
+                add_reciprocal_rels=add_reciprocal_rels))
     else:
         return _load_dataset(codex,
                              data_home=None,
