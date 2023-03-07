@@ -1,6 +1,6 @@
 .common-values:
 
-  docker-image: &docker-image circleci/python:3.6.4
+  docker-image: &docker-image circleci/python:3.8
 
   restore-cache: &restore-cache
     keys:
@@ -103,29 +103,29 @@ workflows:
           filters:
             branches:
               only:  
-                - master
-                - develop
+                - main
+                - ampligraph2/develop
       - pip-check:
           filters:
             branches:
               only:  
-                - master
-                - develop      
+                - main
+                - ampligraph2/develop      
       - lint:
           filters:
             branches:
               only:  
-                - master
-                - develop      
+                - main
+                - ampligraph2/develop      
       - docs:
           filters:
             branches:
               only:  
-                - master
-                - develop      
+                - main
+                - ampligraph2/develop      
       - test:
           filters:
             branches:
               only:  
-                - master
-                - develop       
+                - main
+                - ampligraph2/develop       
