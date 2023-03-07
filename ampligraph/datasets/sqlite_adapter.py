@@ -734,7 +734,7 @@ class SQLiteAdapter():
                     msg = "\n\nRecords: {}".format(nb_records)
                     if nb_records != 0:
                         record = self._execute_query("SELECT * FROM {} LIMIT {};".format(table_name[0], 1))[0]
-                        example = [str(rec) for rec in record]  
+                        example = [str(rec) for rec in record]
                 else:
                     print("Count is set to False hence no data displayed")
 

@@ -24,7 +24,7 @@ logger.setLevel(logging.DEBUG)
 
 def load_csv(data_source, chunk_size=None, sep='\t', verbose=False, **kwargs):
     """CSV data loader.
-    
+
         Parameters
         ---------
         data_source: str
@@ -34,7 +34,7 @@ def load_csv(data_source, chunk_size=None, sep='\t', verbose=False, **kwargs):
             an iterator and not a numpy array.
         sep: str
             Separator in the csv file, e.g. line "1,2,3\n" has ``sep=","``, while "1 2 3\n" has ``sep=" "``.
-    
+
         Returns
         -------
         data: ndarray or iter
@@ -43,7 +43,7 @@ def load_csv(data_source, chunk_size=None, sep='\t', verbose=False, **kwargs):
     data = pd.read_csv(data_source, sep=sep, chunksize=chunk_size, header=None, **kwargs)
     logger.debug("data type: {}".format(type(data)))
     logger.debug("CSV loaded, into iterator data.")
-        
+
     if isinstance(data, pd.DataFrame):
         return data.values
     else:
@@ -92,7 +92,7 @@ def chunks(iterable, chunk_size=1):
 def load_gz(data_source, chunk_size=None, verbose=False):
     """Gz data loader. Reads compressed file."""
     raise NotImplementedError
-    
+
 
 def load_tar(data_source, chunk_size=None, verbose=False):
     """Tar data loader. Reads compressed file."""
@@ -102,7 +102,7 @@ def load_tar(data_source, chunk_size=None, verbose=False):
 class DataSourceIdentifier():
     """Class that recognizes the type of given file and provides with an
        adequate loader.
-     
+
        Properties
        ----------
        supported_types: dict
@@ -117,7 +117,7 @@ class DataSourceIdentifier():
     """
     def __init__(self, data_source, verbose=False):
         """Initialise DataSourceIdentifier.
-            
+
            Parameters
            ----------
            data_source: str
@@ -125,27 +125,27 @@ class DataSourceIdentifier():
         """
         self.verbose = verbose
         self.data_source = data_source
-        self.supported_types = {"csv": load_csv, 
-                                "txt": load_csv, 
+        self.supported_types = {"csv": load_csv,
+                                "txt": load_csv,
                                 "gz": load_csv,
                                 "json": load_json,
                                 "tar": load_tar,
                                 "iter": chunks}
         self._identify()
-                
+   
     def fetch_loader(self):
         """Returns adequate loader required to read identified file."""
         logger.debug("Return adequate loader that provides loading of data source.")
         return self.supported_types[self.src]
-   
+
     def get_src(self):
         """Returns identified source type."""
         return self.src
- 
+
     def _identify(self):
         """Identifies the data file type based on the file name."""
         if isinstance(self.data_source, str):
-            self.src = self.data_source.split(".")[-1] if "." in self.data_source else None           
+            self.src = self.data_source.split(".")[-1] if "." in self.data_source else None
             if self.src is not None and self.src not in self.supported_types:
                 logger.debug("File type not supported! Supported types: {}".format(", ".join(self.supported_types)))
                 self.src = None
