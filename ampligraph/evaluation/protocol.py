@@ -139,7 +139,7 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
                 # Since we found the requested test set of given size
                 # add all the remaining indices of candidates to training set
                 idx_train.extend(list(all_indices_shuffled[i + 1:]))
- 
+
                 # break out of the loop
                 break
 

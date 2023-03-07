@@ -132,7 +132,7 @@ class DataSourceIdentifier():
                                 "tar": load_tar,
                                 "iter": chunks}
         self._identify()
-   
+
     def fetch_loader(self):
         """Returns adequate loader required to read identified file."""
         logger.debug("Return adequate loader that provides loading of data source.")
