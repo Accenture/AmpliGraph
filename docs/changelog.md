@@ -1,7 +1,7 @@
 # Changelog
 
 ## 2.0.0
-**1 March 2023**
+**7 March 2023**
 - Switched to TensorFlow 2 back-end.
 - Keras style APIs.
 - Unique model class ScoringBasedEmbeddingModel for all scoring functions that can be specified as a parameter when initializing the class.
