@@ -32,7 +32,7 @@ class NoBackend():
 
            Parameters
            ----------
-           identifier: initialize data source identifier, provides loader. 
+           identifier: initialize data source identifier, provides loader.
            use_indexer: bool or mapper object
                 Flag or mapper object to tell whether data should be indexed (default: `False`).
            remap: bool
@@ -67,11 +67,11 @@ class NoBackend():
     def __enter__(self):
         """Context manager enter function. Required by GraphDataLoader."""
         return self
-    
+
     def __exit__(self, type, value, tb):
         """Context manager exit function. Required by GraphDataLoader."""
         pass
-        
+
     def get_output_signature(self):
         '''Get the output signature for the tf.data.Dataset object.'''
         triple_tensor = tf.TensorSpec(shape=(None, 3), dtype=tf.int32)
@@ -87,10 +87,10 @@ class NoBackend():
             return (triple_tensor,
                     tf.RaggedTensorSpec(shape=(2, None, None), dtype=tf.int32))
         return (triple_tensor)
-    
+
     def _load(self, data_source, dataset_type):
         """Loads data into self.data.
-           
+
            Parameters
            ----------
            data_source: np.array or str
@@ -103,13 +103,13 @@ class NoBackend():
         self.dataset_type = dataset_type
         if isinstance(self.data_source, np.ndarray):
             if self.use_indexer is True:
-                self.mapper = DataIndexer(self.data_source, backend="in_memory" if self.in_memory else "sqlite", 
+                self.mapper = DataIndexer(self.data_source, backend="in_memory" if self.in_memory else "sqlite",
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(self.data_source)
             elif self.remap:
-                # create a special mapping for partitions, persistent mapping from main indexes 
+                # create a special mapping for partitions, persistent mapping from main indexes
                 # to partition indexes
-                self.mapper = DataIndexer(self.data_source, backend="sqlite", name=self.name, 
+                self.mapper = DataIndexer(self.data_source, backend="sqlite", name=self.name,
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(self.data_source)
             else:
@@ -119,14 +119,14 @@ class NoBackend():
             loader = self.identifier.fetch_loader()
             raw_data = loader(self.data_source)
             if self.use_indexer is True:
-                self.mapper = DataIndexer(raw_data, backend="in_memory" if self.in_memory else "sqlite", 
+                self.mapper = DataIndexer(raw_data, backend="in_memory" if self.in_memory else "sqlite",
                                           root_directory=self.root_directory)
                 self.data = self.mapper.get_indexes(raw_data)
             elif self.use_indexer is False:
                 if self.remap:
-                    # create a special mapping for partitions, persistent mapping from 
+                    # create a special mapping for partitions, persistent mapping from
                     # main indexes to partition indexes
-                    self.mapper = DataIndexer(raw_data, backend="sqlite", name=self.name, 
+                    self.mapper = DataIndexer(raw_data, backend="sqlite", name=self.name,
                                               root_directory=self.root_directory)
                     self.data = self.mapper.get_indexes(raw_data)
                 else:
@@ -161,8 +161,8 @@ class NoBackend():
         triples = np.append(triples, np.array(len(triples) * [self.dataset_type]).reshape(-1, 1), axis=1)
         # triples_from_objects = self.data[check_objects(self.data[:,0])]
         # triples = np.vstack([triples_from_subjects, triples_from_objects])
-        return triples 
-        
+        return triples
+
     def get_data_size(self):
         """Returns number of triples."""
         return np.shape(self.data)[0]
@@ -196,8 +196,8 @@ class NoBackend():
             triples_original_index = self.mapper.get_indexes(triples, order="ind2raw")
 #            with shelve.open(self.mapper.entities_dict) as ents:
 #                with shelve.open(self.mapper.relations_dict) as rels:
-#                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], 
-#                                                        ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
+#                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])],
+#                                                        ents[str(xx[2])]) for xx in triples], dtype=np.int32)
             logger.debug("Query parent for data.")
             logger.debug("Original index: {}".format(triples_original_index))
             subjects = self.parent.get_complementary_subjects(triples_original_index, use_filter=use_filter)
@@ -236,10 +236,10 @@ class NoBackend():
 
 #            with shelve.open(self.mapper.reversed_entities_dict) as ents:
 #                with shelve.open(self.mapper.reversed_relations_dict) as rels:
-#                    triples_original_index = np.array([(ents[str(xx[0])], 
-#                                                        rels[str(xx[1])], 
-#                                                        ents[str(xx[2])]) for xx in triples], 
-#                                                      dtype=np.int32)    
+#                    triples_original_index = np.array([(ents[str(xx[0])],
+#                                                        rels[str(xx[1])],
+#                                                        ents[str(xx[2])]) for xx in triples],
+#                                                      dtype=np.int32)
             logger.debug("Query parent for data.")
             subjects = self.parent.get_complementary_subjects(triples_original_index)
             logger.debug("What to do with this new indexes? Evaluation should happen in the \
@@ -277,7 +277,7 @@ class NoBackend():
                 Data source to load data from.
            name: str
                 Name of the dataset to be loaded.
- 
+
            Returns
            -------
            Loaded data : ndarray
@@ -289,7 +289,7 @@ class NoBackend():
             else:
                 identifier = DataSourceIdentifier(source)
                 loader = identifier.fetch_loader()
-                raw_data = loader(source) 
+                raw_data = loader(source)
             if name != 'train-org':
                 self.sources[name] = self.mapper.get_indexes(raw_data)
             else:
@@ -313,7 +313,7 @@ class NoBackend():
                 Objects present in the input triples.
         """
         logger.debug("Getting complementary objects")
-       
+
         if self.parent is not None:
             logger.debug("Parent is set, WARNING: The triples returned are coming with parent indexing.")
 
@@ -321,8 +321,8 @@ class NoBackend():
             triples_original_index = self.mapper.get_indexes(triples, order="ind2raw")
 #            with shelve.open(self.mapper.reversed_entities_dict) as ents:
 #                with shelve.open(self.mapper.reversed_relations_dict) as rels:
-#                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])], 
-#                                                        ents[str(xx[2])]) for xx in triples], dtype=np.int32)    
+#                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])],
+#                                                        ents[str(xx[2])]) for xx in triples], dtype=np.int32)
             logger.debug("Query parent for data.")
             objects = self.parent.get_complementary_objects(triples_original_index)
             logger.debug("What to do with this new indexes? Evaluation should happen in \
@@ -337,13 +337,13 @@ class NoBackend():
             # load source if not loaded
             source = self.get_source(filter_source, filter_name)
             # filter
- 
+
             tmp_filter = []
             for triple in triples:
                 tmp = source[source[:, 0] == triple[0]]
                 tmp_filter.append(list(set(tmp[tmp[:, 1] == triple[1]][:, 2])))
             filtered.append(tmp_filter)
-    
+
         # Unpack data into one  list per triple no matter what filter it comes from
         unpacked = list(zip(*filtered))
         objects = []
@@ -362,18 +362,18 @@ class NoBackend():
             msg = "Intersection can only be calculated between same backends (NoBackend), \
             instead get {}".format(type(dataloader.backend))
             logger.error(msg)
-            raise Exception(msg) 
+            raise Exception(msg)
         self.data = np.ascontiguousarray(self.data, dtype='int64')
-        dataloader.backend.data = np.ascontiguousarray(dataloader.backend.data, dtype='int64') 
+        dataloader.backend.data = np.ascontiguousarray(dataloader.backend.data, dtype='int64')
         av = self.data.view([('', self.data.dtype)] * self.data.shape[1])
         bv = dataloader.backend.data.view([('', dataloader.backend.data.dtype)] * dataloader.backend.data.shape[1])
         intersection = np.intersect1d(av, bv).view(
             self.data.dtype).reshape(-1, self.data.shape[0 if self.data.flags['F_CONTIGUOUS'] else 1])
         return intersection
-        
+
     def _get_batch_generator(self, batch_size, dataset_type="train", random=False, index_by=""):
         """Data batch generator.
-        
+
            Parameters
            ----------
            batch_size: int
@@ -395,7 +395,7 @@ class NoBackend():
         triples = range(0, length, batch_size)
         for start_index in triples:
             # if the last batch is smaller than the batch_size
-            if start_index + batch_size >= length: 
+            if start_index + batch_size >= length:
                 batch_size = length - start_index
             out = self.data[start_index:start_index + batch_size, :3]
             if self.use_filter:
@@ -425,14 +425,14 @@ class NoBackend():
 
 class GraphDataLoader():
     """Data loader for models to ingest graph data.
-    
-       This class is internally used by the model to store the data passed by the user and batch over it during 
+
+       This class is internally used by the model to store the data passed by the user and batch over it during
        training and evaluation, and to obtain filters during evaluation.
 
-       It can be used by advanced users to load custom datasets which are large, for performing partitioned training. 
+       It can be used by advanced users to load custom datasets which are large, for performing partitioned training.
        The complete dataset will not get loaded in memory. It will load the data in chunks based on which partition
        is being trained.
-       
+
        Example
        -------
        >>> from ampligraph.datasets import GraphDataLoader, BucketGraphPartitioner
@@ -450,7 +450,7 @@ class GraphDataLoader():
        >>>
        >>> # Choose the partitioner - in this case we choose RandomEdges partitioner
        >>> partitioner = BucketGraphPartitioner(dataset_loader, k=3)
-       >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2, 
+       >>> partitioned_model = ScoringBasedEmbeddingModel(eta=2,
        >>>                                                k=50,
        >>>                                                scoring_type='DistMult')
        >>> partitioned_model.compile(optimizer='adam', loss='multiclass_nll')
@@ -476,13 +476,13 @@ class GraphDataLoader():
         [1494    2]]
 
 
-    """    
-    def __init__(self, data_source, batch_size=1, dataset_type="train", 
+    """
+    def __init__(self, data_source, batch_size=1, dataset_type="train",
                  backend=None, root_directory=None,
-                 use_indexer=True, verbose=False, remap=False, name="main_partition", 
+                 use_indexer=True, verbose=False, remap=False, name="main_partition",
                  parent=None, in_memory=False, use_filter=False):
         """Initialise persistent/in-memory data storage.
-       
+
            Parameters
            ----------
            data_source: str or np.array or GraphDataLoader or AbstractGraphPartitioner
@@ -500,8 +500,8 @@ class GraphDataLoader():
                 If `None`, the root directory is obtained through the :meth:`tempfile.gettempdir()` method
                 (default: `None`).
            use_indexer: bool or DataIndexer
-               Flag to tell whether data should be indexed.     
-               If the DataIndexer object is passed, the mappings defined in the indexer will be reused 
+               Flag to tell whether data should be indexed.
+               If the DataIndexer object is passed, the mappings defined in the indexer will be reused
                to generate mappings for the current data.
            verbose: bool
                Verbosity.
@@ -519,7 +519,7 @@ class GraphDataLoader():
                If `True`, current dataset will be used as filter.
                If `dict`, the datasets specified in the dict will be used for filtering.
                If `False`, the true positives will not be filtered from corruptions.
-        """   
+        """
         self.dataset_type = dataset_type
         self.data_source = data_source
         self.batch_size = batch_size
@@ -527,7 +527,7 @@ class GraphDataLoader():
             self.root_directory = tempfile.gettempdir()
         else:
             self.root_directory = root_directory
-        self.identifier = DataSourceIdentifier(self.data_source)       
+        self.identifier = DataSourceIdentifier(self.data_source)
         self.use_indexer = use_indexer
         self.remap = remap
         self.in_memory = in_memory
@@ -549,15 +549,15 @@ class GraphDataLoader():
             raise Exception(msg)
         if isinstance(backend, type) and backend != NoBackend:
             self.backend = backend("database_{}_{}.db".format(datetime.now().strftime("%d-%m-%Y_%I-%M-%S_%f_%p"),
-                                   str(uuid.uuid4())), identifier=self.identifier, 
-                                   root_directory=self.root_directory, use_indexer=self.use_indexer, 
-                                   remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory, 
+                                   str(uuid.uuid4())), identifier=self.identifier,
+                                   root_directory=self.root_directory, use_indexer=self.use_indexer,
+                                   remap=self.remap, name=self.name, parent=self.parent, in_memory=self.in_memory,
                                    verbose=verbose, use_filter=self.use_filter)
             logger.debug("Initialized Backend with database at: {}".format(self.backend.db_path))
 
         elif backend is None or backend == NoBackend:
             self.backend = NoBackend(self.identifier, use_indexer=self.use_indexer, remap=self.remap,
-                                     name=self.name, parent=self.parent, in_memory=self.in_memory, 
+                                     name=self.name, parent=self.parent, in_memory=self.in_memory,
                                      use_filter=self.use_filter)
         else:
             self.backend = backend
@@ -570,7 +570,7 @@ class GraphDataLoader():
     def __iter__(self):
         """Function needed to be used as an iterator."""
         return self
-    
+
     @property
     def max_entities(self):
         '''Maximum number of entities present in the dataset mapper.'''
@@ -580,15 +580,15 @@ class GraphDataLoader():
     def max_relations(self):
         '''Maximum number of relations present in the dataset mapper.'''
         return self.backend.mapper.get_relations_count()
-    
+
     def __next__(self):
         """Function needed to be used as an iterator."""
         return self.batch_iterator.__next__()
-      
+
     def reload(self, use_filter=False, dataset_type='train'):
         """Reinstantiate batch iterator."""
         self.batch_iterator = self.get_batch_generator(use_filter=use_filter, dataset_type=dataset_type)
- 
+
     def get_batch_generator(self, dataset_type='train', use_filter=False):
         """Get batch generator from the backend.
 
@@ -598,7 +598,7 @@ class GraphDataLoader():
                 Specifies whether data are generated for `"train"`, `"valid"` or `"test"` set.
         """
         return self.backend._get_batch_generator(self.batch_size, dataset_type=dataset_type)
-    
+
     def get_tf_generator(self):
         '''Generates a tensorflow.data.Dataset object.'''
         return tf.data.Dataset.from_generator(
@@ -610,11 +610,11 @@ class GraphDataLoader():
     def add_dataset(self, data_source, dataset_type):
         '''Adds the dataset to the backend (if possible).'''
         self.backend._add_dataset(data_source, dataset_type=dataset_type)
-    
+
     def get_data_size(self):
         """Returns number of triples."""
         return self.backend.get_data_size()
- 
+
     def intersect(self, dataloader):
         """Returns the intersection between the current data loader and another one specified in ``dataloader``.
 
@@ -701,8 +701,8 @@ class GraphDataLoader():
            subjects : list
                 Objects present in the input triples.
         """
-        return self.backend._get_complementary_objects(triples, use_filter=use_filter)        
-    
+        return self.backend._get_complementary_objects(triples, use_filter=use_filter)
+
     def get_complementary_entities(self, triples, use_filter=False):
         """Get subjects and objects complementary to triples (?,p,?).
 
@@ -735,21 +735,21 @@ class GraphDataLoader():
 
            entities: list
                 List of entities that triples subject and object should belong to.
-        
+
            Returns
            -------
            triples: list
                 List of triples constrained by subjects and objects.
-          
+
         """
         return self.backend._get_triples(subjects, objects, entities)
 
     def clean(self):
         ''' Cleans up the temporary files created for training/evaluation.'''
         self.backend._clean()
-        
+
     def on_epoch_end(self):
         pass
-    
+
     def on_complete(self):
         pass
