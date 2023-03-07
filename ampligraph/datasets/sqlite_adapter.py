@@ -36,7 +36,7 @@ DEFAULT_CHUNKSIZE = 30000
 
 class SQLiteAdapter():
     """ Class implementing database connection.
-    
+
         Example
         -------
         >>> AMPLIGRAPH_DATA_HOME='/your/path/to/datasets/'
@@ -60,7 +60,7 @@ class SQLiteAdapter():
                  use_indexer=True, verbose=False, remap=False, name='main_partition', parent=None, in_memory=True,
                  use_filter=False):
         """ Initialise SQLiteAdapter.
-       
+
             Parameters
             ----------
             db_name: str
@@ -116,7 +116,7 @@ class SQLiteAdapter():
             Setting chunksize to {}.".format(self.__name__(), DEFAULT_CHUNKSIZE))
         else:
             self.chunk_size = chunk_size
-            
+
     def get_output_signature(self):
         '''Get the output signature of the tf.data.Dataset object.
 
@@ -134,7 +134,7 @@ class SQLiteAdapter():
         if self.use_filter:
             return (triple_tensor, tf.RaggedTensorSpec(shape=(2, None, None), dtype=tf.int32))
         return (triple_tensor)
-        
+
     def open_db(self):
         '''Open the database.
 
@@ -152,18 +152,18 @@ class SQLiteAdapter():
             try:
                 self.open_db()
             except sqlite3.OperationalError:
-                logger.debug("Database does not exists. Creating one.")      
-                self.connection = sqlite3.connect(self.db_path)        
+                logger.debug("Database does not exists. Creating one.")
+                self.connection = sqlite3.connect(self.db_path)
                 self.connection.commit()
                 self.connection.close()
-        
+
                 self._create_database()
                 self.open_db()
 
     def __enter__(self):
         self.open_connection()
         return self
-    
+
     def __exit__(self, type, value, tb):
         """Context manager exit function, to be used with "with statement", closes
            the connection and do the rollback if required.
@@ -182,11 +182,11 @@ class SQLiteAdapter():
     def _add_dataset(self, data_source, dataset_type):
         '''Load the data.'''
         self._load(data_source, dataset_type)
-        
+
     def _get_db_schema(self):
-        """Defines SQL queries to create a table with triples and indexes to 
+        """Defines SQL queries to create a table with triples and indexes to
            navigate easily on pairs subject-predicate, predicate-object.
-    
+
            Returns
            -------
            db_schema: list
@@ -225,12 +225,12 @@ class SQLiteAdapter():
 
     def _get_clean_up(self):
         """Defines SQL commands to clean the database (tables and indexes).
-    
+
            Returns
            -------
            clean_up: list
                 List of SQL commands to clean tables and indexes.
-        """  
+        """
         clean_up = ["drop index IF EXISTS triples_table_po_idx",
                     "drop index IF EXISTS triples_table_sp_idx",
                     "drop index IF EXISTS triples_table_type_idx",
@@ -239,12 +239,12 @@ class SQLiteAdapter():
 
     def _execute_query(self, query):
         """Connects to the database and execute given query.
-    
+
            Parameters
            ----------
            query: str
                 SQLite query to be executed.
-     
+
            Returns
            -------
            output:
@@ -270,18 +270,18 @@ class SQLiteAdapter():
            ----------
            query: list
                 List of SQLite queries to be executed.
-     
+
            Returns
            -------
            output: TODO! result of queries with fetchall().
-          
+
         """
         for query in list_of_queries:
             self._execute_query(query)
 
     def _insert_values_to_a_table(self, table, values):
         """Insert data into a given table in a database.
-    
+
            Parameters
            ----------
            table: str
@@ -338,18 +338,18 @@ class SQLiteAdapter():
             query = "select * from triples_table where (object in ({0}));".format(",".join(str(v) for v in objects))
         triples = np.array(self._execute_query(query))
         triples = np.append(triples[:, :3].astype('int'), triples[:, 3].reshape(-1, 1), axis=1)
-        return triples 
+        return triples
 
     def get_indexed_triples(self, chunk, dataset_type="train"):
         """Get indexed triples.
-    
+
            Parameters
            ----------
            chunk: ndarray
                 Numpy array with a fragment of data of size (N,3), where each element is: (subject, predicate, object).
            dataset_type: str
                 Defines what kind of data we are considering (`"train"`, `"test"`, `"validation"`).
-           
+
            Returns
            -------
            tmp: ndarray
@@ -378,17 +378,17 @@ class SQLiteAdapter():
         """
         self.reload_data()
         if self.use_indexer is True:
-            self.mapper = DataIndexer(self.data, 
-                                      backend='in_memory' if self.in_memory else 'sqlite', 
+            self.mapper = DataIndexer(self.data,
+                                      backend='in_memory' if self.in_memory else 'sqlite',
                                       root_directory=self.root_directory)
         elif self.use_indexer is False:
             logger.debug("Data won't be indexed")
         elif isinstance(self.use_indexer, DataIndexer):
             self.mapper = self.use_indexer
-    
+
     def is_indexed(self):
         """Check if the current data adapter has already been indexed.
-        
+
            Returns
            -------
            Flag : bool
@@ -398,18 +398,18 @@ class SQLiteAdapter():
         if not hasattr(self, "mapper"):
             return False
         return True
-            
+
     def reload_data(self, verbose=False):
         """Reinitialise an iterator with data."""
         self.data = self.loader(self.data_source, chunk_size=self.chunk_size)
         if verbose:
             logger.debug("Data reloaded: {}".format(self.data))
-        
+
     def populate(self, data_source, dataset_type="train", get_indexed_triples=None, loader=None):
         """Populate the database with data.
 
             Condition: before you can store triples, you have to index data.
-    
+
            Parameters
            ----------
            data_source: ndarray or str
@@ -423,7 +423,7 @@ class SQLiteAdapter():
                 to identify the type of ``data_source`` and return an adequate loader.
 
         """
-        self.data_source = data_source        
+        self.data_source = data_source
         self.loader = loader
         if loader is None:
             self.loader = self.identifier.fetch_loader()
@@ -448,10 +448,10 @@ class SQLiteAdapter():
             self._insert_values_to_a_table("triples_table", values_triples)
         if self.verbose:
             logger.debug("data is populated")
-        
+
         query = "SELECT count(*) from triples_table;"
         _ = self._execute_query(query)
-        
+
         if isinstance(self.use_filter, dict):
             for key in self.use_filter:
                 present_filters = [x[0] for x in self._execute_query("SELECT DISTINCT dataset_type FROM triples_table")]
@@ -464,17 +464,17 @@ class SQLiteAdapter():
                     self.populate(self.use_filter[key], key)
         query = "SELECT count(*) from triples_table;"
         _ = self._execute_query(query)
-    
+
     def get_data_size(self, table="triples_table", condition=""):
         """Gets the size of the given table [with specified condition].
-    
+
            Parameters
            ----------
            table: str
                 Table for which to obtain the size.
            condition: str
                 Condition to count only a subset of data.
-    
+
            Returns
            -------
            count: int
@@ -487,7 +487,7 @@ class SQLiteAdapter():
             logger.debug("Table is empty or not such table exists.")
             return count
         elif not isinstance(count, list) or not isinstance(count[0], tuple):
-            raise ValueError("Cannot get count for the table with provided condition.")        
+            raise ValueError("Cannot get count for the table with provided condition.")
         # logger.debug(count)
         return count[0][0]
 
@@ -496,12 +496,12 @@ class SQLiteAdapter():
 
         """
         _ = self._execute_queries(self._get_clean_up())
-        
+
     def remove_db(self):
         """Remove the database file.
 
         """
-        os.remove(self.db_path)        
+        os.remove(self.db_path)
         logger.debug("Database removed.")
 
     def _get_complementary_objects(self, triples, use_filter=None):
@@ -525,7 +525,7 @@ class SQLiteAdapter():
         valid_filters = [x[0] for x in self._execute_query("SELECT DISTINCT dataset_type FROM triples_table")]
         for filter_name, filter_source in self.use_filter.items():
 
-            if filter_name in valid_filters:                
+            if filter_name in valid_filters:
                 tmp_filter = []
                 for triple in triples:
                     query = 'select distinct object from triples_table INDEXED BY\
@@ -599,7 +599,7 @@ class SQLiteAdapter():
         objects = self._get_complementary_objects(triples, use_filter=use_filter)
         subjects = self._get_complementary_subjects(triples, use_filter=use_filter)
         return subjects, objects
-    
+
     def _get_batch_generator(self, batch_size=1, dataset_type="train", random=False, index_by=""):
         """Generator that returns the next batch of data.
 
@@ -636,7 +636,7 @@ class SQLiteAdapter():
         logger.debug("size of data: {}".format(size))
         index = ""
         if index_by != "":
-            if (index_by == "s" or index_by == "o" or index_by == "so" or index_by == "os") and random:       
+            if (index_by == "s" or index_by == "o" or index_by == "so" or index_by == "os") and random:
                 msg = "Field index_by can only be used with random set to False and can only take values \
                        from this set: {{s,o,so,os,''}}, instead got: {}".format(index_by)
                 logger.error(msg)
@@ -681,7 +681,7 @@ class SQLiteAdapter():
                     yield triples, weights
                 else:
                     yield triples
-                    
+
     def summary(self, count=True):                                                                                      # FocusE fix types
         """Prints summary of the database.
 
@@ -719,7 +719,7 @@ class SQLiteAdapter():
             summary = """File size: {:.5}{}\nTables: {}"""
             tables = self._execute_query("SELECT name FROM sqlite_master WHERE type='table';")
             tables_names = ", ".join(table[0] for table in tables)
-            print(summary.format(*get_human_readable_size(file_size), tables_names))            
+            print(summary.format(*get_human_readable_size(file_size), tables_names))
             types = {"integer": "int", "float": "float", "string": "str"}                                                # float aggiunto per focusE
             for table_name in tables:
                 result = self._execute_query("PRAGMA table_info('%s')" % table_name)
@@ -731,21 +731,21 @@ class SQLiteAdapter():
                 example = ["-"] * length
                 if count:
                     nb_records = self.get_data_size(table_name[0])
-                    msg = "\n\nRecords: {}".format(nb_records)                    
+                    msg = "\n\nRecords: {}".format(nb_records)
                     if nb_records != 0:
                         record = self._execute_query("SELECT * FROM {} LIMIT {};".format(table_name[0], 1))[0]
-                        example = [str(rec) for rec in record]                        
+                        example = [str(rec) for rec in record]  
                 else:
                     print("Count is set to False hence no data displayed")
 
                 print(formatted_record.format(*cols_name_type, *example), msg)
         else:
             logger.debug("Database does not exist.")
-            
+
     def _load(self, data_source, dataset_type="train"):
         """Loads data from the data source to the database. Wrapper around populate method,
            required by the GraphDataLoader interface.
-           
+
            Parameters
            ----------
            data_source: str or ndarray
@@ -754,14 +754,14 @@ class SQLiteAdapter():
                 Kind of dataset that is being loaded (`"train"` | `"test"` | `"validation"`).
 
         """
-        
+
         self.data_source = data_source
         self.populate(self.data_source, dataset_type=dataset_type)
 
     def _intersect(self, dataloader):
         if not isinstance(dataloader.backend, SQLiteAdapter):
             msg = "Provided dataloader should be of type SQLiteAdapter backend, instead got {}.".format(
-                type(dataloader.backend)) 
+                type(dataloader.backend))
             logger.error(msg)
             raise Exception(msg)
         raise NotImplementedError
