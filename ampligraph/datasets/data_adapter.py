@@ -14,17 +14,17 @@ import tqdm
 
 
 class DataHandler():
-    def __init__(self, x, 
-                 model=None, 
-                 batch_size=1, 
-                 dataset_type="train", 
-                 epochs=1, 
-                 initial_epoch=0, 
+    def __init__(self, x,
+                 model=None,
+                 batch_size=1,
+                 dataset_type="train",
+                 epochs=1,
+                 initial_epoch=0,
                  use_indexer=True,
                  use_filter=True,
                  partitioning_k=1):
         '''Initializes the DataHandler
-        
+
         Parameters
         ----------
         model: tf.keras.Model
@@ -56,7 +56,7 @@ class DataHandler():
 
         if partitioning_k <= 0:
             raise ValueError('Incorrect value specified to partitioning_k')
-            
+
         if isinstance(x, GraphDataLoader):
             self._adapter = x
             self._parent_adapter = self._adapter
@@ -86,7 +86,7 @@ class DataHandler():
                                                   partitioning_k=partitioning_k)
 
             self.using_partitioning = True
-            
+
     @contextlib.contextmanager
     def catch_stop_iteration(self):
         """Catches errors when an iterator runs out of data."""
@@ -95,32 +95,32 @@ class DataHandler():
         except (StopIteration, errors.OutOfRangeError):
             if self._inferred_steps is None:
                 self._inferred_steps = self._current_iter
-            
+
     def steps(self):
         '''Counts the number of steps in an epoch.'''
         self._current_iter = 0
         while self._inferred_steps is None or self._current_iter < self._inferred_steps:
             self._current_iter += 1
             yield self._current_iter
-            
+
     @property
     def inferred_steps(self):
         '''Returns the number of steps in the batch.'''
         return self._inferred_steps
-    
+
     def enumerate_epochs(self, use_tqdm=False):
         '''Manages the (reloading) data adapter before epoch starts.'''
         for epoch in tqdm.tqdm(range(self._initial_epoch, self._epochs), disable=not use_tqdm):
-            self._adapter.reload()   
+            self._adapter.reload()
             yield epoch, iter(self._adapter.get_tf_generator())
             self._adapter.on_epoch_end()
-            
+
         self._adapter.on_complete()
-        
+
     def get_mapper(self):
         '''Returns the mapper of the main data loader class.'''
         return self._parent_adapter.backend.mapper
-    
+
     def get_update_partitioner_metadata(self, filepath):
         out_dict = {}
         if self.using_partitioning:
