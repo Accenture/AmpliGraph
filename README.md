@@ -117,7 +117,7 @@ pip install -e .
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'2.0-dev'
+'2.0.0'
 ```
 
 
@@ -127,16 +127,16 @@ AmpliGraph includes implementations of TransE, DistMult, ComplEx, HolE, ConvE, a
 Their predictive power is reported below and compared against the state-of-the-art results in literature.
 [More details available here](https://docs.ampligraph.org/en/latest/experiments.html).
 
-|                              |FB15K-237 |WN18RR   |YAGO3-10   | FB15k      |WN18           |
-|------------------------------|----------|---------|-----------|------------|---------------|
-| Literature Best              | **0.35***| 0.48*   | 0.49*     | **0.84**** | **0.95***     |
-| TransE (AmpliGraph)          |  0.31    | 0.22    | **0.51**  | 0.63       | 0.66          |
-| DistMult (AmpliGraph)        |  0.31    | 0.47    | 0.50      | 0.78       | 0.82          |
-| ComplEx  (AmpliGraph)        |  0.32    | **0.51**| 0.49      | 0.80       | 0.94          |
-| HolE (AmpliGraph)            |  0.31    | 0.47    | 0.50      | 0.80       | 0.94          |
-| ConvE (AmpliGraph)           |  0.26    | 0.45    | 0.30      | 0.50       | 0.93          |
-| ConvE (1-N, AmpliGraph)      |  0.32    | 0.48    | 0.40      | 0.80       | **0.95**      |
-| ConvKB (AmpliGraph)          |  0.23    | 0.39    | 0.30      | 0.65       | 0.80          |
+|                           |FB15K-237 |WN18RR   |YAGO3-10   | FB15k      | WN18      |
+|---------------------------|----------|---------|-----------|------------|-----------|
+| Literature Best           | **0.35***| 0.48*   | 0.49*     | **0.84**** | **0.95*** |
+| TransE (AmpliGraph 1)     |  0.31    | 0.22    | **0.51**  | 0.63       | 0.66      |
+| DistMult (AmpliGraph 1)   |  0.31    | 0.47    | 0.50      | 0.78       | 0.82      |
+| ComplEx  (AmpliGraph 1)   |  0.32    | **0.51**| 0.49      | 0.80       | 0.94      |
+| HolE (AmpliGraph 1)       |  0.31    | 0.47    | 0.50      | 0.80       | 0.94      |
+| ConvE (AmpliGraph 1)      |  0.26    | 0.45    | 0.30      | 0.50       | 0.93      |
+| ConvE (1-N, AmpliGraph 1) |  0.32    | 0.48    | 0.40      | 0.80       | **0.95**  |
+| ConvKB (AmpliGraph 1)     |  0.23    | 0.39    | 0.30      | 0.65       | 0.80      |
 
 <sub>
 * Timothee Lacroix, Nicolas Usunier, and Guillaume Obozinski. Canonical tensor decomposition for knowledge base 

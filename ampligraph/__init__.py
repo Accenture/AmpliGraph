@@ -1,6 +1,6 @@
 # Copyright 2019-2023 The AmpliGraph Authors. All Rights Reserved.
 #
-# This file is Licensed under the Apache License, Version 2.0.
+# This file is Licensed under the Apache License, Version 2.0.0.
 # A copy of the Licence is available in LICENCE, or at:
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
@@ -13,8 +13,8 @@ import tensorflow as tf
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-__version__ = "2.0-dev"
-__all__ = ["datasets", "latent_features", "discovery", "evaluation", "utils"]
+__version__ = '2.0.0'
+__all__ = ['datasets', 'latent_features', 'discovery', 'evaluation', 'utils']
 
 logging.config.fileConfig(
     pkg_resources.resource_filename(__name__, "logger.conf"),
