@@ -20,6 +20,7 @@ class HolE(ComplEx):
 
     where :math:`k` is the size of the embeddings.
     """
+
     def get_config(self):
         config = super(HolE, self).get_config()
         return config
@@ -61,8 +62,8 @@ class HolE(ComplEx):
             Scores of subject corruptions (corruptions defined by `ent_embs` matrix).
         '''
         # HolE scoring is 2/k * complex_score
-        return (2 / (self.internal_k / 2)) * (super()._get_subject_corruption_scores(triples,
-                                                                                     ent_matrix))
+        return (2 / (self.internal_k / 2)) * \
+            (super()._get_subject_corruption_scores(triples, ent_matrix))
 
     def _get_object_corruption_scores(self, triples, ent_matrix):
         ''' Compute object corruption scores.
@@ -82,5 +83,5 @@ class HolE(ComplEx):
             Scores of object corruptions (corruptions defined by `ent_embs` matrix).
         '''
         # HolE scoring is 2/k * complex_score
-        return (2 / (self.internal_k / 2)) * (super()._get_object_corruption_scores(triples,
-                                                                                    ent_matrix))
+        return (2 / (self.internal_k / 2)) * \
+            (super()._get_object_corruption_scores(triples, ent_matrix))

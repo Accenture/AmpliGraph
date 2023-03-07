@@ -23,6 +23,7 @@ class DistMult(AbstractScoringLayer):
     where :math:`\mathbf{e}_{s}` is the embedding of the subject, :math:`\mathbf{r}_{p}` the embedding
     of the predicate and :math:`\mathbf{e}_{o}` the embedding of the object.
     """
+
     def get_config(self):
         config = super(DistMult, self).get_config()
         return config
@@ -67,7 +68,13 @@ class DistMult(AbstractScoringLayer):
         rel_emb, obj_emb = triples[1], triples[2]
         # compute the score by broadcasting the corruption embeddings(ent_matrix) and using the scoring function
         # compute scores as sum(s_corr * p * o)
-        sub_corr_score = tf.reduce_sum(ent_matrix * tf.expand_dims(rel_emb * obj_emb, 1), 2)
+        sub_corr_score = tf.reduce_sum(
+            ent_matrix *
+            tf.expand_dims(
+                rel_emb *
+                obj_emb,
+                1),
+            2)
         return sub_corr_score
 
     def _get_object_corruption_scores(self, triples, ent_matrix):
@@ -90,5 +97,9 @@ class DistMult(AbstractScoringLayer):
         sub_emb, rel_emb = triples[0], triples[1]
         # compute the score by broadcasting the corruption embeddings(ent_matrix) and using the scoring function
         # compute scores as sum(s * p * o_corr)
-        obj_corr_score = tf.reduce_sum(tf.expand_dims(sub_emb * rel_emb, 1) * ent_matrix, 2)
+        obj_corr_score = tf.reduce_sum(
+            tf.expand_dims(
+                sub_emb * rel_emb,
+                1) * ent_matrix,
+            2)
         return obj_corr_score

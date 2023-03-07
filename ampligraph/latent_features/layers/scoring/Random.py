@@ -13,6 +13,7 @@ from .AbstractScoringLayer import register_layer, AbstractScoringLayer
 class Random(AbstractScoringLayer):
     r''' Random scoring layer.
     '''
+
     def get_config(self):
         config = super(Random, self).get_config()
         return config
@@ -54,7 +55,12 @@ class Random(AbstractScoringLayer):
         scores: tf.Tensor, shape (n, 1)
             Scores of subject corruptions (corruptions defined by `ent_embs` matrix).
         '''
-        scores = tf.random.uniform(shape=[tf.shape(triples[0])[0], tf.shape(ent_matrix)[0]], seed=0)
+        scores = tf.random.uniform(
+            shape=[
+                tf.shape(
+                    triples[0])[0],
+                tf.shape(ent_matrix)[0]],
+            seed=0)
         return scores
 
     def _get_object_corruption_scores(self, triples, ent_matrix):
@@ -74,5 +80,10 @@ class Random(AbstractScoringLayer):
         scores: tf.Tensor, shape (n, 1)
             Scores of object corruptions (corruptions defined by `ent_embs` matrix).
         '''
-        scores = tf.random.uniform(shape=[tf.shape(triples[0])[0], tf.shape(ent_matrix)[0]], seed=0)
+        scores = tf.random.uniform(
+            shape=[
+                tf.shape(
+                    triples[0])[0],
+                tf.shape(ent_matrix)[0]],
+            seed=0)
         return scores
