@@ -33,7 +33,8 @@ def experimental(func):
     >>>    return "demonstration"
 
     >>>a_function()
-    experimentalWarning: 'Experimental! Function: a_function is experimental. Use at your own risk.'
+    experimentalWarning: 'Experimental! Function: a_function is experimental.
+    Use at your own risk.'
     warnings.warn(experimentalWarning(msg))
     demonstration
 
@@ -43,7 +44,8 @@ def experimental(func):
     """
 
     def mark_experimental():
-        msg = f"Experimental! Function: {func.__name__} is experimental. Use at your own risk."
+        msg = f"Experimental! Function: {func.__name__} is experimental. Use \
+                at your own risk."
         warnings.warn(experimentalWarning(msg))
 
         return func()
@@ -54,7 +56,7 @@ def deprecated(*args, **kwargs):
     """
     Decorator - a function that accepts another function
     and marks it as deprecated, meaning it may be discontinued in
-    future releases, and is provided only for backward compatibility purposes..
+    future releases, and is provided only for backward compatibility purposes.
 
     ---------------
     Example:
@@ -65,13 +67,15 @@ def deprecated(*args, **kwargs):
     >>>    return "demonstration"
 
     >>>a_function()
-    DeprecationWarning: Deprecated! Function: a_function is deprecated. Instead use module2.another_function.
+    DeprecationWarning: Deprecated! Function: a_function is deprecated.
+    Instead use module2.another_function.
     warnings.warn(DeprecationWarning(msg))
     demonstration
     """
 
     def mark_deprecated(func):
-        msg = f"Deprecated! Function: {func.__name__} is deprecated. Instead use {kwargs['instead']}."
+        msg = f"Deprecated! Function: {func.__name__} is deprecated. \
+                Instead use {kwargs['instead']}."
         warnings.warn(DeprecationWarning(msg))
 
         return func
