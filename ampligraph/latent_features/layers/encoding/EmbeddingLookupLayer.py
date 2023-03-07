@@ -23,10 +23,16 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
 
         return config
 
-    def __init__(self, k, max_ent_size=None, max_rel_size=None,
-                 entity_kernel_initializer="glorot_uniform", entity_kernel_regularizer=None,
-                 relation_kernel_initializer="glorot_uniform", relation_kernel_regularizer=None,
-                 **kwargs):
+    def __init__(
+            self,
+            k,
+            max_ent_size=None,
+            max_rel_size=None,
+            entity_kernel_initializer="glorot_uniform",
+            entity_kernel_regularizer=None,
+            relation_kernel_initializer="glorot_uniform",
+            relation_kernel_regularizer=None,
+            **kwargs):
         '''
         Initializes the embeddings of the model.
 
@@ -186,13 +192,20 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
                 trainable=True)
 
             if self.ent_partition is not None:
-                paddings_ent = [[0, self._max_ent_size_internal - self.ent_partition.shape[0]], [0, 0]]
-                self.ent_emb.assign(np.pad(self.ent_partition, paddings_ent, 'constant', constant_values=0))
+                paddings_ent = [
+                    [0, self._max_ent_size_internal - self.ent_partition.shape[0]], [0, 0]]
+                self.ent_emb.assign(
+                    np.pad(
+                        self.ent_partition,
+                        paddings_ent,
+                        'constant',
+                        constant_values=0))
                 del self.ent_partition
                 self.ent_partition = None
 
         else:
-            raise TypeError('Not enough arguments to build Encoding Layer. Please set max_ent_size property.')
+            raise TypeError(
+                'Not enough arguments to build Encoding Layer. Please set max_ent_size property.')
 
         # create the trainable variables for relation embeddings
         if self._has_enough_args_to_build_rel_emb:
@@ -205,12 +218,19 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
                 trainable=True)
 
             if self.rel_partition is not None:
-                paddings_rel = [[0, self._max_rel_size_internal - self.rel_partition.shape[0]], [0, 0]]
-                self.rel_emb.assign(np.pad(self.rel_partition, paddings_rel, 'constant', constant_values=0))
+                paddings_rel = [
+                    [0, self._max_rel_size_internal - self.rel_partition.shape[0]], [0, 0]]
+                self.rel_emb.assign(
+                    np.pad(
+                        self.rel_partition,
+                        paddings_rel,
+                        'constant',
+                        constant_values=0))
                 del self.rel_partition
                 self.rel_partition = None
         else:
-            raise TypeError('Not enough arguments to build Encoding Layer. Please set max_rel_size property.')
+            raise TypeError(
+                'Not enough arguments to build Encoding Layer. Please set max_rel_size property.')
 
         self.built = True
 
@@ -231,12 +251,24 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         # if the number of entities in the partition are less than the required size of the embedding matrix
         # pad it. This is needed because the trainable variable size cant change dynamically.
         # Once defined, it stays fixed. Hence padding is needed.
-        paddings_ent = tf.constant([[0, self._max_ent_size_internal - partition_ent_emb.shape[0]], [0, 0]])
-        paddings_rel = tf.constant([[0, self._max_rel_size_internal - partition_rel_emb.shape[0]], [0, 0]])
+        paddings_ent = tf.constant(
+            [[0, self._max_ent_size_internal - partition_ent_emb.shape[0]], [0, 0]])
+        paddings_rel = tf.constant(
+            [[0, self._max_rel_size_internal - partition_rel_emb.shape[0]], [0, 0]])
 
         # once padded, assign it to the trainable variable
-        self.ent_emb.assign(tf.pad(partition_ent_emb, paddings_ent, 'CONSTANT', constant_values=0))
-        self.rel_emb.assign(tf.pad(partition_rel_emb, paddings_rel, 'CONSTANT', constant_values=0))
+        self.ent_emb.assign(
+            tf.pad(
+                partition_ent_emb,
+                paddings_ent,
+                'CONSTANT',
+                constant_values=0))
+        self.rel_emb.assign(
+            tf.pad(
+                partition_rel_emb,
+                paddings_rel,
+                'CONSTANT',
+                constant_values=0))
 
     def call(self, triples):
         '''
@@ -273,4 +305,5 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         '''
         assert isinstance(input_shape, list)
         batch_size, _ = input_shape
-        return [(batch_size, self.k), (batch_size, self.k), (batch_size, self.k)]
+        return [(batch_size, self.k), (batch_size, self.k),
+                (batch_size, self.k)]
