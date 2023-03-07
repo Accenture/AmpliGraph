@@ -89,7 +89,6 @@ class ComplEx(AbstractScoringLayer):
             ent_real * (tf.expand_dims(e_p_real * e_o_real, 1) + tf.expand_dims(e_p_img * e_o_img, 1)) + (
                 ent_img * (tf.expand_dims(e_p_real * e_o_img, 1) - tf.expand_dims(e_p_img * e_o_real, 1))),
             axis=2)
-                          
         return sub_corr_score
 
     def _get_object_corruption_scores(self, triples, ent_matrix):
@@ -122,5 +121,4 @@ class ComplEx(AbstractScoringLayer):
             (tf.expand_dims(e_s_real * e_p_real, 1) - tf.expand_dims(e_s_img * e_p_img, 1)) * ent_real + (
                 tf.expand_dims(e_s_img * e_p_real, 1) + tf.expand_dims(e_s_real * e_p_img, 1)) * ent_img,
             axis=2)
-                          
         return obj_corr_score
