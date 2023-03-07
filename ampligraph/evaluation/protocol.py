@@ -107,18 +107,18 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
     else:
         X_train = None
         X_test_candidates = X
-        
+
     if type(test_size) is float:
         test_size = int(len(X_test_candidates) * test_size)
 
-    entities, entity_cnt = np.unique(np.concatenate([X_test_candidates[:, 0], 
+    entities, entity_cnt = np.unique(np.concatenate([X_test_candidates[:, 0],
                                                      X_test_candidates[:, 2]]), return_counts=True)
     rels, rels_cnt = np.unique(X_test_candidates[:, 1], return_counts=True)
     dict_entities = dict(zip(entities, entity_cnt))
     dict_rels = dict(zip(rels, rels_cnt))
     idx_test = []
     idx_train = []
-    
+
     all_indices_shuffled = np.random.permutation(np.arange(X_test_candidates.shape[0]))
 
     for i, idx in enumerate(all_indices_shuffled):
@@ -132,24 +132,24 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
         if dict_entities[test_triple[0]] > 0 and \
                 dict_rels[test_triple[1]] > 0 and \
                 dict_entities[test_triple[2]] > 0:
-            
+
             # Can safetly add the triple to test set
             idx_test.append(idx)
             if len(idx_test) == test_size:
                 # Since we found the requested test set of given size
                 # add all the remaining indices of candidates to training set
                 idx_train.extend(list(all_indices_shuffled[i + 1:]))
-                
+ 
                 # break out of the loop
                 break
-            
+
         else:
             # since removing this triple results in unseen entities, add it to training
             dict_entities[test_triple[0]] = dict_entities[test_triple[0]] + 1
             dict_rels[test_triple[1]] = dict_rels[test_triple[1]] + 1
             dict_entities[test_triple[2]] = dict_entities[test_triple[2]] + 1
             idx_train.append(idx)
-            
+
     if len(idx_test) != test_size:
         # if we cannot get the test set of required size that means we cannot get unique triples
         # in the test set without creating unseen entities
@@ -158,25 +158,25 @@ def train_test_split_no_unseen(X, test_size=100, seed=0, allow_duplication=False
             duplicate_idx = np.random.choice(idx_test, size=(test_size - len(idx_test))).tolist()
             idx_test.extend(list(duplicate_idx))
         else:
-            # throw an exception since we cannot get unique triples in the test set without creating 
+            # throw an exception since we cannot get unique triples in the test set without creating
             # unseen entities
             raise Exception("Cannot create a test split of the desired size. "
                             "Some entities will not occur in both training and test set. "
-                            "Set allow_duplication=True," 
+                            "Set allow_duplication=True,"
                             "remove filter on test predicates or "
                             "set test_size to a smaller value.")
-    
+
     if X_train is None:
         X_train = X_test_candidates[idx_train]
     else:
         X_train_subset = X_test_candidates[idx_train]
         X_train = np.concatenate([X_train, X_train_subset])
     X_test = X_test_candidates[idx_test]
-    
+
     X_train = np.random.permutation(X_train)
     X_test = np.random.permutation(X_test)
 
-    return X_train, X_test 
+    return X_train, X_test
 
 
 def filter_unseen_entities(X, model, verbose=False):
@@ -590,7 +590,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
     from importlib import import_module
     compat_module = import_module('ampligraph.compat')
     model_class = getattr(compat_module, model_class)
-    
+
     logger.debug('Starting gridsearch over hyperparameters. {}'.format(param_grid))
 
     if early_stopping_params is None:
@@ -639,8 +639,8 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
         param_grid["embedding_model_params"] = {**param_grid["embedding_model_params"], **focusE_params}
 
     if use_filter:
-        X_filter = {'train': X_train, 
-                    'valid': X_valid, 
+        X_filter = {'train': X_train,
+                    'valid': X_valid,
                     'test': X_test}
     else:
         X_filter = None
@@ -676,7 +676,7 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
                       early_stopping_params,
                       focusE_numeric_edge_values=focusE_numeric_edge_values,
                       verbose=verbose)
-            
+
             ranks = evaluate_performance(selection_dataset, model=model,
                                          filter_triples=X_filter, verbose=verbose,
                                          entities_subset=entities_subset,
