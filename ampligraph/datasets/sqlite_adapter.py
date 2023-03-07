@@ -748,17 +748,18 @@ class SQLiteAdapter():
                 else:
                     yield triples
 
-    def summary(self, count=True):                                                                                      # FocusE fix types
+    def summary(self, count=True):                  # FocusE fix types
         """Prints summary of the database.
 
-           The information that is displayed is: whether it exists, what tables does it have,
-           how many records it contains (if ``count=True``), what are fields held and their
-           types with an example record.
+           The information that is displayed is: whether it exists, what tables
+           does it have, how many records it contains (if ``count=True``),
+           what are fields held and their types with an example record.
 
            Parameters
            ----------
            count: bool
-                Whether to count number of records per table (can be time consuming).
+                Whether to count number of records per table
+                (can be time consuming).
 
            Example
            -------
@@ -783,41 +784,51 @@ class SQLiteAdapter():
             print("Located in {}".format(self.db_path))
             file_size = os.path.getsize(self.db_path)
             summary = """File size: {:.5}{}\nTables: {}"""
-            tables = self._execute_query("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = self._execute_query("SELECT name FROM sqlite_master\
+                    WHERE type='table';")
             tables_names = ", ".join(table[0] for table in tables)
-            print(summary.format(*get_human_readable_size(file_size), tables_names))
-            types = {"integer": "int", "float": "float", "string": "str"}                                                # float aggiunto per focusE
+            print(summary.format(*get_human_readable_size(file_size),
+                                 tables_names))
+            types = {"integer": "int", "float": "float", "string": "str"}
+            # float aggiunto per focusE
             for table_name in tables:
                 result = self._execute_query("PRAGMA table_info('%s')" % table_name)
-                cols_name_type = ["{} ({}):".format(x[1], types[x[2]] if x[2] in types else x[2]) for x in result]      # FocusE
+                cols_name_type = ["{} ({}):".format(x[1],
+                                                    types[x[2]] if x[2] in types else x[2]) for x in result]      # FocusE
                 length = len(cols_name_type)
                 print("-------------\n|" + table_name[0].upper() + "|\n-------------\n")
-                formatted_record = "{:7s}{}\n{:7s}{}".format(" ", "{:25s}" * length, "e.g.", "{:<25s}" * length)
+                formatted_record = "{:7s}{}\n{:7s}{}".format(" ",
+                                                             "{:25s}" * length,
+                                                             "e.g.", "{:<25s}" * length)
                 msg = ""
                 example = ["-"] * length
                 if count:
                     nb_records = self.get_data_size(table_name[0])
                     msg = "\n\nRecords: {}".format(nb_records)
                     if nb_records != 0:
-                        record = self._execute_query("SELECT * FROM {} LIMIT {};".format(table_name[0], 1))[0]
+                        record = self._execute_query(f"SELECT * FROM\
+                                {table_name[0]} LIMIT {1};")[0]
                         example = [str(rec) for rec in record]
                 else:
                     print("Count is set to False hence no data displayed")
 
-                print(formatted_record.format(*cols_name_type, *example), msg)
+                print(formatted_record.format(*cols_name_type,
+                                              *example), msg)
         else:
             logger.debug("Database does not exist.")
 
     def _load(self, data_source, dataset_type="train"):
-        """Loads data from the data source to the database. Wrapper around populate method,
-           required by the GraphDataLoader interface.
+        """Loads data from the data source to the database. Wrapper
+           around populate method, required by the GraphDataLoader interface.
 
            Parameters
            ----------
            data_source: str or ndarray
-                Numpy array or path to a file (e.g. csv file) from where to read data.
+                Numpy array or path to a file (e.g. csv file) from where
+                to read data.
            dataset_type: str
-                Kind of dataset that is being loaded (`"train"` | `"test"` | `"validation"`).
+                Kind of dataset that is being loaded 
+                (`"train"` | `"test"` | `"validation"`).
 
         """
 
@@ -826,7 +837,8 @@ class SQLiteAdapter():
 
     def _intersect(self, dataloader):
         if not isinstance(dataloader.backend, SQLiteAdapter):
-            msg = "Provided dataloader should be of type SQLiteAdapter backend, instead got {}.".format(
+            msg = "Provided dataloader should be of type SQLiteAdapter\
+                    backend, instead got {}.".format(
                 type(dataloader.backend))
             logger.error(msg)
             raise Exception(msg)
