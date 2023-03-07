@@ -292,7 +292,7 @@ def generate_candidates(X, strategy, target_rel, max_candidates, consolidate_sid
         >>>  ['c', 'y', 'e']])
 
     """
-    if X.shape[1] > 3: # exception needed if weights are given in input together with triples
+    if X.shape[1] > 3:  # exception needed if weights are given in input together with triples
         X = X[:, :3]
     if strategy not in ['random_uniform', 'entity_frequency',
                         'graph_degree', 'cluster_coefficient',

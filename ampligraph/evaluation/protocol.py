@@ -617,8 +617,8 @@ def select_best_model_ranking(model_class, X_train, X_valid, X_test, param_grid,
             elif isinstance(param, dict):
                 try:
                     max_combinations *= int(np.prod([len(el) for el in param.values() if isinstance(el, list)]))
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug("Exception " + e)
 
     best_mrr_train = 0
     best_model = None

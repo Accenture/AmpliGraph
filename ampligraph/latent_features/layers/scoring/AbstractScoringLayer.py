@@ -193,9 +193,9 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
 
                 # returns: 3 i.e. 1 + (4/2) i.e. only 1  corruption is having score greater than positive
                 # and 4 corruptions are having same (middle rank is 4/2 = 1), so 1+2=3
-                sub_rank = tf.reduce_sum(tf.cast(tf.expand_dims(
-                    triple_score, 1) < sub_corr_score, tf.int32), 1) + tf.cast(tf.math.ceil(tf.reduce_sum(
-                    tf.cast(tf.expand_dims(triple_score, 1) == sub_corr_score, tf.int32), 1) / 2), tf.int32)
+                sub_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) < sub_corr_score, tf.int32), 1)
+                part = tf.cast(tf.expand_dims(triple_score, 1) == sub_corr_score, tf.int32)
+                sub_rank += tf.cast(tf.math.ceil(tf.reduce_sum(part, 1) / 2), tf.int32)
             else:
                 # returns: 5 i.e. 5 corruptions are having score >= positive
                 # as you can see this strategy returns the worst rank (pessimistic)
@@ -253,17 +253,16 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
                 print('middle')
                 # returns: 3 i.e. 1 + (4/2) i.e. only 1  corruption is having score greater than positive
                 # and 4 corruptions are having same (middle rank is 4/2 = 1), so 1+2=3
-                obj_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) < obj_corr_score, tf.int32), 1) + \
-                    tf.cast(tf.math.ceil(tf.reduce_sum(tf.cast(tf.expand_dims(
-                    triple_score, 1) == obj_corr_score, tf.int32), 1) / 2), tf.int32)
+                obj_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) < obj_corr_score, tf.int32), 1)
+                part = tf.cast(tf.expand_dims(triple_score, 1) == obj_corr_score, tf.int32)
+                obj_rank += tf.cast(tf.math.ceil(tf.reduce_sum(part, 1) / 2), tf.int32)
             else:
                 # returns: 5 i.e. 5 corruptions are having score >= positive
                 # as you can see this strategy returns the worst rank (pessimistic)
                 
                 # compare True positive score against their respective corruptions and get rank.
                 obj_rank = tf.reduce_sum(tf.cast(tf.expand_dims(triple_score, 1) <= obj_corr_score, tf.int32), 1)
-                
-            
+                 
             if filters.shape[0] > 0:
                 for i in tf.range(tf.shape(triple_score)[0]):
                     if corrupt_side in ["s", "o"] and filters.shape[0] == 1:
