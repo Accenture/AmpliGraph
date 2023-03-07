@@ -25,16 +25,30 @@ def register_compatibility(name):
 
 
 class ScoringModelBase:
-    def __init__(self, k=100, eta=2, epochs=100,
-                 batches_count=100, seed=0,
-                 embedding_model_params={'corrupt_sides': ['s,o'],
-                                         'negative_corruption_entities': 'all',
-                                         'norm': 1, 'normalize_ent_emb': False},
-
-                 optimizer='adam', optimizer_params={'lr': 0.0005},
-                 loss='nll', loss_params={}, regularizer=None, regularizer_params={},
-                 initializer='xavier', initializer_params={'uniform': False}, verbose=False,
-                 model=None):
+    def __init__(
+            self,
+            k=100,
+            eta=2,
+            epochs=100,
+            batches_count=100,
+            seed=0,
+            embedding_model_params={
+                'corrupt_sides': ['s,o'],
+                'negative_corruption_entities': 'all',
+                'norm': 1,
+                'normalize_ent_emb': False},
+            optimizer='adam',
+            optimizer_params={
+                'lr': 0.0005},
+        loss='nll',
+        loss_params={},
+        regularizer=None,
+        regularizer_params={},
+        initializer='xavier',
+        initializer_params={
+                    'uniform': False},
+            verbose=False,
+            model=None):
         """Initialize the model class.
 
         Parameters
@@ -126,13 +140,16 @@ class ScoringModelBase:
         del optim_params['lr']
 
         if optimizer == 'adam':
-            optim = tf.keras.optimizers.Adam(learning_rate=learning_rate, **optim_params)
+            optim = tf.keras.optimizers.Adam(
+                learning_rate=learning_rate, **optim_params)
             status = True
         elif optimizer == 'adagrad':
-            optim = tf.keras.optimizers.Adagrad(learning_rate=learning_rate, **optim_params)
+            optim = tf.keras.optimizers.Adagrad(
+                learning_rate=learning_rate, **optim_params)
             status = True
         elif optimizer == 'sgd':
-            optim = tf.keras.optimizers.SGD(learning_rate=learning_rate, **optim_params)
+            optim = tf.keras.optimizers.SGD(
+                learning_rate=learning_rate, **optim_params)
             status = True
         else:
             optim = get_optimizer(optimizer)
@@ -153,19 +170,21 @@ class ScoringModelBase:
             else:
                 return tf.keras.initializers.GlorotNormal(seed=self.seed)
         elif initializer == 'uniform':
-            return tf.keras.initializers.RandomUniform(minval=initializer_params.get('low', -0.05),
-                                                       maxval=initializer_params.get('high', 0.05),
-                                                       seed=self.seed)
+            return tf.keras.initializers.RandomUniform(minval=initializer_params.get(
+                'low', -0.05), maxval=initializer_params.get('high', 0.05), seed=self.seed)
         elif initializer == 'normal':
-            return tf.keras.initializers.RandomNormal(mean=initializer_params.get('mean', 0.0),
-                                                      stddev=initializer_params.get('std', 0.05),
-                                                      seed=self.seed)
+            return tf.keras.initializers.RandomNormal(
+                mean=initializer_params.get(
+                    'mean', 0.0), stddev=initializer_params.get(
+                    'std', 0.05), seed=self.seed)
         elif initializer == 'constant':
             entity_init = initializer_params.get('entity', None)
             rel_init = initializer_params.get('relation', None)
             assert entity_init is not None, 'Please pass the `entity` initializer value'
             assert rel_init is not None, 'Please pass the `relation` initializer value'
-            return [tf.constant_initializer(entity_init), tf.constant_initializer(rel_init)]
+            return [
+                tf.constant_initializer(entity_init),
+                tf.constant_initializer(rel_init)]
         else:
             return tf.keras.initializers.get(initializer)
 
@@ -216,11 +235,13 @@ class ScoringModelBase:
             no logs will be collected). When provided it will create a folder under provided path and save tensorboard
             files there. To then view the loss in the terminal run: ``tensorboard --logdir <tensorboard_logs_path>``.
         """
-        self.model = ScoringBasedEmbeddingModel(self.eta, self.k, scoring_type=self.model_name, seed=self.seed)
+        self.model = ScoringBasedEmbeddingModel(
+            self.eta, self.k, scoring_type=self.model_name, seed=self.seed)
         if callbacks is None:
             callbacks = []
         if tensorboard_logs_path is not None:
-            tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_logs_path)
+            tensorboard_callback = tf.keras.callbacks.TensorBoard(
+                log_dir=tensorboard_logs_path)
             callbacks.append(tensorboard_callback)
 
         regularizer = self.regularizer
@@ -229,10 +250,12 @@ class ScoringModelBase:
 
         initializer = self.initializer
         if initializer is not None:
-            initializer = self._get_initializer(initializer, self.initializer_params)
+            initializer = self._get_initializer(
+                initializer, self.initializer_params)
 
         loss = get_loss(self.loss, self.loss_params)
-        optimizer, is_back_compat_optim = self._get_optimizer(self.optimizer, self.optimizer_params)
+        optimizer, is_back_compat_optim = self._get_optimizer(
+            self.optimizer, self.optimizer_params)
 
         self.model.compile(optimizer=optimizer,
                            loss=loss,
@@ -267,30 +290,48 @@ class ScoringModelBase:
         focusE = False
         params_focusE = {}
         if focusE_numeric_edge_values is not None:
-            if isinstance(focusE_numeric_edge_values, np.ndarray) and isinstance(X, np.ndarray):
+            if isinstance(
+                    focusE_numeric_edge_values,
+                    np.ndarray) and isinstance(
+                    X,
+                    np.ndarray):
                 focusE = True
                 X = np.concatenate([X, focusE_numeric_edge_values], axis=1)
-                params_focusE = {'non_linearity': self.embedding_model_params.get('non_linearity', 'linear'),
-                                 'stop_epoch': self.embedding_model_params.get('stop_epoch', 251),
-                                 'structural_wt': self.embedding_model_params.get('structural_wt', 0.001)}
+                params_focusE = {
+                    'non_linearity': self.embedding_model_params.get(
+                        'non_linearity', 'linear'), 'stop_epoch': self.embedding_model_params.get(
+                        'stop_epoch', 251), 'structural_wt': self.embedding_model_params.get(
+                        'structural_wt', 0.001)}
             else:
                 msg = "Either X or focusE_numeric_edge_values are not np.array, so focusE is not supported. " \
                       "Try using Ampligraph 2 or Ampligraph 1.x APIs!"
                 raise ValueError(msg)
 
-        self.model.fit(X,
-                       batch_size=np.ceil(X.shape[0] / self.batches_count),
-                       epochs=self.epochs,
-                       validation_freq=early_stopping_params.get('check_interval', 10),
-                       validation_burn_in=early_stopping_params.get('burn_in', 25),
-                       validation_batch_size=early_stopping_params.get('batch_size', 100),
-                       validation_data=early_stopping_params.get('x_valid', None),
-                       validation_filter=x_filter,
-                       validation_entities_subset=early_stopping_params.get('corruption_entities', None),
-                       callbacks=callbacks,
-                       verbose=verbose,
-                       focusE=focusE,
-                       focusE_params=params_focusE)
+        self.model.fit(
+            X,
+            batch_size=np.ceil(
+                X.shape[0] / self.batches_count),
+            epochs=self.epochs,
+            validation_freq=early_stopping_params.get(
+                'check_interval',
+                10),
+            validation_burn_in=early_stopping_params.get(
+                'burn_in',
+                25),
+            validation_batch_size=early_stopping_params.get(
+                'batch_size',
+                100),
+            validation_data=early_stopping_params.get(
+                'x_valid',
+                None),
+            validation_filter=x_filter,
+            validation_entities_subset=early_stopping_params.get(
+                'corruption_entities',
+                None),
+            callbacks=callbacks,
+            verbose=verbose,
+            focusE=focusE,
+            focusE_params=params_focusE)
         self.data_shape = self.model.data_shape
 
     def get_indexes(self, X, type_of='t', order="raw2ind"):
@@ -373,9 +414,12 @@ class ScoringModelBase:
         """
         ent_idx = np.arange(self.model.data_indexer.get_entities_count())
         rel_idx = np.arange(self.model.data_indexer.get_relations_count())
-        ent_values_raw = self.model.data_indexer.get_indexes(ent_idx, 'e', 'ind2raw')
-        rel_values_raw = self.model.data_indexer.get_indexes(rel_idx, 'r', 'ind2raw')
-        return dict(zip(ent_values_raw, ent_idx)), dict(zip(rel_values_raw, rel_idx))
+        ent_values_raw = self.model.data_indexer.get_indexes(
+            ent_idx, 'e', 'ind2raw')
+        rel_values_raw = self.model.data_indexer.get_indexes(
+            rel_idx, 'r', 'ind2raw')
+        return dict(zip(ent_values_raw, ent_idx)), dict(
+            zip(rel_values_raw, rel_idx))
 
     def predict(self, X):
         """
@@ -395,7 +439,13 @@ class ScoringModelBase:
         """
         return self.model.predict(X)
 
-    def calibrate(self, X_pos, X_neg=None, positive_base_rate=None, batches_count=100, epochs=50):
+    def calibrate(
+            self,
+            X_pos,
+            X_neg=None,
+            positive_base_rate=None,
+            batches_count=100,
+            epochs=50):
         """Calibrate predictions.
 
         The method implements the heuristics described in :cite:`calibration`,
@@ -502,15 +552,31 @@ class ScoringModelBase:
 @register_compatibility('TransE')
 class TransE(ScoringModelBase):
     """Class wrapping around the ScoringBasedEmbeddingModel with the TransE scoring function."""
-    def __init__(self, k=100, eta=2, epochs=100,
-                 batches_count=100, seed=0,
-                 embedding_model_params={'corrupt_sides': ['s,o'],
-                                         'negative_corruption_entities': 'all',
-                                         'norm': 1, 'normalize_ent_emb': False},
 
-                 optimizer='adam', optimizer_params={'lr': 0.0005},
-                 loss='nll', loss_params={}, regularizer=None, regularizer_params={},
-                 initializer='xavier', initializer_params={'uniform': False}, verbose=False, model=None):
+    def __init__(
+            self,
+            k=100,
+            eta=2,
+            epochs=100,
+            batches_count=100,
+            seed=0,
+            embedding_model_params={
+                'corrupt_sides': ['s,o'],
+                'negative_corruption_entities': 'all',
+                'norm': 1,
+                'normalize_ent_emb': False},
+            optimizer='adam',
+            optimizer_params={
+                'lr': 0.0005},
+        loss='nll',
+        loss_params={},
+        regularizer=None,
+        regularizer_params={},
+        initializer='xavier',
+        initializer_params={
+                    'uniform': False},
+            verbose=False,
+            model=None):
         """Initialize the ScoringBasedEmbeddingModel with the TransE scoring function."""
         super().__init__(k, eta, epochs,
                          batches_count, seed,
@@ -525,15 +591,31 @@ class TransE(ScoringModelBase):
 @register_compatibility('DistMult')
 class DistMult(ScoringModelBase):
     """Class wrapping around the ScoringBasedEmbeddingModel with the DistMult scoring function."""
-    def __init__(self, k=100, eta=2, epochs=100,
-                 batches_count=100, seed=0,
-                 embedding_model_params={'corrupt_sides': ['s,o'],
-                                         'negative_corruption_entities': 'all',
-                                         'norm': 1, 'normalize_ent_emb': False},
 
-                 optimizer='adam', optimizer_params={'lr': 0.0005},
-                 loss='nll', loss_params={}, regularizer=None, regularizer_params={},
-                 initializer='xavier', initializer_params={'uniform': False}, verbose=False, model=None):
+    def __init__(
+            self,
+            k=100,
+            eta=2,
+            epochs=100,
+            batches_count=100,
+            seed=0,
+            embedding_model_params={
+                'corrupt_sides': ['s,o'],
+                'negative_corruption_entities': 'all',
+                'norm': 1,
+                'normalize_ent_emb': False},
+            optimizer='adam',
+            optimizer_params={
+                'lr': 0.0005},
+        loss='nll',
+        loss_params={},
+        regularizer=None,
+        regularizer_params={},
+        initializer='xavier',
+        initializer_params={
+                    'uniform': False},
+            verbose=False,
+            model=None):
         """Initialize the ScoringBasedEmbeddingModel with the DistMult scoring function."""
         super().__init__(k, eta, epochs,
                          batches_count, seed,
@@ -548,15 +630,31 @@ class DistMult(ScoringModelBase):
 @register_compatibility('ComplEx')
 class ComplEx(ScoringModelBase):
     """Class wrapping around the ScoringBasedEmbeddingModel with the ComplEx scoring function."""
-    def __init__(self, k=100, eta=2, epochs=100,
-                 batches_count=100, seed=0,
-                 embedding_model_params={'corrupt_sides': ['s,o'],
-                                         'negative_corruption_entities': 'all',
-                                         'norm': 1, 'normalize_ent_emb': False},
 
-                 optimizer='adam', optimizer_params={'lr': 0.0005},
-                 loss='nll', loss_params={}, regularizer=None, regularizer_params={},
-                 initializer='xavier', initializer_params={'uniform': False}, verbose=False, model=None):
+    def __init__(
+            self,
+            k=100,
+            eta=2,
+            epochs=100,
+            batches_count=100,
+            seed=0,
+            embedding_model_params={
+                'corrupt_sides': ['s,o'],
+                'negative_corruption_entities': 'all',
+                'norm': 1,
+                'normalize_ent_emb': False},
+            optimizer='adam',
+            optimizer_params={
+                'lr': 0.0005},
+        loss='nll',
+        loss_params={},
+        regularizer=None,
+        regularizer_params={},
+        initializer='xavier',
+        initializer_params={
+                    'uniform': False},
+            verbose=False,
+            model=None):
         """Initialize the ScoringBasedEmbeddingModel with the ComplEx scoring function."""
         super().__init__(k, eta, epochs,
                          batches_count, seed,
@@ -571,15 +669,31 @@ class ComplEx(ScoringModelBase):
 @register_compatibility('HolE')
 class HolE(ScoringModelBase):
     """Class wrapping around the ScoringBasedEmbeddingModel with the HolE scoring function."""
-    def __init__(self, k=100, eta=2, epochs=100,
-                 batches_count=100, seed=0,
-                 embedding_model_params={'corrupt_sides': ['s,o'],
-                                         'negative_corruption_entities': 'all',
-                                         'norm': 1, 'normalize_ent_emb': False},
 
-                 optimizer='adam', optimizer_params={'lr': 0.0005},
-                 loss='nll', loss_params={}, regularizer=None, regularizer_params={},
-                 initializer='xavier', initializer_params={'uniform': False}, verbose=False, model=None):
+    def __init__(
+            self,
+            k=100,
+            eta=2,
+            epochs=100,
+            batches_count=100,
+            seed=0,
+            embedding_model_params={
+                'corrupt_sides': ['s,o'],
+                'negative_corruption_entities': 'all',
+                'norm': 1,
+                'normalize_ent_emb': False},
+            optimizer='adam',
+            optimizer_params={
+                'lr': 0.0005},
+        loss='nll',
+        loss_params={},
+        regularizer=None,
+        regularizer_params={},
+        initializer='xavier',
+        initializer_params={
+                    'uniform': False},
+            verbose=False,
+            model=None):
         """Initialize the ScoringBasedEmbeddingModel with the HolE scoring function."""
         super().__init__(k, eta, epochs,
                          batches_count, seed,

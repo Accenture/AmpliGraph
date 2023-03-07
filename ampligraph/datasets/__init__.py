@@ -15,9 +15,32 @@ from .sqlite_adapter import SQLiteAdapter
 from .source_identifier import DataSourceIdentifier, load_csv, load_tar, load_gz, load_json, chunks
 
 
-__all__ = ['load_from_csv', 'load_from_rdf', 'load_wn18', 'load_fb15k', 'load_fb15k_237',
-           'load_from_ntriples', 'load_yago3_10', 'load_wn18rr', 'load_wn11', 'load_fb13',
-           'load_onet20k', 'load_ppi5k', 'load_nl27k', 'load_cn15k', 'load_codex', 'chunks',
-           'load_json', 'load_gz', 'load_tar', 'load_csv', 'DataSourceIdentifier',
-           'DataIndexer', 'NoBackend', '_load_xai_fb15k_237_experiment_log',
-           'SQLiteAdapter', 'GraphDataLoader', 'BucketGraphPartitioner', 'PARTITION_ALGO_REGISTRY']
+__all__ = [
+    'load_from_csv',
+    'load_from_rdf',
+    'load_wn18',
+    'load_fb15k',
+    'load_fb15k_237',
+    'load_from_ntriples',
+    'load_yago3_10',
+    'load_wn18rr',
+    'load_wn11',
+    'load_fb13',
+    'load_onet20k',
+    'load_ppi5k',
+    'load_nl27k',
+    'load_cn15k',
+    'load_codex',
+    'chunks',
+    'load_json',
+    'load_gz',
+    'load_tar',
+    'load_csv',
+    'DataSourceIdentifier',
+    'DataIndexer',
+    'NoBackend',
+    '_load_xai_fb15k_237_experiment_log',
+    'SQLiteAdapter',
+    'GraphDataLoader',
+    'BucketGraphPartitioner',
+    'PARTITION_ALGO_REGISTRY']
