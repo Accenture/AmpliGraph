@@ -35,12 +35,13 @@ def get_human_readable_size(size_in_bytes):
     Returns
     -------
     readable_size: tuple
-        Tuple of new size and unit, size in units GB/MB/KB/Bytes according to thresholds.
+        Tuple of new size and unit, size in units GB/MB/KB/Bytes according
+        to thresholds.
     """
     if size_in_bytes >= 1024 * 1024 * 1024:
-        return float(size_in_bytes / (1024 * 1024 * 1024)), "GB"  # return in GB
+        return float(size_in_bytes / (1024 * 1024 * 1024)), "GB"
     if size_in_bytes >= 1024 * 1024:
-        return float(size_in_bytes / (1024 * 1024)), "MB"  # return in MB
+        return float(size_in_bytes / (1024 * 1024)), "MB"
     if size_in_bytes >= 1024:
         return float(size_in_bytes / 1024), "KB"  # return in KB
     return float(size_in_bytes), "Bytes"
@@ -54,10 +55,12 @@ def timing_and_memory(f):
     f: function
         Function for which the time and memory will be measured.
 
-    It logs the time and the memory in the dictionary passed inside `'log'` parameter if provided.
-    Time is logged in seconds, memory in bytes. Example dictionary entry looks like that:
-    {'SPLIT':{'time':1.62, 'memory-bytes':789.097}}, where keys are names of functions that
-    were called to get the time measured in uppercase.
+    It logs the time and the memory in the dictionary passed inside `'log'`
+    parameter if provided. Time is logged in seconds, memory in bytes.
+    Example dictionary entry looks like that:
+    {'SPLIT': {'time': 1.62, 'memory-bytes': 789.097}},
+    where keys are names of functions that were called to get
+    the time measured in uppercase.
 
     Requires
     --------
@@ -72,7 +75,8 @@ def timing_and_memory(f):
         end = time()
         mem_after = get_memory_size()
         mem_diff = mem_after - mem_before
-        print("{}: memory before: {:.5}{}, after: {:.5}{}, consumed: {:.5}{}; exec time: {:.5}s".format(
+        print("{}: memory before: {:.5}{}, after: {:.5}{},\
+              consumed: {:.5}{}; exec time: {:.5}s".format(
             f.__name__,
             *get_human_readable_size(mem_before),
             *get_human_readable_size(mem_after),
@@ -81,6 +85,7 @@ def timing_and_memory(f):
 
         if 'log' in kwargs:
             name = kwargs.get('log_name', f.__name__.upper())
-            kwargs['log'][name] = {'time': end - start, 'memory-bytes': mem_diff}
+            kwargs['log'][name] = {'time': end - start,
+                                   'memory-bytes': mem_diff}
         return result
     return wrapper
