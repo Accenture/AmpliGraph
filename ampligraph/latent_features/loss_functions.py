@@ -79,10 +79,10 @@ class Loss(abc.ABC):
         ----------
         hyperparam_dict : dict
             Dictionary of hyperparams.
-            
+
             - `"reduction"`: (str) - Specifies whether to `"sum"` or take the `"mean"` of loss per sample w.r.t. \
                  corruptions (default: `"sum"`).
-            
+
             Other Keys are described in the `hyperparameters` section.
         """
         self._loss_parameters = {}
@@ -91,7 +91,7 @@ class Loss(abc.ABC):
         self._dependencies = []
         self._user_losses = self.name
         self._user_loss_weights = None
-        
+
         self._loss_metric = metrics_mod.Mean(name='loss')  # Total loss.
 
         # perform check to see if all the required external hyperparams are passed
@@ -111,7 +111,7 @@ class Loss(abc.ABC):
     def metrics(self):
         """Per-output loss metrics."""
         return [self._loss_metric]
-    
+
     def _reduce_sample_loss(self, loss):
         ''' Aggregates the loss of each sample either by adding or taking the mean w.r.t. the number of corruptions.'''
         if self._loss_parameters['reduction'] == 'sum':
@@ -143,7 +143,7 @@ class Loss(abc.ABC):
             A tensor of scores assigned to positive statements.
         scores_neg : tf.Tensor
             A tensor of scores assigned to negative statements.
-           
+
         Returns
         -------
         loss : tf.Tensor
@@ -152,10 +152,10 @@ class Loss(abc.ABC):
         msg = 'This function is a placeholder in an abstract class.'
         logger.error(msg)
         raise NotImplementedError(msg)
-        
+
     def _broadcast_score_pos(self, scores_pos, eta):
         """Broadcast the ``score_pos`` to be of size equal to the number of corruptions.
-        
+
         Parameters
         ----------
         scores_pos : tf.Tensor
@@ -184,7 +184,7 @@ class Loss(abc.ABC):
             A tensor of scores assigned to negative statements.
         eta: tf.Tensor
            Number of synthetic corruptions per positive.
-        regularization_losses: list   
+        regularization_losses: list
            List of all regularization related losses defined in the layers.
 
         Returns
@@ -192,18 +192,18 @@ class Loss(abc.ABC):
         loss : tf.Tensor
             The loss value that must be minimized.
         """
-        
+
         loss_values = []
-        
+
         scores_neg = tf.reshape(scores_neg, [eta, -1])
-        
+
         loss = self._apply_loss(scores_pos, scores_neg)
         loss_values.append(tf.reduce_sum(loss))
         if regularization_losses:
             regularization_losses = losses_utils.cast_losses_to_common_dtype(regularization_losses)
             reg_loss = math_ops.add_n(regularization_losses)
             loss_values.append(reg_loss)
-            
+
         loss_values = losses_utils.cast_losses_to_common_dtype(loss_values)
         total_loss = math_ops.add_n(loss_values)
         self._loss_metric.update_state(total_loss)
@@ -230,11 +230,11 @@ class PairwiseLoss(Loss):
     >>> loss = lfs.PairwiseLoss({'margin': 0.005, 'reduction': 'sum'})
     >>> isinstance(loss, lfs.PairwiseLoss)
     True
-    
+
     >>> loss = lfs.get('pairwise')
     >>> isinstance(loss, lfs.PairwiseLoss)
     True
-    
+
     """
 
     def __init__(self, loss_params={}, verbose=False):
@@ -306,7 +306,7 @@ class NLLLoss(Loss):
     >>> loss = lfs.NLLLoss({'reduction': 'mean'})
     >>> isinstance(loss, lfs.NLLLoss)
     True
-    
+
     >>> loss = lfs.get('nll')
     >>> isinstance(loss, lfs.NLLLoss)
     True
@@ -319,7 +319,7 @@ class NLLLoss(Loss):
         ----------
         loss_params : dict
             Dictionary of hyperparams. No hyperparameters are required for this loss except for `"reduction"`.
-            
+
             - `"reduction"`: (str) - Specifies whether to `"sum"` or take `"mean"` of loss per sample w.r.t. \
             corruption (default:`"sum"`).
         """
@@ -354,9 +354,9 @@ class NLLLoss(Loss):
         """
         scores_neg = clip_before_exp(scores_neg)
         scores_pos = clip_before_exp(scores_pos)
-        
+
         scores_pos = self._broadcast_score_pos(scores_pos, scores_neg.shape[0])
-        
+
         scores = tf.concat([-scores_pos, scores_neg], 0)
         return self._reduce_sample_loss(tf.math.log(1 + tf.exp(scores)))
 
@@ -381,7 +381,7 @@ class AbsoluteMarginLoss(Loss):
     >>> loss = lfs.AbsoluteMarginLoss({'margin': 1, 'reduction': 'mean'})
     >>> isinstance(loss, lfs.AbsoluteMarginLoss)
     True
-    
+
     >>> loss = lfs.get('absolute_margin')
     >>> isinstance(loss, lfs.AbsoluteMarginLoss)
     True
@@ -548,14 +548,14 @@ class NLLMulticlass(Loss):
 
         \mathcal{L(X)} = -\sum_{x_{e_1,e_2,r_k} \in X} log\,p(e_2|e_1,r_k)
          -\sum_{x_{e_1,e_2,r_k} \in X} log\,p(e_1|r_k, e_2)
-         
+
     Example
     -------
     >>> import ampligraph.latent_features.loss_functions as lfs
     >>> loss = lfs.NLLMulticlass({'reduction': 'mean'})
     >>> isinstance(loss, lfs.NLLMulticlass)
     True
-    
+
     >>> loss = lfs.get('multiclass_nll')
     >>> isinstance(loss, lfs.NLLMulticlass)
     True
@@ -568,7 +568,7 @@ class NLLMulticlass(Loss):
         ----------
         loss_params : dict
             Dictionary of loss-specific hyperparams:
-            
+
             - `"reduction"`: (str) - Specifies whether to `"sum"` or take the `"mean"` of loss per sample w.r.t. \
              corruption (default: `"sum"`).
 
@@ -611,11 +611,11 @@ class NLLMulticlass(Loss):
         softmax_score = pos_exp / (self._reduce_sample_loss(neg_exp) + pos_exp)
         loss = -tf.math.log(softmax_score)
         return loss
-    
+
 
 class LossFunctionWrapper(Loss):
     """Wraps a loss function in the `Loss` class.
-    
+
     Example
     -------
     >>> import ampligraph.latent_features.loss_functions as lfs
@@ -636,7 +636,7 @@ class LossFunctionWrapper(Loss):
                  user_defined_loss,
                  name=None):
         ''' Initializes the LossFunctionWrapper.
-        
+
         Parameters
         ----------
         user_defined_loss : function_handle
@@ -647,7 +647,7 @@ class LossFunctionWrapper(Loss):
         super(LossFunctionWrapper, self).__init__()
         self._user_losses = user_defined_loss
         self.name = name
-        
+
     def _init_hyperparams(self, hyperparam_dict={}):
         """Verifies and stores the hyperparameters needed by the algorithm.
 
@@ -657,7 +657,7 @@ class LossFunctionWrapper(Loss):
             The Loss will check the keys to get the corresponding parameters.
         """
         pass
-    
+
     @tf.function(experimental_relax_shapes=True)
     def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
@@ -677,23 +677,23 @@ class LossFunctionWrapper(Loss):
        """
         return self._user_losses(scores_pos, scores_neg)
 
-    
+
 def get(identifier, hyperparams={}):
     '''
     Get the loss function specified by the identifier.
-    
+
     Parameters
     ----------
     identifier: Loss class instance or str or function handle
         Instance of Loss class (Pairwise, NLLLoss, etc.), name of the (existing) loss function to be used
         (with default parameters) or handle to the function which takes in two parameters (signature:
         def loss_fn(scores_pos, scores_neg)).
-        
+
     Returns
     -------
     loss: Loss class instance
         Loss function.
-        
+
     Example
     -------
     >>> import ampligraph.latent_features.loss_functions as lfs
