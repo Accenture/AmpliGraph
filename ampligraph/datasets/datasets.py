@@ -1680,7 +1680,7 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
     >>> X = _load_xai_fb15k_237_experiment_log()
     >>> X.head(2)
 
-	predicate 	                        predicate label 	predicates_description 	                        subject 	subject_label 	object_label 	object
+    predicate 	                        predicate label 	predicates_description 	                        subject 	subject_label 	object_label 	object
 0 	/media_common/netflix_genre/titles 	Titles 	                Titles that have this Genre in Netflix@en 	/m/07c52 	Television 	Friends 	/m/030cx
 1 	/film/film/edited_by 	                Edited by 	        NaN 	                                        /m/0cc5qkt 	War Horse 	Michael Kahn 	/m/03q8ch
 
