@@ -12,8 +12,14 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def evaluate_performance(X, model, filter_triples=None, verbose=False, entities_subset=None,
-                         corrupt_side='s,o', batch_size=1):
+def evaluate_performance(
+        X,
+        model,
+        filter_triples=None,
+        verbose=False,
+        entities_subset=None,
+        corrupt_side='s,o',
+        batch_size=1):
     """Evaluate the performance of an embedding model.
 
     The evaluation protocol follows the procedure defined in :cite:`bordes2013translating` and can be summarised as:
@@ -141,9 +147,14 @@ def evaluate_performance(X, model, filter_triples=None, verbose=False, entities_
     0.6
     """
     logger.debug('Evaluating the performance of the embedding model.')
-    assert corrupt_side in ['s', 'o', 's+o', 's,o'], 'Invalid value for corrupt_side.'
+    assert corrupt_side in ['s', 'o', 's+o',
+                            's,o'], 'Invalid value for corrupt_side.'
 
-    if isinstance(filter_triples, np.ndarray) or isinstance(filter_triples, list):
+    if isinstance(
+            filter_triples,
+            np.ndarray) or isinstance(
+            filter_triples,
+            list):
         filter_triples = {'valid': filter_triples}
     elif filter_triples is None or not filter_triples:
         filter_triples = False
