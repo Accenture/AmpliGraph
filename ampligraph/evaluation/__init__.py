@@ -5,11 +5,14 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-"""The module includes performance metrics for neural graph embeddings models, along with model selection routines,
- negatives generation, and an implementation of the learning-to-rank-based evaluation protocol used in literature."""
+"""The module includes performance metrics for neural graph embeddings models,
+along with model selection routines, negatives generation, and an
+implementation of the learning-to-rank-based evaluation protocol
+used in literature."""
 
 from .metrics import mrr_score, mr_score, hits_at_n_score, rank_score
-from .protocol import select_best_model_ranking, train_test_split_no_unseen, filter_unseen_entities
+from .protocol import select_best_model_ranking, train_test_split_no_unseen,
+filter_unseen_entities
 
 __all__ = [
     'mrr_score',
