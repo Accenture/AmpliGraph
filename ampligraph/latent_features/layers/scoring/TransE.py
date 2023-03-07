@@ -12,35 +12,35 @@ from .AbstractScoringLayer import register_layer, AbstractScoringLayer
 @register_layer('TransE')
 class TransE(AbstractScoringLayer):
     r''' Translating Embeddings (TransE) scoring layer.
-    
+
     The model as described in :cite:`bordes2013translating`.
-    
+
     The scoring function of TransE computes a similarity between the embedding of the subject
     :math:`\mathbf{e}_{sub}` translated by the embedding of the predicate :math:`\mathbf{e}_{pred}`,
     and the embedding of the object :math:`\mathbf{e}_{obj}`,
     using the :math:`L_1` or :math:`L_2` norm :math:`||\cdot||` (default: :math:`L_1`):
-    
+
     .. math::
         f_{TransE}=-||\mathbf{e}_{sub} + \mathbf{e}_{pred} - \mathbf{e}_{obj}||
-        
+
     Such scoring function is then used on positive and negative triples :math:`t^+, t^-` in the loss function.
-    
+
     '''
     def get_config(self):
         config = super(TransE, self).get_config()
         return config
-    
+
     def __init__(self, k):
         super(TransE, self).__init__(k)
 
     def _compute_scores(self, triples):
         ''' Compute scores using transE scoring function.
-        
+
         Parameters
         ----------
         triples: array-like, (n, 3)
             Batch of input triples.
-        
+
         Returns
         -------
         scores: tf.Tensor, shape (n,1)
@@ -54,14 +54,14 @@ class TransE(AbstractScoringLayer):
         ''' Compute subject corruption scores.
 
         Evaluate the inputs against subject corruptions and scores of the corruptions.
-        
+
         Parameters
         ----------
         triples: array-like, shape (n, k)
             Batch of input embeddings.
         ent_matrix: array-like, shape (m, k)
             Slice of embedding matrix (corruptions).
-        
+
         Returns
         -------
         scores: tf.Tensor, shape (n, 1)
@@ -78,14 +78,14 @@ class TransE(AbstractScoringLayer):
         ''' Compute object corruption scores.
 
         Evaluate the inputs against object corruptions and scores of the corruptions.
-        
+
         Parameters
         ----------
         triples: array-like, shape (n, k)
             Batch of input embeddings.
         ent_matrix: array-like, shape (m, k)
             Slice of embedding matrix (corruptions).
-        
+
         Returns
         -------
         scores: tf.Tensor, shape (n, 1)
