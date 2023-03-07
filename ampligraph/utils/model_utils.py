@@ -72,8 +72,8 @@ def save_model(model, model_name_path=None):
         model = model.model
     tf.keras.models.save_model(model, model_name_path)
     model.save_metadata(filedir=model_name_path)
-   
-   
+
+
 def restore_model(model_name_path=None):
     '''Restore a trained model from disk.
 
@@ -87,7 +87,7 @@ def restore_model(model_name_path=None):
     from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
     from ampligraph.latent_features import ScoringBasedEmbeddingModel
     from ampligraph.compat.models import BACK_COMPAT_MODELS
-   
+
     if model_name_path is None:
         logger.warning("There is no model name specified. \
                         We will try to lookup \
@@ -96,13 +96,13 @@ def restore_model(model_name_path=None):
         if len(default_models) == 0:
             raise Exception("No default model found. Please specify \
                              model_name_path...")
-           
+
     try:
         custom_objects = {"ScoringBasedEmbeddingModel": ScoringBasedEmbeddingModel,
                           'OptimizerWrapper': OptimizerWrapper,
                           'embedding_lookup_layer': EmbeddingLookupLayer}
         custom_objects.update(LOSS_REGISTRY)
-           
+
         model = tf.keras.models.load_model(model_name_path, custom_objects=custom_objects)
         model.load_metadata(filedir=model_name_path)
         if model.is_backward:
@@ -221,10 +221,10 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all',
 
     if entities_subset != "all":
         assert isinstance(entities_subset, list), "Please pass a list of entities of entities_subset!"
-           
+
     if entities_subset == "all":
         entities_index = np.arange(model.get_count('e'))
-       
+
         entities_label = list(model.get_indexes(
             entities_index,
             type_of='e',
@@ -235,7 +235,7 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all',
             type_of='e',
             order='raw2ind')
         entities_label = entities_subset
-       
+
     if labels is not None:
         # Check if the lengths of the supplied labels is equal to the number of embeddings retrieved
         if len(labels) != len(entities_label):
@@ -249,17 +249,17 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all',
         write_metadata_tsv(loc, labels)
 
     embeddings = model.get_embeddings(entities_label)
-   
+
     if export_tsv_embeddings:
         tsv_filename = "embeddings_projector.tsv"
         logger.info('Writing embeddings tsv to: %s' % os.path.join(loc, tsv_filename))
         np.savetxt(os.path.join(loc, tsv_filename), embeddings, delimiter='\t')
-   
+
     # Create a checkpoint with the embeddings only
     embeddings = tf.Variable(embeddings, name='graph_embeddings')
     checkpoint = tf.train.Checkpoint(KGE_embeddings=embeddings)
     checkpoint.save(os.path.join(loc, "graph_embeddings.ckpt"))
-   
+
     # create a config to display the embeddings in the checkpoint
     config = projector.ProjectorConfig()
     embedding = config.embeddings.add()
@@ -267,7 +267,7 @@ def create_tensorboard_visualizations(model, loc, entities_subset='all',
     embedding.metadata_path = 'metadata.tsv'
     projector.visualize_embeddings(loc, config)
 
-   
+
 def write_metadata_tsv(loc, data):
     """Write Tensorboard `"metadata.tsv"` file.
 
@@ -291,7 +291,7 @@ def write_metadata_tsv(loc, data):
 
     elif isinstance(data, pd.DataFrame):
         data.to_csv(metadata_path, sep='\t', index=False)
-       
+
     else:
         raise ValueError('Labels must be passed as a list or a dataframe')
 
