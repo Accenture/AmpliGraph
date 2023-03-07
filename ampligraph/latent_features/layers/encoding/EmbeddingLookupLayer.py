@@ -10,34 +10,31 @@ import numpy as np
 
 
 class EmbeddingLookupLayer(tf.keras.layers.Layer):
+
     def get_config(self):
         config = super(EmbeddingLookupLayer, self).get_config()
 
-        config.update(
-            {
-                "k": self.k,
-                "max_ent_size": self._max_ent_size_internal,
-                "max_rel_size": self._max_rel_size_internal,
-                "entity_kernel_initializer": self.ent_init,
-                "entity_kernel_regularizer": self.ent_regularizer,
-                "relation_kernel_initializer": self.rel_init,
-                "relation_kernel_regularizer": self.rel_regularizer,
-            }
-        )
+        config.update({
+            "k": self.k,
+            "max_ent_size": self._max_ent_size_internal,
+            "max_rel_size": self._max_rel_size_internal,
+            "entity_kernel_initializer": self.ent_init,
+            "entity_kernel_regularizer": self.ent_regularizer,
+            "relation_kernel_initializer": self.rel_init,
+            "relation_kernel_regularizer": self.rel_regularizer,
+        })
 
         return config
 
-    def __init__(
-        self,
-        k,
-        max_ent_size=None,
-        max_rel_size=None,
-        entity_kernel_initializer="glorot_uniform",
-        entity_kernel_regularizer=None,
-        relation_kernel_initializer="glorot_uniform",
-        relation_kernel_regularizer=None,
-        **kwargs
-    ):
+    def __init__(self,
+                 k,
+                 max_ent_size=None,
+                 max_rel_size=None,
+                 entity_kernel_initializer="glorot_uniform",
+                 entity_kernel_regularizer=None,
+                 relation_kernel_initializer="glorot_uniform",
+                 relation_kernel_regularizer=None,
+                 **kwargs):
         """
         Initializes the embeddings of the model.
 
@@ -120,8 +117,7 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
             assert (
                 len(initializer) == 2
             ), "Incorrect length for initializer. Assumed 2 got {}".format(
-                len(initializer)
-            )
+                len(initializer))
             self.ent_init = tf.keras.initializers.get(initializer[0])
             self.rel_init = tf.keras.initializers.get(initializer[1])
         else:
@@ -146,8 +142,7 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
             assert (
                 len(regularizer) == 2
             ), "Incorrect length for regularizer. Expected 2, got {}".format(
-                len(regularizer)
-            )
+                len(regularizer))
             self.ent_regularizer = tf.keras.regularizers.get(regularizer[0])
             self.rel_regularizer = tf.keras.regularizers.get(regularizer[1])
         else:
@@ -202,14 +197,17 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
 
             if self.ent_partition is not None:
                 paddings_ent = [
-                    [0, self._max_ent_size_internal - self.ent_partition.shape[0]],
+                    [
+                        0, self._max_ent_size_internal -
+                        self.ent_partition.shape[0]
+                    ],
                     [0, 0],
                 ]
                 self.ent_emb.assign(
-                    np.pad(
-                        self.ent_partition, paddings_ent, "constant", constant_values=0
-                    )
-                )
+                    np.pad(self.ent_partition,
+                           paddings_ent,
+                           "constant",
+                           constant_values=0))
                 del self.ent_partition
                 self.ent_partition = None
 
@@ -231,14 +229,17 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
 
             if self.rel_partition is not None:
                 paddings_rel = [
-                    [0, self._max_rel_size_internal - self.rel_partition.shape[0]],
+                    [
+                        0, self._max_rel_size_internal -
+                        self.rel_partition.shape[0]
+                    ],
                     [0, 0],
                 ]
                 self.rel_emb.assign(
-                    np.pad(
-                        self.rel_partition, paddings_rel, "constant", constant_values=0
-                    )
-                )
+                    np.pad(self.rel_partition,
+                           paddings_rel,
+                           "constant",
+                           constant_values=0))
                 del self.rel_partition
                 self.rel_partition = None
         else:
@@ -266,19 +267,23 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         # pad it. This is needed because the trainable variable size cant change dynamically.
         # Once defined, it stays fixed. Hence padding is needed.
         paddings_ent = tf.constant(
-            [[0, self._max_ent_size_internal - partition_ent_emb.shape[0]], [0, 0]]
-        )
+            [[0, self._max_ent_size_internal - partition_ent_emb.shape[0]],
+             [0, 0]])
         paddings_rel = tf.constant(
-            [[0, self._max_rel_size_internal - partition_rel_emb.shape[0]], [0, 0]]
-        )
+            [[0, self._max_rel_size_internal - partition_rel_emb.shape[0]],
+             [0, 0]])
 
         # once padded, assign it to the trainable variable
         self.ent_emb.assign(
-            tf.pad(partition_ent_emb, paddings_ent, "CONSTANT", constant_values=0)
-        )
+            tf.pad(partition_ent_emb,
+                   paddings_ent,
+                   "CONSTANT",
+                   constant_values=0))
         self.rel_emb.assign(
-            tf.pad(partition_rel_emb, paddings_rel, "CONSTANT", constant_values=0)
-        )
+            tf.pad(partition_rel_emb,
+                   paddings_rel,
+                   "CONSTANT",
+                   constant_values=0))
 
     def call(self, triples):
         """
@@ -315,4 +320,5 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         """
         assert isinstance(input_shape, list)
         batch_size, _ = input_shape
-        return [(batch_size, self.k), (batch_size, self.k), (batch_size, self.k)]
+        return [(batch_size, self.k), (batch_size, self.k),
+                (batch_size, self.k)]

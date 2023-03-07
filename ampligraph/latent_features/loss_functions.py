@@ -88,8 +88,7 @@ class Loss(abc.ABC):
         """
         self._loss_parameters = {}
         self._loss_parameters["reduction"] = hyperparam_dict.get(
-            "reduction", DEFAULT_REDUCTION
-        )
+            "reduction", DEFAULT_REDUCTION)
         assert self._loss_parameters["reduction"] in [
             "sum",
             "mean",
@@ -111,8 +110,7 @@ class Loss(abc.ABC):
                     logger.info("{} : {}".format(key, value))
         except KeyError as e:
             msg = "Some of the hyperparams for loss were not passed to the loss function.\n{}".format(
-                e
-            )
+                e)
             logger.error(msg)
             raise Exception(msg)
 
@@ -177,12 +175,15 @@ class Loss(abc.ABC):
         scores_pos : tf.Tensor
             Broadcasted `score_pos`.
         """
-        scores_pos = tf.reshape(
-            tf.tile(scores_pos, [eta]), [eta, tf.shape(scores_pos)[0]]
-        )
+        scores_pos = tf.reshape(tf.tile(scores_pos, [eta]),
+                                [eta, tf.shape(scores_pos)[0]])
         return scores_pos
 
-    def __call__(self, scores_pos, scores_neg, eta, regularization_losses=None):
+    def __call__(self,
+                 scores_pos,
+                 scores_neg,
+                 eta,
+                 regularization_losses=None):
         """Interface to external world.
 
         This function does the input checks, preprocesses input and finally applies loss function.
@@ -212,8 +213,7 @@ class Loss(abc.ABC):
         loss_values.append(tf.reduce_sum(loss))
         if regularization_losses:
             regularization_losses = losses_utils.cast_losses_to_common_dtype(
-                regularization_losses
-            )
+                regularization_losses)
             reg_loss = math_ops.add_n(regularization_losses)
             loss_values.append(reg_loss)
 
@@ -276,7 +276,8 @@ class PairwiseLoss(Loss):
 
             - `"margin"`: (str) - Margin to be used in pairwise loss computation (default: 1).
         """
-        self._loss_parameters["margin"] = hyperparam_dict.get("margin", DEFAULT_MARGIN)
+        self._loss_parameters["margin"] = hyperparam_dict.get(
+            "margin", DEFAULT_MARGIN)
 
     @tf.function(experimental_relax_shapes=True)
     def _apply_loss(self, scores_pos, scores_neg):
@@ -295,10 +296,11 @@ class PairwiseLoss(Loss):
             The loss value that must be minimized.
 
         """
-        margin = tf.constant(
-            self._loss_parameters["margin"], dtype=tf.float32, name="margin"
-        )
-        loss = self._reduce_sample_loss(tf.maximum(margin - scores_pos + scores_neg, 0))
+        margin = tf.constant(self._loss_parameters["margin"],
+                             dtype=tf.float32,
+                             name="margin")
+        loss = self._reduce_sample_loss(
+            tf.maximum(margin - scores_pos + scores_neg, 0))
         return loss
 
 
@@ -428,7 +430,8 @@ class AbsoluteMarginLoss(Loss):
 
            `"margin"`: (str) - Margin to be used in loss computation (default: 1).
         """
-        self._loss_parameters["margin"] = hyperparam_dict.get("margin", DEFAULT_MARGIN)
+        self._loss_parameters["margin"] = hyperparam_dict.get(
+            "margin", DEFAULT_MARGIN)
 
     @tf.function(experimental_relax_shapes=True)
     def _apply_loss(self, scores_pos, scores_neg):
@@ -447,10 +450,11 @@ class AbsoluteMarginLoss(Loss):
            The loss value that must be minimized.
 
         """
-        margin = tf.constant(
-            self._loss_parameters["margin"], dtype=tf.float32, name="margin"
-        )
-        loss = self._reduce_sample_loss(tf.maximum(margin + scores_neg, 0) - scores_pos)
+        margin = tf.constant(self._loss_parameters["margin"],
+                             dtype=tf.float32,
+                             name="margin")
+        loss = self._reduce_sample_loss(
+            tf.maximum(margin + scores_neg, 0) - scores_pos)
         return loss
 
 
@@ -520,11 +524,9 @@ class SelfAdversarialLoss(Loss):
             - `"alpha"`: (float) - Temperature of sampling (default: 0.5).
         """
         self._loss_parameters["margin"] = hyperparam_dict.get(
-            "margin", DEFAULT_MARGIN_ADVERSARIAL
-        )
+            "margin", DEFAULT_MARGIN_ADVERSARIAL)
         self._loss_parameters["alpha"] = hyperparam_dict.get(
-            "alpha", DEFAULT_ALPHA_ADVERSARIAL
-        )
+            "alpha", DEFAULT_ALPHA_ADVERSARIAL)
 
     @tf.function(experimental_relax_shapes=True)
     def _apply_loss(self, scores_pos, scores_neg):
@@ -543,21 +545,21 @@ class SelfAdversarialLoss(Loss):
             The loss value that must be minimized.
 
         """
-        margin = tf.constant(
-            self._loss_parameters["margin"], dtype=tf.float32, name="margin"
-        )
-        alpha = tf.constant(
-            self._loss_parameters["alpha"], dtype=tf.float32, name="alpha"
-        )
+        margin = tf.constant(self._loss_parameters["margin"],
+                             dtype=tf.float32,
+                             name="margin")
+        alpha = tf.constant(self._loss_parameters["alpha"],
+                            dtype=tf.float32,
+                            name="alpha")
 
         p_neg = tf.nn.softmax(alpha * scores_neg, axis=0)
 
         # Compute Loss based on eg 5
         loss = -tf.math.log_sigmoid(
-            margin - tf.negative(scores_pos)
-        ) - self._reduce_sample_loss(
-            tf.multiply(p_neg, tf.math.log_sigmoid(tf.negative(scores_neg) - margin))
-        )
+            margin - tf.negative(scores_pos)) - self._reduce_sample_loss(
+                tf.multiply(
+                    p_neg,
+                    tf.math.log_sigmoid(tf.negative(scores_neg) - margin)))
 
         return loss
 
@@ -742,7 +744,8 @@ def get(identifier, hyperparams={}):
         return identifier
     elif isinstance(identifier, six.string_types):
         if identifier not in LOSS_REGISTRY.keys():
-            raise ValueError("Could not interpret loss identifier:", identifier)
+            raise ValueError("Could not interpret loss identifier:",
+                             identifier)
         return LOSS_REGISTRY.get(identifier)(hyperparams)
     elif callable(identifier):
         loss_name = identifier.__name__

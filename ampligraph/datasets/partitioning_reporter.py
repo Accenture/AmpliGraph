@@ -159,8 +159,8 @@ class PartitioningReporter:
         data_size = ents_len
         ideal_size = data_size / k
         percentage_dev = (
-            (np.sum([np.abs(ideal_size - size) for size in sizes]) / k) / ideal_size
-        ) * 100
+            (np.sum([np.abs(ideal_size - size)
+                     for size in sizes]) / k) / ideal_size) * 100
         return percentage_dev
 
     def get_average_deviation_from_ideal_size_edges(self, partitions):
@@ -190,8 +190,8 @@ class PartitioningReporter:
         ideal_size = data_size / k
         logger.debug("Ideal data size: {}".format(ideal_size))
         percentage_dev = (
-            (np.sum([np.abs(ideal_size - size) for size in sizes]) / k) / ideal_size
-        ) * 100
+            (np.sum([np.abs(ideal_size - size)
+                     for size in sizes]) / k) / ideal_size) * 100
         return percentage_dev
 
     def get_edges_count(self, partitions):
@@ -219,9 +219,11 @@ class PartitioningReporter:
         """Calculates modularity of partitions."""
         raise NotImplementedError
 
-    def report_single_partitioning(
-        self, partitioning, EDGE_CUT=True, EDGE_IMB=True, VERTEX_IMB=True
-    ):
+    def report_single_partitioning(self,
+                                   partitioning,
+                                   EDGE_CUT=True,
+                                   EDGE_IMB=True,
+                                   VERTEX_IMB=True):
         """Calculate different metrics for a single partition.
 
         Parameters
@@ -255,7 +257,8 @@ class PartitioningReporter:
             metrics["PARTITIONING TIME"] = logs["_SPLIT"]["time"]
             metrics["PARTITIONING MEMORY"] = logs["_SPLIT"]["memory-bytes"]
         if EDGE_CUT:
-            edge_cut, edge_cut_proportion = self.get_edge_cut(k, partitioning, avg_size)
+            edge_cut, edge_cut_proportion = self.get_edge_cut(
+                k, partitioning, avg_size)
             metrics["EDGE_CUT"] = edge_cut
             metrics["EDGE_CUT_PERCENTAGE"] = edge_cut_proportion
         if EDGE_IMB:
@@ -263,21 +266,22 @@ class PartitioningReporter:
             metrics["EDGE_IMB"] = edge_imb
         if VERTEX_IMB:
             vertex_imb, vertex_count = self.get_vertex_imbalance_and_count(
-                partitioning, vertex_count=True
-            )
+                partitioning, vertex_count=True)
             metrics["VERTEX_IMB"] = vertex_imb
             metrics["VERTEX_COUNT"] = vertex_count
         metrics["EDGES_COUNT"] = self.get_edges_count(partitioning)
         metrics[
-            "PERCENTAGE_DEV_EDGES"
-        ] = self.get_average_deviation_from_ideal_size_edges(partitioning)
+            "PERCENTAGE_DEV_EDGES"] = self.get_average_deviation_from_ideal_size_edges(
+                partitioning)
         metrics[
-            "PERCENTAGE_DEV_VERTICES"
-        ] = self.get_average_deviation_from_ideal_size_vertices(partitioning)
+            "PERCENTAGE_DEV_VERTICES"] = self.get_average_deviation_from_ideal_size_vertices(
+                partitioning)
         partitioner.clean()
         return metrics
 
-    def report(self, visualize=True, barh=True):  # TODO: include plotting parameters
+    def report(self,
+               visualize=True,
+               barh=True):  # TODO: include plotting parameters
         """Collect individual reports for every partitioning.
 
         Parameters
@@ -293,12 +297,13 @@ class PartitioningReporter:
         """
         reports = {}
         for name, partitioning in self.partitionings.items():
-            reports[name] = self.report_single_partitioning(
-                partitioning, EDGE_IMB=True, VERTEX_IMB=True
-            )
+            reports[name] = self.report_single_partitioning(partitioning,
+                                                            EDGE_IMB=True,
+                                                            VERTEX_IMB=True)
         k = len(self.partitionings[list(self.partitionings.keys())[0]][1])
         if visualize:
-            plt.figure(figsize=(15, 15 + 0.3 * k + 0.1 * len(self.partitionings)))
+            plt.figure(figsize=(15,
+                                15 + 0.3 * k + 0.1 * len(self.partitionings)))
             ind = 1
             row_size = 3
             size = int(len(reports[list(reports.keys())[0]]) / row_size) + 1
@@ -313,32 +318,29 @@ class PartitioningReporter:
                             n = len(reports[report][metric])
                             color = iter(cm.seismic(np.linspace(0, 1, n)))
                             colors = {
-                                "partition {}".format(i): next(color) for i in range(n)
+                                "partition {}".format(i): next(color)
+                                for i in range(n)
                             }
                             width = 0.8 / n
                             for i, r in enumerate(reports[report][metric]):
                                 label = "partition {}".format(i)
-                                dat.append(
-                                    {
-                                        "y": j + (i * width),
-                                        "width": r,
-                                        "height": width,
-                                        "label": label,
-                                        "label2": str(report),
-                                        "color": colors[label],
-                                    }
-                                )
+                                dat.append({
+                                    "y": j + (i * width),
+                                    "width": r,
+                                    "height": width,
+                                    "label": label,
+                                    "label2": str(report),
+                                    "color": colors[label],
+                                })
                         else:
                             colors = colors_aggregate
                             label = str(report)
-                            dat.append(
-                                {
-                                    "y": j,
-                                    "width": reports[report][metric],
-                                    "label2": label,
-                                    "color": colors[label],
-                                }
-                            )
+                            dat.append({
+                                "y": j,
+                                "width": reports[report][metric],
+                                "label2": label,
+                                "color": colors[label],
+                            })
                         plot = True
                 if plot:
                     plt.subplots_adjust(wspace=0.1, hspace=0.4)
@@ -370,7 +372,10 @@ class PartitioningReporter:
         return reports
 
 
-def compare_partitionings(list_of_partitioners, data, num_partitions=2, visualize=True):
+def compare_partitionings(list_of_partitioners,
+                          data,
+                          num_partitions=2,
+                          visualize=True):
     """Wrapper around PartitioningReporter hiding logging settings.
 
     Parameters
@@ -436,7 +441,6 @@ def main():
 #     'EDGES_COUNT': [100848, 42246],
 #     'PERCENTAGE_DEV_EDGES': 47.41414475497492,
 #     'PERCENTAGE_DEV_VERTICES': 3.757325060324026}}
-
 
 if __name__ == "__main__":
     main()

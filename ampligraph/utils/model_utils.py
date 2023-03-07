@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from tensorboard.plugins import projector
-
 """This module contains utility functions for neural knowledge graph embedding models.
 """
 
@@ -62,17 +61,14 @@ def save_model(model, model_name_path=None):
 
     """
     model.data_shape = tf.Variable(
-        model.data_shape, trainable=False
-    )  # Redefine the attribute for saving it
+        model.data_shape,
+        trainable=False)  # Redefine the attribute for saving it
     if model_name_path is None:
         model_name_path = "{0}".format(strftime("%Y_%m_%d-%H_%M_%S", gmtime()))
     if os.path.exists(model_name_path):
         print(
             "The path {} already exists. This save operation will overwrite the model \
-                at the specified path.".format(
-                model_name_path
-            )
-        )
+                at the specified path.".format(model_name_path))
         shutil.rmtree(model_name_path)
     if model.is_backward:
         model = model.model
@@ -95,17 +91,13 @@ def restore_model(model_name_path=None):
     from ampligraph.latent_features.optimizers import OptimizerWrapper
 
     if model_name_path is None:
-        logger.warning(
-            "There is no model name specified. \
+        logger.warning("There is no model name specified. \
                         We will try to lookup \
-                        the latest default saved model..."
-        )
+                        the latest default saved model...")
         default_models = glob.glob("*.ampkl")
         if len(default_models) == 0:
-            raise Exception(
-                "No default model found. Please specify \
-                             model_name_path..."
-            )
+            raise Exception("No default model found. Please specify \
+                             model_name_path...")
 
     try:
         custom_objects = {
@@ -115,9 +107,8 @@ def restore_model(model_name_path=None):
         }
         custom_objects.update(LOSS_REGISTRY)
 
-        model = tf.keras.models.load_model(
-            model_name_path, custom_objects=custom_objects
-        )
+        model = tf.keras.models.load_model(model_name_path,
+                                           custom_objects=custom_objects)
         model.load_metadata(filedir=model_name_path)
         if model.is_backward:
             model = BACK_COMPAT_MODELS.get(model.scoring_type)(model)
@@ -241,25 +232,25 @@ def create_tensorboard_visualizations(
 
     if entities_subset != "all":
         assert isinstance(
-            entities_subset, list
-        ), "Please pass a list of entities of entities_subset!"
+            entities_subset,
+            list), "Please pass a list of entities of entities_subset!"
 
     if entities_subset == "all":
         entities_index = np.arange(model.get_count("e"))
 
         entities_label = list(
-            model.get_indexes(entities_index, type_of="e", order="ind2raw")
-        )
+            model.get_indexes(entities_index, type_of="e", order="ind2raw"))
     else:
-        entities_index = model.get_indexes(
-            entities_subset, type_of="e", order="raw2ind"
-        )
+        entities_index = model.get_indexes(entities_subset,
+                                           type_of="e",
+                                           order="raw2ind")
         entities_label = entities_subset
 
     if labels is not None:
         # Check if the lengths of the supplied labels is equal to the number of embeddings retrieved
         if len(labels) != len(entities_label):
-            raise ValueError("Label data rows must equal number of embeddings.")
+            raise ValueError(
+                "Label data rows must equal number of embeddings.")
     else:
         # If no label data supplied, use model ent_to_idx keys as labels
         labels = entities_label
@@ -272,7 +263,8 @@ def create_tensorboard_visualizations(
 
     if export_tsv_embeddings:
         tsv_filename = "embeddings_projector.tsv"
-        logger.info("Writing embeddings tsv to: %s" % os.path.join(loc, tsv_filename))
+        logger.info("Writing embeddings tsv to: %s" %
+                    os.path.join(loc, tsv_filename))
         np.savetxt(os.path.join(loc, tsv_filename), embeddings, delimiter="\t")
 
     # Create a checkpoint with the embeddings only
@@ -342,7 +334,8 @@ def dataframe_to_triples(X, schema):
     request_headers = set(np.delete(np.array(schema), 1, 1).flatten())
     diff = request_headers.difference(set(X.columns))
     if len(diff) > 0:
-        raise Exception("Subject/Object {} are not in data frame headers".format(diff))
+        raise Exception(
+            "Subject/Object {} are not in data frame headers".format(diff))
     for s, p, o in schema:
         triples.extend([[si, p, oi] for si, oi in zip(X[s], X[o])])
     return np.array(triples)
@@ -379,20 +372,17 @@ def preprocess_focusE_weights(data, weights, normalize=True):
             # here nans signify unknown numeric values
             suma = np.sum(pd.isna(weights[data[:, 1] == reln, col_idx]))
             if suma != weights[data[:, 1] == reln, col_idx].shape[0]:
-                min_val = np.nanmin(
-                    weights[data[:, 1] == reln, col_idx].astype(np.float32)
-                )
-                max_val = np.nanmax(
-                    weights[data[:, 1] == reln, col_idx].astype(np.float32)
-                )
+                min_val = np.nanmin(weights[data[:, 1] == reln,
+                                            col_idx].astype(np.float32))
+                max_val = np.nanmax(weights[data[:, 1] == reln,
+                                            col_idx].astype(np.float32))
                 if min_val == max_val:
                     weights[data[:, 1] == reln, col_idx] = 1.0
                     continue
                 # Normalization of the weights
                 if normalize:
-                    val = (
-                        weights[data[:, 1] == reln, col_idx].astype(float) - min_val
-                    ) / (max_val - min_val)
+                    val = (weights[data[:, 1] == reln, col_idx].astype(float) -
+                           min_val) / (max_val - min_val)
                     weights[data[:, 1] == reln, col_idx] = val
             else:
                 pass  # all the weights are nans

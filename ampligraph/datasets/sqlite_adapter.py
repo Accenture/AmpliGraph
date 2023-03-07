@@ -126,6 +126,7 @@ class SQLiteAdapter:
         if self.remap:
             msg = "Remapping is not supported for DataLoaders with SQLite\
                    Adapter as backend"
+
             logger.error(msg)
             raise Exception(msg)
         self.name = name
@@ -136,12 +137,9 @@ class SQLiteAdapter:
 
         if chunk_size is None:
             chunk_size = DEFAULT_CHUNKSIZE
-            logger.debug(
-                "Currently {} only supports data given in chunks. \
-            Setting chunksize to {}.".format(
-                    self.__name__(), DEFAULT_CHUNKSIZE
-                )
-            )
+            logger.debug("Currently {} only supports data given in chunks. \
+            Setting chunksize to {}.".format(self.__name__(),
+                                             DEFAULT_CHUNKSIZE))
         else:
             self.chunk_size = chunk_size
 
@@ -151,9 +149,8 @@ class SQLiteAdapter:
 
         # focusE
         if self.data_shape > 3:
-            weights_tensor = tf.TensorSpec(
-                shape=(None, self.data_shape - 3), dtype=tf.float32
-            )
+            weights_tensor = tf.TensorSpec(shape=(None, self.data_shape - 3),
+                                           dtype=tf.float32)
             if self.use_filter:
                 return (
                     triple_tensor,
@@ -336,9 +333,10 @@ class SQLiteAdapter:
             cursor = self.connection.cursor()
             try:
                 values_placeholder = "({})".format(", ".join(["?"] * size))
-                query = "INSERT INTO {} VALUES {}".format(table, values_placeholder)
+                query = "INSERT INTO {} VALUES {}".format(
+                    table, values_placeholder)
                 precompute = [
-                    (v,) if isinstance(v, int) or isinstance(v, str) else v
+                    (v, ) if isinstance(v, int) or isinstance(v, str) else v
                     for v in values
                 ]
                 cursor.executemany(query, precompute)
@@ -364,6 +362,7 @@ class SQLiteAdapter:
             if entities is None:
                 msg = "You have to provide either subjects and objects\
                         indexes or general entities indexes!"
+
                 logger.error(msg)
                 raise Exception(msg)
 
@@ -373,20 +372,18 @@ class SQLiteAdapter:
             query = "select * from triples_table where (subject in ({0}) and\
                     object in \
             ({1})) or (subject in ({1}) and object in ({0}));".format(
-                ",".join(str(v) for v in subjects), ",".join(str(v) for v in objects)
-            )
+                ",".join(str(v) for v in subjects),
+                ",".join(str(v) for v in objects))
         elif objects is None:
             query = "select * from triples_table where (subject in ({0}));".format(
-                ",".join(str(v) for v in subjects)
-            )
+                ",".join(str(v) for v in subjects))
         elif subjects is None:
             query = "select * from triples_table where (object in ({0}));".format(
-                ",".join(str(v) for v in objects)
-            )
+                ",".join(str(v) for v in objects))
         triples = np.array(self._execute_query(query))
-        triples = np.append(
-            triples[:, :3].astype("int"), triples[:, 3].reshape(-1, 1), axis=1
-        )
+        triples = np.append(triples[:, :3].astype("int"),
+                            triples[:, 3].reshape(-1, 1),
+                            axis=1)
         return triples
 
     def get_indexed_triples(self, chunk, dataset_type="train"):
@@ -419,20 +416,20 @@ class SQLiteAdapter:
                 weights = chunk[:, 3:]
                 # weights = preprocess_focusE_weights(data=triples,
                 #                                     weights=weights)
-                return np.hstack(
-                    [
-                        triples,
-                        weights,
-                        np.array(len(triples) * [dataset_type]).reshape(-1, 1),
-                    ]
-                )
-            return np.append(
-                triples, np.array(len(triples) * [dataset_type]).reshape(-1, 1), axis=1
-            )
+                return np.hstack([
+                    triples,
+                    weights,
+                    np.array(len(triples) * [dataset_type]).reshape(-1, 1),
+                ])
+            return np.append(triples,
+                             np.array(len(triples) * [dataset_type]).reshape(
+                                 -1, 1),
+                             axis=1)
         else:
-            return np.append(
-                chunk, np.array(len(chunk) * [dataset_type]).reshape(-1, 1), axis=1
-            )
+            return np.append(chunk,
+                             np.array(len(chunk) * [dataset_type]).reshape(
+                                 -1, 1),
+                             axis=1)
 
     def index_entities(self):
         """Index the data via the definition of the DataIndexer."""
@@ -467,9 +464,11 @@ class SQLiteAdapter:
         if verbose:
             logger.debug("Data reloaded: {}".format(self.data))
 
-    def populate(
-        self, data_source, dataset_type="train", get_indexed_triples=None, loader=None
-    ):
+    def populate(self,
+                 data_source,
+                 dataset_type="train",
+                 get_indexed_triples=None,
+                 loader=None):
         """Populate the database with data.
 
          Condition: before you can store triples, you have to index data.
@@ -498,10 +497,8 @@ class SQLiteAdapter:
                 logger.debug("indexing...")
             self.index_entities()
         else:
-            logger.debug(
-                "Data is already indexed or no\
-                    indexing is required."
-            )
+            logger.debug("Data is already indexed or no\
+                    indexing is required.")
         if get_indexed_triples is None:
             get_indexed_triples = self.get_indexed_triples
         data = self.loader(data_source, chunk_size=self.chunk_size)
@@ -514,7 +511,8 @@ class SQLiteAdapter:
                 weights = chunk[:, 3:]
                 chunk = np.concatenate([chunk[:, :3], weights], axis=1)
             self.data_shape = chunk.shape[1]
-            values_triples = get_indexed_triples(chunk, dataset_type=dataset_type)
+            values_triples = get_indexed_triples(chunk,
+                                                 dataset_type=dataset_type)
             self._insert_values_to_a_table("triples_table", values_triples)
         if self.verbose:
             logger.debug("data is populated")
@@ -525,20 +523,18 @@ class SQLiteAdapter:
         if isinstance(self.use_filter, dict):
             for key in self.use_filter:
                 present_filters = [
-                    x[0]
-                    for x in self._execute_query(
-                        "SELECT\
-                        DISTINCT dataset_type FROM triples_table"
-                    )
+                    x[0] for x in self._execute_query("SELECT\
+                        DISTINCT dataset_type FROM triples_table")
                 ]
                 if key not in present_filters:
                     # to allow users not to pass weights in test and validation
-                    if self.data_shape > 3 and self.use_filter[key].shape[1] == 3:
-                        nan_weights = np.empty((self.use_filter[key].shape[0], 1))
+                    if self.data_shape > 3 and self.use_filter[key].shape[
+                            1] == 3:
+                        nan_weights = np.empty(
+                            (self.use_filter[key].shape[0], 1))
                         nan_weights.fill(np.nan)
                         self.use_filter[key] = np.concatenate(
-                            [self.use_filter[key], nan_weights], axis=1
-                        )
+                            [self.use_filter[key], nan_weights], axis=1)
                     self.populate(self.use_filter[key], key)
         query = "SELECT count(*) from triples_table;"
         _ = self._execute_query(query)
@@ -565,10 +561,8 @@ class SQLiteAdapter:
             logger.debug("Table is empty or not such table exists.")
             return count
         elif not isinstance(count, list) or not isinstance(count[0], tuple):
-            raise ValueError(
-                "Cannot get count for the table with\
-                    provided condition."
-            )
+            raise ValueError("Cannot get count for the table with\
+                    provided condition.")
         # logger.debug(count)
         return count[0][0]
 
@@ -601,11 +595,8 @@ class SQLiteAdapter:
             self.use_filter = {"train": self.data}
         filtered = []
         valid_filters = [
-            x[0]
-            for x in self._execute_query(
-                "SELECT DISTINCT\
-                dataset_type FROM triples_table"
-            )
+            x[0] for x in self._execute_query("SELECT DISTINCT\
+                dataset_type FROM triples_table")
         ]
         for filter_name, filter_source in self.use_filter.items():
             if filter_name in valid_filters:
@@ -650,11 +641,8 @@ class SQLiteAdapter:
 
         filtered = []
         valid_filters = [
-            x[0]
-            for x in self._execute_query(
-                "SELECT DISTINCT\
-                dataset_type FROM triples_table"
-            )
+            x[0] for x in self._execute_query("SELECT DISTINCT\
+                dataset_type FROM triples_table")
         ]
         for filter_name, filter_source in self.use_filter.items():
             if filter_name in valid_filters:
@@ -664,6 +652,7 @@ class SQLiteAdapter:
                             INDEXED BY triples_table_po_idx where predicate \
                             in ({})  and object in ({})\
                             and dataset_type ="{}"'
+
                     query = query.format(triple[1], triple[2], filter_name)
                     q = self._execute_query(query)
                     tmp = list(set([y for x in q for y in x]))
@@ -693,13 +682,17 @@ class SQLiteAdapter:
                 relations ?-p-o and s-p-?.
 
         """
-        objects = self._get_complementary_objects(triples, use_filter=use_filter)
-        subjects = self._get_complementary_subjects(triples, use_filter=use_filter)
+        objects = self._get_complementary_objects(triples,
+                                                  use_filter=use_filter)
+        subjects = self._get_complementary_subjects(triples,
+                                                    use_filter=use_filter)
         return subjects, objects
 
-    def _get_batch_generator(
-        self, batch_size=1, dataset_type="train", random=False, index_by=""
-    ):
+    def _get_batch_generator(self,
+                             batch_size=1,
+                             dataset_type="train",
+                             random=False,
+                             index_by=""):
         """Generator that returns the next batch of data.
 
         Parameters
@@ -741,18 +734,12 @@ class SQLiteAdapter:
         logger.debug("size of data: {}".format(size))
         index = ""
         if index_by != "":
-            if (
-                index_by == "s"
-                or index_by == "o"
-                or index_by == "so"
-                or index_by == "os"
-            ) and random:
+            if (index_by == "s" or index_by == "o" or index_by == "so"
+                    or index_by == "os") and random:
                 msg = "Field index_by can only be used with random set\
                         to False and can only take values from this\
                         set: {{s,o,so,os,''}},\
-                        instead got: {}".format(
-                    index_by
-                )
+                        instead got: {}".format(index_by)
                 logger.error(msg)
                 raise Exception(msg)
 
@@ -771,9 +758,8 @@ class SQLiteAdapter:
         for i in range(self.batches_count):
             # logger.debug("BATCH NUMBER: {}".format(i))
             # logger.debug(i * batch_size)
-            query = query_template.format(
-                dataset_type, index, i * batch_size, batch_size
-            )
+            query = query_template.format(dataset_type, index, i * batch_size,
+                                          batch_size)
             # logger.debug(query)
             out = self._execute_query(query)
             # logger.debug(out)
@@ -788,7 +774,8 @@ class SQLiteAdapter:
 
             if self.use_filter:
                 # get the filter values
-                participating_entities = self._get_complementary_entities(triples)
+                participating_entities = self._get_complementary_entities(
+                    triples)
                 if self.data_shape > 3:
                     yield triples, tf.ragged.constant(participating_entities),
                     weights
@@ -836,35 +823,35 @@ class SQLiteAdapter:
             print("Located in {}".format(self.db_path))
             file_size = os.path.getsize(self.db_path)
             summary = """File size: {:.5}{}\nTables: {}"""
-            tables = self._execute_query(
-                "SELECT name FROM sqlite_master\
-                    WHERE type='table';"
-            )
+            tables = self._execute_query("SELECT name FROM sqlite_master\
+                    WHERE type='table';")
             tables_names = ", ".join(table[0] for table in tables)
-            print(summary.format(*get_human_readable_size(file_size), tables_names))
+            print(
+                summary.format(*get_human_readable_size(file_size),
+                               tables_names))
             types = {"integer": "int", "float": "float", "string": "str"}
             # float aggiunto per focusE
             for table_name in tables:
-                result = self._execute_query("PRAGMA table_info('%s')" % table_name)
+                result = self._execute_query("PRAGMA table_info('%s')" %
+                                             table_name)
                 cols_name_type = [
-                    "{} ({}):".format(x[1], types[x[2]] if x[2] in types else x[2])
+                    "{} ({}):".format(x[1],
+                                      types[x[2]] if x[2] in types else x[2])
                     for x in result
                 ]  # FocusE
                 length = len(cols_name_type)
-                print("-------------\n|" + table_name[0].upper() + "|\n-------------\n")
+                print("-------------\n|" + table_name[0].upper() +
+                      "|\n-------------\n")
                 formatted_record = "{:7s}{}\n{:7s}{}".format(
-                    " ", "{:25s}" * length, "e.g.", "{:<25s}" * length
-                )
+                    " ", "{:25s}" * length, "e.g.", "{:<25s}" * length)
                 msg = ""
                 example = ["-"] * length
                 if count:
                     nb_records = self.get_data_size(table_name[0])
                     msg = "\n\nRecords: {}".format(nb_records)
                     if nb_records != 0:
-                        record = self._execute_query(
-                            f"SELECT * FROM\
-                                {table_name[0]} LIMIT {1};"
-                        )[0]
+                        record = self._execute_query(f"SELECT * FROM\
+                                {table_name[0]} LIMIT {1};")[0]
                         example = [str(rec) for rec in record]
                 else:
                     print("Count is set to False hence no data displayed")
@@ -894,9 +881,7 @@ class SQLiteAdapter:
     def _intersect(self, dataloader):
         if not isinstance(dataloader.backend, SQLiteAdapter):
             msg = "Provided dataloader should be of type SQLiteAdapter\
-                    backend, instead got {}.".format(
-                type(dataloader.backend)
-            )
+                    backend, instead got {}.".format(type(dataloader.backend))
             logger.error(msg)
             raise Exception(msg)
         raise NotImplementedError

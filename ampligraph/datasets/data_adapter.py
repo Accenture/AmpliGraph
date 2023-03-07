@@ -16,6 +16,7 @@ from .partitioned_data_manager import get_partition_adapter
 
 
 class DataHandler:
+
     def __init__(
         self,
         x,
@@ -121,9 +122,8 @@ class DataHandler:
 
     def enumerate_epochs(self, use_tqdm=False):
         """Manages the (reloading) data adapter before epoch starts."""
-        for epoch in tqdm.tqdm(
-            range(self._initial_epoch, self._epochs), disable=not use_tqdm
-        ):
+        for epoch in tqdm.tqdm(range(self._initial_epoch, self._epochs),
+                               disable=not use_tqdm):
             self._adapter.reload()
             yield epoch, iter(self._adapter.get_tf_generator())
             self._adapter.on_epoch_end()

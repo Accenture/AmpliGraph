@@ -47,6 +47,7 @@ def experimental(func):
     def mark_experimental():
         msg = f"Experimental! Function: {func.__name__} is experimental. Use \
                 at your own risk."
+
         warnings.warn(experimentalWarning(msg))
 
         return func()
@@ -78,6 +79,7 @@ def deprecated(*args, **kwargs):
     def mark_deprecated(func):
         msg = f"Deprecated! Function: {func.__name__} is deprecated. \
                 Instead use {kwargs['instead']}."
+
         warnings.warn(DeprecationWarning(msg))
 
         return func

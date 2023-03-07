@@ -89,9 +89,8 @@ class NoBackend:
         """Get the output signature for the tf.data.Dataset object."""
         triple_tensor = tf.TensorSpec(shape=(None, 3), dtype=tf.int32)
         if self.data_shape > 3:
-            weights_tensor = tf.TensorSpec(
-                shape=(None, self.data_shape - 3), dtype=tf.float32
-            )
+            weights_tensor = tf.TensorSpec(shape=(None, self.data_shape - 3),
+                                           dtype=tf.float32)
             if self.use_filter:
                 return (
                     triple_tensor,
@@ -117,9 +116,8 @@ class NoBackend:
         dataset_type: str
              Kind of data to be loaded (`"train"` | `"test"` | `"validation"`).
         """
-        logger.debug(
-            "Simple in-memory data loading of {} dataset.".format(dataset_type)
-        )
+        logger.debug("Simple in-memory data loading of {} dataset.".format(
+            dataset_type))
         self.data_source = data_source
         self.dataset_type = dataset_type
         if isinstance(self.data_source, np.ndarray):
@@ -186,18 +184,19 @@ class NoBackend:
             objects = entities
         # check_subjects = np.vectorize(lambda t: t in subjects)
         if subjects is not None and objects is not None:
-            check_triples = np.vectorize(
-                lambda t, r: (t in objects and r in subjects)
-                or (t in subjects and r in objects)
-            )
-            triples = self.data[check_triples(self.data[:, 2], self.data[:, 0])]
+            check_triples = np.vectorize(lambda t, r:
+                                         (t in objects and r in subjects) or
+                                         (t in subjects and r in objects))
+            triples = self.data[check_triples(self.data[:, 2], self.data[:,
+                                                                         0])]
         elif objects is None:
             triples = self.data[np.isin(self.data[:, 0], subjects)]
         elif subjects is None:
             triples = self.data[np.isin(self.data[:, 2], objects)]
-        triples = np.append(
-            triples, np.array(len(triples) * [self.dataset_type]).reshape(-1, 1), axis=1
-        )
+        triples = np.append(triples,
+                            np.array(len(triples) *
+                                     [self.dataset_type]).reshape(-1, 1),
+                            axis=1)
         # triples_from_objects = self.data[check_objects(self.data[:,0])]
         # triples = np.vstack([triples_from_subjects, triples_from_objects])
         return triples
@@ -234,7 +233,8 @@ class NoBackend:
             )
 
             logger.debug("Recover original indexes.")
-            triples_original_index = self.mapper.get_indexes(triples, order="ind2raw")
+            triples_original_index = self.mapper.get_indexes(triples,
+                                                             order="ind2raw")
             #            with shelve.open(self.mapper.entities_dict) as ents:
             #                with shelve.open(self.mapper.relations_dict) as rels:
             #                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])],
@@ -242,19 +242,19 @@ class NoBackend:
             logger.debug("Query parent for data.")
             logger.debug("Original index: {}".format(triples_original_index))
             subjects = self.parent.get_complementary_subjects(
-                triples_original_index, use_filter=use_filter
-            )
+                triples_original_index, use_filter=use_filter)
             objects = self.parent.get_complementary_objects(
-                triples_original_index, use_filter=use_filter
-            )
+                triples_original_index, use_filter=use_filter)
             logger.debug(
                 "What to do with this new indexes? Evaluation should happen in the original space, \
             shouldn't it? I'm assuming it does so returning in parent indexing."
             )
             return subjects, objects
         else:
-            subjects = self._get_complementary_subjects(triples, use_filter=use_filter)
-            objects = self._get_complementary_objects(triples, use_filter=use_filter)
+            subjects = self._get_complementary_subjects(triples,
+                                                        use_filter=use_filter)
+            objects = self._get_complementary_objects(triples,
+                                                      use_filter=use_filter)
         return subjects, objects
 
     def _get_complementary_subjects(self, triples, use_filter=False):
@@ -281,7 +281,8 @@ class NoBackend:
             )
 
             logger.debug("Recover original indexes.")
-            triples_original_index = self.mapper.get_indexes(triples, order="ind2raw")
+            triples_original_index = self.mapper.get_indexes(triples,
+                                                             order="ind2raw")
 
             #            with shelve.open(self.mapper.reversed_entities_dict) as ents:
             #                with shelve.open(self.mapper.reversed_relations_dict) as rels:
@@ -290,7 +291,8 @@ class NoBackend:
             #                                                        ents[str(xx[2])]) for xx in triples],
             #                                                      dtype=np.int32)
             logger.debug("Query parent for data.")
-            subjects = self.parent.get_complementary_subjects(triples_original_index)
+            subjects = self.parent.get_complementary_subjects(
+                triples_original_index)
             logger.debug(
                 "What to do with this new indexes? Evaluation should happen in the \
             original space, shouldn't it? I'm assuming it does so returning in parent indexing."
@@ -372,13 +374,15 @@ class NoBackend:
             )
 
             logger.debug("Recover original indexes.")
-            triples_original_index = self.mapper.get_indexes(triples, order="ind2raw")
+            triples_original_index = self.mapper.get_indexes(triples,
+                                                             order="ind2raw")
             #            with shelve.open(self.mapper.reversed_entities_dict) as ents:
             #                with shelve.open(self.mapper.reversed_relations_dict) as rels:
             #                    triples_original_index = np.array([(ents[str(xx[0])], rels[str(xx[1])],
             # ents[str(xx[2])]) for xx in triples], dtype=np.int32)
             logger.debug("Query parent for data.")
-            objects = self.parent.get_complementary_objects(triples_original_index)
+            objects = self.parent.get_complementary_objects(
+                triples_original_index)
             logger.debug(
                 "What to do with this new indexes? Evaluation should happen in \
             the original space, shouldn't it? I'm assuming it does so returning in parent indexing."
@@ -417,29 +421,25 @@ class NoBackend:
         """
         if not isinstance(dataloader.backend, NoBackend):
             msg = "Intersection can only be calculated between same backends (NoBackend), \
-            instead get {}".format(
-                type(dataloader.backend)
-            )
+            instead get {}".format(type(dataloader.backend))
             logger.error(msg)
             raise Exception(msg)
         self.data = np.ascontiguousarray(self.data, dtype="int64")
-        dataloader.backend.data = np.ascontiguousarray(
-            dataloader.backend.data, dtype="int64"
-        )
+        dataloader.backend.data = np.ascontiguousarray(dataloader.backend.data,
+                                                       dtype="int64")
         av = self.data.view([("", self.data.dtype)] * self.data.shape[1])
         bv = dataloader.backend.data.view(
-            [("", dataloader.backend.data.dtype)] * dataloader.backend.data.shape[1]
-        )
-        intersection = (
-            np.intersect1d(av, bv)
-            .view(self.data.dtype)
-            .reshape(-1, self.data.shape[0 if self.data.flags["F_CONTIGUOUS"] else 1])
-        )
+            [("", dataloader.backend.data.dtype)] *
+            dataloader.backend.data.shape[1])
+        intersection = (np.intersect1d(av, bv).view(self.data.dtype).reshape(
+            -1, self.data.shape[0 if self.data.flags["F_CONTIGUOUS"] else 1]))
         return intersection
 
-    def _get_batch_generator(
-        self, batch_size, dataset_type="train", random=False, index_by=""
-    ):
+    def _get_batch_generator(self,
+                             batch_size,
+                             dataset_type="train",
+                             random=False,
+                             index_by=""):
         """Data batch generator.
 
         Parameters
@@ -465,30 +465,27 @@ class NoBackend:
             # if the last batch is smaller than the batch_size
             if start_index + batch_size >= length:
                 batch_size = length - start_index
-            out = self.data[start_index : start_index + batch_size, :3]
+            out = self.data[start_index:start_index + batch_size, :3]
             if self.use_filter:
                 # get the filter values
                 participating_entities = self._get_complementary_entities(
-                    out, self.use_filter
-                )
+                    out, self.use_filter)
 
             # focusE
             if self.data_shape > 3:
-                weights = self.data[start_index : start_index + batch_size, 3:]
+                weights = self.data[start_index:start_index + batch_size, 3:]
                 # weights = preprocess_focusE_weights(data=out,
                 #                                     weights=weights)
                 if self.use_filter:
-                    yield out, tf.ragged.constant(
-                        participating_entities, dtype=tf.int32
-                    ), weights
+                    yield out, tf.ragged.constant(participating_entities,
+                                                  dtype=tf.int32), weights
                 else:
                     yield out, weights
 
             else:
                 if self.use_filter:
-                    yield out, tf.ragged.constant(
-                        participating_entities, dtype=tf.int32
-                    )
+                    yield out, tf.ragged.constant(participating_entities,
+                                                  dtype=tf.int32)
                 else:
                     yield out
 
@@ -626,9 +623,7 @@ class GraphDataLoader:
                 self.use_filter = use_filter
             else:
                 msg = "use_filter should be a dictionary with keys as names of filters and \
-                values as data sources, instead got {}".format(
-                    use_filter
-                )
+                values as data sources, instead got {}".format(use_filter)
                 logger.error(msg)
                 raise Exception(msg)
         if bool(use_indexer) != (not remap):
@@ -651,9 +646,8 @@ class GraphDataLoader:
                 verbose=verbose,
                 use_filter=self.use_filter,
             )
-            logger.debug(
-                "Initialized Backend with database at: {}".format(self.backend.db_path)
-            )
+            logger.debug("Initialized Backend with database at: {}".format(
+                self.backend.db_path))
 
         elif backend is None or backend == NoBackend:
             self.backend = NoBackend(
@@ -671,8 +665,7 @@ class GraphDataLoader:
         self.backend._load(self.data_source, dataset_type=self.dataset_type)
         self.data_shape = self.backend.data_shape
         self.batch_iterator = self.get_batch_generator(
-            use_filter=self.use_filter, dataset_type=self.dataset_type
-        )
+            use_filter=self.use_filter, dataset_type=self.dataset_type)
         self.metadata = self.backend.mapper.metadata
 
     def __iter__(self):
@@ -696,8 +689,7 @@ class GraphDataLoader:
     def reload(self, use_filter=False, dataset_type="train"):
         """Reinstantiate batch iterator."""
         self.batch_iterator = self.get_batch_generator(
-            use_filter=use_filter, dataset_type=dataset_type
-        )
+            use_filter=use_filter, dataset_type=dataset_type)
 
     def get_batch_generator(self, dataset_type="train", use_filter=False):
         """Get batch generator from the backend.
@@ -707,9 +699,8 @@ class GraphDataLoader:
         dataset_type: str
              Specifies whether data are generated for `"train"`, `"valid"` or `"test"` set.
         """
-        return self.backend._get_batch_generator(
-            self.batch_size, dataset_type=dataset_type
-        )
+        return self.backend._get_batch_generator(self.batch_size,
+                                                 dataset_type=dataset_type)
 
     def get_tf_generator(self):
         """Generates a tensorflow.data.Dataset object."""
@@ -743,7 +734,10 @@ class GraphDataLoader:
 
         return self.backend._intersect(dataloader)
 
-    def get_participating_entities(self, triples, sides="s,o", use_filter=False):
+    def get_participating_entities(self,
+                                   triples,
+                                   sides="s,o",
+                                   use_filter=False):
         """Get entities from triples with fixed subjects or fixed objects or both fixed.
 
         Parameters
@@ -762,16 +756,16 @@ class GraphDataLoader:
         """
         if sides not in ["s", "o", "s,o", "o,s"]:
             msg = "Sides should be either 's' (subject), 'o' (object), or 's,o'/'o,s' (subject, object/object, subject), \
-            instead got {}".format(
-                sides
-            )
+            instead got {}".format(sides)
             logger.error(msg)
             raise Exception(msg)
         if "s" in sides:
-            subjects = self.get_complementary_subjects(triples, use_filter=use_filter)
+            subjects = self.get_complementary_subjects(triples,
+                                                       use_filter=use_filter)
 
         if "o" in sides:
-            objects = self.get_complementary_objects(triples, use_filter=use_filter)
+            objects = self.get_complementary_objects(triples,
+                                                     use_filter=use_filter)
 
         if sides == "s,o":
             return subjects, objects
@@ -797,7 +791,8 @@ class GraphDataLoader:
         subjects : list
              Subjects present in the input triples.
         """
-        return self.backend._get_complementary_subjects(triples, use_filter=use_filter)
+        return self.backend._get_complementary_subjects(triples,
+                                                        use_filter=use_filter)
 
     def get_complementary_objects(self, triples, use_filter=False):
         """Get objects complementary to  triples (s,p,?).
@@ -815,7 +810,8 @@ class GraphDataLoader:
         subjects : list
              Objects present in the input triples.
         """
-        return self.backend._get_complementary_objects(triples, use_filter=use_filter)
+        return self.backend._get_complementary_objects(triples,
+                                                       use_filter=use_filter)
 
     def get_complementary_entities(self, triples, use_filter=False):
         """Get subjects and objects complementary to triples (?,p,?).
@@ -833,7 +829,8 @@ class GraphDataLoader:
               Tuple containing two lists, one with the subjects and one of with the objects participating in the
              relations ?-p-o and s-p-?.
         """
-        return self.backend._get_complementary_entities(triples, use_filter=use_filter)
+        return self.backend._get_complementary_entities(triples,
+                                                        use_filter=use_filter)
 
     def get_triples(self, subjects=None, objects=None, entities=None):
         """Get triples that subject is in subjects and object is in objects, or

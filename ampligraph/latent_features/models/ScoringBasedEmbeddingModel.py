@@ -18,13 +18,11 @@ from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
 from ampligraph.datasets import data_adapter
 from ampligraph.datasets.partitioned_data_manager import PartitionDataManager
 from ampligraph.latent_features.layers.scoring.AbstractScoringLayer import (
-    SCORING_LAYER_REGISTRY,
-)
+    SCORING_LAYER_REGISTRY, )
 from ampligraph.latent_features.layers.encoding import EmbeddingLookupLayer
 from ampligraph.latent_features.layers.calibration import CalibrationLayer
 from ampligraph.latent_features.layers.corruption_generation import (
-    CorruptionGenerationLayerTrain,
-)
+    CorruptionGenerationLayerTrain, )
 from ampligraph.datasets.data_indexer import DataIndexer
 from ampligraph.latent_features import optimizers
 from ampligraph.latent_features import loss_functions
@@ -82,16 +80,20 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def get_config(self):
         """Get the configuration hyper-parameters of the scoring based embedding model."""
         config = super(ScoringBasedEmbeddingModel, self).get_config()
-        config.update(
-            {
-                "eta": self.eta,
-                "k": self.k,
-                "scoring_type": self.scoring_type,
-                "seed": self.seed,
-                "max_ent_size": self.encoding_layer._max_ent_size_internal,
-                "max_rel_size": self.encoding_layer._max_rel_size_internal,
-            }
-        )
+        config.update({
+            "eta":
+            self.eta,
+            "k":
+            self.k,
+            "scoring_type":
+            self.scoring_type,
+            "seed":
+            self.seed,
+            "max_ent_size":
+            self.encoding_layer._max_ent_size_internal,
+            "max_rel_size":
+            self.encoding_layer._max_rel_size_internal,
+        })
 
         return config
 
@@ -160,9 +162,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # Create the embedding lookup layer.
         # size of entity emb is max_ent_size * k and relation emb is
         # max_rel_size * k
-        self.encoding_layer = EmbeddingLookupLayer(
-            self.internal_k, self.max_ent_size, self.max_rel_size
-        )
+        self.encoding_layer = EmbeddingLookupLayer(self.internal_k,
+                                                   self.max_ent_size,
+                                                   self.max_rel_size)
 
         # Flag to indicate whether the partitioned training is being done
         self.is_partitioned_training = False
@@ -251,7 +253,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         if training:
             # generate the corruptions for the input triples
-            corruptions = self.corruption_layer(inputs, self.num_ents, self.eta)
+            corruptions = self.corruption_layer(inputs, self.num_ents,
+                                                self.eta)
             # lookup embeddings of the inputs
             corr_emb = self.encoding_layer(corruptions)
             corr_score = self.scoring_layer(corr_emb)
@@ -305,9 +308,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         """
         if not self.is_partitioned_training:
             inputs = [
-                tf.nn.embedding_lookup(self.encoding_layer.ent_emb, inputs[:, 0]),
-                tf.nn.embedding_lookup(self.encoding_layer.rel_emb, inputs[:, 1]),
-                tf.nn.embedding_lookup(self.encoding_layer.ent_emb, inputs[:, 2]),
+                tf.nn.embedding_lookup(self.encoding_layer.ent_emb, inputs[:,
+                                                                           0]),
+                tf.nn.embedding_lookup(self.encoding_layer.rel_emb, inputs[:,
+                                                                           1]),
+                tf.nn.embedding_lookup(self.encoding_layer.ent_emb, inputs[:,
+                                                                           2]),
             ]
 
         return self.scoring_layer.get_ranks(
@@ -357,9 +363,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # Weights computation
         weights = tf.reduce_mean(weights, 1)
         weights_pos = structure_weight + (1 - structure_weight) * (1 - weights)
-        weights_neg = structure_weight + (1 - structure_weight) * (
-            tf.reshape(tf.tile(weights, [self.eta]), [tf.shape(weights)[0] * self.eta])
-        )
+        weights_neg = structure_weight + (1 - structure_weight) * (tf.reshape(
+            tf.tile(weights, [self.eta]), [tf.shape(weights)[0] * self.eta]))
 
         return weights_pos, weights_neg
 
@@ -395,21 +400,20 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 structure_weight = self.focusE_params["structural_wt"]
 
                 weights_pos, weights_neg = self.compute_focusE_weights(
-                    weights=weights, structure_weight=structure_weight
-                )
+                    weights=weights, structure_weight=structure_weight)
                 # Computation of scores
                 score_pos = non_linearity(score_pos) * weights_pos
                 score_neg = non_linearity(score_neg) * weights_neg
 
             # compute the loss
-            loss = self.compiled_loss(
-                score_pos, score_neg, self.eta, regularization_losses=self.losses
-            )
+            loss = self.compiled_loss(score_pos,
+                                      score_neg,
+                                      self.eta,
+                                      regularization_losses=self.losses)
         try:
             # minimize the loss and update the trainable variables
-            self.optimizer.minimize(
-                loss, self.encoding_layer.ent_emb, self.encoding_layer.rel_emb, tape
-            )
+            self.optimizer.minimize(loss, self.encoding_layer.ent_emb,
+                                    self.encoding_layer.rel_emb, tape)
         except ValueError as e:
             if self.scoring_layer.name == "Random":
                 pass
@@ -449,8 +453,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         if not self.run_eagerly and not self.is_partitioned_training:
             train_function = def_function.function(
-                train_function, experimental_relax_shapes=True
-            )
+                train_function, experimental_relax_shapes=True)
 
         self.train_function = train_function
         return self.train_function
@@ -497,8 +500,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # Get the stop_epoch for the decay
         stop_epoch = dict_params.get("stop_epoch", 251)
         msg = "Invalid value for focusE stop_epoch: expected a value >=0 but got {}".format(
-            stop_epoch
-        )
+            stop_epoch)
         assert stop_epoch >= 0, msg
 
         # Get structural_wt
@@ -510,7 +512,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # if stop_epoch == 0, fixed structure weights is used
         if stop_epoch > 0:
             # linear decay of numeric values
-            structure_weight = tf.maximum(1 - self.current_epoch / stop_epoch, 0.001)
+            structure_weight = tf.maximum(1 - self.current_epoch / stop_epoch,
+                                          0.001)
 
         return non_linearity, stop_epoch, structure_weight
 
@@ -519,8 +522,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         if self.focusE_params["stop_epoch"] > 0:
             stop_epoch = self.focusE_params["stop_epoch"]
             self.focusE_params["structural_wt"] = tf.maximum(
-                1 - self.current_epoch / stop_epoch, 0.001
-            )
+                1 - self.current_epoch / stop_epoch, 0.001)
 
     def fit(
         self,
@@ -702,8 +704,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 x, np.ndarray
             ), "Validation split supported for numpy arrays only!"
             x, validation_data = train_test_split_no_unseen(
-                x, test_size=validation_split, seed=self.seed, allow_duplication=False
-            )
+                x,
+                test_size=validation_split,
+                seed=self.seed,
+                allow_duplication=False)
 
         with training_utils.RespectCompiledTrainableState(self):
             # create data handler for the data
@@ -723,8 +727,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             )
 
             self.partitioner_metadata = (
-                self.data_handler.get_update_partitioner_metadata(self.base_dir)
-            )
+                self.data_handler.get_update_partitioner_metadata(
+                    self.base_dir))
             # get the mapping details
             self.data_indexer = self.data_handler.get_mapper()
             # get the maximum entities and relations that will be trained
@@ -743,8 +747,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             else:
                 if self.use_focusE:
                     assert isinstance(
-                        focusE_params, dict
-                    ), "focusE parameters need to be in a dict!"
+                        focusE_params,
+                        dict), "focusE parameters need to be in a dict!"
                     # Define FocusE params
                     (
                         non_linearity,
@@ -758,10 +762,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     }
                 else:
                     print(
-                        "Data shape is {}: not only triples were given, but focusE is not active!".format(
-                            self.data_shape
-                        )
-                    )
+                        "Data shape is {}: not only triples were given, but focusE is not active!"
+                        .format(self.data_shape))
 
             # Container that configures and calls `tf.keras.Callback`s.
             if not isinstance(callbacks, callbacks_module.CallbackList):
@@ -778,7 +780,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # any error
             self.stop_training = False
             self.is_partitioned_training = self.data_handler.using_partitioning
-            self.optimizer.set_partitioned_training(self.is_partitioned_training)
+            self.optimizer.set_partitioned_training(
+                self.is_partitioned_training)
 
             # set some partition related params if it is partitioned training
             if self.is_partitioned_training:
@@ -792,10 +795,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # before training begins call this callback function
             callbacks.on_train_begin()
 
-            if (
-                isinstance(validation_entities_subset, str)
-                and validation_entities_subset == "all"
-            ):
+            if (isinstance(validation_entities_subset, str)
+                    and validation_entities_subset == "all"):
                 # if the subset is set to none, it will use all entities in the
                 # graph for generating corruptions
                 validation_entities_subset = None
@@ -826,17 +827,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 # store the logs of the last batch of the epoch
                 epoch_logs = copy.copy(logs)
                 # if validation is enabled
-                if (
-                    epoch >= (validation_burn_in - 1)
-                    and validation_data is not None
-                    and self._should_eval(epoch, validation_freq)
-                ):
+                if (epoch >= (validation_burn_in - 1)
+                        and validation_data is not None
+                        and self._should_eval(epoch, validation_freq)):
                     if self.data_shape > 3 and validation_data.shape[1] == 3:
                         nan_weights = np.empty(validation_data.shape[0])
                         nan_weights.fill(np.nan)
                         validation_data = np.concatenate(
-                            [validation_data, nan_weights], axis=1
-                        )
+                            [validation_data, nan_weights], axis=1)
                     # evaluate on the validation
                     ranks = self.evaluate(
                         validation_data,
@@ -998,7 +996,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             base_dir = filedir
             filepath = os.path.basename(filedir)
 
-        with open(os.path.join(base_dir, filepath + "_metadata.ampkl"), "wb") as f:
+        with open(os.path.join(base_dir, filepath + "_metadata.ampkl"),
+                  "wb") as f:
             metadata = {
                 "is_partitioned_training": self.is_partitioned_training,
                 "max_ent_size": self.max_ent_size,
@@ -1023,8 +1022,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 metadata["pos_size"] = self.calibration_layer.pos_size
                 metadata["neg_size"] = self.calibration_layer.neg_size
                 metadata[
-                    "positive_base_rate"
-                ] = self.calibration_layer.positive_base_rate
+                    "positive_base_rate"] = self.calibration_layer.positive_base_rate
             pickle.dump(metadata, f)
 
     def save_weights(self, filepath, overwrite=True):
@@ -1049,7 +1047,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         # call the base class method to save the weights
         if not self.is_partitioned_training:
-            super(ScoringBasedEmbeddingModel, self).save_weights(filepath, overwrite)
+            super(ScoringBasedEmbeddingModel,
+                  self).save_weights(filepath, overwrite)
         self.save_metadata(filepath)
 
     def build_full_model(self, batch_size=100):
@@ -1066,9 +1065,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         with open(filepath + "_metadata.ampkl", "rb") as f:
             metadata = pickle.load(f)
             metadata["root_directory"] = os.path.dirname(filepath)
-            metadata["root_directory"] = (
-                "." if metadata["root_directory"] == "" else metadata["root_directory"]
-            )
+            metadata["root_directory"] = ("."
+                                          if metadata["root_directory"] == ""
+                                          else metadata["root_directory"])
             self.base_dir = metadata["root_directory"]
             try:
                 metadata["db_file"] = os.path.basename(metadata["db_file"])
@@ -1084,8 +1083,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             if self.is_partitioned_training:
                 self.partitioner_k = metadata["partitioner_k"]
                 self.partitioner_metadata = {}
-                self.partitioner_metadata["ent_map_fname"] = metadata["ent_map_fname"]
-                self.partitioner_metadata["rel_map_fname"] = metadata["rel_map_fname"]
+                self.partitioner_metadata["ent_map_fname"] = metadata[
+                    "ent_map_fname"]
+                self.partitioner_metadata["rel_map_fname"] = metadata[
+                    "rel_map_fname"]
 
             self.is_calibrated = metadata["is_calibrated"]
             if self.is_calibrated:
@@ -1117,14 +1118,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         if not self.is_partitioned_training:
             super(ScoringBasedEmbeddingModel, self).load_weights(filepath)
 
-    def compile(
-        self,
-        optimizer="adam",
-        loss=None,
-        entity_relation_initializer="glorot_uniform",
-        entity_relation_regularizer=None,
-        **kwargs
-    ):
+    def compile(self,
+                optimizer="adam",
+                loss=None,
+                entity_relation_initializer="glorot_uniform",
+                entity_relation_regularizer=None,
+                **kwargs):
         """ Compile the model.
 
         Parameters
@@ -1278,8 +1277,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.compiled_loss = loss_functions.get(loss)
         # Only metric supported during the training is mean Loss
         self.compiled_metrics = compile_utils.MetricsContainer(
-            metrics_mod.Mean(name="loss"), None, None
-        )  # Total loss.
+            metrics_mod.Mean(name="loss"), None, None)  # Total loss.
 
         # set the initializer and regularizer of the embedding matrices in the
         # encoding layer
@@ -1318,20 +1316,18 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         """
         if number_of_parts == 1:
             if self.entities_subset.shape[0] != 0:
-                out = tf.nn.embedding_lookup(
-                    self.encoding_layer.ent_emb, self.entities_subset
-                )
+                out = tf.nn.embedding_lookup(self.encoding_layer.ent_emb,
+                                             self.entities_subset)
             else:
                 out = self.encoding_layer.ent_emb
             return out, 0, out.shape[0] - 1
         else:
-            with shelve.open(
-                self.partitioner_metadata["ent_map_fname"]
-            ) as ent_partition:
-                batch_size = int(np.ceil(len(ent_partition.keys()) / number_of_parts))
-                indices = np.arange(
-                    part_number * batch_size, (part_number + 1) * batch_size
-                ).astype(str)
+            with shelve.open(self.partitioner_metadata["ent_map_fname"]
+                             ) as ent_partition:
+                batch_size = int(
+                    np.ceil(len(ent_partition.keys()) / number_of_parts))
+                indices = np.arange(part_number * batch_size,
+                                    (part_number + 1) * batch_size).astype(str)
                 emb_matrix = []
                 for idx in indices:
                     try:
@@ -1350,6 +1346,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         out: Function handle
               Handle to the test step function.
         """
+
         # if self.test_function is not None:
         #    return self.test_function
 
@@ -1368,9 +1365,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 inputs, filters = data[0], data[1]
             else:
                 if self.data_shape > 3:
-                    inputs, filters = data[0], tf.RaggedTensor.from_row_lengths([], [])
+                    inputs, filters = data[
+                        0], tf.RaggedTensor.from_row_lengths([], [])
                 else:
-                    inputs, filters = data, tf.RaggedTensor.from_row_lengths([], [])
+                    inputs, filters = data, tf.RaggedTensor.from_row_lengths(
+                        [], [])
 
             # compute the output shape based on the type of corruptions to be
             # used
@@ -1382,7 +1381,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 output_shape += 1
 
             # create an array to store the ranks based on output shape
-            overall_rank = tf.zeros((output_shape, tf.shape(inputs)[0]), dtype=np.int32)
+            overall_rank = tf.zeros((output_shape, tf.shape(inputs)[0]),
+                                    dtype=np.int32)
 
             if self.is_partitioned_training:
                 inputs = self.process_model_inputs_for_test(inputs)
@@ -1393,8 +1393,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 # get the embedding matrix along with entity ids of first and
                 # last row of emb matrix
                 emb_mat, start_ent_id, end_ent_id = self.get_emb_matrix_test(
-                    j, number_of_parts
-                )
+                    j, number_of_parts)
                 # compute the rank
                 ranks = self._get_ranks(
                     inputs,
@@ -1409,10 +1408,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 # store it in the output
                 for i in tf.range(output_shape):
                     overall_rank = tf.tensor_scatter_nd_add(
-                        overall_rank, [[i]], [ranks[i, :]]
-                    )
+                        overall_rank, [[i]], [ranks[i, :]])
 
-            overall_rank = tf.transpose(tf.reshape(overall_rank, (output_shape, -1)))
+            overall_rank = tf.transpose(
+                tf.reshape(overall_rank, (output_shape, -1)))
             # if corruption type is s+o then add s and o ranks and return the
             # added ranks
             if self.corrupt_side == "s+o":
@@ -1425,8 +1424,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         if not self.run_eagerly and not self.is_partitioned_training:
             test_function = def_function.function(
-                test_function, experimental_relax_shapes=True
-            )
+                test_function, experimental_relax_shapes=True)
 
         self.test_function = test_function
 
@@ -1452,8 +1450,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             sub_emb_out = []
             obj_emb_out = []
             rel_emb_out = []
-            with shelve.open(self.partitioner_metadata["ent_map_fname"]) as ent_emb:
-                with shelve.open(self.partitioner_metadata["rel_map_fname"]) as rel_emb:
+            with shelve.open(
+                    self.partitioner_metadata["ent_map_fname"]) as ent_emb:
+                with shelve.open(
+                        self.partitioner_metadata["rel_map_fname"]) as rel_emb:
                     for triple in np_triples:
                         sub_emb_out.append(ent_emb[str(triple[0])])
                         rel_emb_out.append(rel_emb[str(triple[1])])
@@ -1580,22 +1580,20 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         self.entities_subset = tf.constant([])
         self.mapping_dict = tf.lookup.experimental.DenseHashTable(
-            tf.int32, tf.int32, -1, -1, -2
-        )
+            tf.int32, tf.int32, -1, -1, -2)
         if entities_subset is not None:
-            entities_subset = self.data_indexer.get_indexes(entities_subset, "e")
+            entities_subset = self.data_indexer.get_indexes(
+                entities_subset, "e")
             self.entities_subset = tf.constant(entities_subset, dtype=tf.int32)
-            self.mapping_dict.insert(
-                self.entities_subset, tf.range(self.entities_subset.shape[0])
-            )
+            self.mapping_dict.insert(self.entities_subset,
+                                     tf.range(self.entities_subset.shape[0]))
 
         # flag to indicate if we are using filter or not
         self.use_filter = (
             self.data_handler_test._parent_adapter.backend.use_filter
             or isinstance(
-                self.data_handler_test._parent_adapter.backend.use_filter, dict
-            )
-        )
+                self.data_handler_test._parent_adapter.backend.use_filter,
+                dict))
 
         # Container that configures and calls `tf.keras.Callback`s.
         if not isinstance(callbacks, callbacks_module.CallbackList):
@@ -1675,8 +1673,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         if not self.run_eagerly and not self.is_partitioned_training:
             predict_function = def_function.function(
-                predict_function, experimental_relax_shapes=True
-            )
+                predict_function, experimental_relax_shapes=True)
 
         self.predict_function = predict_function
         return self.predict_function
@@ -1764,7 +1761,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     batch_outputs = predict_function(iterator)
                     outputs.append(batch_outputs)
 
-                    callbacks.on_predict_batch_end(step, {"outputs": batch_outputs})
+                    callbacks.on_predict_batch_end(step,
+                                                   {"outputs": batch_outputs})
         callbacks.on_predict_end()
         return np.concatenate(outputs)
 
@@ -1819,8 +1817,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         if not self.run_eagerly and not self.is_partitioned_training:
             calibrate_fn = def_function.function(
-                calibrate_fn, experimental_relax_shapes=True
-            )
+                calibrate_fn, experimental_relax_shapes=True)
 
         return calibrate_fn
 
@@ -1941,9 +1938,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         neg_size = pos_size
 
         if X_neg is None:
-            assert (
-                positive_base_rate is not None
-            ), "Please provide the negatives or positive base rate!"
+            assert (positive_base_rate is not None
+                    ), "Please provide the negatives or positive base rate!"
             self.is_calibrate_with_corruption = True
         else:
             self.is_calibrate_with_corruption = False
@@ -1959,7 +1955,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 use_indexer=self.data_indexer,
             )
 
-            neg_size = data_handler_calibrate_neg._parent_adapter.get_data_size()
+            neg_size = data_handler_calibrate_neg._parent_adapter.get_data_size(
+            )
             neg_batch_count = int(np.ceil(neg_size / batch_size))
 
             if pos_batch_count != neg_batch_count:
@@ -1976,20 +1973,20 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             if positive_base_rate is None:
                 positive_base_rate = pos_size / (pos_size + neg_size)
 
-        if positive_base_rate is not None and (
-            positive_base_rate <= 0 or positive_base_rate >= 1
-        ):
-            raise ValueError("positive_base_rate must be a value between 0 and 1.")
+        if positive_base_rate is not None and (positive_base_rate <= 0
+                                               or positive_base_rate >= 1):
+            raise ValueError(
+                "positive_base_rate must be a value between 0 and 1.")
 
-        self.calibration_layer = CalibrationLayer(
-            pos_size, neg_size, positive_base_rate
-        )
+        self.calibration_layer = CalibrationLayer(pos_size, neg_size,
+                                                  positive_base_rate)
         calibrate_function = self.make_calibrate_function()
 
         optimizer = tf.keras.optimizers.Adam()
 
         if not self.is_calibrate_with_corruption:
-            negative_iterator = iter(data_handler_calibrate_neg.enumerate_epochs())
+            negative_iterator = iter(
+                data_handler_calibrate_neg.enumerate_epochs())
 
         for _, iterator in data_handler_calibrate_pos.enumerate_epochs(True):
             if not self.is_calibrate_with_corruption:
@@ -2009,12 +2006,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         out = self.calibration_layer(scores_pos, scores_neg, 1)
 
                     gradients = tape.gradient(
-                        out, self.calibration_layer._trainable_weights
-                    )
+                        out, self.calibration_layer._trainable_weights)
                     # update the trainable params
                     optimizer.apply_gradients(
-                        zip(gradients, self.calibration_layer._trainable_weights)
-                    )
+                        zip(gradients,
+                            self.calibration_layer._trainable_weights))
         self.is_calibrated = True
 
     def predict_proba(self, x, batch_size=32, verbose=0, callbacks=None):
@@ -2067,6 +2063,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         if not self.is_calibrated:
             msg = "Model has not been calibrated. \
             Please call `model.calibrate(...)` before predicting probabilities."
+
             raise RuntimeError(msg)
 
         self.data_handler_test = data_adapter.DataHandler(
@@ -2100,7 +2097,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     probas = self.calibration_layer(batch_outputs, training=0)
                     outputs.append(probas)
 
-                    callbacks.on_predict_batch_end(step, {"outputs": batch_outputs})
+                    callbacks.on_predict_batch_end(step,
+                                                   {"outputs": batch_outputs})
         callbacks.on_predict_end()
         return np.concatenate(outputs)
 
@@ -2147,24 +2145,24 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             lookup_concept = self.data_indexer.get_indexes(entities, "e")
             if self.is_partitioned_training:
                 emb_out = []
-                with shelve.open(self.partitioner_metadata["ent_map_fname"]) as ent_emb:
+                with shelve.open(
+                        self.partitioner_metadata["ent_map_fname"]) as ent_emb:
                     for ent_id in lookup_concept:
                         emb_out.append(ent_emb[str(ent_id)])
             else:
-                return tf.nn.embedding_lookup(
-                    self.encoding_layer.ent_emb, lookup_concept
-                ).numpy()
+                return tf.nn.embedding_lookup(self.encoding_layer.ent_emb,
+                                              lookup_concept).numpy()
         elif embedding_type == "r":
             lookup_concept = self.data_indexer.get_indexes(entities, "r")
             if self.is_partitioned_training:
                 emb_out = []
-                with shelve.open(self.partitioner_metadata["rel_map_fname"]) as rel_emb:
+                with shelve.open(
+                        self.partitioner_metadata["rel_map_fname"]) as rel_emb:
                     for rel_id in lookup_concept:
                         emb_out.append(rel_emb[str(rel_id)])
             else:
-                return tf.nn.embedding_lookup(
-                    self.encoding_layer.rel_emb, lookup_concept
-                ).numpy()
+                return tf.nn.embedding_lookup(self.encoding_layer.rel_emb,
+                                              lookup_concept).numpy()
         else:
             msg = "Invalid entity type: {}".format(embedding_type)
             raise ValueError(msg)

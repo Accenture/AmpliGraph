@@ -63,8 +63,7 @@ class HolE(ComplEx):
         """
         # HolE scoring is 2/k * complex_score
         return (2 / (self.internal_k / 2)) * (
-            super()._get_subject_corruption_scores(triples, ent_matrix)
-        )
+            super()._get_subject_corruption_scores(triples, ent_matrix))
 
     def _get_object_corruption_scores(self, triples, ent_matrix):
         """Compute object corruption scores.
@@ -85,5 +84,4 @@ class HolE(ComplEx):
         """
         # HolE scoring is 2/k * complex_score
         return (2 / (self.internal_k / 2)) * (
-            super()._get_object_corruption_scores(triples, ent_matrix)
-        )
+            super()._get_object_corruption_scores(triples, ent_matrix))

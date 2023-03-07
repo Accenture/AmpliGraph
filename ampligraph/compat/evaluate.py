@@ -150,9 +150,11 @@ def evaluate_performance(
     0.6
     """
     logger.debug("Evaluating the performance of the embedding model.")
-    assert corrupt_side in ["s", "o", "s+o", "s,o"], "Invalid value for corrupt_side."
+    assert corrupt_side in ["s", "o", "s+o",
+                            "s,o"], "Invalid value for corrupt_side."
 
-    if isinstance(filter_triples, np.ndarray) or isinstance(filter_triples, list):
+    if isinstance(filter_triples, np.ndarray) or isinstance(
+            filter_triples, list):
         filter_triples = {"valid": filter_triples}
     elif filter_triples is None or not filter_triples:
         filter_triples = False

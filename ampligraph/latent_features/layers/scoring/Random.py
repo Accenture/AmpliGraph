@@ -55,8 +55,8 @@ class Random(AbstractScoringLayer):
             Scores of subject corruptions (corruptions defined by `ent_embs` matrix).
         """
         scores = tf.random.uniform(
-            shape=[tf.shape(triples[0])[0], tf.shape(ent_matrix)[0]], seed=0
-        )
+            shape=[tf.shape(triples[0])[0],
+                   tf.shape(ent_matrix)[0]], seed=0)
         return scores
 
     def _get_object_corruption_scores(self, triples, ent_matrix):
@@ -77,6 +77,6 @@ class Random(AbstractScoringLayer):
             Scores of object corruptions (corruptions defined by `ent_embs` matrix).
         """
         scores = tf.random.uniform(
-            shape=[tf.shape(triples[0])[0], tf.shape(ent_matrix)[0]], seed=0
-        )
+            shape=[tf.shape(triples[0])[0],
+                   tf.shape(ent_matrix)[0]], seed=0)
         return scores

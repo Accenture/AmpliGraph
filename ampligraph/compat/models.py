@@ -18,6 +18,7 @@ BACK_COMPAT_MODELS = {}
 
 
 def register_compatibility(name):
+
     def insert_in_registry(class_handle):
         BACK_COMPAT_MODELS[name] = class_handle
         class_handle.name = name
@@ -27,6 +28,7 @@ def register_compatibility(name):
 
 
 class ScoringModelBase:
+
     def __init__(
         self,
         k=100,
@@ -142,17 +144,16 @@ class ScoringModelBase:
         del optim_params["lr"]
 
         if optimizer == "adam":
-            optim = tf.keras.optimizers.Adam(
-                learning_rate=learning_rate, **optim_params
-            )
+            optim = tf.keras.optimizers.Adam(learning_rate=learning_rate,
+                                             **optim_params)
             status = True
         elif optimizer == "adagrad":
-            optim = tf.keras.optimizers.Adagrad(
-                learning_rate=learning_rate, **optim_params
-            )
+            optim = tf.keras.optimizers.Adagrad(learning_rate=learning_rate,
+                                                **optim_params)
             status = True
         elif optimizer == "sgd":
-            optim = tf.keras.optimizers.SGD(learning_rate=learning_rate, **optim_params)
+            optim = tf.keras.optimizers.SGD(learning_rate=learning_rate,
+                                            **optim_params)
             status = True
         else:
             optim = get_optimizer(optimizer)
@@ -247,15 +248,15 @@ class ScoringModelBase:
             no logs will be collected). When provided it will create a folder under provided path and save tensorboard
             files there. To then view the loss in the terminal run: ``tensorboard --logdir <tensorboard_logs_path>``.
         """
-        self.model = ScoringBasedEmbeddingModel(
-            self.eta, self.k, scoring_type=self.model_name, seed=self.seed
-        )
+        self.model = ScoringBasedEmbeddingModel(self.eta,
+                                                self.k,
+                                                scoring_type=self.model_name,
+                                                seed=self.seed)
         if callbacks is None:
             callbacks = []
         if tensorboard_logs_path is not None:
             tensorboard_callback = tf.keras.callbacks.TensorBoard(
-                log_dir=tensorboard_logs_path
-            )
+                log_dir=tensorboard_logs_path)
             callbacks.append(tensorboard_callback)
 
         regularizer = self.regularizer
@@ -264,12 +265,12 @@ class ScoringModelBase:
 
         initializer = self.initializer
         if initializer is not None:
-            initializer = self._get_initializer(initializer, self.initializer_params)
+            initializer = self._get_initializer(initializer,
+                                                self.initializer_params)
 
         loss = get_loss(self.loss, self.loss_params)
         optimizer, is_back_compat_optim = self._get_optimizer(
-            self.optimizer, self.optimizer_params
-        )
+            self.optimizer, self.optimizer_params)
 
         self.model.compile(
             optimizer=optimizer,
@@ -285,7 +286,8 @@ class ScoringModelBase:
 
         if len(early_stopping_params) != 0:
             checkpoint = tf.keras.callbacks.EarlyStopping(
-                monitor="val_{}".format(early_stopping_params.get("criteria", "mrr")),
+                monitor="val_{}".format(
+                    early_stopping_params.get("criteria", "mrr")),
                 min_delta=0,
                 patience=early_stopping_params.get("stop_interval", 10),
                 verbose=self.verbose,
@@ -308,25 +310,22 @@ class ScoringModelBase:
         focusE = False
         params_focusE = {}
         if focusE_numeric_edge_values is not None:
-            if isinstance(focusE_numeric_edge_values, np.ndarray) and isinstance(
-                X, np.ndarray
-            ):
+            if isinstance(focusE_numeric_edge_values,
+                          np.ndarray) and isinstance(X, np.ndarray):
                 focusE = True
                 X = np.concatenate([X, focusE_numeric_edge_values], axis=1)
                 params_focusE = {
-                    "non_linearity": self.embedding_model_params.get(
-                        "non_linearity", "linear"
-                    ),
-                    "stop_epoch": self.embedding_model_params.get("stop_epoch", 251),
-                    "structural_wt": self.embedding_model_params.get(
-                        "structural_wt", 0.001
-                    ),
+                    "non_linearity":
+                    self.embedding_model_params.get("non_linearity", "linear"),
+                    "stop_epoch":
+                    self.embedding_model_params.get("stop_epoch", 251),
+                    "structural_wt":
+                    self.embedding_model_params.get("structural_wt", 0.001),
                 }
             else:
                 msg = (
                     "Either X or focusE_numeric_edge_values are not np.array, so focusE is not supported. "
-                    "Try using Ampligraph 2 or Ampligraph 1.x APIs!"
-                )
+                    "Try using Ampligraph 2 or Ampligraph 1.x APIs!")
                 raise ValueError(msg)
 
         self.model.fit(
@@ -339,8 +338,7 @@ class ScoringModelBase:
             validation_data=early_stopping_params.get("x_valid", None),
             validation_filter=x_filter,
             validation_entities_subset=early_stopping_params.get(
-                "corruption_entities", None
-            ),
+                "corruption_entities", None),
             callbacks=callbacks,
             verbose=verbose,
             focusE=focusE,
@@ -428,9 +426,12 @@ class ScoringModelBase:
         """
         ent_idx = np.arange(self.model.data_indexer.get_entities_count())
         rel_idx = np.arange(self.model.data_indexer.get_relations_count())
-        ent_values_raw = self.model.data_indexer.get_indexes(ent_idx, "e", "ind2raw")
-        rel_values_raw = self.model.data_indexer.get_indexes(rel_idx, "r", "ind2raw")
-        return dict(zip(ent_values_raw, ent_idx)), dict(zip(rel_values_raw, rel_idx))
+        ent_values_raw = self.model.data_indexer.get_indexes(
+            ent_idx, "e", "ind2raw")
+        rel_values_raw = self.model.data_indexer.get_indexes(
+            rel_idx, "r", "ind2raw")
+        return dict(zip(ent_values_raw,
+                        ent_idx)), dict(zip(rel_values_raw, rel_idx))
 
     def predict(self, X):
         """
@@ -450,9 +451,12 @@ class ScoringModelBase:
         """
         return self.model.predict(X)
 
-    def calibrate(
-        self, X_pos, X_neg=None, positive_base_rate=None, batches_count=100, epochs=50
-    ):
+    def calibrate(self,
+                  X_pos,
+                  X_neg=None,
+                  positive_base_rate=None,
+                  batches_count=100,
+                  epochs=50):
         """Calibrate predictions.
 
         The method implements the heuristics described in :cite:`calibration`,
@@ -485,9 +489,8 @@ class ScoringModelBase:
 
         """
         batch_size = int(np.ceil(X_pos.shape[0] / batches_count))
-        return self.model.calibrate(
-            X_pos, X_neg, positive_base_rate, batch_size, epochs
-        )
+        return self.model.calibrate(X_pos, X_neg, positive_base_rate,
+                                    batch_size, epochs)
 
     def predict_proba(self, X):
         """

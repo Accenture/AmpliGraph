@@ -20,22 +20,25 @@ class CalibrationLayer(tf.keras.layers.Layer):
 
     def get_config(self):
         config = super(CalibrationLayer, self).get_config()
-        config.update(
-            {
-                "pos_size": self.pos_size,
-                "neg_size": self.neg_size,
-                "positive_base_rate": self.positive_base_rate,
-            }
-        )
+        config.update({
+            "pos_size": self.pos_size,
+            "neg_size": self.neg_size,
+            "positive_base_rate": self.positive_base_rate,
+        })
         return config
 
-    def __init__(self, pos_size=0, neg_size=0, positive_base_rate=None, **kwargs):
+    def __init__(self,
+                 pos_size=0,
+                 neg_size=0,
+                 positive_base_rate=None,
+                 **kwargs):
         self.pos_size = pos_size
         self.neg_size = pos_size if neg_size == 0 else neg_size
 
         if positive_base_rate is not None:
             if positive_base_rate <= 0 or positive_base_rate >= 1:
-                raise ValueError("Positive_base_rate must be a value between 0 and 1.")
+                raise ValueError(
+                    "Positive_base_rate must be a value between 0 and 1.")
         else:
             assert pos_size > 0 and neg_size > 0, "Positive size must be > 0."
 
@@ -47,10 +50,8 @@ class CalibrationLayer(tf.keras.layers.Layer):
             kwargs.pop(
                 "calib_b",
                 np.log((self.neg_size + 1.0) / (self.pos_size + 1.0)).astype(
-                    np.float32
-                ),
-            )
-        )
+                    np.float32),
+            ))
         super(CalibrationLayer, self).__init__(**kwargs)
 
     def build(self, input_shape):
@@ -74,7 +75,10 @@ class CalibrationLayer(tf.keras.layers.Layer):
         )
         self.built = True
 
-    def call(self, scores_pos, scores_neg=tf.convert_to_tensor(()), training=0):
+    def call(self,
+             scores_pos,
+             scores_neg=tf.convert_to_tensor(()),
+             training=0):
         """
         Call method.
         """
@@ -96,23 +100,26 @@ class CalibrationLayer(tf.keras.layers.Layer):
                         tf.float32,
                     ),
                     tf.cast(
-                        tf.fill(scores_neg.shape, 1 / (self.neg_size + 2.0)), tf.float32
-                    ),
+                        tf.fill(scores_neg.shape, 1 /
+                                (self.neg_size + 2.0)), tf.float32),
                 ],
                 axis=0,
             )
             weigths_pos = scores_neg.shape[0] / scores_pos.shape[0]
-            weights_neg = (1.0 - self.positive_base_rate) / self.positive_base_rate
+            weights_neg = (1.0 -
+                           self.positive_base_rate) / self.positive_base_rate
             weights = tf.concat(
                 [
-                    tf.cast(tf.fill(scores_pos.shape, weigths_pos), tf.float32),
-                    tf.cast(tf.fill(scores_neg.shape, weights_neg), tf.float32),
+                    tf.cast(tf.fill(scores_pos.shape, weigths_pos),
+                            tf.float32),
+                    tf.cast(tf.fill(scores_neg.shape, weights_neg),
+                            tf.float32),
                 ],
                 axis=0,
             )
             loss = tf.reduce_mean(
-                weights * tf.nn.sigmoid_cross_entropy_with_logits(labels, logits)
-            )
+                weights *
+                tf.nn.sigmoid_cross_entropy_with_logits(labels, logits))
             return loss
         else:
             return tf.math.sigmoid(logits)

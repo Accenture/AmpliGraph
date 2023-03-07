@@ -8,7 +8,6 @@
 import logging
 
 import numpy as np
-
 """This module contains learning-to-rank metrics to evaluate the performance of neural graph embedding models."""
 
 logger = logging.getLogger(__name__)

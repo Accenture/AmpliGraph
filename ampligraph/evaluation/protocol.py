@@ -22,9 +22,11 @@ logger.setLevel(logging.DEBUG)
 TOO_MANY_ENTITIES_TH = 50000
 
 
-def train_test_split_no_unseen(
-    X, test_size=100, seed=0, allow_duplication=False, filtered_test_predicates=None
-):
+def train_test_split_no_unseen(X,
+                               test_size=100,
+                               seed=0,
+                               allow_duplication=False,
+                               filtered_test_predicates=None):
     """Split into train and test sets.
 
     This function carves out a test set that contains only entities
@@ -123,7 +125,8 @@ def train_test_split_no_unseen(
     idx_test = []
     idx_train = []
 
-    all_indices_shuffled = np.random.permutation(np.arange(X_test_candidates.shape[0]))
+    all_indices_shuffled = np.random.permutation(
+        np.arange(X_test_candidates.shape[0]))
 
     for i, idx in enumerate(all_indices_shuffled):
         test_triple = X_test_candidates[idx]
@@ -133,17 +136,14 @@ def train_test_split_no_unseen(
         dict_entities[test_triple[2]] = dict_entities[test_triple[2]] - 1
 
         # test if the counts are > 0
-        if (
-            dict_entities[test_triple[0]] > 0
-            and dict_rels[test_triple[1]] > 0
-            and dict_entities[test_triple[2]] > 0
-        ):
+        if (dict_entities[test_triple[0]] > 0 and dict_rels[test_triple[1]] > 0
+                and dict_entities[test_triple[2]] > 0):
             # Can safetly add the triple to test set
             idx_test.append(idx)
             if len(idx_test) == test_size:
                 # Since we found the requested test set of given size
                 # add all the remaining indices of candidates to training set
-                idx_train.extend(list(all_indices_shuffled[i + 1 :]))
+                idx_train.extend(list(all_indices_shuffled[i + 1:]))
 
                 # break out of the loop
                 break
@@ -162,9 +162,9 @@ def train_test_split_no_unseen(
         if allow_duplication:
             # if duplication is allowed, randomly choose from the existing test
             # set and create duplicates
-            duplicate_idx = np.random.choice(
-                idx_test, size=(test_size - len(idx_test))
-            ).tolist()
+            duplicate_idx = np.random.choice(idx_test,
+                                             size=(test_size -
+                                                   len(idx_test))).tolist()
             idx_test.extend(list(duplicate_idx))
         else:
             # throw an exception since we cannot get unique triples in the test set without creating
@@ -174,8 +174,7 @@ def train_test_split_no_unseen(
                 "Some entities will not occur in both training and test set. "
                 "Set allow_duplication=True,"
                 "remove filter on test predicates or "
-                "set test_size to a smaller value."
-            )
+                "set test_size to a smaller value.")
 
     if X_train is None:
         X_train = X_test_candidates[idx_train]
@@ -215,7 +214,8 @@ def filter_unseen_entities(X, model, verbose=False):
     filtered_df = df[df.s.isin(ent_seen) & df.o.isin(ent_seen)]
     n_removed_ents = df.shape[0] - filtered_df.shape[0]
     if n_removed_ents > 0:
-        msg = "Removing {} triples containing unseen entities. ".format(n_removed_ents)
+        msg = "Removing {} triples containing unseen entities. ".format(
+            n_removed_ents)
         if verbose:
             logger.info(msg)
         logger.debug(msg)
@@ -232,12 +232,12 @@ def _flatten_nested_keys(dictionary):
     # Find the parameters that are nested dictionaries
     nested_keys = {k for k, v in dictionary.items() if isinstance(v, dict)}
     # Flatten them into tuples
-    flattened_nested_keys = {
-        (nk, k): dictionary[nk][k] for nk in nested_keys for k in dictionary[nk]
-    }
+    flattened_nested_keys = {(nk, k): dictionary[nk][k]
+                             for nk in nested_keys for k in dictionary[nk]}
     # Get original dictionary without the nested keys
     dictionary_without_nested_keys = {
-        k: v for k, v in dictionary.items() if k not in nested_keys
+        k: v
+        for k, v in dictionary.items() if k not in nested_keys
     }
     # Return merged dicts
     return {**dictionary_without_nested_keys, **flattened_nested_keys}
@@ -253,11 +253,14 @@ def _unflatten_nested_keys(dictionary):
     nested_keys = {k[0] for k in dictionary if isinstance(k, tuple)}
     # Select the parameters which were originally nested and unflatten them
     nested_dict = {
-        nk: {k[1]: v for k, v in dictionary.items() if k[0] == nk} for nk in nested_keys
+        nk: {k[1]: v
+             for k, v in dictionary.items() if k[0] == nk}
+        for nk in nested_keys
     }
     # Get original dictionary without the nested keys
     dictionary_without_nested_keys = {
-        k: v for k, v in dictionary.items() if not isinstance(k, tuple)
+        k: v
+        for k, v in dictionary.items() if not isinstance(k, tuple)
     }
     # Return merged dicts
     return {**dictionary_without_nested_keys, **nested_dict}
@@ -632,7 +635,8 @@ def select_best_model_ranking(
     compat_module = import_module("ampligraph.compat")
     model_class = getattr(compat_module, model_class)
 
-    logger.debug("Starting gridsearch over hyperparameters. {}".format(param_grid))
+    logger.debug(
+        "Starting gridsearch over hyperparameters. {}".format(param_grid))
 
     if early_stopping_params is None:
         early_stopping_params = {}
@@ -640,24 +644,20 @@ def select_best_model_ranking(
     # Verify missing parameters for the model class (default values will be
     # used)
     undeclared_args = set(model_class.__init__.__code__.co_varnames[1:]) - set(
-        param_grid.keys()
-    )
+        param_grid.keys())
     if len(undeclared_args) != 0:
         logger.debug(
             "The following arguments were not defined in the parameter grid"
             " and thus the default values will be used: {}".format(
-                ", ".join(undeclared_args)
-            )
-        )
+                ", ".join(undeclared_args)))
 
     param_grid["model_name"] = model_class.name
     _scalars_into_lists(param_grid)
 
     if max_combinations is not None:
         np.random.seed(param_grid_random_seed)
-        model_params_combinations = islice(
-            _next_hyperparam_random(param_grid), max_combinations
-        )
+        model_params_combinations = islice(_next_hyperparam_random(param_grid),
+                                           max_combinations)
     else:
         model_params_combinations = _next_hyperparam(param_grid)
         max_combinations = 1
@@ -667,10 +667,10 @@ def select_best_model_ranking(
             elif isinstance(param, dict):
                 try:
                     max_combinations *= int(
-                        np.prod(
-                            [len(el) for el in param.values() if isinstance(el, list)]
-                        )
-                    )
+                        np.prod([
+                            len(el) for el in param.values()
+                            if isinstance(el, list)
+                        ]))
                 except Exception as e:
                     logger.debug("Exception " + e)
 
@@ -683,17 +683,15 @@ def select_best_model_ranking(
             early_stopping_params["x_valid"]
         except KeyError:
             logger.debug(
-                "Early stopping enable but no x_valid parameter set. Setting x_valid to {}".format(
-                    X_valid
-                )
-            )
+                "Early stopping enable but no x_valid parameter set. Setting x_valid to {}"
+                .format(X_valid))
             early_stopping_params["x_valid"] = X_valid
 
     focusE_numeric_edge_values = None
     if focusE:
         assert isinstance(X_train, np.ndarray) and X_train.shape[1] > 3, (
-            "Weights are missing! Concatenate them to X_train" "in order to use FocusE!"
-        )
+            "Weights are missing! Concatenate them to X_train"
+            "in order to use FocusE!")
         focusE_numeric_edge_values = X_train[:, 3:]
         param_grid["embedding_model_params"] = {
             **param_grid["embedding_model_params"],
@@ -722,7 +720,8 @@ def select_best_model_ranking(
 
     print("Grid search initialized successfully, training starting!")
     print("Maximum number of combinations: ", max_combinations)
-    for model_params in tqdm(model_params_combinations, total=max_combinations):
+    for model_params in tqdm(model_params_combinations,
+                             total=max_combinations):
         print()
         current_result = {
             "model_name": model_params["model_name"],
@@ -780,9 +779,8 @@ def select_best_model_ranking(
             current_result["results"] = {"exception": str(e)}
 
             if verbose:
-                logger.error(
-                    "Exception occurred for parameters:{}".format(model_params)
-                )
+                logger.error("Exception occurred for parameters:{}".format(
+                    model_params))
                 logger.error(str(e))
             else:
                 pass
@@ -791,15 +789,14 @@ def select_best_model_ranking(
     if best_model is not None:
         if retrain_best_model:
             if focusE:
-                assert isinstance(X_valid, np.ndarray) and X_valid.shape[1] > 3, (
-                    "Validation set is used as training"
-                    "data for retraining the best model,"
-                    "but weights are missing."
-                    "Concatenate them to X_valid!"
-                )
+                assert isinstance(X_valid,
+                                  np.ndarray) and X_valid.shape[1] > 3, (
+                                      "Validation set is used as training"
+                                      "data for retraining the best model,"
+                                      "but weights are missing."
+                                      "Concatenate them to X_valid!")
                 focusE_numeric_edge_values = np.concatenate(
-                    [focusE_numeric_edge_values, X_valid[:, 3:]], axis=0
-                )
+                    [focusE_numeric_edge_values, X_valid[:, 3:]], axis=0)
             best_model.fit(
                 np.concatenate((X_train, X_valid)),
                 early_stopping,
@@ -817,8 +814,7 @@ def select_best_model_ranking(
         )
 
         test_mrr, test_mr, test_hits_1, test_hits_3, test_hits_10 = evaluation(
-            ranks_test
-        )
+            ranks_test)
 
         info = "Best model test results: mr: {} mrr: {} hits 1: {} hits 3: {} hits 10: {}, model: {}, params: {}".format(
             test_mrr,
