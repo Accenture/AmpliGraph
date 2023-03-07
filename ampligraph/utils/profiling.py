@@ -74,9 +74,9 @@ def timing_and_memory(f):
         mem_diff = mem_after - mem_before
         print("{}: memory before: {:.5}{}, after: {:.5}{}, consumed: {:.5}{}; exec time: {:.5}s".format(
             f.__name__,
-            *get_human_readable_size(mem_before), 
+            *get_human_readable_size(mem_before),
             *get_human_readable_size(mem_after),
-            *get_human_readable_size(mem_diff), 
+            *get_human_readable_size(mem_diff),
             end - start))
 
         if 'log' in kwargs:
