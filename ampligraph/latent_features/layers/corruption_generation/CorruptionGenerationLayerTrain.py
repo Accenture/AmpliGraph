@@ -18,11 +18,11 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         config = super(CorruptionGenerationLayerTrain, self).get_config()
         config.update({'seed': self.seed})
         return config
-    
+
     def __init__(self, seed=0, **kwargs):
         '''
         Initializes the corruption generation layer.
-        
+
         Parameters
         ----------
         eta: int
@@ -34,14 +34,14 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
     def call(self, pos, ent_size, eta):
         '''
         Generates corruption for the positives supplied.
-        
+
         Parameters
         ----------
         pos: array-like, shape (n, 3)
             Batch of input triples (positives).
         ent_size: int
             Number of unique entities present in the partition.
-        
+
         Returns
         -------
         corruptions: array-like, shape (n * eta, 3)
@@ -50,11 +50,11 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         # size and reshape the dataset to sample corruptions
         dataset = tf.reshape(tf.tile(tf.reshape(pos, [-1]), [eta]), [tf.shape(input=pos)[0] * eta, 3])
         # generate a mask which will tell which subject needs to be corrupted (random uniform sampling)
-        keep_subj_mask = tf.cast(tf.random.uniform([tf.shape(input=dataset)[0]], 
+        keep_subj_mask = tf.cast(tf.random.uniform([tf.shape(input=dataset)[0]],
                                                    0, 2, dtype=tf.int32, seed=self.seed), tf.bool)
         # If we are not corrupting the subject then corrupt the object
         keep_obj_mask = tf.logical_not(keep_subj_mask)
-        
+
         # cast it to integer (0/1)
         keep_subj_mask = tf.cast(keep_subj_mask, tf.int32)
         keep_obj_mask = tf.cast(keep_obj_mask, tf.int32)
