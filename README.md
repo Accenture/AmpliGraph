@@ -10,12 +10,6 @@
 [Join the conversation on Slack](https://join.slack.com/t/ampligraph/shared_invite/enQtNTc2NTI0MzUxMTM5LTRkODk0MjI2OWRlZjdjYmExY2Q3M2M3NGY0MGYyMmI4NWYyMWVhYTRjZDhkZjA1YTEyMzBkMGE4N2RmNTRiZDg)
 ![](docs/img/slack_logo.png)
 
-> **AmpliGraph 2.0.0 is now available!** <br />
-    The new version features TensorFlow 2 back-end and Keras style APIs that makes it faster, easier to use and
-    extend the support for multiple features. Further, the data input/output pipeline has changed, and the support for
-    some obsolete models was discontinued.<br />
->   See the Changelog for a more thorough list of changes.
-
 **Open source library based on TensorFlow that predicts links between concepts in a knowledge graph.**
 
 **AmpliGraph** is a suite of neural machine learning models for relational Learning, a branch of machine learning
@@ -37,6 +31,14 @@ AmpliGraph's machine learning models generate **knowledge graph embeddings**, ve
 It then combines embeddings with model-specific scoring functions to predict unseen and novel links:
 
 ![](docs/img/kg_lp_step2.png)
+
+{% note %}
+
+**AmpliGraph 2.0.0 is now available!** <br /> The new version features TensorFlow 2 back-end and Keras style APIs that makes it faster, easier to use and
+    extend the support for multiple features. Further, the data input/output pipeline has changed, and the support for
+    some obsolete models was discontinued.<br /> See the Changelog for a more thorough list of changes.
+
+{% endnote %}
 
 
 ## Key Features
