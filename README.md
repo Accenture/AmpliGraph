@@ -32,13 +32,11 @@ It then combines embeddings with model-specific scoring functions to predict uns
 
 ![](docs/img/kg_lp_step2.png)
 
-{% note %}
 
-**AmpliGraph 2.0.0 is now available!** <br /> The new version features TensorFlow 2 back-end and Keras style APIs that makes it faster, easier to use and
-    extend the support for multiple features. Further, the data input/output pipeline has changed, and the support for
-    some obsolete models was discontinued.<br /> See the Changelog for a more thorough list of changes.
-
-{% endnote %}
+## AmpliGraph 2.0.0 is now available!
+The new version features TensorFlow 2 back-end and Keras style APIs that makes it faster, easier to use and 
+extend the support for multiple features. Further, the data input/output pipeline has changed, and the support for 
+some obsolete models was discontinued.<br /> See the Changelog for a more thorough list of changes.
 
 
 ## Key Features
