@@ -23,6 +23,8 @@ If you instead use AmpliGraph in an academic publication, cite as:
 ```
 @misc{ampligraph,
  author= {Luca Costabello and
+          Alberto Bernardi and
+          Adrianna Janik and
           Sumit Pai and
           Chan Le Van and
           Rory McGrath and
@@ -44,15 +46,14 @@ Active contributors (in alphabetical order)
 
 + [Alberto Bernardi](http://github.com/albernar)
 + [Luca Costabello](http://github.com/lukostaz)
-+ [Chan Le Van](http://github.com/chanlevan)
 + [Adrianna Janik](https://github.com/adrijanik)
-+ [Nicholas McCarthy](http://github.com/NicholasMcCarthy)
-+ [Rory McGrath](http://github.com/rorymcgrath)
-+ [Sumit Pai](http://github.com/sumitpai)
 
 Past contributors
++ [Nicholas McCarthy](http://github.com/NicholasMcCarthy)
++ [Rory McGrath](http://github.com/rorymcgrath)
++ [Chan Le Van](http://github.com/chanlevan)
++ [Sumit Pai](http://github.com/sumitpai)
 + [Pedro Tabacof](http://github.com/tabacof)
-
 
 ## License
 
