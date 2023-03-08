@@ -1,45 +1,42 @@
-
 # Installation
 
 ## Prerequisites
 
 * Linux, macOS, Windows
-* Python 3.7
+* Python ≥ 3.8
 
-#### Provision a Virtual Environment
+### Provision a Virtual Environment
 
 Create and activate a virtual environment (conda)
 
 ```
-conda create --name ampligraph python=3.7
+conda create --name ampligraph python=3.8
 source activate ampligraph
 ```
 
-#### Install TensorFlow
+### Install TensorFlow 2
 
-AmpliGraph is built on TensorFlow 1.x.
+AmpliGraph 2.x is built on TensorFlow 2.
+
 Install from pip or conda:
 
-**CPU-only**
-
 ```
-pip install "tensorflow>=1.15.2,<2.0"
+pip install "tensorflow>=2.9"
 
 or 
 
-conda install tensorflow'>=1.15.2,<2.0.0'
+conda install tensorflow'>=2.9'
 ```
 
-**GPU support**
+### Install TensorFlow 2 for Mac OS M1 chip
 
 ```
-pip install "tensorflow-gpu>=1.15.2,<2.0"
-
-or 
-
-conda install tensorflow-gpu'>=1.15.2,<2.0.0'
+conda install -c apple tensorflow-deps
+pip install --user tensorflow-macos==2.10
+pip install --user tensorflow-metal==0.6
 ```
 
+In case of problems with installation refer to [Tensorflow Plugin page on Apple developer site](https://developer.apple.com/metal/tensorflow-plugin/).
 
 ## Install AmpliGraph
 
@@ -57,7 +54,7 @@ and install from source as below (also see the [How to Contribute guide](dev.md)
 ```
 git clone https://github.com/Accenture/AmpliGraph.git
 cd AmpliGraph
-git checkout develop
+git checkout ampligraph2/develop
 pip install -e .
 ```
 
@@ -66,5 +63,9 @@ pip install -e .
 ```python
 >> import ampligraph
 >> ampligraph.__version__
-'1.4.0'
+'2.0-dev'
 ```
+
+
+## Support for TensorFlow 1.x
+For TensorFlow 1.x-compatible AmpliGraph, use [AmpliGraph 1.x](https://docs.ampligraph.org/en/1.4.0/).

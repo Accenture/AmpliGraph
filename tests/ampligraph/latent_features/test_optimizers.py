@@ -1,83 +1,84 @@
-# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2023 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-import numpy as np
+
+from ampligraph.latent_features import optimizers
+import pytest
 import tensorflow as tf
-from ampligraph.latent_features import OPTIMIZER_REGISTRY
+import numpy as np
+from tensorflow.keras.optimizers import Adagrad, Adam
 
 
-def test_sgd_optimizer_const_lr():
-    sdg_class = OPTIMIZER_REGISTRY['sgd']
-    w = tf.Variable(0.01)
-    x = tf.placeholder(shape=(1,), dtype=tf.float32)
-    y = tf.placeholder(shape=(1,), dtype=tf.float32)
-    pred = w*x
-    loss = tf.losses.mean_squared_error(y, pred)
-    sgd_optimizer = sdg_class({'lr':0.001}, 10)
-    train = sgd_optimizer.minimize(loss)
-    with tf.Session() as sess:
-        for epoch in range(1,11):
-            for batch in range(1, 11):
-                feed_dict = {}
-                sgd_optimizer.update_feed_dict(feed_dict, batch, epoch)
-
-        assert(list(feed_dict.values())[0]==0.001)
-        
-
-def test_sgd_optimizer_fixed_decay():
-    sdg_class = OPTIMIZER_REGISTRY['sgd']
-    w = tf.Variable(0.01)
-    x = tf.placeholder(shape=(1,), dtype=tf.float32)
-    y = tf.placeholder(shape=(1,), dtype=tf.float32)
-    pred = w*x
-    loss = tf.losses.mean_squared_error(y, pred)
-    sgd_optimizer = sdg_class({'lr':0.001, 
-                               'decay_lr_rate': 2,
-                               'cosine_decay':False, 
-                               'decay_cycle':10
-                              }, 10)
-    train = sgd_optimizer.minimize(loss)
-    with tf.Session() as sess:
-        for epoch in range(1,11):
-            for batch in range(1, 11):
-                feed_dict = {}
-                sgd_optimizer.update_feed_dict(feed_dict, batch, epoch)
-
-        assert(list(feed_dict.values())[0]==0.001)
-        sgd_optimizer.update_feed_dict(feed_dict, 1, 11)
-        assert(list(feed_dict.values())[0]==0.0005)
-        
-def test_sgd_optimizer_cosine_decay():
-    sdg_class = OPTIMIZER_REGISTRY['sgd']
-    w = tf.Variable(0.01)
-    x = tf.placeholder(shape=(1,), dtype=tf.float32)
-    y = tf.placeholder(shape=(1,), dtype=tf.float32)
-    pred = w*x
-    loss = tf.losses.mean_squared_error(y, pred)
-    sgd_optimizer = sdg_class({'lr':0.001, 
-                               'end_lr':0.00001, 
-                               'decay_lr_rate': 2,
-                               'expand_factor': 2,
-                               'cosine_decay':True, 
-                               'decay_cycle':10
-                              }, 10)
-    train = sgd_optimizer.minimize(loss)
+def test_optimizer_adam():
+    ''' test by passing a string'''
+    adam = optimizers.get('Adam')
+    adam.set_partitioned_training()
+    ent = tf.Variable(np.array([[1, 2], [3, 4]], dtype=np.float32), trainable=True)
+    rel = tf.Variable(np.array([[1, 2], [3, 4]], dtype=np.float32), trainable=True)
     
-    with tf.Session() as sess:
-        for epoch in range(1,31):
-            for batch in range(1, 11):
-                feed_dict = {}
-                sgd_optimizer.update_feed_dict(feed_dict, batch, epoch)
-                if epoch==11 and batch==1:
-                    assert(list(feed_dict.values())[0]==0.0005)
-                if epoch==6 and batch==1:
-                    assert(list(feed_dict.values())[0]==0.000505)
-                if epoch==21 and batch==1:
-                    assert(list(feed_dict.values())[0]==0.000255)
-        
-        sgd_optimizer.update_feed_dict(feed_dict, 1, 31)
-        assert(list(feed_dict.values())[0]==0.00025)
+    with tf.GradientTape() as tape:
+        loss = tf.reduce_sum(ent * rel)
+    
+    adam.minimize(loss, ent, rel, tape)
+    curr_weights = adam.get_weights()
+    
+    # step + 2 hyperparams * 2 trainable vars
+    assert len(curr_weights) == (1 + adam.get_hyperparam_count() * adam.num_optimized_vars), \
+        'Adam: Lengths dont match!'
+    
+    assert adam.get_iterations() == 1, 'Adam: Iteration count doesnt match!'
+    
+    adam.set_weights(curr_weights)
+    new_weights = adam.get_weights()
+    
+    # test whether all params are same
+    out = [np.all(i==j) for i, j in zip(curr_weights, new_weights)]
+    assert np.all(out), 'Adam: Weights are not the same!'
+
+
+def test_optimizer_adagrad():
+    ''' test the wrapping functionality around keras optimizer'''
+    adagrad = optimizers.get(Adagrad(learning_rate = 0.0001))
+    adagrad.set_partitioned_training()
+    ent = tf.Variable(np.array([[1, 2], [3, 4]], dtype=np.float32), trainable=True)
+    rel = tf.Variable(np.array([[1, 2], [3, 4]], dtype=np.float32), trainable=True)
+    
+    with tf.GradientTape() as tape:
+        loss = tf.reduce_sum(ent * rel)
+    
+    adagrad.minimize(loss, ent, rel, tape)
+    curr_weights = adagrad.get_weights()
+    # step + 2 hyperparams * 2 trainable vars
+    assert len(curr_weights) == (1 + adagrad.get_hyperparam_count() * adagrad.num_optimized_vars), \
+        'Adagrad: Lengths dont match!'
+    
+    adagrad.set_weights(curr_weights)
+    new_weights = adagrad.get_weights()
+    
+    # test whether all params are same
+    out = [np.all(i==j) for i, j in zip(curr_weights, new_weights)]
+    assert np.all(out), 'Adagrad: Weights are not the same!'
+
+
+def test_entity_relation_hyperparameters():
+    '''test the getters and setters of entity relation hyperparams'''
+    adam = optimizers.get(Adam(learning_rate = 0.0001))
+    ent = tf.Variable(np.array([[1, 2], [3, 4]], dtype=np.float32), trainable=True)
+    rel = tf.Variable(np.array([[1, 2], [3, 4]], dtype=np.float32), trainable=True)
+    
+    with tf.GradientTape() as tape:
+        loss = tf.reduce_sum(ent * rel)
+    
+    adam.minimize(loss, ent, rel, tape)
+    
+    curr_weights = adam.get_weights()
+    ent_hyp, rel_hyp = adam.get_entity_relation_hyperparams()
+
+    assert (curr_weights[1] == ent_hyp[0]).all() and (curr_weights[3] == ent_hyp[1]).all(), \
+        'ent weights are not correct!'
+    assert (curr_weights[2] == rel_hyp[0]).all() and (curr_weights[4] == rel_hyp[1]).all(), \
+        'rel weights are not correct!'

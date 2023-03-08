@@ -5,111 +5,137 @@ Models
 
 .. automodule:: ampligraph.latent_features
 
+Knowledge Graph Embedding models (KGE) are neural architectures that encode concepts from a knowledge graph
+(i.e., entities :math:`\mathcal{E}` and relation types :math:`\mathcal{R}`) into low-dimensional,
+continuous vectors living in :math:`\mathbb{R}^k`, where :math:`k` can be specified by the user.
 
-Knowledge Graph Embedding Models
---------------------------------
+Knowledge Graph Embeddings have applications in knowledge graph completion, entity resolution, and link-based
+clustering, just to cite a few :cite:`nickel2016review`.
+
+In Ampligraph 2, KGE models are implemented in the :class:`ScoringBasedEmbeddingModel`
+class, that inherits from `Keras Model <https://www.tensorflow.org/api_docs/python/tf/keras/Model/>`_:
 
 .. autosummary::
-    :toctree: generated
+    :toctree:
     :template: class.rst
 
-    RandomBaseline
-    TransE
-    DistMult
-    ComplEx
-    HolE
-    ConvE
-    ConvKB
+    ScoringBasedEmbeddingModel
+
+The advantage of inheriting from Keras models are many. We can use most of Keras initializers (HeNormal, GlorotNormal...),
+regularizers (:math:`L^1`, :math:`L^2`...), optimizers (Adam, AdaGrad...) and callbacks (early stopping, model
+checkpointing...), all without having to reimplement them. From a user perspective, people already acquainted to Keras
+can seemlessly work with AmpliGraph due to the similarity of the APIs.
+
+We also provide backward compatibility with the APIs of Ampligraph 1, by wrapping the older APIs around the newer ones.
 
 Anatomy of a Model
 ^^^^^^^^^^^^^^^^^^
 
-Knowledge graph embeddings are learned by training a neural architecture over a graph. Although such architectures vary,
-the training phase always consists in minimizing a :ref:`loss function <loss>` :math:`\mathcal{L}` that includes a
-*scoring function* :math:`f_{m}(t)`, i.e. a model-specific function that assigns a score to a triple :math:`t=(sub,pred,obj)`.
+Knowledge Graph Embeddings are learned by training a neural architecture over a graph. Although such architecture can be
+of many different kinds, the training phase always consists in minimizing a :ref:`loss function <loss>`
+:math:`\mathcal{L}` that optimizes the scores output by a :ref:`scoring function <scoring>` :math:`f_{m}(t)`,
+i.e., a model-specific function that assigns a score to a triple :math:`t=(sub,pred,obj)`.
 
-
-AmpliGraph models include the following components:
-
-+ :ref:`Scoring function <scoring>` :math:`f(t)`
-+ :ref:`Loss function <loss>` :math:`\mathcal{L}`
-+ :ref:`Optimization algorithm <optimizer>`
++ :ref:`Embedding Generation Layer <embedding>`
++ :ref:`Negatives Generation Layer <negatives>`
++ :ref:`Scoring Layer <scoring>`
++ :ref:`Loss function <loss>`
++ :ref:`Optimizer <optimizer>`
 + :ref:`Regularizer <ref-reg>`
 + :ref:`Initializer <ref-init>`
-+ :ref:`Negatives generation strategy <negatives>`
-+ :ref:`Support for Numeric Literals on Edges <edge-literals>`
 
-AmpliGraph comes with a number of such components. They can be used in any combination to come up with a model that
-performs sufficiently well for the dataset of choice.
+The first three elements are included in the :class:`ScoringBasedEmbeddingModel` class and they inherit from
+`Keras Layer <https://www.tensorflow.org/api_docs/python/tf/keras/layers/Layer/>`_.
 
-AmpliGraph features a number of abstract classes that can be extended to design new models:
+Further, for the scoring layer and the loss function, AmpliGraph features abstract classes that can be extended to
+design new models:
 
 .. autosummary::
-    :toctree: generated
+    :toctree:
     :template: class.rst
 
-    EmbeddingModel
-    Loss
-    Regularizer
-    Initializer
+    ~layers.scoring.AbstractScoringLayer.AbstractScoringLayer
+    ~loss_functions.Loss
 
+.. _embedding:
+
+Embedding Generation Layer
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+The embedding generation layer generates the embeddings of the concepts present in the triples. It may be as simple as
+a *shallow* encoding (i.e., a lookup of the embedding of an input node or edge type), or it can be as complex as a
+neural network, which tokenizes nodes and generates embeddings for nodes using a neural encoder (e.g., NodePiece).
+Currently, AmpliGraph implements the shallow look-up strategy but will be expanded soon to include other efficient approaches.
+
+.. autosummary::
+    :toctree:
+    :template: class.rst
+
+    ~layers.encoding.EmbeddingLookupLayer
+
+.. _negatives:
+
+Negatives Generation Layer
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+This layer is responsible for generation of synthetic negatives. The strategies to generate negatives can be multiple.
+In our case, we assume a local close world assumption, and implement a simple negative generation strategy,
+where we randomly corrupt either the subject, the object or both the subject and the object of a triple, to generate a
+synthetic negative. Further, we allow filtering the true positives out of the generated negatives.
+
+.. autosummary::
+    :toctree:
+    :template: class.rst
+
+    ~layers.corruption_generation.CorruptionGenerationLayerTrain
 
 .. _scoring:
 
-Scoring functions
------------------
+Scoring Layer
+~~~~~~~~~~~~~
 
-Existing models propose scoring functions that combine the embeddings
-:math:`\mathbf{e}_{s},\mathbf{r}_{p}, \mathbf{e}_{o} \in \mathcal{R}^k` of the subject, predicate,
-and object of a triple :math:`t=(s,p,o)` according to different intuitions:
+The scoring layer applies a scoring function :math:`f` to a triple :math:`t=(s,p,o)`. This function combines the embeddings
+:math:`\mathbf{e}_{s},\mathbf{r}_{p}, \mathbf{e}_{o} \in \mathbb{R}^k` (or :math:`\in \mathbb{C}^k`) of the subject, predicate,
+and object of :math:`t` into a score representing the plausibility of the triple.
 
-+ :class:`TransE` :cite:`bordes2013translating` relies on distances. The scoring function computes a similarity between the embedding of the subject translated by the embedding of the predicate  and the embedding of the object, using the :math:`L_1` or :math:`L_2` norm :math:`||\cdot||`:
+.. autosummary::
+    :toctree:
+    :template: class.rst
 
-.. math::
-    f_{TransE}=-||\mathbf{e}_{s} + \mathbf{r}_{p} - \mathbf{e}_{o}||_n
+    ~ampligraph.latent_features.layers.scoring.TransE
+    ~ampligraph.latent_features.layers.scoring.DistMult
+    ~ampligraph.latent_features.layers.scoring.ComplEx
+    ~ampligraph.latent_features.layers.scoring.HolE
 
-+ :class:`DistMult` :cite:`yang2014embedding` uses the trilinear dot product:
+Different scoring functions are designed according to different intuitions:
 
-.. math::
-    f_{DistMult}=\langle \mathbf{r}_p, \mathbf{e}_s, \mathbf{e}_o \rangle
++ :class:`~layers.scoring.TransE` :cite:`bordes2013translating` relies on distances. The scoring function computes a similarity between
+the embedding of the subject translated by the embedding of the predicate  and the embedding of the object, using the
+:math:`L^1` or :math:`L^2` norm :math:`||\cdot||`:
+    .. math::
+        f_{TransE}=-||\mathbf{e}_{s} + \mathbf{r}_{p} - \mathbf{e}_{o}||
 
-+ :class:`ComplEx` :cite:`trouillon2016complex` extends DistMult with the Hermitian dot product:
++ :class:`~layers.scoring.DistMult` :cite:`yang2014embedding` uses the trilinear dot product:
+    .. math::
+        f_{DistMult}=\langle \mathbf{r}_p, \mathbf{e}_s, \mathbf{e}_o \rangle
 
-.. math::
-    f_{ComplEx}=Re(\langle \mathbf{r}_p, \mathbf{e}_s, \overline{\mathbf{e}_o}  \rangle)
++ :class:`~layers.scoring.ComplEx` :cite:`trouillon2016complex` extends DistMult with the Hermitian dot product:
+    .. math::
+        f_{ComplEx}=Re(\langle \mathbf{r}_p, \mathbf{e}_s, \overline{\mathbf{e}_o}  \rangle)
 
-+ :class:`HolE` :cite:`nickel2016holographic` uses circular correlation (denoted by :math:`\otimes`):
-
-.. math::
-    f_{HolE}=\mathbf{w}_r \cdot (\mathbf{e}_s \otimes \mathbf{e}_o) = \frac{1}{k}\mathcal{F}(\mathbf{w}_r)\cdot( \overline{\mathcal{F}(\mathbf{e}_s)} \odot \mathcal{F}(\mathbf{e}_o))
-
-+ :class:`ConvE` :cite:`DettmersMS018` uses convolutional layers (:math:`g` is a non-linear activation function, :math:`\ast` is the linear convolution operator, :math:`vec` indicates 2D reshaping):
-
-.. math::
-
-    f_{ConvE} =  \langle \sigma \, (vec \, ( g \, ([ \overline{\mathbf{e}_s} ; \overline{\mathbf{r}_p} ] \ast \Omega )) \, \mathbf{W} )) \, \mathbf{e}_o\rangle
-
-
-+ :class:`ConvKB` :cite:`Nguyen2018` uses convolutional layers and a dot product:
-
-.. math::
-
-    f_{ConvKB}= concat \,(g \, ([\mathbf{e}_s, \mathbf{r}_p, \mathbf{e}_o]) * \Omega)) \cdot W
++ :class:`~layers.scoring.HolE` :cite:`nickel2016holographic` uses circular correlation (denoted by :math:`\otimes`):
+    .. math::
+        f_{HolE}=\mathbf{w}_r \cdot (\mathbf{e}_s \otimes \mathbf{e}_o) = \frac{1}{k}\mathcal{F}(\mathbf{w}_r)\cdot( \overline{\mathcal{F}(\mathbf{e}_s)} \odot \mathcal{F}(\mathbf{e}_o))
 
 
 .. _loss:
 
 Loss Functions
---------------
-
+~~~~~~~~~~~~~~
 AmpliGraph includes a number of loss functions commonly used in literature.
-Each function can be used with any of the implemented models. Loss functions are passed to models as hyperparameter,
-and they can be thus used :ref:`during model selection <eval>`.
-
-
+Each function can be used with any of the implemented models. Loss functions are passed to models at the compilation
+stage as the ``loss`` parameter to the :meth:`~models.ScoringBasedEmbeddingModel.compile` method. Below are the loss functions available in AmpliGraph.
 
 .. autosummary::
-    :toctree: generated
+    :toctree:
     :template: class.rst
 
     PairwiseLoss
@@ -117,91 +143,144 @@ and they can be thus used :ref:`during model selection <eval>`.
     SelfAdversarialLoss
     NLLLoss
     NLLMulticlass
-    BCELoss
-    
+
 .. _ref-reg:
 
 Regularizers
---------------
+~~~~~~~~~~~~
 
 AmpliGraph includes a number of regularizers that can be used with the :ref:`loss function <loss>`.
-:class:`LPRegularizer` supports L1, L2, and L3.
+Regularizers can be passed to the ``entity_relation_regularizer`` parameter of :meth:`~models.ScoringBasedEmbeddingModel.compile` method.
+
+:meth:`LP_regularizer` supports :math:`L^1, L^2` and :math:`L^3` regularization.
+Ampligraph also supports the `regularizers <https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/>`_
+available in TensorFlow.
 
 .. autosummary::
-    :toctree: generated
+    :toctree:
     :template: class.rst
 
-    LPRegularizer
+    LP_regularizer
 
 
 .. _ref-init:
 
 Initializers
---------------
+~~~~~~~~~~~~
 
-AmpliGraph includes a number of initializers that can be used to initialize the embeddings. They can be passed as hyperparameter,
-and they can be thus used :ref:`during model selection <eval>`.
-
-.. autosummary::
-    :toctree: generated
-    :template: class.rst
-
-    RandomNormal
-    RandomUniform
-    Xavier
-    Constant
-
+To initialize embeddings, AmpliGraph supports all the `initializers <https://www.tensorflow.org/api_docs/python/tf/keras/initializers/>`_
+available in TensorFlow.
+Initializers can be passed to the ``entity_relation_initializer`` parameter of :meth:`~models.ScoringBasedEmbeddingModel.compile` method.
 
 .. _optimizer:
 
 Optimizers
-----------
+~~~~~~~~~~
 
 The goal of the optimization procedure is learning optimal embeddings, such that the scoring function is able to
 assign high scores to positive statements and low scores to statements unlikely to be true.
 
-We support SGD-based optimizers provided by TensorFlow, by setting the ``optimizer`` argument in a model initializer.
-Best results are currently obtained with Adam.
+We support `optimizers <https://www.tensorflow.org/api_docs/python/tf/keras/optimizers>`_ available in TensorFlow.
+They can be specified as the ``optimizer`` argument of the :meth:`~ScoringBasedEmbeddingModel.compile` method.
+
+.. _ref_training:
+
+Training
+^^^^^^^^
+
+The training procedure follows that of Keras models:
+
++   The model is initialised as an instance of the :class:`ScoringBasedEmbeddingModel` class. During its initialisation,
+    we can specify, among the other hyper-parameters of the model: the size of the embedding (argument ``k``); the scoring
+    function applied by the model (argument ``scoring_type``); the number of synthetic negatives generated for each triple
+    in the training set (argument ``eta``).
+
++   The model needs to be compiled through the :meth:`~ScoringBasedEmbeddingModel.compile` method. At this stage we define, among the others,
+    the optimizer and the objective functions. These are passed as arguments to the aforementioned method.
+
++   The model is fitted to the training data using the :meth:`~.ScoringBasedEmbeddingModel.fit` method. Next to the usual parameters that can be
+    specified at this stage, AmpliGraph allows to also specify:
+
+        * A ``validation_filter`` that contains the true positives to be removed from the synthetically corrupted \
+          triples used during validation.
+        * A ``focusE`` option, which enables the FocusE layer :cite:`pai2021learning`: this allows to handle datasets with
+          a numeric value associated to the edges, which can signify importance, uncertainty, significance, confidence...
+        * A ``partitioning_k`` argument that specifies whether the data needs to be partitioned in order to make training
+          with datasets not fitting in memory more efficient.
+
+    For more details and options, check the :meth:`~ScoringBasedEmbeddingModel.fit` method.
+
+Calibration
+^^^^^^^^^^^
+
+Another important feature implemented in AmpliGraph is calibration :cite:`calibration`.
+Such a method leverages a heuristics that significantly enhance the performance of the models. Further, it bounds the
+score of the model in the range :math:`[0,1]`, making the score of the prediction more meaningful and interpretable.
 
 .. autosummary::
-    :toctree: generated
+    :toctree:
     :template: class.rst
 
-    AdamOptimizer
-    AdagradOptimizer
-    SGDOptimizer
-    MomentumOptimizer
+    ~ampligraph.latent_features.layers.calibration.CalibrationLayer
 
-Support for Numeric Literals on Edges
--------------------------------------
-.. _edge-literals:
 
-Numeric values associated to edges of a knowledge graph have been used to represent uncertainty, edge importance,
-and even out-of-band knowledge in a growing number of scenarios, ranging from genetic data to social networks.
+.. _ref_focusE:
 
-Nevertheless, traditional knowledge graph embedding models (TransE, DistMult, ComplEx) are not
-designed to capture such information, to the detriment of predictive power.
+Numeric Values on Edges
+^^^^^^^^^^^^^^^^^^^^^^^
 
-AmpliGraph includes FocusE :cite:`pai2021learning`, a novel method to inject numeric edge attributes into
-the scoring layer of a traditional knowledge graph embedding architecture.
+Numeric values associated to edges of a knowledge graph have been used to represent uncertainty, edge importance, and
+even out-of-band knowledge in a growing number of scenarios, ranging from genetic data to social networks.
+Nevertheless, traditional KGE models (TransE, DistMult, ComplEx, HolE) are not designed to capture such
+information, to the detriment of predictive power.
 
-To process knowledge graphs with numeric-enriched edges, refer to the documentation and examples below:
+AmpliGraph includes FocusE :cite:`pai2021learning`, a method to inject numeric edge attributes into the scoring
+layer of a traditional KGE architecture, thus accounting for the precious information embedded in the edge weights.
+In order to add the FocusE layer, set ``focusE=True`` and specify the hyperparameters dictionary ``focusE_params`` in
+the :meth:`~ScoringBasedEmbeddingModel.fit()` method.
 
-+ :ref:`FocusE-TransE <focuse_transe>`
-+ :ref:`FocusE-DistMult <focuse_distmult>`
-+ :ref:`FocusE-ComplEx <focuse_complex>`
-
-You can load publicly available benchmark knowledge graphs with numeric-enriched edges
-:ref:`with the dataset loaders <numeric-enriched-edges-loaders>`.
-
-.. Note ::
-
-    `Experiments for the IJCAI-21 FocusE paper are available here
-    <https://github.com/Accenture/AmpliGraph/tree/paper/IJCAI-21/experiments/IJCAI-21>`_ :cite:`pai2021learning`.
+It is possible to load some benchmark knowledge graphs with numeric-enriched edges through Ampligraph
+`dataset loaders <ampligraph.datasets.html#_numeric-enriched-edges-loaders>`__.
 
 Saving/Restoring Models
------------------------
+^^^^^^^^^^^^^^^^^^^^^^^
 
-Models can be saved and restored from disk. This is useful to avoid re-training a model.
+The weights of a trained model can be saved and restored from disk. This is useful to avoid re-training a model.
+In order to save and restore the weights of a model, we can use the :meth:`~ScoringBasedEmbeddingModel.save_weights`
+and :meth:`~ScoringBasedEmbeddingModel.load_weights` methods. When the model is saved and loaded with these methods,
+however, it is not possible to restart the training from where it stopped. AmpliGraph gives the possibility of doing
+that saving and loading the model with the functionalities available in the :mod:`.utils` module.
 
-More details in the :mod:`.utils` module.
+Compatibility Ampligraph 1.x
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. currentmodule:: ampligraph.compat
+.. automodule:: ampligraph.compat
+
+For those familiar with versions of AmpliGraph 1.x, we have created backward compatible APIs under the
+:mod:`ampligraph.compat` module.
+
+These APIs act as wrappers around the newer Keras style APIs and provide seamless experience for our existing user base.
+
+The first group of APIs defines the classes that wraps around the ScoringBasedEmbeddingModel with a specific scoring function.
+
+.. autosummary::
+    :toctree:
+    :template: class.rst
+
+    TransE
+    ComplEx
+    DistMult
+    HolE
+
+When it comes to evaluation, on the other hand, the following API wraps around the new evaluation process of Ampligraph 2.
+
+.. autosummary::
+    :toctree:
+    :template: function.rst
+
+    evaluate_performance
+
+
+
+

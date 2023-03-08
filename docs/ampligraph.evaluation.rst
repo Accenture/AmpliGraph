@@ -4,63 +4,50 @@ Evaluation
 
 .. automodule:: ampligraph.evaluation
 
-Metrics
--------
+After the training is complete, the model is ready to perform predictions and to be evaluated on unseen data. Given a
+triple, the model can score it and quantify its plausibility. Importantly, the entities and relations of new triples
+must have been seen during training, otherwise no embedding for them is available. Future extensions of the code base
+will introduce inductive methods as well.
 
-Learning-to-rank metrics to evaluate the performance of neural graph embedding models.
+The standard evaluation of a test triples is achieved by comparing the score assigned by the model to that triple with
+those assigned to the same triple where we corrupted either the object or the subject. From this comparison we
+extract some metrics. By aggregating the metrics obtained for all triples in the test set, we finally obtain a "thorough"
+(depending on the quality of the test set and of the corruptions) evaluation of the model.
+
+Metrics
+^^^^^^^
+
+The available metrics implemented in AmpliGraph to rank a triple against its corruptions are listed in the table below.
 
 .. autosummary::
-    :toctree: generated
+    :toctree:
     :template: function.rst
 
     rank_score
-    mrr_score
     mr_score
+    mrr_score
     hits_at_n_score
 
+Model Selection
+^^^^^^^^^^^^^^^
 
-.. _negatives:
-
-Negatives Generation
---------------------
-
-Negatives generation routines. These are corruption strategies based on the Local Closed-World Assumption (LCWA).
+AmpliGraph implements a model selection routine for KGE models via either a grid search or a random search.
+Random search is typically more efficient, but grid search, on the other hand, can provide a more controlled selection framework.
 
 .. autosummary::
-    :toctree: generated
+    :toctree:
     :template: function.rst
 
-    generate_corruptions_for_eval
-    generate_corruptions_for_fit
-
-
-.. _eval:
-
-Evaluation & Model Selection
------------------------------
-
-Functions to evaluate the predictive power of knowledge graph embedding models, and routines for model selection.
-
-.. autosummary::
-    :toctree: generated
-    :template: function.rst
-
-    evaluate_performance
     select_best_model_ranking
 
-
 Helper Functions
-----------------
+^^^^^^^^^^^^^^^^
 
 Utilities and support functions for evaluation procedures.
 
 .. autosummary::
-    :toctree: generated
+    :toctree:
     :template: function.rst
 
     train_test_split_no_unseen
-    create_mappings
-    to_idx
-
-    
-
+    filter_unseen_entities

@@ -1,16 +1,17 @@
-# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2023 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
+
 import numpy as np
 import pytest
 from sklearn.cluster import DBSCAN
 from ampligraph.discovery.discovery import discover_facts, generate_candidates, _setdiff2d, find_clusters, \
-    find_duplicates, query_topn, find_nearest_neighbours
-from ampligraph.latent_features import ComplEx, DistMult
+    find_duplicates, query_topn
+from ampligraph.latent_features import ScoringBasedEmbeddingModel
 
 def test_discover_facts():
 
@@ -22,36 +23,29 @@ def test_discover_facts():
                   ['c', 'y', 'd'],
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
-    model = ComplEx(batches_count=1, seed=555, epochs=2, k=5)
+    model = ScoringBasedEmbeddingModel(eta=5, 
+                                 k=10,
+                                 scoring_type='ComplEx')
+    
+    model.compile(optimizer='adam', loss='multiclass_nll')
 
     with pytest.raises(ValueError):
         discover_facts(X, model)
 
-    model.fit(X)
+    model.fit(X, epochs=10, batch_size=3)
 
     with pytest.raises(ValueError):
         discover_facts(X, model, strategy='error')
 
     with pytest.raises(ValueError):
         discover_facts(X, model, strategy='random_uniform', target_rel='error')
-
-
+        
 def test_generate_candidates():
 
     X = np.stack([['entity_{}'.format(np.mod(x, 15)) for x in range(50)],
                   ['rel_{}'.format(np.mod(x, 5)) for x in range(50)],
                   ['entity_{}'.format(np.mod(x, 20)) for x in range(50)]], axis=1)
-
-    # Not sure this should be an error
-    # with pytest.raises(ValueError):
-    #     generate_candidates(X, strategy='error', target_rel='y',
-    #                         max_candidates=4)
-
-
-    # with pytest.raises(ValueError):
-    #     generate_candidates(X, strategy='random_uniform', target_rel='y',
-    #  max_candidates=0)
-
+    
     # Test
     X_candidates = generate_candidates(X, strategy='random_uniform', target_rel='rel_0',
                                        max_candidates=15, consolidate_sides=False, seed=1916)
@@ -142,8 +136,7 @@ def test_setdiff2d():
         X = np.array([1, 2, 3, 4, 5, 6])
         Y = np.array([1, 2, 3, 7, 8, 9])
         _setdiff2d(X, Y)
-
-
+        
 def test_find_clusters():
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -153,32 +146,37 @@ def test_find_clusters():
                   ['c', 'x', 'd'],
                   ['b', 'y', 'c'],
                   ['f', 'y', 'e']])
-    model = ComplEx(k=2, batches_count=2)
-    model.fit(X)
+    model = ScoringBasedEmbeddingModel(eta=5, 
+                                 k=10,
+                                 scoring_type='ComplEx')
+    
+    model.compile(optimizer='adam', loss='multiclass_nll')
+
+    model.fit(X, batch_size=1, epochs=10)
+    
     clustering_algorithm = DBSCAN(eps=1e-3, min_samples=1)
 
-    labels = find_clusters(X, model, clustering_algorithm, mode='triple')
+    labels = find_clusters(X, model, clustering_algorithm, mode='t')
     assert np.array_equal(labels, np.array([0, 1, 2, 3, 4, 5, 6, 7]))
 
-    labels = find_clusters(np.unique(X[:, 0]), model, clustering_algorithm, mode='entity')
+    labels = find_clusters(np.unique(X[:, 0]), model, clustering_algorithm, mode='e')
     assert np.array_equal(labels, np.array([0, 1, 2, 3]))
 
-    labels = find_clusters(np.unique(X[:, 1]), model, clustering_algorithm, mode='relation')
+    labels = find_clusters(np.unique(X[:, 1]), model, clustering_algorithm, mode='r')
     assert np.array_equal(labels, np.array([0, 1]))
 
-    labels = find_clusters(np.unique(X[:, 2]), model, clustering_algorithm, mode='entity')
+    labels = find_clusters(np.unique(X[:, 2]), model, clustering_algorithm, mode='e')
     assert np.array_equal(labels, np.array([0, 1, 2, 3, 4]))
 
     with pytest.raises(ValueError):
         find_clusters(X, model, clustering_algorithm, mode='hah')
     with pytest.raises(ValueError):
-        find_clusters(X, model, clustering_algorithm, mode='entity')
+        find_clusters(X, model, clustering_algorithm, mode='e')
     with pytest.raises(ValueError):
-        find_clusters(X, model, clustering_algorithm, mode='relation')
+        find_clusters(X, model, clustering_algorithm, mode='r')
     with pytest.raises(ValueError):
-        find_clusters(np.unique(X[:, 0]), model, clustering_algorithm, mode='triple')
-
-
+        find_clusters(np.unique(X[:, 0]), model, clustering_algorithm, mode='t')
+        
 def test_find_duplicates():
     X = np.array([['a', 'y', 'b'],
                   ['b', 'y', 'a'],
@@ -187,12 +185,19 @@ def test_find_duplicates():
                   ['a', 'y', 'd'],
                   ['c', 'x', 'd'],
                   ['b', 'y', 'c'],
-                  ['f', 'y', 'e']])
-    model = ComplEx(k=2, batches_count=2)
-    model.fit(X)
+                  ['f', 'y', 'e'],
+                  ['a', 'z', 'e']])
+    model = ScoringBasedEmbeddingModel(eta=5,
+                                       k=10,
+                                       scoring_type='ComplEx',
+                                       seed=0)
+    
+    model.compile(optimizer='adam', loss='multiclass_nll')
+
+    model.fit(X, batch_size=2, epochs=10)
 
     entities = set('a b c d e f'.split())
-    relations = set('x y'.split())
+    relations = set('x y z'.split())
 
     def asserts(tol, dups, ent_rel, subspace):
         assert tol > 0.0
@@ -200,30 +205,34 @@ def test_find_duplicates():
         assert all(len(d) <= len(ent_rel) for d in dups)
         assert all(d.issubset(subspace) for d in dups)
 
-    dups, tol = find_duplicates(X, model, mode='triple', tolerance='auto', expected_fraction_duplicates=0.5)
+    dups, tol = find_duplicates(X, model, mode='t', tolerance='auto',
+                                expected_fraction_duplicates=0.5, verbose=True)
     asserts(tol, dups, X, {tuple(x) for x in X})
 
-    dups, tol = find_duplicates(X, model, mode='triple', tolerance=1.0)
+    dups, tol = find_duplicates(X, model, mode='t', tolerance=1.0, verbose=True)
     assert tol == 1.0
     asserts(tol, dups, X, {tuple(x) for x in X})
 
-    dups, tol = find_duplicates(np.unique(X[:, 0]), model, mode='entity', tolerance='auto', expected_fraction_duplicates=0.5)
+    dups, tol = find_duplicates(np.unique(X[:, 0]), model, mode='e', tolerance='auto',
+                                expected_fraction_duplicates=0.5, verbose=True)
     asserts(tol, dups, entities, entities)
 
-    dups, tol = find_duplicates(np.unique(X[:, 2]), model, mode='entity', tolerance='auto', expected_fraction_duplicates=0.5)
+    dups, tol = find_duplicates(np.unique(X[:, 2]), model, mode='e', tolerance='auto',
+                                expected_fraction_duplicates=0.5, verbose=True)
     asserts(tol, dups, entities, entities)
 
-    dups, tol = find_duplicates(np.unique(X[:, 1]), model, mode='relation', tolerance='auto', expected_fraction_duplicates=0.5)
+    dups, tol = find_duplicates(np.unique(X[:, 1]), model, mode='r', tolerance='auto',
+                                expected_fraction_duplicates=0.5, verbose=True)
     asserts(tol, dups, relations, relations)
 
     with pytest.raises(ValueError):
-        find_duplicates(X, model, mode='hah')
+        find_duplicates(X, model, mode='hah', verbose=True)
     with pytest.raises(ValueError):
-        find_duplicates(X, model, mode='entity')
+        find_duplicates(X, model, mode='e', verbose=True)
     with pytest.raises(ValueError):
-        find_duplicates(X, model, mode='relation')
+        find_duplicates(X, model, mode='r', verbose=True)
     with pytest.raises(ValueError):
-        find_duplicates(np.unique(X[:, 0]), model, mode='triple')
+        find_duplicates(np.unique(X[:, 0]), model, mode='t', verbose=True)
 
 
 def test_query_topn():
@@ -241,12 +250,16 @@ def test_query_topn():
                   ['b', 'z', 'f'],
                   ])
 
-    model = ComplEx(k=2, batches_count=2)
+    model = ScoringBasedEmbeddingModel(eta=5, 
+                                 k=10,
+                                 scoring_type='ComplEx')
+    
+    model.compile(optimizer='adam', loss='multiclass_nll')
+
+    model.fit(X, batch_size=2, epochs=10)
 
     with pytest.raises(ValueError): # Model not fitted
         query_topn(model, top_n=2)
-
-    model.fit(X)
 
     with pytest.raises(ValueError):
         query_topn(model, top_n=2)
@@ -292,55 +305,8 @@ def test_query_topn():
     assert np.all([x in ents_to_con for x in Y[:, 0]])
 
     rels_to_con = ['y', 'x']
-    Y, S = query_topn(model, top_n=10, head=subj, tail=obj, rels_to_consider=rels_to_con)
+    Y, S = query_topn(model, top_n=100, head=subj, tail=obj, rels_to_consider=rels_to_con)
     assert np.all([x in rels_to_con for x in Y[:, 1]])
 
-    Y, S = query_topn(model, top_n=10, relation=pred, tail=obj)
+    Y, S = query_topn(model, top_n=100, relation=pred, tail=obj)
     assert all(S[i] >= S[i + 1] for i in range(len(S) - 1))
-
-
-def test_find_neighbors():
-    model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
-                     loss='pairwise', loss_params={'margin': 5},
-                     optimizer='adagrad', optimizer_params={'lr': 0.1})
-    X = np.array([['a', 'y', 'b'],
-                  ['b', 'y', 'a'],
-                  ['e', 'y', 'c'],
-                  ['c', 'z', 'a'],
-                  ['a', 'z', 'd'],
-                  ['f', 'z', 'g'],
-                  ['c', 'z', 'g']])
-    with pytest.raises(AssertionError) as e:
-        neighbors, dist = find_nearest_neighbours(model, 
-                                              entities=['b'], 
-                                              n_neighbors=3, 
-                                              entities_subset=['a', 'c', 'd', 'e', 'f'])
-        
-    assert str(e.value) == "KGE model is not fit!"
-    model.fit(X)
-    neighbors, dist = find_nearest_neighbours(model, 
-                                              entities=['b'], 
-                                              n_neighbors=3, 
-                                              entities_subset=['a', 'c', 'd', 'e', 'f'])
-    assert np.all(neighbors == [['e', 'd', 'c']])
-    
-    with pytest.raises(AssertionError) as e:
-        neighbors, dist = find_nearest_neighbours(model, 
-                                                  entities=['b'], 
-                                                  n_neighbors=30, 
-                                                  entities_subset=['a', 'c', 'd', 'e', 'f'])
-    assert str(e.value) == "n_neighbors must be less than the number of entities being fit!"
-    
-    with pytest.raises(AssertionError) as e:
-        neighbors, dist = find_nearest_neighbours(model, 
-                                                  entities=['b'], 
-                                                  n_neighbors=3, 
-                                                  entities_subset='a')
-    assert str(e.value) == "Invalid type for entities_subset! Must be a list or np.array"
-    
-    with pytest.raises(AssertionError) as e:
-        neighbors, dist = find_nearest_neighbours(model, 
-                                                  entities='b', 
-                                                  n_neighbors=3, 
-                                                  entities_subset=['a', 'c', 'd', 'e', 'f'])
-    assert str(e.value) == "Invalid type for entities! Must be a list or np.array"

@@ -4,6 +4,9 @@
 
 [![Documentation Status](https://readthedocs.org/projects/ampligraph/badge/?version=latest)](http://ampligraph.readthedocs.io/?badge=latest)
 
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/Accenture/AmpliGraph/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/Accenture/AmpliGraph/tree/main)
+
+
 [Join the conversation on Slack](https://join.slack.com/t/ampligraph/shared_invite/enQtNTc2NTI0MzUxMTM5LTRkODk0MjI2OWRlZjdjYmExY2Q3M2M3NGY0MGYyMmI4NWYyMWVhYTRjZDhkZjA1YTEyMzBkMGE4N2RmNTRiZDg)
 ![](docs/img/slack_logo.png)
 
@@ -30,66 +33,68 @@ It then combines embeddings with model-specific scoring functions to predict uns
 ![](docs/img/kg_lp_step2.png)
 
 
+## AmpliGraph 2.0.0 is now available!
+The new version features TensorFlow 2 back-end and Keras style APIs that makes it faster, easier to use and 
+extend the support for multiple features. Further, the data input/output pipeline has changed, and the support for 
+some obsolete models was discontinued.<br /> See the Changelog for a more thorough list of changes.
+
+
 ## Key Features
 
-
-* **Intuitive APIs**: AmpliGraph APIs are designed to reduce the code amount required to learn models that predict links in knowledge graphs.
-* **GPU-Ready**: AmpliGraph is based on TensorFlow, and it is designed to run seamlessly on CPU and GPU devices - to speed-up training.
+* **Intuitive APIs**: AmpliGraph APIs are designed to reduce the code amount required to learn models that predict links in knowledge graphs. The new version AmpliGraph 2 APIs are in Keras style, making the user experience even smoother.
+* **GPU-Ready**: AmpliGraph 2 is based on TensorFlow 2, and it is designed to run seamlessly on CPU and GPU devices - to speed-up training.
 * **Extensible**: Roll your own knowledge graph embeddings model by extending AmpliGraph base estimators.
-
 
 ## Modules
 
 AmpliGraph includes the following submodules:
 
 * **Datasets**: helper functions to load datasets (knowledge graphs).
-* **Models**: knowledge graph embedding models. AmpliGraph contains **TransE**, **DistMult**, **ComplEx**, **HolE**, **ConvE**, **ConvKB**. (More to come!)
+* **Models**: knowledge graph embedding models. AmpliGraph 2 contains **TransE**, **DistMult**, **ComplEx**, **HolE** (More to come!)
 * **Evaluation**: metrics and evaluation protocols to assess the predictive power of the models.
 * **Discovery**: High-level convenience APIs for knowledge discovery (discover new facts, cluster entities, predict near duplicates).
-
+* **Compat**: submodule that extends the compatibility of AmpliGraph 2 APIs to those of AmpliGraph 1.x for the user already familiar with them.
 
 ## Installation
 
 ### Prerequisites
 
 * Linux, macOS, Windows
-* Python 3.7
+* Python ≥ 3.8
 
 #### Provision a Virtual Environment
 
 Create and activate a virtual environment (conda)
 
 ```
-conda create --name ampligraph python=3.7
+conda create --name ampligraph python=3.8
 source activate ampligraph
 ```
 
 #### Install TensorFlow
 
-AmpliGraph is built on TensorFlow 1.x.
+AmpliGraph 2 is built on TensorFlow 2.x.
 Install from pip or conda:
 
 **CPU-only**
 
 ```
-pip install "tensorflow>=1.15.2,<2.0"
+pip install "tensorflow>=2.9"
 
-or
+or 
 
-conda install tensorflow'>=1.15.2,<2.0.0'
+conda install tensorflow'>=2.9'
 ```
 
-**GPU support**
+**Install TensorFlow 2 for Mac OS M1 chip**
 
 ```
-pip install "tensorflow-gpu>=1.15.2,<2.0"
-
-or
-
-conda install tensorflow-gpu'>=1.15.2,<2.0.0'
+conda install -c apple tensorflow-deps
+pip install --user tensorflow-macos==2.10
+pip install --user tensorflow-metal==0.6
 ```
 
-
+In case of problems with installation refer to [Tensorflow Plugin page on Apple developer site](https://developer.apple.com/metal/tensorflow-plugin/).
 
 ### Install AmpliGraph
 
@@ -114,9 +119,9 @@ pip install -e .
 ### Sanity Check
 
 ```python
->> import ampligraph
->> ampligraph.__version__
-'1.4.0'
+>>> import ampligraph
+>>> ampligraph.__version__
+'2.0.0'
 ```
 
 
@@ -126,16 +131,20 @@ AmpliGraph includes implementations of TransE, DistMult, ComplEx, HolE, ConvE, a
 Their predictive power is reported below and compared against the state-of-the-art results in literature.
 [More details available here](https://docs.ampligraph.org/en/latest/experiments.html).
 
-|                              |FB15K-237 |WN18RR   |YAGO3-10   | FB15k      |WN18           |
-|------------------------------|----------|---------|-----------|------------|---------------|
-| Literature Best              | **0.35***| 0.48*   | 0.49*     | **0.84**** | **0.95***     |
-| TransE (AmpliGraph)          |  0.31    | 0.22    | **0.51**  | 0.63       | 0.66          |
-| DistMult (AmpliGraph)        |  0.31    | 0.47    | 0.50      | 0.78       | 0.82          |
-| ComplEx  (AmpliGraph)        |  0.32    | **0.51**| 0.49      | 0.80       | 0.94          |
-| HolE (AmpliGraph)            |  0.31    | 0.47    | 0.50      | 0.80       | 0.94          |
-| ConvE (AmpliGraph)           |  0.26    | 0.45    | 0.30      | 0.50       | 0.93          |
-| ConvE (1-N, AmpliGraph)      |  0.32    | 0.48    | 0.40      | 0.80       | **0.95**      |
-| ConvKB (AmpliGraph)          |  0.23    | 0.39    | 0.30      | 0.65       | 0.80          |
+|                           | FB15K-237 | WN18RR   | YAGO3-10 | FB15k      | WN18      |
+|---------------------------|-----------|----------|----------|------------|-----------|
+| Literature Best           | **0.35*** | 0.48*    | 0.49*    | **0.84**** | **0.95*** |
+| TransE (AmpliGraph 2)     | 0.31      | 0.22     | 0.50     | 0.62       | 0.64      |
+| DistMult (AmpliGraph 2)   | 0.30      | 0.47     | 0.48     | 0.71       | 0.82      |
+| ComplEx  (AmpliGraph 2)   | 0.31      | 0.50     | 0.49     | 0.73       | 0.94      |
+| HolE (AmpliGraph 2)       | 0.30      | 0.47     | 0.47     | 0.73       | 0.94      |
+| TransE (AmpliGraph 1)     | 0.31      | 0.22     | **0.51** | 0.63       | 0.66      |
+| DistMult (AmpliGraph 1)   | 0.31      | 0.47     | 0.50     | 0.78       | 0.82      |
+| ComplEx  (AmpliGraph 1)   | 0.32      | **0.51** | 0.49     | 0.80       | 0.94      |
+| HolE (AmpliGraph 1)       | 0.31      | 0.47     | 0.50     | 0.80       | 0.94      |
+| ConvE (AmpliGraph 1)      | 0.26      | 0.45     | 0.30     | 0.50       | 0.93      |
+| ConvE (1-N, AmpliGraph 1) | 0.32      | 0.48     | 0.40     | 0.80       | **0.95**  |
+| ConvKB (AmpliGraph 1)     | 0.23      | 0.39     | 0.30     | 0.65       | 0.80      |
 
 <sub>
 * Timothee Lacroix, Nicolas Usunier, and Guillaume Obozinski. Canonical tensor decomposition for knowledge base 
@@ -179,6 +188,8 @@ If you instead use AmpliGraph in an academic publication, cite as:
 ```
 @misc{ampligraph,
  author= {Luca Costabello and
+          Alberto Bernardi and
+          Adrianna Janik and
           Sumit Pai and
           Chan Le Van and
           Rory McGrath and

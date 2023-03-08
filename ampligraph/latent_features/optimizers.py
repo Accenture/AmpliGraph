@@ -1,451 +1,202 @@
-# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2023 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-import tensorflow as tf
 import abc
 import logging
 
-import math
+import six
+import tensorflow as tf
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-OPTIMIZER_REGISTRY = {}
+
+class OptimizerWrapper(abc.ABC):
+    """Wrapper around tensorflow optimizer."""
+
+    def __init__(self, optimizer=None):
+        """Initialize the tensorflow Optimizer and wraps it so that it can be used with graph partitioning.
+
+        Parameters
+        ----------
+        optimizer: str (name of optimizer) or optimizer instance.
+            See `tf.keras.optimizers <https://www.tensorflow.org/api_docs/python/tf/keras/optimizers>`.
+        """
+        self.optimizer = optimizer
+        self.num_optimized_vars = 0
+        # number of optimizer hpyerparams - adam has 2 if amsgrad is false
+        self.number_hyperparams = 1
+        self.is_partitioned_training = False
+
+        # workaround for Adagrad/Adadelta/Ftrl optimizers to work on gpu
+        self.gpu_workaround = False
+        if (
+            isinstance(self.optimizer, tf.keras.optimizers.Adadelta)
+            or isinstance(self.optimizer, tf.keras.optimizers.Adagrad)
+            or isinstance(self.optimizer, tf.keras.optimizers.Ftrl)
+        ):
+            self.gpu_workaround = True
+
+        if isinstance(self.optimizer, tf.keras.optimizers.Adam):
+            self.number_hyperparams = 2
+
+    def apply_gradients(self, grads_and_vars):
+        """Wrapper around apply_gradients.
+
+        See `tf.keras.optimizers <https://www.tensorflow.org/api_docs/python/tf/keras/optimizers>` for more details.
+        """
+        self.optimizer.apply_gradients(grads_and_vars)
+
+    def set_partitioned_training(self, value=True):
+        self.is_partitioned_training = value
+
+    def minimize(self, loss, ent_emb, rel_emb, gradient_tape, other_vars=[]):
+        """Minimizes the loss with respect to entity and relation embeddings and other trainable variables.
+
+        Parameters
+        ----------
+        loss: tf.Tensor
+            Model Loss.
+        ent_emb: tf.Variable
+            Entity embedding.
+        rel_emb: tf.Variable
+            Relation embedding.
+        gradient tape: tf.GradientTape
+            Gradient tape under which the loss computation was tracked.
+        other_vars: list
+            List of all the other trainable variables.
+        """
+        all_trainable_vars = [ent_emb, rel_emb]
+        all_trainable_vars.extend(other_vars)
+        # Total number of trainable variables in the graph
+        self.num_optimized_vars = len(all_trainable_vars)
+
+        if self.gpu_workaround:
+            # workaround - see the issue:
+            # https://github.com/tensorflow/tensorflow/issues/28090
+            with gradient_tape:
+                loss += 0.0000 * (
+                    tf.reduce_sum(ent_emb) + tf.reduce_sum(rel_emb)
+                )
+
+        # Compute gradient of loss wrt trainable vars
+        gradients = gradient_tape.gradient(loss, all_trainable_vars)
+        # update the trainable params
+        self.optimizer.apply_gradients(zip(gradients, all_trainable_vars))
+
+        # Compute the number of hyperparameters related to the optimizer
+        # if self.is_partitioned_training and self.number_hyperparams == -1:
+        #    optim_weights = self.optimizer.get_weights()
+        #    self.number_hyperparams = 0
+        #    for i in range(1, len(optim_weights), self.num_optimized_vars):
+        #        self.number_hyperparams += 1
+
+    def get_hyperparam_count(self):
+        """Number of hyperparams of the optimizer being used.
+
+        E.g., `adam` has `beta1` and `beta2`; if we use the `amsgrad` argument then it has also a third.
+        """
+        return self.number_hyperparams
+
+    def get_entity_relation_hyperparams(self):
+        """Get optimizer hyperparams related to entity and relation embeddings (for partitioned training).
+
+        Returns
+        -------
+        ent_hyperparams: np.array
+            Entity embedding related optimizer hyperparameters.
+        rel_hyperparams: np.array
+            Relation embedding related optimizer hyperparameters.
+        """
+        optim_weights = self.optimizer.get_weights()
+        ent_hyperparams = []
+        rel_hyperparams = []
+        for i in range(1, len(optim_weights), self.num_optimized_vars):
+            ent_hyperparams.append(optim_weights[i])
+            rel_hyperparams.append(optim_weights[i + 1])
+
+        return ent_hyperparams, rel_hyperparams
+
+    def set_entity_relation_hyperparams(
+        self, ent_hyperparams, rel_hyperparams
+    ):
+        """Sets optimizer hyperparams related to entity and relation embeddings (for partitioned training).
+
+        Parameters
+        ----------
+        ent_hyperparams: np.array
+            Entity embedding related optimizer hyperparameters.
+        rel_hyperparams: np.array
+            Relation embedding related optimizer hyperparameters.
+        """
+        optim_weights = self.optimizer.get_weights()
+        for i, j in zip(
+            range(1, len(optim_weights), self.num_optimized_vars),
+            range(len(ent_hyperparams)),
+        ):
+            optim_weights[i] = ent_hyperparams[j]
+            optim_weights[i + 1] = rel_hyperparams[j]
+        self.optimizer.set_weights(optim_weights)
+
+    def get_weights(self):
+        """Wrapper around get weights.
+
+        See `tf.keras.optimizers <https://www.tensorflow.org/api_docs/python/tf/keras/optimizers>` for more details.
+        """
+        return self.optimizer.get_weights()
+
+    def set_weights(self, weights):
+        """Wrapper around set weights.
+
+        See `tf.keras.optimizers <https://www.tensorflow.org/api_docs/python/tf/keras/optimizers>` for more details.
+        """
+        self.optimizer.set_weights(weights)
+
+    def get_iterations(self):
+        return self.optimizer.iterations.numpy()
+
+    def get_config(self):
+        return self.optimizer.get_config()
+
+    @classmethod
+    def from_config(cls, config):
+        new_config = {}
+        new_config["class_name"] = config["name"]
+
+        del config["name"]
+        new_config["config"] = config
+        optimizer = tf.keras.optimizers.get(new_config)
+        return optimizer
 
 
-def register_optimizer(name, external_params=[], class_params={}):
-    def insert_in_registry(class_handle):
-        OPTIMIZER_REGISTRY[name] = class_handle
-        class_handle.name = name
-        OPTIMIZER_REGISTRY[name].external_params = external_params
-        OPTIMIZER_REGISTRY[name].class_params = class_params
-        return class_handle
-
-    return insert_in_registry
-
-
-# Default learning rate for the optimizers
-DEFAULT_LR = 0.0005
-
-# Default momentum for the optimizers
-DEFAULT_MOMENTUM = 0.9
-
-DEFAULT_DECAY_CYCLE = 0
-
-DEFAULT_DECAY_CYCLE_MULTIPLE = 1
-
-DEFAULT_LR_DECAY_FACTOR = 2
-
-DEFAULT_END_LR = 1e-8
-
-DEFAULT_SINE = False
-
-
-class Optimizer(abc.ABC):
-    """Abstract class for optimizer .
+def get(identifier):
     """
+    Get the optimizer specified by the identifier.
 
-    name = ""
-    external_params = []
-    class_params = {}
+    Parameters
+    ----------
+    identifier: str or tf.optimizers.Optimizer instance
+        Name of the optimizer to use (with default parameters) or instance of the class `tf.optimizers.Optimizer`.
 
-    def __init__(self, optimizer_params, batches_count, verbose):
-        """Initialize the Optimizer
+    Returns
+    -------
+    optimizer: OptimizerWrapper
+        Instance of `tf.optimizers.Optimizer` wrapped around by `OptimizerWrapper` so that graph partitioning
+        is supported.
 
-        Parameters
-        ----------
-        optimizer_params : dict
-            Consists of key-value pairs. The initializer will check the keys to get the corresponding params.
-        batches_count: int
-            number of batches in an epoch
-        verbose : bool
-            Enable/disable verbose mode
-        """
-
-        self.verbose = verbose
-        self._optimizer_params = {}
-        self._init_hyperparams(optimizer_params)
-        self.batches_count = batches_count
-
-    def _display_params(self):
-        """Display the parameter values
-        """
-        logger.info('\n------ Optimizer -----')
-        logger.info('Name : {}'.format(self.name))
-        for key, value in self._optimizer_params.items():
-            logger.info('{} : {}'.format(key, value))
-
-    def _init_hyperparams(self, hyperparam_dict):
-        """ Initializes the hyperparameters needed by the algorithm.
-
-        Parameters
-        ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The optimizer will check the keys to get the corresponding params
-        """
-
-        self._optimizer_params['lr'] = hyperparam_dict.get('lr', DEFAULT_LR)
-        if self.verbose:
-            self._display_params()
-
-    def minimize(self, loss):
-        """Create an optimizer to minimize the model loss
-
-        Parameters
-        ----------
-        loss: tf.Tensor
-            Node which needs to be evaluated for computing the model loss.
-
-        Returns
-        -------
-        train: tf.Operation
-            Node that needs to be evaluated for minimizing the loss during training
-        """
-        raise NotImplementedError('Abstract Method not implemented!')
-
-    def update_feed_dict(self, feed_dict, batch_num, epoch_num):
-        """Fills values of placeholders created by the optimizers.
-
-        Parameters
-        ----------
-        feed_dict : dict
-            Dictionary that would be passed while optimizing the model loss to sess.run.
-        batch_num: int
-            current batch number
-        epoch_num: int
-            current epoch number
-        """
-        raise NotImplementedError('Abstract Method not implemented!')
-
-
-@register_optimizer("adagrad", ['lr'])
-class AdagradOptimizer(Optimizer):
-    """Wrapper around adagrad optimizer
     """
-
-    def __init__(self, optimizer_params, batches_count, verbose=False):
-        """Initialize the Optimizer
-
-        Parameters
-        ----------
-        optimizer_params : dict
-            Consists of key-value pairs. The optimizer will check the keys to get the corresponding params:
-
-            - **'lr'**: (float). Learning Rate (default: 0.0005)
-
-            Example: ``optimizer_params={'lr': 0.001}``
-        batches_count: int
-            number of batches in an epoch
-        verbose : bool
-            Enable/disable verbose mode
-        """
-
-        super(AdagradOptimizer, self).__init__(optimizer_params, batches_count, verbose)
-
-    def minimize(self, loss):
-        """Create an optimizer to minimize the model loss
-
-        Parameters
-        ----------
-        loss: tf.Tensor
-            Node which needs to be evaluated for computing the model loss.
-
-        Returns
-        -------
-        train: tf.Operation
-            Node that needs to be evaluated for minimizing the loss during training
-        """
-        self.optimizer = tf.train.AdagradOptimizer(learning_rate=self._optimizer_params['lr'])
-        train = self.optimizer.minimize(loss)
-        return train
-
-    def update_feed_dict(self, feed_dict, batch_num, epoch_num):
-        """Fills values of placeholders created by the optimizers.
-
-        Parameters
-        ----------
-        feed_dict : dict
-            Dictionary that would be passed while optimizing the model loss to sess.run.
-        batch_num: int
-            current batch number
-        epoch_num: int
-            current epoch number
-        """
-        return
-
-
-@register_optimizer("adam", ['lr'])
-class AdamOptimizer(Optimizer):
-    """Wrapper around Adam Optimizer
-    """
-
-    def __init__(self, optimizer_params, batches_count, verbose=False):
-        """Initialize the Optimizer
-
-        Parameters
-        ----------
-        optimizer_params : dict
-            Consists of key-value pairs. The optimizer will check the keys to get the corresponding params:
-
-            - **'lr'**: (float). Learning Rate (default: 0.0005)
-
-            Example: ``optimizer_params={'lr': 0.001}``
-        batches_count: int
-            number of batches in an epoch
-        verbose : bool
-            Enable/disable verbose mode
-        """
-
-        super(AdamOptimizer, self).__init__(optimizer_params, batches_count, verbose)
-
-    def minimize(self, loss):
-        """Create an optimizer to minimize the model loss
-
-        Parameters
-        ----------
-        loss: tf.Tensor
-            Node which needs to be evaluated for computing the model loss.
-
-        Returns
-        -------
-        train: tf.Operation
-            Node that needs to be evaluated for minimizing the loss during training
-        """
-        self.optimizer = tf.train.AdamOptimizer(learning_rate=self._optimizer_params['lr'])
-
-        train = self.optimizer.minimize(loss)
-        return train
-
-    def update_feed_dict(self, feed_dict, batch_num, epoch_num):
-        """Fills values of placeholders created by the optimizers.
-
-        Parameters
-        ----------
-        feed_dict : dict
-            Dictionary that would be passed while optimizing the model loss to sess.run.
-        batch_num: int
-            current batch number
-        epoch_num: int
-            current epoch number
-        """
-        return
-
-
-@register_optimizer("momentum", ['lr', 'momentum'])
-class MomentumOptimizer(Optimizer):
-    """Wrapper around Momentum Optimizer
-    """
-
-    def __init__(self, optimizer_params, batches_count, verbose=False):
-        """Initialize the Optimizer
-
-        Parameters
-        ----------
-        optimizer_params : dict
-            Consists of key-value pairs. The optimizer will check the keys to get the corresponding params:
-
-            - **'lr'**: (float). Learning Rate (default: 0.0005)
-            - **'momentum'**: (float). Momentum (default: 0.9)
-
-            Example: ``optimizer_params={'lr': 0.001, 'momentum':0.90}``
-        batches_count: int
-            number of batches in an epoch
-        verbose : bool
-            Enable/disable verbose mode
-        """
-
-        super(MomentumOptimizer, self).__init__(optimizer_params, batches_count, verbose)
-
-    def _init_hyperparams(self, hyperparam_dict):
-        """ Initializes the hyperparameters needed by the algorithm.
-
-        Parameters
-        ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The optimizer will check the keys to get the corresponding params
-        """
-
-        self._optimizer_params['lr'] = hyperparam_dict.get('lr', DEFAULT_LR)
-        self._optimizer_params['momentum'] = hyperparam_dict.get('momentum', DEFAULT_MOMENTUM)
-
-        if self.verbose:
-            self._display_params()
-
-    def minimize(self, loss):
-        """Create an optimizer to minimize the model loss
-
-        Parameters
-        ----------
-        loss: tf.Tensor
-            Node which needs to be evaluated for computing the model loss.
-
-        Returns
-        -------
-        train: tf.Operation
-            Node that needs to be evaluated for minimizing the loss during training
-        """
-        self.optimizer = tf.train.MomentumOptimizer(learning_rate=self._optimizer_params['lr'],
-                                                    momentum=self._optimizer_params['momentum'])
-
-        train = self.optimizer.minimize(loss)
-        return train
-
-    def update_feed_dict(self, feed_dict, batch_num, epoch_num):
-        """Fills values of placeholders created by the optimizers.
-
-        Parameters
-        ----------
-        feed_dict : dict
-            Dictionary that would be passed while optimizing the model loss to sess.run.
-        batch_num: int
-            current batch number
-        epoch_num: int
-            current epoch number
-        """
-        return
-
-
-@register_optimizer("sgd", ['lr', 'decay_cycle', 'end_lr', 'sine_decay', 'expand_factor', 'decay_lr_rate'])
-class SGDOptimizer(Optimizer):
-    '''Wrapper around SGD Optimizer
-    '''
-    def __init__(self, optimizer_params, batches_count, verbose=False):
-        """Initialize the Optimizer
-
-        Parameters
-        ----------
-        optimizer_params : dict
-            Consists of key-value pairs. The optimizer will check the keys to get the corresponding params:
-
-            - **'lr'**: (float). Learning Rate upper bound (default: 0.0005)
-            - **'decay_cycle'**: (int). Cycle of epoch over which to decay (default: 0)
-            - **'end_lr'**: (float). Learning Rate lower bound (default: 1e-8)
-            - **'cosine_decay'**: (bool). Use cosine decay or to fixed rate decay (default: False)
-            - **'expand_factor'**: (float). Expand the decay cycle length by this factor after each cycle \
-                (default: 1)
-            - **'decay_lr_rate'**: (float). Decay factor to decay the start lr after each cycle \
-                (default: 2)
-
-            Example: ``optimizer_params={'lr': 0.01, 'decay_cycle':30, 'end_lr':0.0001, 'sine_decay':True}``
-        batches_count: int
-            number of batches in an epoch
-        verbose : bool
-            Enable/disable verbose mode
-        """
-        super(SGDOptimizer, self).__init__(optimizer_params, batches_count, verbose)
-
-    def _init_hyperparams(self, hyperparam_dict):
-        """ Initializes the hyperparameters needed by the algorithm.
-
-        Parameters
-        ----------
-        hyperparam_dict : dictionary
-            Consists of key value pairs. The optimizer will check the keys to get the corresponding params
-        """
-
-        self._optimizer_params['lr'] = hyperparam_dict.get('lr', DEFAULT_LR)
-        self._optimizer_params['decay_cycle'] = hyperparam_dict.get('decay_cycle', DEFAULT_DECAY_CYCLE)
-        self._optimizer_params['cosine_decay'] = hyperparam_dict.get('cosine_decay', DEFAULT_SINE)
-        self._optimizer_params['expand_factor'] = hyperparam_dict.get('expand_factor', DEFAULT_DECAY_CYCLE_MULTIPLE)
-        self._optimizer_params['decay_lr_rate'] = hyperparam_dict.get('decay_lr_rate', DEFAULT_LR_DECAY_FACTOR)
-        self._optimizer_params['end_lr'] = hyperparam_dict.get('end_lr', DEFAULT_END_LR)
-
-        if self.verbose:
-            self._display_params()
-
-    def minimize(self, loss):
-        """Create an optimizer to minimize the model loss
-
-        Parameters
-        ----------
-        loss: tf.Tensor
-            Node which needs to be evaluated for computing the model loss.
-
-        Returns
-        -------
-        train: tf.Operation
-            Node that needs to be evaluated for minimizing the loss during training
-        """
-
-        # create a placeholder for learning rate
-        self.lr_placeholder = tf.placeholder(tf.float32)
-        # create the optimizer with the placeholder
-        self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.lr_placeholder)
-
-        # load the hyperparameters that would be used while generating the learning rate per batch
-        # start learning rate
-        self.start_lr = self._optimizer_params['lr']
-        self.current_lr = self.start_lr
-
-        # cycle rate for learning rate decay
-        self.decay_cycle_rate = self._optimizer_params['decay_cycle']
-        self.end_lr = self._optimizer_params['end_lr']
-
-        # check if it is a sinudoidal decay or constant decay
-        self.is_cosine_decay = self._optimizer_params['cosine_decay']
-        self.next_cycle_epoch = self.decay_cycle_rate + 1
-
-        # Get the cycle expand factor
-        self.decay_cycle_expand_factor = self._optimizer_params['expand_factor']
-
-        # Get the LR decay factor at the start of each cycle
-        self.decay_lr_rate = self._optimizer_params['decay_lr_rate']
-        self.curr_cycle_length = self.decay_cycle_rate
-        self.curr_start = 0
-
-        # create the operation that minimizes the loss
-        train = self.optimizer.minimize(loss)
-        return train
-
-    def update_feed_dict(self, feed_dict, batch_num, epoch_num):
-        """Fills values of placeholders created by the optimizers.
-
-        Parameters
-        ----------
-        feed_dict : dict
-            Dictionary that would be passed while optimizing the model loss to sess.run.
-        batch_num: int
-            current batch number
-        epoch_num: int
-            current epoch number
-        """
-        # Sinusoidal Decay
-        if self.is_cosine_decay:
-            # compute the cycle number
-            current_cycle_num = \
-                ((epoch_num - 1 - self.curr_start) * self.batches_count + (batch_num - 1)) / \
-                (self.curr_cycle_length * self.batches_count)
-            # compute a learning rate for the current batch/epoch
-            self.current_lr = \
-                self.end_lr + (self.start_lr - self.end_lr) * 0.5 * (1 + math.cos(math.pi * current_cycle_num))
-
-            # Start the next cycle and Expand the cycle/Decay the learning rate
-            if epoch_num % (self.next_cycle_epoch - 1) == 0 and batch_num == self.batches_count:
-                self.curr_cycle_length = self.curr_cycle_length * self.decay_cycle_expand_factor
-                self.next_cycle_epoch = self.next_cycle_epoch + self.curr_cycle_length
-                self.curr_start = epoch_num
-                self.start_lr = self.start_lr / self.decay_lr_rate
-
-            if self.current_lr < self.end_lr:
-                self.current_lr = self.end_lr
-
-        # fixed rate decay
-        elif self.decay_cycle_rate > 0:
-            if epoch_num % (self.next_cycle_epoch) == 0 and batch_num == 1:
-                if self.current_lr > self.end_lr:
-                    self.next_cycle_epoch = self.decay_cycle_rate + \
-                        ((self.next_cycle_epoch - 1) * self.decay_cycle_expand_factor) + 1
-                    self.current_lr = self.current_lr / self.decay_lr_rate
-
-                    if self.current_lr < self.end_lr:
-                        self.current_lr = self.end_lr
-
-        # no change to the learning rate
-        else:
-            pass
-
-        feed_dict.update({self.lr_placeholder: self.current_lr})
+    if isinstance(identifier, tf.optimizers.Optimizer):
+        return OptimizerWrapper(identifier)
+    elif isinstance(identifier, OptimizerWrapper):
+        return identifier
+    elif isinstance(identifier, six.string_types):
+        optimizer = tf.keras.optimizers.get(identifier)
+        return OptimizerWrapper(optimizer)
+    else:
+        raise ValueError(
+            "Could not interpret optimizer identifier:", identifier
+        )

@@ -1,4 +1,4 @@
-# Copyright 2019-2021 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2023 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -24,17 +24,26 @@ setup_params = dict(name='ampligraph',
                         'scikit-learn>=0.19.1',
                         'tqdm>=4.23.4',
                         'pandas>=0.23.1',
-                        'sphinx>=2.2, < 3',
-                        'recommonmark==0.4.0',
-                        'sphinx_rtd_theme==0.4.3',
-                        'sphinxcontrib-bibtex==0.4.2',
+                        'sphinx==5.0.2',
+                        'myst-parser==0.18.0',
+                        'docutils<0.18',
+                        'sphinx_rtd_theme==1.0.0',
+                        'sphinxcontrib-bibtex==2.4.2',
                         'beautifultable>=0.7.0',
                         'pyyaml>=3.13',
                         'rdflib>=4.2.2',
-                        'scipy>=1.3.0',
+                        'scipy>=1.10.0',
                         'networkx>=2.3',
                         'flake8>=3.7.7',
-                        'setuptools>=36'
-                    ])
+                        'setuptools>=36',
+                        'matplotlib>=3.7',
+                        'docopt==0.6.2',
+                        'schema==0.7.5'
+                    ],
+                    setup_requires=['pytest-runner'],
+                    tests_require=['pytest', 
+                                   'pytest_mock>=3.10.0',
+                                   'mock>=5.0.1'])
+
 if __name__ == '__main__':
     setup(**setup_params)

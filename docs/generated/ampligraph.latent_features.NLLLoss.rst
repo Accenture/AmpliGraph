@@ -7,18 +7,33 @@ NLLLoss
 
    
    
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      
+      
+      ~NLLLoss.external_params
+      
+      
+      
+      ~NLLLoss.name
+      
+   
    
 
 
    
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
+      
       ~NLLLoss.__init__
+      
    
+      
    .. automethod:: NLLLoss.__init__
    
    

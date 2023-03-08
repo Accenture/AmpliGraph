@@ -1,10 +1,22 @@
 # Changelog
 
+## 2.0.0
+**7 March 2023**
+- Switched to TensorFlow 2 back-end.
+- Keras style APIs.
+- Unique model class ScoringBasedEmbeddingModel for all scoring functions that can be specified as a parameter when initializing the class.
+- Change of the data input/output pipeline.
+- Extension of supported optimizers, regularizers and initializer.
+- Different data storage support: no-backend (in memory) and SQLite-based backend.
+- Codex-M Knowledge Graph included in the APIs for automatic download.
+- ConvKB, ConvE, ConvE(1-N) not supported anymore as they are computationally expensive and thus not commonly used.
+- Support AmpliGraph 1.4 API within ampligraph.compat module.
+
 ## 1.4.0
 **26 May 2021**
 
 - Added support for numerical attributes on edges (FocusE) (#235)
-- Added loaders for benchmark datasets with numeric values on edges (O*NET20K, PPI5K, NL27K, CN15K)  
+- Added loaders for benchmark datasets with numeric values on edges (O*NET20K, PPI5K, NL27K, CN15K)
 - Added discovery API to find nearest neighbors in embedding space (#240)
 - Change of optimizer (from BFSG to Adam) to calibrate models with ground truth negatives (#239)
 - 10x speed improvement on train_test_split_unseen API (#242)
@@ -16,7 +28,7 @@
 - Add tensorboard_logs_path to model.fit() for tracking training loss and early stopping criteria.
 
 
-## 1.3.2 
+## 1.3.2
 **25 Aug 2020**
 
 - Added constant initializer (#205)

@@ -1,6 +1,6 @@
 .common-values:
 
-  docker-image: &docker-image circleci/python:3.7.9
+  docker-image: &docker-image circleci/python:3.10
 
   restore-cache: &restore-cache
     keys:
@@ -19,7 +19,7 @@
     name: Install package
     command: |
       . venv/bin/activate
-      venv/bin/python3 -m pip install tensorflow==1.15.5
+      venv/bin/python3 -m pip install tensorflow==2.10
       venv/bin/python3 -m pip install .
 
 version: 2
@@ -53,6 +53,7 @@ jobs:
   test:
     docker:
       - image: *docker-image
+    resource_class: large
     steps:
     - checkout
     - restore_cache: *restore-cache
@@ -63,8 +64,7 @@ jobs:
           name: Unit tests with Pytest
           command: |
             . venv/bin/activate
-            venv/bin/python3 -m pytest tests
-          no_output_timeout: 60m
+            venv/bin/python3 setup.py test
   lint:
     docker:
       - image: *docker-image
@@ -78,7 +78,7 @@ jobs:
           command: |
             . venv/bin/activate
             venv/bin/python3 -m pip install flake8
-            venv/bin/python3 -m flake8 ampligraph --max-line-length 120 --ignore=W291,W293,W503
+            venv/bin/python3 -m flake8 ampligraph --max-line-length 200 --ignore=W605,W503,E231
 
   docs:
     docker:
@@ -105,34 +105,29 @@ workflows:
           filters:
             branches:
               only:  
-                - master
-                - develop
-                - /release\/.*/
+                - main
+                - ampligraph2/develop
       - pip-check:
           filters:
             branches:
               only:  
-                - master
-                - develop
-                - /release\/.*/
+                - main
+                - ampligraph2/develop      
       - lint:
           filters:
             branches:
               only:  
-                - master
-                - develop
-                - /release\/.*/
+                - main
+                - ampligraph2/develop      
       - docs:
           filters:
             branches:
               only:  
-                - master
-                - develop
-                - /release\/.*/
+                - main
+                - ampligraph2/develop      
       - test:
           filters:
             branches:
               only:  
-                - master
-                - develop
-                - /release\/.*/
+                - main
+                - ampligraph2/develop       

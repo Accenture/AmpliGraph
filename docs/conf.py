@@ -1,3 +1,10 @@
+# Copyright 2019-2023 The AmpliGraph Authors. All Rights Reserved.
+#
+# This file is Licensed under the Apache License, Version 2.0.
+# A copy of the Licence is available in LICENCE, or at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
@@ -19,9 +26,10 @@
 #
 import os
 import sys
+
 # sys.path.insert(0, os.path.abspath('.'))
-from recommonmark.parser import CommonMarkParser
 import sphinx_rtd_theme
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import ampligraph
 
@@ -39,9 +47,18 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinxcontrib.bibtex',
     'sphinx.ext.napoleon',
-    'sphinx.ext.autosummary'
+    'sphinx.ext.autosummary',
+    'myst_parser',
+    'sphinx.ext.doctest'
 ]
 
+# New in AmpliGraph 2.x. Required by sphinxcontrib.bibtex >=2.0.0
+bibtex_bibfiles = ['references.bib']
+
+# New in AmpliGraph 2. Introduced in Sphinx 3.0
+autosummary_generate = False
+autosummary_generate_overwrite = False
+autosummary_ignore_module_all = False # autosummary documents every member listed in __all__ and no others.
 
 autodoc_mock_imports = ["tensorflow"]
 
@@ -49,11 +66,8 @@ autodoc_mock_imports = ["tensorflow"]
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
-source_parsers = {'.md': CommonMarkParser}
-
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
-#
 source_suffix = ['.rst', '.md']
 
 # The master toctree document.
@@ -79,7 +93,7 @@ release = ampligraph.__version__
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
