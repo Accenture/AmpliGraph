@@ -54,7 +54,7 @@ def save_model(model, model_name_path=None, protocol=pickle.HIGHEST_PROTOCOL):
     ----------
     model: EmbeddingModel
         A trained neural knowledge graph embedding model.
-        The model must be an instance of TransE, DistMult, ComplEx, or HolE.
+        The model must be an instance of TransE, DistMult, ComplEx, HolE or RotatE.
     model_name_path: str
         The name of the model to be saved.
         If not specified, a default name with current datetime is selected and the model is saved
@@ -211,7 +211,7 @@ def create_tensorboard_visualizations(
     ----------
     model: EmbeddingModel
         A trained neural knowledge graph embedding model, the model must be an instance of TransE,
-        DistMult, ComplEx, or HolE.
+        DistMult, ComplEx, HolE or RotatE.
     loc: str
         Directory where the files are written.
     entities_subset: list
