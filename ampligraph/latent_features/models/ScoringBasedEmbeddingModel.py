@@ -120,6 +120,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             - ``DistMult`` DistMult embedding scoring function will be used
             - ``ComplEx`` ComplEx embedding scoring function will be used
             - ``HolE`` Holograph embedding scoring function will be used
+            - ``RotatE`` RotatE embedding scoring function will be used
 
         seed: int
             Random seed.
