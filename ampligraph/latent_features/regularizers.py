@@ -51,6 +51,11 @@ def get(identifier, hyperparams={}):
     regularizer: tf.keras.regularizer
         Regularizer instance of the `tf.keras.regularizer` class.
 
+    Example
+    -------
+    >>> from ampligraph.latent_features.regularizers import get as get_regularizer
+    >>> regularizer = get_regularizer('LP', {'p': 2, 'lambda': 1e-2})
+
     """
     if isinstance(identifier, str) and identifier == "l3":
         hyperparams["p"] = 3
