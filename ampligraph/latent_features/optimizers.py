@@ -173,7 +173,7 @@ class OptimizerWrapper(abc.ABC):
         return optimizer
 
 
-def get(identifier):
+def get(identifier, optim_params={}):
     """
     Get the optimizer specified by the identifier.
 
@@ -181,6 +181,9 @@ def get(identifier):
     ----------
     identifier: str or tf.optimizers.Optimizer instance
         Name of the optimizer to use (with default parameters) or instance of the class `tf.optimizers.Optimizer`.
+    optim_params: dict
+        Dictionary containing the hyperparameters of the optimizer (learning rate...) if identifier is a string.
+        Refer to tf.keras.optimizers args for the list of valid keys.
 
     Returns
     -------
@@ -188,15 +191,43 @@ def get(identifier):
         Instance of `tf.optimizers.Optimizer` wrapped around by `OptimizerWrapper` so that graph partitioning
         is supported.
 
+    Example
+    -------
+    >>> from ampligraph.latent_features.optimizers import get as get_optimizer
+    >>> optim = get_optimizer('adam', {'learning_rate': 5e-3})
+
     """
     if isinstance(identifier, tf.optimizers.Optimizer):
         return OptimizerWrapper(identifier)
     elif isinstance(identifier, OptimizerWrapper):
         return identifier
     elif isinstance(identifier, six.string_types):
-        optimizer = tf.keras.optimizers.get(identifier)
+        if optim_params == {}:
+            optim = tf.keras.optimizers.get(identifier)
+            return OptimizerWrapper(optim)
+
+        if "learning_rate" in optim_params.keys():
+            learning_rate = optim_params["learning_rate"]
+            del optim_params["learning_rate"]
+        else:
+            learning_rate = 0.001
+
+        if identifier == "adam":
+            optimizer = tf.keras.optimizers.Adam(
+                learning_rate=learning_rate, **optim_params
+            )
+        elif identifier == "adagrad":
+            optimizer = tf.keras.optimizers.Adagrad(
+                learning_rate=learning_rate, **optim_params
+            )
+        elif identifier == "sgd":
+            optimizer = tf.keras.optimizers.SGD(
+                learning_rate=learning_rate, **optim_params
+            )
+        else:
+            optimizer = tf.keras.optimizers.get(identifier)
         return OptimizerWrapper(optimizer)
     else:
         raise ValueError(
-            "Could not interpret optimizer identifier:", identifier
+            "Could not interpret optimizer identifier: ", identifier
         )
