@@ -543,18 +543,18 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def fit(
         self,
         x=None,
-        batch_size=1,
-        epochs=1,
+        batch_size=1000,
+        epochs=100,
         verbose=True,
         callbacks=None,
         validation_split=0.0,
         validation_data=None,
         shuffle=True,
         initial_epoch=0,
-        validation_batch_size=100,
+        validation_batch_size=10,
         validation_corrupt_side="s,o",
-        validation_freq=50,
-        validation_burn_in=100,
+        validation_freq=10,
+        validation_burn_in=0,
         validation_filter=False,
         validation_entities_subset=None,
         partitioning_k=1,
@@ -568,10 +568,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         x: np.array, shape (n, 3), or str or GraphDataLoader or AbstractGraphPartitioner
             Data OR Filename of the data file OR Data Handle to be used for training.
         batch_size: int
-            Batch size to use during training.
+            Batch size to use during training (default: 1000).
             May be overridden if **x** is a GraphDataLoader or AbstractGraphPartitioner instance.
         epochs: int
-            Number of epochs to train (default: 1).
+            Number of epochs to train (default: 100).
         verbose: bool
             Verbosity (default: `True`).
         callbacks: list of tf.keras.callbacks.Callback
@@ -583,14 +583,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         shuffle: bool
             Indicates whether to shuffle the data after every epoch during training (default: `True`).
         initial epoch: int
-            Initial epoch number (default: 1).
+            Initial epoch number (default: 0).
         validation_batch_size: int
-            Batch size to use during validation (default: 100).
+            Batch size to use during validation (default: 10).
             May be overridden if ``validation_data`` is `GraphDataLoader` or `AbstractGraphPartitioner` instance.
         validation_freq: int
-            Indicates how often to validate (default: 50).
+            Indicates how often to validate (default: 10).
         validation_burn_in: int
-            The burn-in time after which the validation kicks in.
+            The burn-in time after which the validation kicks in (default: 0).
         validation_filter: bool or dict
             Validation filter to be used.
         validation_entities_subset: list or np.array
