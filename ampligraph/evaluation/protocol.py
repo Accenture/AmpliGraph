@@ -467,7 +467,7 @@ def select_best_model_ranking(
 ):
     """Model selection routine for embedding models via either grid search or random search.
 
-    For grid search, pass a fixed ``param_grid`` and leave ``max_combinations`` as `None`
+    For grid search, pass a fixed ``param_grid`` and leave ``max_combinations=None``
     so that all combinations will be explored.
 
     For random search, delimit ``max_combinations`` to your computational budget
@@ -538,7 +538,7 @@ def select_best_model_ranking(
 
             A common approach is to use MRR unfiltered: ::
 
-                early_stopping_params={x_valid=X['valid'], 'criteria': 'mrr'}
+                early_stopping_params={'criteria': 'mrr'}
 
             Note that the size of validation set also contributes to such overhead.
             In most cases a smaller validation set would be enough.
@@ -557,7 +557,7 @@ def select_best_model_ranking(
         column concatenated after the training triples.
     focusE_params: dict
         Dictionary of parameters if focusE is activated.
-    use_test_for_selection:bool
+    use_test_for_selection: bool
         Use test set for model selection. If `False`, uses validation set (default: `False`).
     entities_subset: array-like
         List of entities to use for corruptions. If `None`, will generate corruptions
@@ -634,7 +634,7 @@ def select_best_model_ranking(
     >>>                "verbose": False
     >>>               }
     >>> select_best_model_ranking(model_class, X['train'], X['valid'], X['test'], param_grid,
-    >>>                           max_combinations=100, use_filter=True, verbose=True,
+    >>>                           max_combinations=20, use_filter=True, verbose=True,
     >>>                           early_stopping=True)
 
     """
