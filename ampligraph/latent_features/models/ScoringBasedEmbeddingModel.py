@@ -1525,7 +1525,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def evaluate(
         self,
         x=None,
-        batch_size=32,
+        batch_size=10,
         verbose=True,
         use_filter=False,
         corrupt_side="s,o",
@@ -1542,8 +1542,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         x: np.array, shape (n,3) or str or GraphDataLoader or AbstractGraphPartitioner
             Data OR Filename of the data file OR Data Handle to be used for training.
         batch_size: int
-            Batch size to use during training.
-            May be overridden if ``x`` is `GraphDataLoader` or `AbstractGraphPartitioner` instance
+            Batch size to use during evaluation.
+            May be overridden if ``x`` is `GraphDataLoader` or `AbstractGraphPartitioner` instance.
+
+            .. warning::
+                Evaluation batch size can often be the reason for Out-Of-Memory (OOM) Errors. Beware of it!
+
         verbose: bool
             Verbosity mode.
         use_filter: bool or dict
