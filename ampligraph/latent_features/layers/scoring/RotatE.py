@@ -29,7 +29,7 @@ class RotatE(AbstractScoringLayer):
     """
 
     def get_config(self):
-        config = super(ComplEx, self).get_config()
+        config = super(RotatE, self).get_config()
         return config
 
     def __init__(self, k):
@@ -62,7 +62,7 @@ class RotatE(AbstractScoringLayer):
         scores_real = e_s_real * e_p_real - e_s_img * e_p_img - e_o_real
         scores_img = e_s_real * e_p_img + e_s_img * e_p_real - e_o_img
         scores = tf.negative(
-            tf.norm(tf.concat([scores_real, scores_img], 1), axis=1, ord=1)
+            tf.norm(tf.sqrt(scores_real**2 + scores_img**2), axis=1, ord=1)
         )
         return scores
 
@@ -103,7 +103,7 @@ class RotatE(AbstractScoringLayer):
             ent_real * tf.expand_dims(e_p_img, 1) + ent_img * tf.expand_dims(e_p_real, 1) - tf.expand_dims(e_o_img, 1)
 
         sub_corr_scores = tf.negative(
-            tf.norm(tf.concat([sub_corr_scores_real, sub_corr_scores_img], 1), axis=1, ord=1)
+            tf.norm(tf.sqrt(sub_corr_scores_real**2 + sub_corr_scores_img**2), axis=2, ord=1)
         )
         return sub_corr_scores
 
@@ -141,7 +141,6 @@ class RotatE(AbstractScoringLayer):
         obj_corr_scores_real = tf.expand_dims(e_s_real * e_p_real - e_s_img * e_p_img, 1) - ent_real
         obj_corr_scores_img = tf.expand_dims(e_s_real * e_p_img + e_s_img * e_p_real, 1) - ent_img
         obj_corr_scores = tf.negative(
-            tf.norm(tf.concat([obj_corr_scores_real, obj_corr_scores_img], 1), axis=1, ord=1)
+            tf.norm(tf.sqrt(obj_corr_scores_real**2 + obj_corr_scores_img**2), axis=2, ord=1)
         )
-
         return obj_corr_scores
