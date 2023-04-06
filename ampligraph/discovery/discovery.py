@@ -35,7 +35,7 @@ def discover_facts(
 
     The general procedure of this function is to generate a set of candidate statements :math:`C` according to some
     sampling strategy ``strategy``, then rank them against a set of corruptions using the
-    :meth:`ampligraph.evaluation.evaluate_performance` function.
+    :meth:`ampligraph.latent_features.ScoringBasedEmbeddingModel.evaluate` method.
     Candidates that appear in the ``top_n`` ranked statements of this procedure are returned as likely true
     statements.
 
@@ -104,18 +104,18 @@ def discover_facts(
     >>> # Game of Thrones relations dataset
     >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
     >>> open('GoT.csv', 'wb').write(requests.get(url).content)
-    >>> X = load_from_csv('.', 'GoT.csv', sep=',')
+    >>> dataset = load_from_csv('.', 'GoT.csv', sep=',')
     >>> model = ScoringBasedEmbeddingModel(eta=5,
     >>>                                      k=300,
     >>>                                      scoring_type='ComplEx')
     >>> model.compile(optimizer='adam', loss='multiclass_nll')
-    >>> model.fit(X,
-    >>>              batch_size=100,
-    >>>              epochs=10,
-    >>>              validation_freq=50,
-    >>>              validation_batch_size=100,
-    >>>              validation_data = dataset['valid'])
-    >>> discover_facts(X,
+    >>> model.fit(dataset,
+    >>>           batch_size=100,
+    >>>           epochs=10,
+    >>>           validation_freq=50,
+    >>>           validation_batch_size=100,
+    >>>           validation_data = dataset['valid'])
+    >>> discover_facts(dataset,
     >>>                model,
     >>>                top_n=100,
     >>>                strategy='random_uniform',
@@ -983,13 +983,16 @@ def query_topn(
     entities, and return the top_n triples ordered by score. If given a `<subject, object>`
     pair it will fill in the missing element with known relations.
 
+    Therefore, if we feed the funcion with `<subject, predicate>` or `<predicate, object>`, it
+    solves the link prediction task.
+
     .. note::
         This function does not filter out true statements - triples returned can include those
         the model was trained on.
 
     Parameters
     ----------
-    model : EmbeddingModel
+    model : ScoringBasedEmbeddingModel
         The trained model that will be used to score triple completions.
     top_n : int
         The number of completed triples to returned.
