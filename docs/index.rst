@@ -1,5 +1,5 @@
-AmpliGraph 2
-==================
+AmpliGraph
+==========
 
 **Open source Python library that predicts links between concepts in a knowledge graph.**
 
