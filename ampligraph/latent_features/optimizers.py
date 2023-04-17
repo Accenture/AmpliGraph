@@ -173,7 +173,7 @@ class OptimizerWrapper(abc.ABC):
         return optimizer
 
 
-def get(identifier, optim_params={}):
+def get(identifier, hyperparams={}):
     """
     Get the optimizer specified by the identifier.
 
@@ -181,7 +181,7 @@ def get(identifier, optim_params={}):
     ----------
     identifier: str or tf.optimizers.Optimizer instance
         Name of the optimizer to use (with default parameters) or instance of the class `tf.optimizers.Optimizer`.
-    optim_params: dict
+    hyperparams: dict
         Dictionary containing the hyperparameters of the optimizer (learning rate...) if identifier is a string.
         Refer to tf.keras.optimizers args for the list of valid keys.
 
@@ -202,27 +202,27 @@ def get(identifier, optim_params={}):
     elif isinstance(identifier, OptimizerWrapper):
         return identifier
     elif isinstance(identifier, six.string_types):
-        if optim_params == {}:
+        if hyperparams == {}:
             optim = tf.keras.optimizers.get(identifier)
             return OptimizerWrapper(optim)
 
-        if "learning_rate" in optim_params.keys():
-            learning_rate = optim_params["learning_rate"]
-            del optim_params["learning_rate"]
+        if "learning_rate" in hyperparams.keys():
+            learning_rate = hyperparams["learning_rate"]
+            del hyperparams["learning_rate"]
         else:
             learning_rate = 0.001
 
         if identifier == "adam":
             optimizer = tf.keras.optimizers.Adam(
-                learning_rate=learning_rate, **optim_params
+                learning_rate=learning_rate, **hyperparams
             )
         elif identifier == "adagrad":
             optimizer = tf.keras.optimizers.Adagrad(
-                learning_rate=learning_rate, **optim_params
+                learning_rate=learning_rate, **hyperparams
             )
         elif identifier == "sgd":
             optimizer = tf.keras.optimizers.SGD(
-                learning_rate=learning_rate, **optim_params
+                learning_rate=learning_rate, **hyperparams
             )
         else:
             optimizer = tf.keras.optimizers.get(identifier)
