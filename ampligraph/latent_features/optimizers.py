@@ -208,21 +208,21 @@ def get(identifier, hyperparams={}):
 
         if "learning_rate" in hyperparams.keys():
             learning_rate = hyperparams["learning_rate"]
-            del hyperparams["learning_rate"]
+            other_hyperparams = {k: v for k, v in hyperparams.items() if k != "learning_rate"}
         else:
             learning_rate = 0.001
 
         if identifier == "adam":
             optimizer = tf.keras.optimizers.Adam(
-                learning_rate=learning_rate, **hyperparams
+                learning_rate=learning_rate, **other_hyperparams
             )
         elif identifier == "adagrad":
             optimizer = tf.keras.optimizers.Adagrad(
-                learning_rate=learning_rate, **hyperparams
+                learning_rate=learning_rate, **other_hyperparams
             )
         elif identifier == "sgd":
             optimizer = tf.keras.optimizers.SGD(
-                learning_rate=learning_rate, **hyperparams
+                learning_rate=learning_rate, **other_hyperparams
             )
         else:
             optimizer = tf.keras.optimizers.get(identifier)
