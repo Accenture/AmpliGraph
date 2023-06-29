@@ -326,8 +326,8 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
             or a list of embeddings of entities (relations/distance) if ``type_of="e"``
             (``type_of="r"``/``type_of="d"``).
         """
-        assert type_of in ["t", "e", "r", "d"], 'Wrong selection! type_of must be in ["t", "e", "r", "d"]'
-        if type_of == "t":
+        assert type_of in ["triples", "t", "e", "r", "d"], 'Wrong selection! type_of must be in ["t", "e", "r", "d"]'
+        if type_of == "t" or type_of == "triples":
             # look up in the respective embedding matrix
             e_s = tf.nn.embedding_lookup(self.ent_emb, sample[:, 0])
             e_p = tf.nn.embedding_lookup(self.rel_emb, sample[:, 1])
