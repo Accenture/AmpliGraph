@@ -21,7 +21,7 @@ def hits_at_n_score(ranks, n):
     The function computes how many elements of a vector of rankings ``ranks`` make it to the top ``n`` positions.
 
     It can be used in conjunction with the learning to rank evaluation protocol of
-    :meth:`ampligraph.evaluation.evaluate_performance`.
+    :meth:`ampligraph.latent_features.ScoringBasedEmbeddingModel.evaluate`.
 
     It is formally defined as follows:
 
@@ -90,7 +90,7 @@ def mrr_score(ranks):
     The function computes the mean of the reciprocal of elements of a vector of rankings ``ranks``.
 
     It is used in conjunction with the learning to rank evaluation protocol of
-    :meth:`ampligraph.evaluation.evaluate_performance`.
+    :meth:`ampligraph.latent_features.ScoringBasedEmbeddingModel.evaluate`.
 
     It is formally defined as follows:
 
@@ -199,7 +199,7 @@ def mr_score(ranks):
     The function computes the mean of a vector of rankings ``ranks``.
 
     It can be used in conjunction with the learning to rank evaluation protocol of
-    :meth:`ampligraph.evaluation.evaluate_performance`.
+    :meth:`ampligraph.latent_features.ScoringBasedEmbeddingModel.evaluate`.
 
     It is formally defined as follows:
 
