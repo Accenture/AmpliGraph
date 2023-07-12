@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.1
+**12 July 2023**
+- Fixed bug preventing the saving of calibrated models.
+- Extended type support for the predict method to list of triples.
+- Updated experiments performance.
+- Minor fixes.
+
+
 ## 2.0.0
 **7 March 2023**
 - Switched to TensorFlow 2 back-end.
