@@ -62,67 +62,115 @@ AmpliGraph includes the following submodules:
 * Linux, macOS, Windows
 * Python ≥ 3.8
 
-#### Provision a Virtual Environment
+### Provision a Virtual Environment
 
-Create and activate a virtual environment (conda)
+To provision a virtual environment for installing AmpliGraph, any option can work; here we will give provide the
+instruction for using `venv` and `Conda`.
+
+#### venv
+
+The first step is to create and activate the virtual environment.
+
+```
+python3.8 -m venv PATH/TO/NEW/VIRTUAL_ENVIRONMENT
+source PATH/TO/NEW/VIRTUAL_ENVIRONMENT/bin/activate
+```
+
+Once this is done, we can proceed with the installation of TensorFlow 2:
+
+```
+pip install "tensorflow==2.9.0"
+```
+
+If you are installing Tensorflow on MacOS, instead of the following please use:
+
+```
+pip install "tensorflow-macos==2.9.0"
+```
+
+**IMPORTANT**: the installation of TensorFlow can be tricky on Mac OS with the Apple silicon chip. Though `venv` can
+provide a smooth experience, we invite you to refer to the [dedicated section](#install-tensorflow-2-for-mac-os-m1-chip)
+down below and consider using `conda` if some issues persist in alignment with the
+[Tensorflow Plugin page on Apple developer site](https://developer.apple.com/metal/tensorflow-plugin/).
+
+
+#### Conda
+
+The first step is to create and activate the virtual environment.
 
 ```
 conda create --name ampligraph python=3.8
 source activate ampligraph
 ```
 
-#### Install TensorFlow
-
-AmpliGraph 2 is built on TensorFlow 2.x.
-Install from pip or conda:
-
-**CPU-only**
+Once this is done, we can proceed with the installation of TensorFlow 2, which can be done through `pip` or `conda`.
 
 ```
-pip install "tensorflow>=2.9"
+pip install "tensorflow==2.9.0"
 
 or 
 
-conda install tensorflow'>=2.9'
+conda install "tensorflow==2.9.0"
 ```
 
-**Install TensorFlow 2 for Mac OS M1 chip**
+#### Install TensorFlow 2 for Mac OS M1 chip
+
+When installing TensorFlow 2 for Mac OS with Apple silicon chip we recommend to use a conda environment. 
+
+```
+conda create --name ampligraph python=3.8
+source activate ampligraph
+```
+
+After having created and activated the virtual environment, run the following to install Tensorflow. 
 
 ```
 conda install -c apple tensorflow-deps
-pip install --user tensorflow-macos==2.10
+pip install --user tensorflow-macos==2.9.0
 pip install --user tensorflow-metal==0.6
 ```
 
-In case of problems with installation refer to [Tensorflow Plugin page on Apple developer site](https://developer.apple.com/metal/tensorflow-plugin/).
+In case of problems with the installation or for further details, refer to
+[Tensorflow Plugin page](https://developer.apple.com/metal/tensorflow-plugin/) on the official Apple developer website.
 
 ### Install AmpliGraph
 
+Once the installation of Tensorflow is complete, we can proceed with the installation of AmpliGraph.
 
-Install the latest stable release from pip:
+To install the latest stable release from pip:
 
 ```
 pip install ampligraph
 ```
 
-If instead you want the most recent development version, you can clone the repository
-and install from source (your local working copy will be on the latest commit on the `develop` branch).
-The code snippet below will install the library in editable mode (`-e`):
-
-```
-git clone https://github.com/Accenture/AmpliGraph.git
-cd AmpliGraph
-pip install -e .
-```
-
-
-### Sanity Check
+To sanity check the installation, run the following:
 
 ```python
 >>> import ampligraph
 >>> ampligraph.__version__
-'2.0.0'
+'2.0.1'
 ```
+
+If instead you want the most recent development version, you can clone the repository from
+[GitHub](https://github.com/Accenture/AmpliGraph.git), install AmpliGraph from source and checkout the `develop`
+branch. In this way, your local working copy will be on the latest commit on the `develop` branch.
+
+```
+git clone https://github.com/Accenture/AmpliGraph.git
+cd AmpliGraph
+git checkout develop
+pip install -e .
+```
+Notice that the code snippet above installs the library in editable mode (`-e`).
+
+To sanity check the installation run the following:
+
+```python
+>>> import ampligraph
+>>> ampligraph.__version__
+'2.0-dev'
+```
+
 
 
 ## Predictive Power Evaluation (MRR Filtered)
@@ -134,9 +182,9 @@ Their predictive power is reported below and compared against the state-of-the-a
 |                           | FB15K-237 | WN18RR   | YAGO3-10 | FB15k      | WN18      |
 |---------------------------|-----------|----------|----------|------------|-----------|
 | Literature Best           | **0.35*** | 0.48*    | 0.49*    | **0.84**** | **0.95*** |
-| TransE (AmpliGraph 2)     | 0.31      | 0.22     | 0.50     | 0.62       | 0.64      |
+| TransE (AmpliGraph 2)     | 0.31      | 0.22     | 0.50     | 0.62       | 0.66      |
 | DistMult (AmpliGraph 2)   | 0.30      | 0.47     | 0.48     | 0.71       | 0.82      |
-| ComplEx  (AmpliGraph 2)   | 0.31      | 0.50     | 0.49     | 0.73       | 0.94      |
+| ComplEx  (AmpliGraph 2)   | 0.31      | **0.51** | 0.49     | 0.73       | 0.94      |
 | HolE (AmpliGraph 2)       | 0.30      | 0.47     | 0.47     | 0.73       | 0.94      |
 | TransE (AmpliGraph 1)     | 0.31      | 0.22     | **0.51** | 0.63       | 0.66      |
 | DistMult (AmpliGraph 1)   | 0.31      | 0.47     | 0.50     | 0.78       | 0.82      |

@@ -30,35 +30,38 @@ def discover_facts(
     """
     Discover new facts from an existing knowledge graph.
 
-    You should use this function when you already have a model trained on a knowledge graph and you want to
-    discover potentially true statements in that knowledge graph.
+    You should use this function when you already have a model trained on a knowledge graph
+    and you want to discover potentially true statements in that knowledge graph.
 
-    The general procedure of this function is to generate a set of candidate statements :math:`C` according to some
-    sampling strategy ``strategy``, then rank them against a set of corruptions using the
-    :meth:`ampligraph.evaluation.evaluate_performance` function.
-    Candidates that appear in the ``top_n`` ranked statements of this procedure are returned as likely true
-    statements.
+    The general procedure of this function is to generate a set of candidate statements
+    :math:`C` according to some sampling strategy ``strategy``, then rank them against a set
+    of corruptions using the :meth:`ampligraph.latent_features.ScoringBasedEmbeddingModel.evaluate`
+    method.
+    Candidates that appear in the ``top_n`` ranked statements of this procedure are returned
+    as likely true statements.
 
-    The majority of the strategies are implemented with the same underlying principle of searching for
-    candidate statements:
+    The majority of the strategies are implemented with the same underlying principle of
+    searching for candidate statements:
 
     - from among the less frequent entities (`'entity_frequency'`),
     - less connected entities (`'graph_degree'`, `'cluster_coefficient'`),
-    - | less frequent local graph structures (`'cluster_triangles'`, `'cluster_squares'`), on the assumption that
-        densely connected entities are less likely to have missing true statements.
-    - | The remaining strategies (`'random_uniform'`, `'exhaustive'`) generate candidate statements by a random
-        sampling of entities and relations or exhaustively, respectively.
+    - | less frequent local graph structures (`'cluster_triangles'`, `'cluster_squares'`),
+        on the assumption that densely connected entities are less likely to have missing
+        true statements.
+    - | The remaining strategies (`'random_uniform'`, `'exhaustive'`) generate candidate
+        statements by a random sampling of entities and relations or exhaustively, respectively.
 
     .. warning::
-        Due to the significant amount of computation required to evaluate all triples using the 'exhaustive' strategy,
-        we do not recommend its use at this time.
+        Due to the significant amount of computation required to evaluate all triples using
+        the 'exhaustive' strategy, we do not recommend its use at this time.
 
-    The function will automatically filter entities that have not been seen by the model, and operates on
-    the assumption that the model provided has been fit on the data ``X`` (determined heuristically), although ``X``
-    may be a subset of the original data, in which case a warning is shown.
+    The function will automatically filter entities that have not been seen by the model,
+    and operates on the assumption that the model provided has been fit on the data ``X``
+    (determined heuristically), although ``X`` may be a subset of the original data, in
+    which case a warning is shown.
 
-    The ``target_rel`` argument indicates what relation to generate candidate statements for. If this is set to ``None``
-    then all target relations will be considered for sampling.
+    The ``target_rel`` argument indicates what relation to generate candidate statements for.
+    If this is set to ``None`` then all target relations will be considered for sampling.
 
     Parameters
     ----------
@@ -72,13 +75,18 @@ def discover_facts(
     strategy: str
         The candidates generation strategy:
 
-        - `'random_uniform'` : generates `N` candidates (:math:`N <= max_candidates`) based on a uniform sampling of
-            entities.
-        - `'entity_frequency'` : generates candidates by weighted sampling of entities using entity frequency.
-        - `'graph_degree'` : generates candidates by weighted sampling of entities with graph degree.
-        - `'cluster_coefficient'` : generates candidates by weighted sampling entities with clustering coefficient.
-        - `'cluster_triangles'` : generates candidates by weighted sampling entities with cluster triangles.
-        - `'cluster_squares'` : generates candidates by weighted sampling entities with cluster squares.
+        - `'random_uniform'` : generates `N` candidates (:math:`N <= max_candidates`) based on
+            a uniform sampling of entities.
+        - `'entity_frequency'` : generates candidates by weighted sampling of entities using
+            entity frequency.
+        - `'graph_degree'` : generates candidates by weighted sampling of entities with
+            graph degree.
+        - `'cluster_coefficient'` : generates candidates by weighted sampling entities
+            with clustering coefficient.
+        - `'cluster_triangles'` : generates candidates by weighted sampling entities
+            with cluster triangles.
+        - `'cluster_squares'` : generates candidates by weighted sampling entities
+            with cluster squares.
 
     max_candidates: int or float
         The maximum numbers of candidates generated by ``strategy``.
@@ -104,18 +112,18 @@ def discover_facts(
     >>> # Game of Thrones relations dataset
     >>> url = 'https://ampligraph.s3-eu-west-1.amazonaws.com/datasets/GoT.csv'
     >>> open('GoT.csv', 'wb').write(requests.get(url).content)
-    >>> X = load_from_csv('.', 'GoT.csv', sep=',')
+    >>> dataset = load_from_csv('.', 'GoT.csv', sep=',')
     >>> model = ScoringBasedEmbeddingModel(eta=5,
-    >>>                                      k=300,
-    >>>                                      scoring_type='ComplEx')
+    >>>                                    k=300,
+    >>>                                    scoring_type='ComplEx')
     >>> model.compile(optimizer='adam', loss='multiclass_nll')
-    >>> model.fit(X,
-    >>>              batch_size=100,
-    >>>              epochs=10,
-    >>>              validation_freq=50,
-    >>>              validation_batch_size=100,
-    >>>              validation_data = dataset['valid'])
-    >>> discover_facts(X,
+    >>> model.fit(dataset,
+    >>>           batch_size=100,
+    >>>           epochs=10,
+    >>>           validation_freq=50,
+    >>>           validation_batch_size=100,
+    >>>           validation_data = dataset['valid'])
+    >>> discover_facts(dataset,
     >>>                model,
     >>>                top_n=100,
     >>>                strategy='random_uniform',
@@ -274,13 +282,16 @@ def generate_candidates(
         Triples from which to discover new facts.
     strategy: str
         The candidates generation strategy.
-        - `'random_uniform'` : generates `N` candidates (:math:`N <= max_candidates`) based on a uniform random
-            sampling of head and tail entities.
+        - `'random_uniform'` : generates `N` candidates (:math:`N <= max_candidates`) based on
+            a uniform random sampling of head and tail entities.
         - `'entity_frequency'` : generates candidates by sampling entities with low frequency.
         - `'graph_degree'` : generates candidates by sampling entities with a low graph degree.
-        - `'cluster_coefficient'` : generates candidates by sampling entities with a low clustering coefficient.
-        - `'cluster_triangles'` : generates candidates by sampling entities with a low number of cluster triangles.
-        - `'cluster_squares'` : generates candidates by sampling entities with a low number of cluster squares.
+        - `'cluster_coefficient'` : generates candidates by sampling entities with a low
+            clustering coefficient.
+        - `'cluster_triangles'` : generates candidates by sampling entities with a low number
+            of cluster triangles.
+        - `'cluster_squares'` : generates candidates by sampling entities with a low number
+            of cluster squares.
     max_candidates: int or float
         The maximum numbers of candidates generated by ``strategy``.
         Can be an absolute number or a percentage [0,1].
@@ -289,8 +300,8 @@ def generate_candidates(
         Target relation to focus on. The function will generate candidate
          statements only with this specific relation type.
     consolidate_sides: bool
-        If `True` will generate candidate statements as a product of unique head and tail entities, otherwise will
-        consider head and tail entities separately (default: `False`).
+        If `True` will generate candidate statements as a product of unique head and tail
+        entities, otherwise will consider head and tail entities separately (default: `False`).
     seed : int
         Seed to use for reproducible results.
 
@@ -537,13 +548,15 @@ def find_clusters(X, model, clustering_algorithm=DBSCAN(), mode="e"):
     Perform link-based cluster analysis on a knowledge graph.
 
     The clustering happens on the embedding space of the entities and relations.
-    For example, if we cluster some entities of a model that uses :math:`k=100` (i.e. embedding space of size 100),
-    we will apply the chosen clustering algorithm on the 100-dimensional space of the provided input samples.
+    For example, if we cluster some entities of a model that uses :math:`k=100`
+    (i.e. embedding space of size 100), we will apply the chosen clustering algorithm
+    on the 100-dimensional space of the provided input samples.
 
-    Clustering can be used to evaluate the quality of the knowledge embeddings, by comparing to natural clusters.
-    For example, in the example below we cluster the embeddings of international football matches and end up
-    finding geographical clusters very similar to the continents.
-    This comparison can be subjective by inspecting a 2D projection of the embedding space or objective using a
+    Clustering can be used to evaluate the quality of the knowledge embeddings,
+    by comparing to natural clusters. For example, in the example below we cluster
+    the embeddings of international football matches and end up finding geographical
+    clusters very similar to the continents. This comparison can be subjective by
+    inspecting a 2D projection of the embedding space or objective using a
     `clustering metric <https://scikit-learn.org/stable/modules/clustering.html#clustering-performance-evaluation>`_.
 
     | The choice of the clustering algorithm and its corresponding tuning will greatly impact the results.
@@ -710,8 +723,8 @@ def find_duplicates(
     r"""
     Find duplicate entities, relations or triples in a graph based on their embeddings.
 
-    For example, say you have a movie dataset that was scraped off the web with possible duplicate movies.
-    The movies in this case are the entities.
+    For example, say you have a movie dataset that was scraped off the web with possible
+    duplicate movies. The movies in this case are the entities.
     Therefore, you would use the `"e"` mode to find all the movies that could de duplicates of each other.
 
     Duplicates are defined as points whose distance in the embedding space are smaller than
@@ -754,21 +767,24 @@ def find_duplicates(
         A distance metric used to compare entity distance in the embedding space.
         `See options here <https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html>`_.
     tolerance: int or str
-        Minimum distance (depending on the chosen ``metric``) to define one entity as the duplicate of another.
-        If `'auto'`, it will be determined automatically in a way that you get the ``expected_fraction_duplicates``.
-        The `'auto'` option can be much slower than the regular one, as the finding duplicate internal procedure
-        will be repeated multiple times.
+        Minimum distance (depending on the chosen ``metric``) to define one entity as the
+        duplicate of another.
+        If `'auto'`, it will be determined automatically in a way that you get
+        the ``expected_fraction_duplicates``.
+        The `'auto'` option can be much slower than the regular one, as the finding duplicate
+        internal procedure will be repeated multiple times.
     expected_fraction_duplicates: float
         Expected fraction of duplicates to be found. It is used only when ``tolerance='auto'``.
         Should be between 0 and 1 (default: 0.1).
     verbose: bool
-        Whether to print evaluation messages during optimisation when ``tolerance='auto'`` (default: `False`).
+        Whether to print evaluation messages during optimisation when ``tolerance='auto'``
+        (default: `False`).
 
     Returns
     -------
     duplicates : set of frozensets
-        Each entry in the duplicates set is a frozenset containing all entities that were found to be duplicates
-        according to the metric and tolerance.
+        Each entry in the duplicates set is a frozenset containing all entities that were found
+        to be duplicates according to the metric and tolerance.
         Each frozenset will contain at least two entities.
 
     tolerance: float
@@ -936,8 +952,8 @@ def find_duplicates(
 
     def opt(tol, info):
         """
-        Auxiliary function for the optimization procedure to find the tolerance that corresponds to the expected
-        number of duplicates.
+        Auxiliary function for the optimization procedure to find the tolerance that corresponds
+        to the expected number of duplicates.
 
         Returns the difference between actual and expected fraction of duplicates.
         """
@@ -983,13 +999,16 @@ def query_topn(
     entities, and return the top_n triples ordered by score. If given a `<subject, object>`
     pair it will fill in the missing element with known relations.
 
+    Therefore, if we feed the funcion with `<subject, predicate>` or `<predicate, object>`, it
+    solves the link prediction task.
+
     .. note::
         This function does not filter out true statements - triples returned can include those
         the model was trained on.
 
     Parameters
     ----------
-    model : EmbeddingModel
+    model : ScoringBasedEmbeddingModel
         The trained model that will be used to score triple completions.
     top_n : int
         The number of completed triples to returned.
@@ -1000,11 +1019,11 @@ def query_topn(
     tail : str
         An object string to query.
     ents_to_consider: array-like
-        List of entities to use for triple completions. If `None`, will generate completions using all distinct entities
-        (Default: `None`).
+        List of entities to use for triple completions. If `None`, will generate completions
+        using all distinct entities (default: `None`).
     rels_to_consider: array-like
-        List of relations to use for triple completions. If `None`, will generate completions using all distinct
-        relations (default: `None`).
+        List of relations to use for triple completions. If `None`, will generate completions
+        using all distinct relations (default: `None`).
 
     Returns
     -------
@@ -1164,19 +1183,19 @@ def find_nearest_neighbours(kge_model, entities, n_neighbors=10, entities_subset
     n_neighbors: int
         number of neighbors to be computed
     entities_subset: list or np.array
-        List of entities from which neighbors need to be computed. 
+        List of entities from which neighbors need to be computed.
         If this list is not passed, all the entities in the graph would be used
     metric: string or callable
         distance metric to be used with NearestNeighbors algorithm
         For values that can be passed, refer sklearn NearestNeighbors
-        
+
     Returns
     -------
     neighbors: np.array of size (len(entities), n_neighbors)
         Each row contains the n_neighbors neighbours of corresponding concepts in entities
     distance: np.array of size (len(entities), n_neighbors)
         Each row contains distances of corresponding neighbours
-    
+
     Examples
     --------
     >>> model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
@@ -1190,9 +1209,9 @@ def find_nearest_neighbours(kge_model, entities, n_neighbors=10, entities_subset
     >>>               ['f', 'z', 'g'],
     >>>               ['c', 'z', 'g']])
     >>> model.fit(X)
-    >>> neighbors, dist = find_nearest_neighbours(model, 
-    >>>                                           entities=['b'], 
-    >>>                                           n_neighbors=3, 
+    >>> neighbors, dist = find_nearest_neighbours(model,
+    >>>                                           entities=['b'],
+    >>>                                           n_neighbors=3,
     >>>                                           entities_subset=['a', 'c', 'd', 'e', 'f'])
     >>> print(neighbors, dist)
     [['e' 'd' 'c']] [[0.97474706 0.979108   1.2323136 ]]
@@ -1221,5 +1240,5 @@ def find_nearest_neighbours(kge_model, entities, n_neighbors=10, entities_subset
         out_neighbors.append([])
         for neighbor_idx in neighbor_idx_list:
             out_neighbors[-1].append(all_neighbors[neighbor_idx])
-    
+
     return np.array(out_neighbors), np.array(distances)

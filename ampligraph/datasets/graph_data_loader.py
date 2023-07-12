@@ -17,6 +17,7 @@ import uuid
 from datetime import datetime
 
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 
 from .data_indexer import DataIndexer
@@ -122,6 +123,12 @@ class NoBackend:
         )
         self.data_source = data_source
         self.dataset_type = dataset_type
+
+        if isinstance(self.data_source, pd.DataFrame):
+            self.data_source = self.data_source.values
+        elif isinstance(self.data_source, list):
+            self.data_source = np.array(self.data_source)
+
         if isinstance(self.data_source, np.ndarray):
             if self.use_indexer is True:
                 self.mapper = DataIndexer(

@@ -562,12 +562,11 @@ class InMemory:
             logger.error(msg)
             raise Exception(msg)
 
+        elements = []
         if type_of == "e":
-            elements = np.array([entities[x] for x in sample], dtype=dtype)
-            return elements
+            elements = np.array([entities[x] for x in sample if x in entities.keys()], dtype=dtype)
         elif type_of == "r":
-            elements = np.array([relations[x] for x in sample], dtype=dtype)
-            return elements
+            elements = np.array([relations[x] for x in sample if x in relations.keys()], dtype=dtype)
         else:
             if type_of not in ["r", "e"]:
                 msg = "No such option, should be r (relations) or e (entities), instead got {}".format(
@@ -575,6 +574,12 @@ class InMemory:
                 )
                 logger.error(msg)
                 raise Exception(msg)
+        invalid_keys = len(sample) - len(elements)
+        if invalid_keys > 0:
+            print(
+                "\n{} entities with invalid keys skipped!".format(invalid_keys)
+            )
+        return elements
 
     def get_relations_count(self):
         """Get number of unique relations."""

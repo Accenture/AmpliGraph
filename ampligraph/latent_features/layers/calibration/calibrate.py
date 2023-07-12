@@ -6,7 +6,6 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 import tensorflow as tf
-import numpy as np
 
 
 class CalibrationLayer(tf.keras.layers.Layer):
@@ -50,9 +49,7 @@ class CalibrationLayer(tf.keras.layers.Layer):
         self.b_init = tf.constant_initializer(
             kwargs.pop(
                 "calib_b",
-                np.log((self.neg_size + 1.0) / (self.pos_size + 1.0)).astype(
-                    np.float32
-                ),
+                float(tf.math.log((self.neg_size + 1.0) / (self.pos_size + 1.0)))
             )
         )
         super(CalibrationLayer, self).__init__(**kwargs)
@@ -79,7 +76,7 @@ class CalibrationLayer(tf.keras.layers.Layer):
         self.built = True
 
     def call(
-        self, scores_pos, scores_neg=tf.convert_to_tensor(()), training=0
+        self, scores_pos, scores_neg=[], training=0
     ):
         """
         Call method.

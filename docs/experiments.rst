@@ -20,7 +20,7 @@ FB15K-237
 ========== ======== ====== ======== ======== ========== ========================
   Model       MR     MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
 ========== ======== ====== ======== ======== ========== ========================
-  TransE    211     0.31    0.22     0.34     0.48       k: 400;
+  TransE    222     0.31    0.22     0.35     0.49       k: 400;
                                                          epochs: 4000;
                                                          eta: 30;
                                                          loss: multiclass_nll;
@@ -34,7 +34,7 @@ FB15K-237
                                                          embedding_model_params:
                                                          norm: 1;
                                                          seed: 0;
-                                                         batches_count: 64;
+                                                         batches_count: 5;
 
   DistMult  211     0.30      0.21     0.33      0.48    k: 300;
                                                          epochs: 4000;
@@ -50,7 +50,7 @@ FB15K-237
                                                          seed: 0;
                                                          batches_count: 50;
 
-  ComplEx   197     0.31      0.21     0.34      0.49    k: 350;
+  ComplEx   204     0.31      0.22     0.34      0.49    k: 350;
                                                          epochs: 4000;
                                                          eta: 30;
                                                          loss: multiclass_nll;
@@ -62,7 +62,7 @@ FB15K-237
                                                          regularizer_params:
                                                          lambda: 0.0001;
                                                          p: 3;
-                                                         batches_count: 64;
+                                                         batches_count: 10;
 
   HolE      190     0.30       0.21     0.33     0.48    k: 350;
                                                          epochs: 4000;
@@ -123,7 +123,7 @@ WN18RR
                                                                       seed: 0;
                                                                       batches_count: 100;
 
- ComplEx      4229        0.50     0.47       0.52       0.58         k: 200;
+ ComplEx      4356        0.51     0.47       0.52       0.58         k: 200;
                                                                       epochs: 4000;
                                                                       eta: 20;
                                                                       loss: multiclass_nll;
@@ -209,7 +209,7 @@ ComplEx     3153       0.49     0.40       0.54       0.65        k: 350;
                                                                   seed: 0;
                                                                   batches_count: 100
 
-HolE        7525       0.47     0.38       0.52       0.62        k: 350;
+HolE        6941       0.47     0.39       0.52       0.62        k: 350;
                                                                   epochs: 4000;
                                                                   eta: 30;
                                                                   loss: self_adversarial;
@@ -271,7 +271,7 @@ FB15K
                                                          seed: 0;
                                                          batches_count: 50;
 
- ComplEx    199      0.73    0.67     0.77      0.82     k: 200;
+ ComplEx    199      0.73    0.68     0.77      0.82     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: self_adversarial;
@@ -287,7 +287,7 @@ FB15K
                                                          seed: 0;
                                                          batches_count: 100;
 
-   HolE     222      0.72    0.65     0.77      0.83     k: 200;
+   HolE     238      0.73    0.67     0.77      0.82     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: self_adversarial;
@@ -297,7 +297,7 @@ FB15K
                                                          optimizer_params:
                                                          lr: 0.0005;
                                                          seed: 0;
-                                                         batches_count: 10;
+                                                         batches_count: 20;
 
 ========== ======== ====== ======== ======== ========== ========================
 
@@ -312,7 +312,7 @@ WN18
 ========== ======== ====== ======== ======== ========== ========================
   Model       MR     MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
 ========== ======== ====== ======== ======== ========== ========================
-TransE     278      0.64    0.39     0.87      0.95     k: 150;
+TransE     278      0.66    0.42     0.88      0.95     k: 150;
                                                         epochs: 4000;
                                                         eta: 10;
                                                         loss: multiclass_nll;
@@ -328,7 +328,7 @@ TransE     278      0.64    0.39     0.87      0.95     k: 150;
                                                         seed: 0;
                                                         batches_count: 100;
 
- DistMult   729      0.82    0.72     0.92      0.95     k: 200;
+ DistMult   699      0.82    0.71     0.92      0.95     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: nll;
@@ -340,7 +340,7 @@ TransE     278      0.64    0.39     0.87      0.95     k: 150;
                                                          seed: 0;
                                                          batches_count: 50;
 
- ComplEx    758      0.94    0.94     0.95      0.95     k: 200;
+ ComplEx    713      0.94    0.93     0.95      0.95     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: nll;
@@ -350,7 +350,7 @@ TransE     278      0.64    0.39     0.87      0.95     k: 150;
                                                          optimizer_params:
                                                          lr: 0.0005;
                                                          seed: 0;
-                                                         batches_count: 50;
+                                                         batches_count: 20;
 
   HolE     676      0.94    0.93     0.94       0.95     k: 200;
                                                          epochs: 4000;
@@ -373,7 +373,7 @@ To reproduce the above results: ::
     $ python predictive_performance.py
 
 
-.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~40 hours on
+.. note:: Running ``predictive_performance.py`` on all datasets, for all models takes ~34 hours on
     an an Intel Xeon Gold 6226R, 256 GB, equipped with Tesla A100 40GB GPUs and  Ubuntu 20.04.
 
 .. note:: All of the experiments above were conducted with early stopping on half the validation set.

@@ -315,7 +315,8 @@ def _add_reciprocal_relations(triples_df):
     df_reciprocal.iloc[:, 1] = df_reciprocal.iloc[:, 1] + "_reciprocal"
 
     # append to original triples
-    triples_df = triples_df.append(df_reciprocal)
+    triples_df = pd.concat([triples_df, df_reciprocal])
+
     return triples_df
 
 

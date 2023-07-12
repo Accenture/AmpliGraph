@@ -80,7 +80,7 @@ def test_call():
     model.encoding_layer.max_rel_size = 2
     model.encoding_layer.build((10, 10))
     
-    out = model.encoding_layer.call(triples=tf.constant([[0, 0, 1], [0, 1, 2]]))
+    out = model.encoding_layer.call(tf.constant([[0, 0, 1], [0, 1, 2]]))
     
     assert (out[0].numpy() == np.array([[0,0,0], [0,0,0]])).all(), \
         'EmbeddingLookupLayer (call): subject embeddings are incorrect'

@@ -304,25 +304,42 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
             )
         )
 
-    def call(self, triples):
+    def call(self, sample, type_of="t"):
         """
         Looks up the embeddings of entities and relations of the triples.
 
         Parameters
         ----------
-        triples : ndarray, shape (n, 3)
-            Batch of input triples.
+        sample : ndarray, shape (n, 3) or list
+            Batch of input triples if a ndarray of shape (n,3) is given or a list
+            (of lists) of entities or relations or distances as specified in ``type_of``.
+        type_of : str
+            Specifies whether we get in input triples or entities or relations.
+            Possible values are `"t"` for triples, `"e"` for entities, `"r"`
+            for relations and "d" for distances (useful in Nodepiece) (default: `"t"`).
+
 
         Returns
         -------
         emb_triples : list
-            List of embeddings of subjects, predicates, objects.
+            List of embeddings of subjects, predicates, objects if ``type_of="t"``
+            or a list of embeddings of entities (relations/distance) if ``type_of="e"``
+            (``type_of="r"``/``type_of="d"``).
         """
-        # look up in the respective embedding matrix
-        e_s = tf.nn.embedding_lookup(self.ent_emb, triples[:, 0])
-        e_p = tf.nn.embedding_lookup(self.rel_emb, triples[:, 1])
-        e_o = tf.nn.embedding_lookup(self.ent_emb, triples[:, 2])
-        return [e_s, e_p, e_o]
+        assert type_of in ["t", "e", "r", "d"], 'Wrong selection! type_of must be in ["t", "e", "r", "d"]'
+        if type_of == "t" or type_of == "triples":
+            # look up in the respective embedding matrix
+            e_s = tf.nn.embedding_lookup(self.ent_emb, sample[:, 0])
+            e_p = tf.nn.embedding_lookup(self.rel_emb, sample[:, 1])
+            e_o = tf.nn.embedding_lookup(self.ent_emb, sample[:, 2])
+            return [e_s, e_p, e_o]
+        elif type_of == "e":
+            e = tf.nn.embedding_lookup(self.ent_emb, sample)
+        elif type_of == "r":
+            e = tf.nn.embedding_lookup(self.rel_emb, sample)
+        elif type_of == "d":
+            e = tf.nn.embedding_lookup(self.dist_emb, sample)
+        return e
 
     def compute_output_shape(self, input_shape):
         """Returns the output shape of outputs of call function.
