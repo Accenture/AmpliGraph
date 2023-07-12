@@ -182,9 +182,9 @@ Their predictive power is reported below and compared against the state-of-the-a
 |                           | FB15K-237 | WN18RR   | YAGO3-10 | FB15k      | WN18      |
 |---------------------------|-----------|----------|----------|------------|-----------|
 | Literature Best           | **0.35*** | 0.48*    | 0.49*    | **0.84**** | **0.95*** |
-| TransE (AmpliGraph 2)     | 0.31      | 0.22     | 0.50     | 0.62       | 0.64      |
+| TransE (AmpliGraph 2)     | 0.31      | 0.22     | 0.50     | 0.62       | 0.66      |
 | DistMult (AmpliGraph 2)   | 0.30      | 0.47     | 0.48     | 0.71       | 0.82      |
-| ComplEx  (AmpliGraph 2)   | 0.31      | 0.50     | 0.49     | 0.73       | 0.94      |
+| ComplEx  (AmpliGraph 2)   | 0.31      | **0.51** | 0.49     | 0.73       | 0.94      |
 | HolE (AmpliGraph 2)       | 0.30      | 0.47     | 0.47     | 0.73       | 0.94      |
 | TransE (AmpliGraph 1)     | 0.31      | 0.22     | **0.51** | 0.63       | 0.66      |
 | DistMult (AmpliGraph 1)   | 0.31      | 0.47     | 0.50     | 0.78       | 0.82      |
