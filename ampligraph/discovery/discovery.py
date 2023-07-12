@@ -1183,19 +1183,19 @@ def find_nearest_neighbours(kge_model, entities, n_neighbors=10, entities_subset
     n_neighbors: int
         number of neighbors to be computed
     entities_subset: list or np.array
-        List of entities from which neighbors need to be computed. 
+        List of entities from which neighbors need to be computed.
         If this list is not passed, all the entities in the graph would be used
     metric: string or callable
         distance metric to be used with NearestNeighbors algorithm
         For values that can be passed, refer sklearn NearestNeighbors
-        
+
     Returns
     -------
     neighbors: np.array of size (len(entities), n_neighbors)
         Each row contains the n_neighbors neighbours of corresponding concepts in entities
     distance: np.array of size (len(entities), n_neighbors)
         Each row contains distances of corresponding neighbours
-    
+
     Examples
     --------
     >>> model = DistMult(batches_count=2, seed=555, epochs=1, k=10,
@@ -1209,9 +1209,9 @@ def find_nearest_neighbours(kge_model, entities, n_neighbors=10, entities_subset
     >>>               ['f', 'z', 'g'],
     >>>               ['c', 'z', 'g']])
     >>> model.fit(X)
-    >>> neighbors, dist = find_nearest_neighbours(model, 
-    >>>                                           entities=['b'], 
-    >>>                                           n_neighbors=3, 
+    >>> neighbors, dist = find_nearest_neighbours(model,
+    >>>                                           entities=['b'],
+    >>>                                           n_neighbors=3,
     >>>                                           entities_subset=['a', 'c', 'd', 'e', 'f'])
     >>> print(neighbors, dist)
     [['e' 'd' 'c']] [[0.97474706 0.979108   1.2323136 ]]
