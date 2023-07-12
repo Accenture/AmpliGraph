@@ -1240,5 +1240,5 @@ def find_nearest_neighbours(kge_model, entities, n_neighbors=10, entities_subset
         out_neighbors.append([])
         for neighbor_idx in neighbor_idx_list:
             out_neighbors[-1].append(all_neighbors[neighbor_idx])
-    
+
     return np.array(out_neighbors), np.array(distances)
