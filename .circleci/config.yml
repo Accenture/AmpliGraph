@@ -106,28 +106,28 @@ workflows:
             branches:
               only:  
                 - main
-                - ampligraph2/develop
+                - develop
       - pip-check:
           filters:
             branches:
               only:  
                 - main
-                - ampligraph2/develop      
+                - develop
       - lint:
           filters:
             branches:
               only:  
                 - main
-                - ampligraph2/develop      
+                - develop
       - docs:
           filters:
             branches:
               only:  
                 - main
-                - ampligraph2/develop      
+                - develop
       - test:
           filters:
             branches:
               only:  
                 - main
-                - ampligraph2/develop       
+                - develop
