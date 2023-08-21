@@ -265,7 +265,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         else:
             return inp_score
 
-    @tf.function(experimental_relax_shapes=True)
+    # @tf.function(experimental_relax_shapes=True)
     def _get_ranks(
         self,
         inputs,
@@ -308,17 +308,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             (corruptions defined by `ent_embs` matrix).
         """
         if not self.is_partitioned_training:
-            inputs = [
-                tf.nn.embedding_lookup(
-                    self.encoding_layer.ent_emb, inputs[:, 0]
-                ),
-                tf.nn.embedding_lookup(
-                    self.encoding_layer.rel_emb, inputs[:, 1]
-                ),
-                tf.nn.embedding_lookup(
-                    self.encoding_layer.ent_emb, inputs[:, 2]
-                ),
-            ]
+            inputs = self.encoding_layer(inputs)
 
         return self.scoring_layer.get_ranks(
             inputs,
