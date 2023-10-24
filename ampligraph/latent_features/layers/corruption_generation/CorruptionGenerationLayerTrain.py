@@ -49,10 +49,7 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
             Corruptions of the triples.
         """
         # size and reshape the dataset to sample corruptions
-        dataset = tf.reshape(
-            tf.tile(tf.reshape(pos, [-1]), [eta]),
-            [tf.shape(input=pos)[0] * eta, 3],
-        )
+        dataset = tf.tile(pos, [eta, 1])
         # generate a mask which will tell which subject needs to be corrupted
         # (random uniform sampling)
         keep_subj_mask = tf.cast(
