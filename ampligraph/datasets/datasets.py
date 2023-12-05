@@ -16,6 +16,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from security import safe_requests
 
 AMPLIGRAPH_ENV_NAME = "AMPLIGRAPH_DATA_HOME"
 
@@ -1870,11 +1871,10 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
     1 	/film/film/edited_by 	                Edited by 	        NaN 	                                        /m/0cc5qkt 	War Horse 	Michael Kahn 	/m/03q8ch
 
     """
-    import requests
 
     url = "https://ampgraphenc.s3-eu-west-1.amazonaws.com/datasets/xai_fb15k_237.csv"
 
-    r = requests.get(url, allow_redirects=True)
+    r = safe_requests.get(url, allow_redirects=True)
     open("xai_fb15k_237.csv", "wb").write(r.content)
 
     mapper = {
