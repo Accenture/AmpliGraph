@@ -76,11 +76,12 @@ class CalibrationLayer(tf.keras.layers.Layer):
         self.built = True
 
     def call(
-        self, scores_pos, scores_neg=[], training=0
+        self, scores_pos, scores_neg=None, training=0
     ):
         """
         Call method.
         """
+        scores_neg = [] if scores_neg is None else scores_neg
         if training:
             scores_all = tf.concat([scores_pos, scores_neg], axis=0)
         else:

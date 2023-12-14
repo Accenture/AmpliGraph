@@ -473,7 +473,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.train_function = train_function
         return self.train_function
 
-    def get_focusE_params(self, dict_params={}):
+    def get_focusE_params(self, dict_params=None):
         """Get parameters for focusE.
 
         Parameters
@@ -496,6 +496,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             structure weight (`float`).
 
         """
+        dict_params = {} if dict_params is None else dict_params
         # Get the non-linearity function
         non_linearity = dict_params.get("non_linearity", "linear")
         if non_linearity == "linear":
@@ -568,7 +569,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         validation_entities_subset=None,
         partitioning_k=1,
         focusE=False,
-        focusE_params={},
+        focusE_params=None,
     ):
         """Fit the model on the provided data.
 
@@ -717,6 +718,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         val_mr: 1074.8920 - val_hits@1: 0.0000e+00 - val_hits@10: 0.2386 - val_hits@100: 0.4773
 
         """
+        focusE_params = {} if focusE_params is None else focusE_params
         # verifies if compile has been called before calling fit
         self._assert_compile_was_called()
         # focusE

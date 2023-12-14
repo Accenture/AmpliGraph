@@ -34,20 +34,15 @@ class ScoringModelBase:
         epochs=100,
         batches_count=100,
         seed=0,
-        embedding_model_params={
-            "corrupt_sides": ["s,o"],
-            "negative_corruption_entities": "all",
-            "norm": 1,
-            "normalize_ent_emb": False,
-        },
+        embedding_model_params=None,
         optimizer="adam",
-        optimizer_params={"lr": 0.0005},
+        optimizer_params=None,
         loss="nll",
-        loss_params={},
+        loss_params=None,
         regularizer=None,
-        regularizer_params={},
+        regularizer_params=None,
         initializer="xavier",
-        initializer_params={"uniform": False},
+        initializer_params=None,
         verbose=False,
         model=None,
     ):
@@ -126,6 +121,16 @@ class ScoringModelBase:
         verbose : bool
             Verbose mode.
         """
+        embedding_model_params = {
+                "corrupt_sides": ["s,o"],
+                "negative_corruption_entities": "all",
+                "norm": 1,
+                "normalize_ent_emb": False,
+            } if embedding_model_params is None else embedding_model_params
+        optimizer_params = {"lr": 0.0005} if optimizer_params is None else optimizer_params
+        loss_params = {} if loss_params is None else loss_params
+        regularizer_params = {} if regularizer_params is None else regularizer_params
+        initializer_params = {"uniform": False} if initializer_params is None else initializer_params
         if model is not None:
             self.model_name = model.scoring_type
         else:
@@ -220,7 +225,7 @@ class ScoringModelBase:
         self,
         X,
         early_stopping=False,
-        early_stopping_params={},
+        early_stopping_params=None,
         focusE_numeric_edge_values=None,
         tensorboard_logs_path=None,
         callbacks=None,
@@ -284,6 +289,7 @@ class ScoringModelBase:
             path and save tensorboard files there. To then view the loss in
             the terminal run: ``tensorboard --logdir <tensorboard_logs_path>``.
         """
+        early_stopping_params = {} if early_stopping_params is None else early_stopping_params
         self.model = ScoringBasedEmbeddingModel(
             self.eta, self.k, scoring_type=self.model_name, seed=self.seed
         )
@@ -642,25 +648,30 @@ class TransE(ScoringModelBase):
         epochs=100,
         batches_count=100,
         seed=0,
-        embedding_model_params={
-            "corrupt_sides": ["s,o"],
-            "negative_corruption_entities": "all",
-            "norm": 1,
-            "normalize_ent_emb": False,
-        },
+        embedding_model_params=None,
         optimizer="adam",
-        optimizer_params={"lr": 0.0005},
+        optimizer_params=None,
         loss="nll",
-        loss_params={},
+        loss_params=None,
         regularizer=None,
-        regularizer_params={},
+        regularizer_params=None,
         initializer="xavier",
-        initializer_params={"uniform": False},
+        initializer_params=None,
         verbose=False,
         model=None,
     ):
         """Initialize the ScoringBasedEmbeddingModel with the TransE
         scoring function."""
+        embedding_model_params = {
+                "corrupt_sides": ["s,o"],
+                "negative_corruption_entities": "all",
+                "norm": 1,
+                "normalize_ent_emb": False,
+            } if embedding_model_params is None else embedding_model_params
+        optimizer_params = {"lr": 0.0005} if optimizer_params is None else optimizer_params
+        loss_params = {} if loss_params is None else loss_params
+        regularizer_params = {} if regularizer_params is None else regularizer_params
+        initializer_params = {"uniform": False} if initializer_params is None else initializer_params
         super().__init__(
             k,
             eta,
@@ -695,25 +706,30 @@ class DistMult(ScoringModelBase):
         epochs=100,
         batches_count=100,
         seed=0,
-        embedding_model_params={
-            "corrupt_sides": ["s,o"],
-            "negative_corruption_entities": "all",
-            "norm": 1,
-            "normalize_ent_emb": False,
-        },
+        embedding_model_params=None,
         optimizer="adam",
-        optimizer_params={"lr": 0.0005},
+        optimizer_params=None,
         loss="nll",
-        loss_params={},
+        loss_params=None,
         regularizer=None,
-        regularizer_params={},
+        regularizer_params=None,
         initializer="xavier",
-        initializer_params={"uniform": False},
+        initializer_params=None,
         verbose=False,
         model=None,
     ):
         """Initialize the ScoringBasedEmbeddingModel with the DistMult
         scoring function."""
+        embedding_model_params = {
+                "corrupt_sides": ["s,o"],
+                "negative_corruption_entities": "all",
+                "norm": 1,
+                "normalize_ent_emb": False,
+            } if embedding_model_params is None else embedding_model_params
+        optimizer_params = {"lr": 0.0005} if optimizer_params is None else optimizer_params
+        loss_params = {} if loss_params is None else loss_params
+        regularizer_params = {} if regularizer_params is None else regularizer_params
+        initializer_params = {"uniform": False} if initializer_params is None else initializer_params
         super().__init__(
             k,
             eta,
@@ -748,25 +764,30 @@ class ComplEx(ScoringModelBase):
         epochs=100,
         batches_count=100,
         seed=0,
-        embedding_model_params={
-            "corrupt_sides": ["s,o"],
-            "negative_corruption_entities": "all",
-            "norm": 1,
-            "normalize_ent_emb": False,
-        },
+        embedding_model_params=None,
         optimizer="adam",
-        optimizer_params={"lr": 0.0005},
+        optimizer_params=None,
         loss="nll",
-        loss_params={},
+        loss_params=None,
         regularizer=None,
-        regularizer_params={},
+        regularizer_params=None,
         initializer="xavier",
-        initializer_params={"uniform": False},
+        initializer_params=None,
         verbose=False,
         model=None,
     ):
         """Initialize the ScoringBasedEmbeddingModel with the ComplEx
         scoring function."""
+        embedding_model_params = {
+                "corrupt_sides": ["s,o"],
+                "negative_corruption_entities": "all",
+                "norm": 1,
+                "normalize_ent_emb": False,
+            } if embedding_model_params is None else embedding_model_params
+        optimizer_params = {"lr": 0.0005} if optimizer_params is None else optimizer_params
+        loss_params = {} if loss_params is None else loss_params
+        regularizer_params = {} if regularizer_params is None else regularizer_params
+        initializer_params = {"uniform": False} if initializer_params is None else initializer_params
         super().__init__(
             k,
             eta,
@@ -801,25 +822,30 @@ class HolE(ScoringModelBase):
         epochs=100,
         batches_count=100,
         seed=0,
-        embedding_model_params={
-            "corrupt_sides": ["s,o"],
-            "negative_corruption_entities": "all",
-            "norm": 1,
-            "normalize_ent_emb": False,
-        },
+        embedding_model_params=None,
         optimizer="adam",
-        optimizer_params={"lr": 0.0005},
+        optimizer_params=None,
         loss="nll",
-        loss_params={},
+        loss_params=None,
         regularizer=None,
-        regularizer_params={},
+        regularizer_params=None,
         initializer="xavier",
-        initializer_params={"uniform": False},
+        initializer_params=None,
         verbose=False,
         model=None,
     ):
         """Initialize the ScoringBasedEmbeddingModel with the HolE
         scoring function."""
+        embedding_model_params = {
+                "corrupt_sides": ["s,o"],
+                "negative_corruption_entities": "all",
+                "norm": 1,
+                "normalize_ent_emb": False,
+            } if embedding_model_params is None else embedding_model_params
+        optimizer_params = {"lr": 0.0005} if optimizer_params is None else optimizer_params
+        loss_params = {} if loss_params is None else loss_params
+        regularizer_params = {} if regularizer_params is None else regularizer_params
+        initializer_params = {"uniform": False} if initializer_params is None else initializer_params
         super().__init__(
             k,
             eta,

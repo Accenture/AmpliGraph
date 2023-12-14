@@ -11,7 +11,7 @@ from functools import partial
 import tensorflow as tf
 
 
-def LP_regularizer(trainable_param, regularizer_parameters={}):
+def LP_regularizer(trainable_param, regularizer_parameters=None):
     """Norm :math:`L^{p}` regularizer.
 
     It is passed to the model as the ``entity_relation_regularizer`` argument of the
@@ -32,12 +32,13 @@ def LP_regularizer(trainable_param, regularizer_parameters={}):
         Regularizer instance from the `tf.keras.regularizer` class.
 
     """
+    regularizer_parameters = {} if regularizer_parameters is None else regularizer_parameters
     return regularizer_parameters.get("lambda", 0.00001) * tf.reduce_sum(
         tf.pow(tf.abs(trainable_param), regularizer_parameters.get("p", 2))
     )
 
 
-def get(identifier, hyperparams={}):
+def get(identifier, hyperparams=None):
     """Get the regularizer specified by the identifier.
 
     Parameters
@@ -52,6 +53,7 @@ def get(identifier, hyperparams={}):
         Regularizer instance of the `tf.keras.regularizer` class.
 
     """
+    hyperparams = {} if hyperparams is None else hyperparams
     if isinstance(identifier, str) and identifier == "l3":
         hyperparams["p"] = 3
         identifier = partial(

@@ -73,7 +73,7 @@ class Loss(abc.ABC):
     external_params = []
     class_params = {}
 
-    def __init__(self, hyperparam_dict={}, verbose=False):
+    def __init__(self, hyperparam_dict=None, verbose=False):
         """Initialize the loss..
 
         Parameters
@@ -86,6 +86,7 @@ class Loss(abc.ABC):
 
             Other Keys are described in the `hyperparameters` section.
         """
+        hyperparam_dict = {} if hyperparam_dict is None else hyperparam_dict
         self._loss_parameters = {}
         self._loss_parameters["reduction"] = hyperparam_dict.get(
             "reduction", DEFAULT_REDUCTION
@@ -252,7 +253,7 @@ class PairwiseLoss(Loss):
 
     """
 
-    def __init__(self, loss_params={}, verbose=False):
+    def __init__(self, loss_params=None, verbose=False):
         """Initialize the loss.
 
         Parameters
@@ -266,9 +267,10 @@ class PairwiseLoss(Loss):
 
             Example: `loss_params={'margin': 1}`.
         """
+        loss_params = {} if loss_params is None else loss_params
         super().__init__(loss_params, verbose)
 
-    def _init_hyperparams(self, hyperparam_dict={}):
+    def _init_hyperparams(self, hyperparam_dict=None):
         """Verifies and stores the hyperparameters needed by the algorithm.
 
         Parameters
@@ -278,6 +280,7 @@ class PairwiseLoss(Loss):
 
             - `"margin"`: (str) - Margin to be used in pairwise loss computation (default: 1).
         """
+        hyperparam_dict = {} if hyperparam_dict is None else hyperparam_dict
         self._loss_parameters["margin"] = hyperparam_dict.get(
             "margin", DEFAULT_MARGIN
         )
@@ -333,7 +336,7 @@ class NLLLoss(Loss):
     True
     """
 
-    def __init__(self, loss_params={}, verbose=False):
+    def __init__(self, loss_params=None, verbose=False):
         """Initialize the loss..
 
         Parameters
@@ -344,9 +347,10 @@ class NLLLoss(Loss):
             - `"reduction"`: (str) - Specifies whether to `"sum"` or take `"mean"` of loss per sample w.r.t. \
             corruption (default:`"sum"`).
         """
+        loss_params = {} if loss_params is None else loss_params
         super().__init__(loss_params, verbose)
 
-    def _init_hyperparams(self, hyperparam_dict={}):
+    def _init_hyperparams(self, hyperparam_dict=None):
         """Initializes the hyperparameters needed by the algorithm.
 
         Parameters
@@ -354,6 +358,7 @@ class NLLLoss(Loss):
         hyperparam_dict : dictionary
             The Loss will check the keys to get the corresponding parameters.
         """
+        hyperparam_dict = {} if hyperparam_dict is None else hyperparam_dict
         return
 
     @tf.function(experimental_relax_shapes=True)
@@ -408,7 +413,7 @@ class AbsoluteMarginLoss(Loss):
     True
     """
 
-    def __init__(self, loss_params={}, verbose=False):
+    def __init__(self, loss_params=None, verbose=False):
         """Initialize the loss.
 
         Parameters
@@ -422,9 +427,10 @@ class AbsoluteMarginLoss(Loss):
 
             Example: ``loss_params={'margin': 1}``.
         """
+        loss_params = {} if loss_params is None else loss_params
         super().__init__(loss_params, verbose)
 
-    def _init_hyperparams(self, hyperparam_dict={}):
+    def _init_hyperparams(self, hyperparam_dict=None):
         """Initializes the hyperparameters needed by the algorithm.
 
         Parameters
@@ -434,6 +440,7 @@ class AbsoluteMarginLoss(Loss):
 
            `"margin"`: (str) - Margin to be used in loss computation (default: 1).
         """
+        hyperparam_dict = {} if hyperparam_dict is None else hyperparam_dict
         self._loss_parameters["margin"] = hyperparam_dict.get(
             "margin", DEFAULT_MARGIN
         )
@@ -500,7 +507,7 @@ class SelfAdversarialLoss(Loss):
     True
     """
 
-    def __init__(self, loss_params={}, verbose=False):
+    def __init__(self, loss_params=None, verbose=False):
         """Initialize the loss.
 
         Parameters
@@ -516,9 +523,10 @@ class SelfAdversarialLoss(Loss):
             Example: `loss_params={'margin': 1, 'alpha': 0.5}`.
 
         """
+        loss_params = {} if loss_params is None else loss_params
         super().__init__(loss_params, verbose)
 
-    def _init_hyperparams(self, hyperparam_dict={}):
+    def _init_hyperparams(self, hyperparam_dict=None):
         """Initializes the hyperparameters needed by the algorithm.
 
         Parameters
@@ -529,6 +537,7 @@ class SelfAdversarialLoss(Loss):
             - `"margin"`` (int) - Margin to be used in adversarial loss computation (default: 3).
             - `"alpha"`: (float) - Temperature of sampling (default: 0.5).
         """
+        hyperparam_dict = {} if hyperparam_dict is None else hyperparam_dict
         self._loss_parameters["margin"] = hyperparam_dict.get(
             "margin", DEFAULT_MARGIN_ADVERSARIAL
         )
@@ -602,7 +611,7 @@ class NLLMulticlass(Loss):
 
     """
 
-    def __init__(self, loss_params={}, verbose=False):
+    def __init__(self, loss_params=None, verbose=False):
         """Initialize the loss.
 
         Parameters
@@ -614,9 +623,10 @@ class NLLMulticlass(Loss):
              corruption (default: `"sum"`).
 
         """
+        loss_params = {} if loss_params is None else loss_params
         super().__init__(loss_params, verbose)
 
-    def _init_hyperparams(self, hyperparam_dict={}):
+    def _init_hyperparams(self, hyperparam_dict=None):
         """Verifies and stores the hyperparameters needed by the algorithm.
 
         Parameters
@@ -624,6 +634,7 @@ class NLLMulticlass(Loss):
         hyperparam_dict : dict
             The Loss will check the keys to get the corresponding parameters.
         """
+        hyperparam_dict = {} if hyperparam_dict is None else hyperparam_dict
         pass
 
     @tf.function(experimental_relax_shapes=True)
@@ -687,7 +698,7 @@ class LossFunctionWrapper(Loss):
         self._user_losses = user_defined_loss
         self.name = name
 
-    def _init_hyperparams(self, hyperparam_dict={}):
+    def _init_hyperparams(self, hyperparam_dict=None):
         """Verifies and stores the hyperparameters needed by the algorithm.
 
         Parameters
@@ -695,6 +706,7 @@ class LossFunctionWrapper(Loss):
         hyperparam_dict : dict
             The Loss will check the keys to get the corresponding parameters.
         """
+        hyperparam_dict = {} if hyperparam_dict is None else hyperparam_dict
         pass
 
     @tf.function(experimental_relax_shapes=True)
@@ -717,7 +729,7 @@ class LossFunctionWrapper(Loss):
         return self._user_losses(scores_pos, scores_neg)
 
 
-def get(identifier, hyperparams={}):
+def get(identifier, hyperparams=None):
     """
     Get the loss function specified by the identifier.
 
@@ -750,6 +762,7 @@ def get(identifier, hyperparams={}):
     >>> isinstance(udf_loss, Loss)
     True
     """
+    hyperparams = {} if hyperparams is None else hyperparams
     if isinstance(identifier, Loss):
         return identifier
     elif isinstance(identifier, six.string_types):

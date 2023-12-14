@@ -456,7 +456,7 @@ def select_best_model_ranking(
     entities_subset=None,
     corrupt_side="s,o",
     focusE=False,
-    focusE_params={},
+    focusE_params=None,
     retrain_best_model=False,
     verbose=False,
 ):
@@ -636,6 +636,7 @@ def select_best_model_ranking(
     >>>                           early_stopping=True)
 
     """
+    focusE_params = {} if focusE_params is None else focusE_params
     from importlib import import_module
 
     from ..compat import evaluate_performance

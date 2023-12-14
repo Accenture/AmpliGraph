@@ -54,7 +54,7 @@ class OptimizerWrapper(abc.ABC):
     def set_partitioned_training(self, value=True):
         self.is_partitioned_training = value
 
-    def minimize(self, loss, ent_emb, rel_emb, gradient_tape, other_vars=[]):
+    def minimize(self, loss, ent_emb, rel_emb, gradient_tape, other_vars=None):
         """Minimizes the loss with respect to entity and relation embeddings and other trainable variables.
 
         Parameters
@@ -70,6 +70,7 @@ class OptimizerWrapper(abc.ABC):
         other_vars: list
             List of all the other trainable variables.
         """
+        other_vars = [] if other_vars is None else other_vars
         all_trainable_vars = [ent_emb, rel_emb]
         all_trainable_vars.extend(other_vars)
         # Total number of trainable variables in the graph
