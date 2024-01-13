@@ -1874,7 +1874,7 @@ def _load_xai_fb15k_237_experiment_log(full=False, subset="all"):
 
     url = "https://ampgraphenc.s3-eu-west-1.amazonaws.com/datasets/xai_fb15k_237.csv"
 
-    r = requests.get(url, allow_redirects=True)
+    r = requests.get(url, allow_redirects=True, timeout=60)
     open("xai_fb15k_237.csv", "wb").write(r.content)
 
     mapper = {
