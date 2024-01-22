@@ -266,7 +266,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         else:
             return inp_score
 
-    # @tf.function(experimental_relax_shapes=True)
+    @tf.function(experimental_relax_shapes=True)
     def _get_ranks(
         self,
         inputs,
@@ -308,9 +308,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             Ranking against subject corruptions and object corruptions
             (corruptions defined by `ent_embs` matrix).
         """
-        if not self.is_partitioned_training:
-            inputs = self.encoding_layer(inputs)
-
         return self.scoring_layer.get_ranks(
             inputs,
             ent_embs,
@@ -335,6 +332,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.encoding_layer.max_ent_size = self.max_ent_size
         # set the max number of relations being trained just like above
         self.encoding_layer.max_rel_size = self.max_rel_size
+        # set the max number of relations also for the scoring_function. This is uniquely useful for RotatE
+        self.scoring_layer.max_rel_size = self.max_rel_size
         self.num_ents = self.max_ent_size
         self.built = True
 
@@ -1323,6 +1322,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # set the initializer and regularizer of the embedding matrices in the
         # encoding layer
         self.encoding_layer.set_initializer(entity_relation_initializer)
+        if self.scoring_type == "RotatE":
+            assert isinstance(self.encoding_layer.rel_init, tf.keras.initializers.GlorotUniform),\
+                "The relation initializer provided to a RotatE model must be " \
+                "a tf.keras.initializers.GlorotUniform!\nPlease change to that."
+
         self.encoding_layer.set_regularizer(entity_relation_regularizer)
         self._is_compiled = True
 
@@ -1434,6 +1438,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
             if self.is_partitioned_training:
                 inputs = self.process_model_inputs_for_test(inputs)
+            else:
+                inputs = self.encoding_layer(inputs, training=False)
 
             # run the loop based on number of parts in which the original emb
             # matrix was generated
