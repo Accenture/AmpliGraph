@@ -775,7 +775,7 @@ def select_best_model_ranking(
                 epochs=model_params.get('epochs', 100),
                 validation_data=X_valid,
                 validation_freq=early_stopping_params.get('check_interval', 10),
-                validation_batch_size=10,
+                validation_batch_size=early_stopping_params.get('validation_batch_size', 10),
                 validation_burn_in=early_stopping_params.get('burn_in', 0),
                 validation_corrupt_side='s,o',
                 validation_filter=X_filter,
