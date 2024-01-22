@@ -59,20 +59,30 @@ class AbstractScoringLayer(tf.keras.layers.Layer):
 
     def get_config(self):
         config = super(AbstractScoringLayer, self).get_config()
-        config.update({"k": self.internal_k})
+        config.update(
+            {"k": self.internal_k, "max_rel_size": self.max_rel_size}
+        )
         return config
 
-    def __init__(self, k):
+    def __init__(self, k, max_rel_size=None):
         """Initializes the scoring layer.
 
         Parameters
         ----------
         k: int
             Embedding size.
+        max_rel_size: int
+            This value specifies the number of relations in the KG. It is
+            essential only for :class:`~ampligraph.latent_features.layers.scoring.RotatE`
+            scoring layer (default: None).
         """
         super(AbstractScoringLayer, self).__init__()
         # store the embedding size. (concrete models may overwrite this)
         self.internal_k = k
+        # Specify the number of rels in the graph. This attribute is set
+        # when building the ScoringBasedEmbeddingModel and is useful for
+        # RotatE
+        self.max_rel_size = max_rel_size
 
     def call(self, triples):
         """Interface to the external world.
