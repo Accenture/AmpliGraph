@@ -20,8 +20,8 @@ def test_compute_score():
            np.array([[4, 4, 4, 6, 6, 6], [9, 9, 9, 19, 19, 19]]).astype(np.float32)]
     
     scores = np.around(model._compute_scores(triples).numpy(), 2)
-    assert (scores == 2 * np.array([222., 117273.], 
-                               dtype=np.float32) / 3.0).all(), 'ComplEx: Scores don\'t match!'
+    assert (scores == 2 * np.array([222., 117273.], dtype=np.float32) / 3.0).all(),\
+        'HolE: Scores don\'t match!'
     
     
 def test_get_subject_corruption_scores():
@@ -32,8 +32,8 @@ def test_get_subject_corruption_scores():
            np.array([[5, 5, 5, 3, 3, 3], [100, 100, 100, 101, 101, 101]]).astype(np.float32),
            np.array([[4, 4, 4, 6, 6, 6], [9, 9, 9, 19, 19, 19]]).astype(np.float32)]
     scores = np.around(model._get_subject_corruption_scores(triples, ent_matrix).numpy(), 2)
-    assert (np.diag(scores) == 2 * np.array([222., 117273.], 
-                               dtype=np.float32) / 3.0).all(), 'ComplEx: Scores don\'t match!'    
+    assert (np.diag(scores) == 2 * np.array([222., 117273.], dtype=np.float32) / 3.0).all(),\
+        'HolE: Scores don\'t match!'
     
 def test_get_object_corruption_scores():
     model = HolE(k=3)
@@ -43,5 +43,5 @@ def test_get_object_corruption_scores():
            np.array([[5, 5, 5, 3, 3, 3], [100, 100, 100, 101, 101, 101]]).astype(np.float32),
            np.array([[4, 4, 4, 6, 6, 6], [9, 9, 9, 19, 19, 19]]).astype(np.float32)]
     scores = np.around(model._get_object_corruption_scores(triples, ent_matrix).numpy(), 2)
-    assert (np.diag(scores) == 2 * np.array([222., 117273.], 
-                               dtype=np.float32) / 3.0).all(), 'ComplEx: Scores don\'t match!'   
+    assert (np.diag(scores) == 2 * np.array([222., 117273.], dtype=np.float32) / 3.0).all(),\
+        'HolE: Scores don\'t match!'
