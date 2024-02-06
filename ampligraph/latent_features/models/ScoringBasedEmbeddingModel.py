@@ -852,34 +852,18 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 # store the logs of the last batch of the epoch
                 epoch_logs = copy.copy(logs)
                 # if validation is enabled
-                if (
-                    epoch >= (validation_burn_in - 1)
-                    and validation_data is not None
-                    and self._should_eval(epoch, validation_freq)
-                ):
-                    if self.data_shape > 3 and validation_data.shape[1] == 3:
-                        nan_weights = np.empty(validation_data.shape[0])
-                        nan_weights.fill(np.nan)
-                        validation_data = np.concatenate(
-                            [validation_data, nan_weights], axis=1
-                        )
-                    # evaluate on the validation
-                    ranks = self.evaluate(
+                validate = epoch >= (validation_burn_in - 1) \
+                           and validation_data is not None \
+                           and self._should_eval(epoch, validation_freq)
+                if validate:
+                    val_logs = self.perform_validation(
                         validation_data,
                         batch_size=validation_batch_size or batch_size,
                         use_filter=validation_filter,
                         dataset_type="valid",
                         corrupt_side=validation_corrupt_side,
-                        entities_subset=validation_entities_subset,
+                        entities_subset=validation_entities_subset
                     )
-                    # compute all the metrics
-                    val_logs = {
-                        "val_mrr": mrr_score(ranks),
-                        "val_mr": mr_score(ranks),
-                        "val_hits@1": hits_at_n_score(ranks, 1),
-                        "val_hits@10": hits_at_n_score(ranks, 10),
-                        "val_hits@100": hits_at_n_score(ranks, 100),
-                    }
                     # update the epoch logs with validation details
                     epoch_logs.update(val_logs)
 
@@ -1617,16 +1601,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
          0.391965945787259,
          20438)
         """
-        # get the test set handler
-        self.data_handler_test = data_adapter.DataHandler(
-            x,
-            batch_size=batch_size,
-            dataset_type=dataset_type,
-            epochs=1,
-            use_filter=use_filter,
-            use_indexer=self.data_indexer,
-        )
-
         assert corrupt_side in [
             "s",
             "o",
@@ -1639,29 +1613,42 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             "worst",
         ], "Invalid value for ranking_strategy"
 
-        self.corrupt_side = corrupt_side
-        self.ranking_strategy = ranking_strategy
-
-        self.entities_subset = tf.constant([])
-        self.mapping_dict = tf.lookup.experimental.DenseHashTable(
-            tf.int32, tf.int32, -1, -1, -2
-        )
-        if entities_subset is not None:
-            entities_subset = self.data_indexer.get_indexes(
-                entities_subset, "e"
-            )
-            self.entities_subset = tf.constant(entities_subset, dtype=tf.int32)
-            self.mapping_dict.insert(
-                self.entities_subset, tf.range(self.entities_subset.shape[0])
+        # get the evaluation set handler. Notice that, if we are performing validation
+        # we don't need to redefine the data_handler and the other attributes every time
+        # we evaluate, but we just need to define them the first time
+        if dataset_type == 'test' or \
+                (dataset_type == 'valid' and not hasattr(self, "data_handler_test")):
+            self.data_handler_test = data_adapter.DataHandler(
+                x,
+                batch_size=batch_size,
+                dataset_type=dataset_type,
+                epochs=1,
+                use_filter=use_filter,
+                use_indexer=self.data_indexer,
             )
 
-        # flag to indicate if we are using filter or not
-        self.use_filter = (
-            self.data_handler_test._parent_adapter.backend.use_filter
-            or isinstance(
-                self.data_handler_test._parent_adapter.backend.use_filter, dict
+            self.corrupt_side = corrupt_side
+            self.ranking_strategy = ranking_strategy
+
+            self.entities_subset = tf.constant([])
+            self.mapping_dict = tf.lookup.experimental.DenseHashTable(
+                tf.int32, tf.int32, -1, -1, -2
             )
-        )
+            if entities_subset is not None:
+                entities_subset = self.data_indexer.get_indexes(
+                    entities_subset, "e"
+                )
+                self.entities_subset = tf.constant(entities_subset, dtype=tf.int32)
+                self.mapping_dict.insert(
+                    self.entities_subset, tf.range(self.entities_subset.shape[0])
+                )
+            # flag to indicate if we are using filter or not
+            self.use_filter = (
+                self.data_handler_test._parent_adapter.backend.use_filter
+                or isinstance(
+                    self.data_handler_test._parent_adapter.backend.use_filter, dict
+                )
+            )
 
         # Container that configures and calls `tf.keras.Callback`s.
         if not isinstance(callbacks, callbacks_module.CallbackList):
@@ -1835,6 +1822,47 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     )
         callbacks.on_predict_end()
         return np.concatenate(outputs)
+
+    def perform_validation(
+            self,
+            validation_data,
+            batch_size,
+            use_filter,
+            dataset_type,
+            corrupt_side,
+            entities_subset
+    ):
+        """
+        Function to perform the validation.
+
+        It calls the evaluate function on the validation triples and
+        """
+        # FocusE adaptation of validation_data
+        if self.data_shape > 3 and validation_data.shape[1] == 3:
+            nan_weights = np.empty(validation_data.shape[0])
+            nan_weights.fill(np.nan)
+            validation_data = np.concatenate(
+                [validation_data, nan_weights], axis=1
+            )
+        # evaluate on the validation
+        ranks = self.evaluate(
+            validation_data,
+            batch_size=batch_size,
+            use_filter=use_filter,
+            dataset_type=dataset_type,
+            corrupt_side=corrupt_side,
+            entities_subset=entities_subset,
+        )
+        # compute all the metrics
+        val_logs = {
+            "val_mrr": mrr_score(ranks),
+            "val_mr": mr_score(ranks),
+            "val_hits@1": hits_at_n_score(ranks, 1),
+            "val_hits@10": hits_at_n_score(ranks, 10),
+            "val_hits@100": hits_at_n_score(ranks, 100),
+        }
+        return val_logs
+
 
     def make_calibrate_function(self):
         """Similar to keras lib, this function returns the handle to the calibrate step function.
