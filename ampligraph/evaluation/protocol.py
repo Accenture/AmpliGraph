@@ -803,7 +803,7 @@ def select_best_model_ranking(
                 "hits_10": hits_10,
             }
 
-            info = "mr: {} mrr: {} hits 1: {} hits 3: {} hits 10: {}, model: {}, params: {}".format(
+            info = "\nCurrent model results: mr: {} mrr: {} hits 1: {} hits 3: {} hits 10: {}\nmodel: {}, params: {}".format(
                 mr,
                 curr_mrr,
                 hits_1,
@@ -813,6 +813,7 @@ def select_best_model_ranking(
                 model_params,
             )
 
+            print(info)
             logger.debug(info)
             if verbose:
                 logger.info(info)
