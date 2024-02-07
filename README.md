@@ -175,24 +175,22 @@ To sanity check the installation run the following:
 
 ## Predictive Power Evaluation (MRR Filtered)
 
-AmpliGraph includes implementations of TransE, DistMult, ComplEx, HolE, ConvE, and ConvKB.
+AmpliGraph includes implementations of TransE, DistMult, ComplEx, HolE and RotatE. Versions <2.0 also includes ConvE,
+and ConvKB.
 Their predictive power is reported below and compared against the state-of-the-art results in literature.
 [More details available here](https://docs.ampligraph.org/en/latest/experiments.html).
 
-|                           | FB15K-237 | WN18RR   | YAGO3-10 | FB15k      | WN18      |
-|---------------------------|-----------|----------|----------|------------|-----------|
-| Literature Best           | **0.35*** | 0.48*    | 0.49*    | **0.84**** | **0.95*** |
-| TransE (AmpliGraph 2)     | 0.31      | 0.22     | 0.50     | 0.62       | 0.66      |
-| DistMult (AmpliGraph 2)   | 0.30      | 0.47     | 0.48     | 0.71       | 0.82      |
-| ComplEx  (AmpliGraph 2)   | 0.31      | **0.51** | 0.49     | 0.73       | 0.94      |
-| HolE (AmpliGraph 2)       | 0.30      | 0.47     | 0.47     | 0.73       | 0.94      |
-| TransE (AmpliGraph 1)     | 0.31      | 0.22     | **0.51** | 0.63       | 0.66      |
-| DistMult (AmpliGraph 1)   | 0.31      | 0.47     | 0.50     | 0.78       | 0.82      |
-| ComplEx  (AmpliGraph 1)   | 0.32      | **0.51** | 0.49     | 0.80       | 0.94      |
-| HolE (AmpliGraph 1)       | 0.31      | 0.47     | 0.50     | 0.80       | 0.94      |
-| ConvE (AmpliGraph 1)      | 0.26      | 0.45     | 0.30     | 0.50       | 0.93      |
-| ConvE (1-N, AmpliGraph 1) | 0.32      | 0.48     | 0.40     | 0.80       | **0.95**  |
-| ConvKB (AmpliGraph 1)     | 0.23      | 0.39     | 0.30     | 0.65       | 0.80      |
+|                              | FB15K-237 | WN18RR    | YAGO3-10 | FB15k      | WN18      |
+|------------------------------|-----------|-----------|----------|------------|-----------|
+| Literature Best              | **0.35*** | 0.48*     | 0.49*    | **0.84**** | **0.95*** |
+| TransE                       | 0.31      | 0.22      | **0.50** | 0.62       | 0.66      |
+| DistMult                     | 0.30      | 0.47      | 0.48     | 0.71       | 0.82      |
+| ComplEx                      | 0.31      | **0.51**  | 0.49     | 0.73       | 0.94      |
+| HolE                         | 0.30      | 0.47      | 0.47     | 0.73       | 0.94      |
+| RotatE                       | 0.31      | **0.51**  | 0.42     | 0.70       | **0.95**  |
+| ConvE (AmpliGraph v1.4)      | 0.26      | 0.45      | 0.30     | 0.50       | 0.93      |
+| ConvE (1-N, AmpliGraph v1.4) | 0.32      | 0.48      | 0.40     | 0.80       | **0.95**  |
+| ConvKB (AmpliGraph v1.4)     | 0.23      | 0.39      | 0.30     | 0.65       | 0.80      |
 
 <sub>
 * Timothee Lacroix, Nicolas Usunier, and Guillaume Obozinski. Canonical tensor decomposition for knowledge base 

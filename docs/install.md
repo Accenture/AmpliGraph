@@ -121,5 +121,5 @@ available cloning the [repository](https://github.com/Accenture/AmpliGraph.git) 
 *ampligraph1/develop* branch. However, notice that the support for this version has been discontinued.
 
 Finally, if you want to use AmpliGraph 1.x APIs on top of Tensorflow 2, refer to the backward compatibility APIs
-provided on Ampligraph 2 [compat](https://docs.ampligraph.org/en/2.0.0/ampligraph.latent_features.html#module-ampligraph.compat)
+provided on Ampligraph [compat](https://docs.ampligraph.org/en/2.0.0/ampligraph.latent_features.html#module-ampligraph.compat)
 module.

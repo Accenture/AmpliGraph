@@ -7,7 +7,7 @@ Performance
 Predictive Performance
 ----------------------
 
-We report AmpliGraph 2 filtered MR, MRR, Hits@1,3,10 results for the most common datasets used in literature.
+We report AmpliGraph filtered MR, MRR, Hits@1,3,10 results for the most common datasets used in literature.
 
 
 .. note:: **AmpliGraph 1.x Benchmarks**.
@@ -77,6 +77,19 @@ FB15K-237
                                                          lr: 0.0001;
                                                          seed: 0;
                                                          batches_count: 64;
+
+  RotatE    162     0.31     0.22       0.35     0.51    k:350;
+                                                         epochs': 700;
+                                                         eta: 20;
+                                                         loss: self_adversarial;
+                                                         loss_params:
+                                                         {'margin': 5, 'alpha': 1.0};
+                                                         optimizer: 'adam';
+                                                         learning_rate: 1e-05;
+                                                         regularizer: LP;
+                                                         regularizer_params:
+                                                         {'p': 3, 'lambda': 0.001};
+                                                         batches_count: 55
 
 
 ========== ======== ====== ======== ======== ========== ========================
@@ -151,6 +164,19 @@ WN18RR
                                                                       seed: 0;
                                                                       batches_count: 50;
 
+ RotatE       1839        0.52     0.47       0.53       0.61         k: 350;
+                                                                      epochs: 350;
+                                                                      eta: 20;
+                                                                      loss: self_adversarial;
+                                                                      loss_params;
+                                                                      {'margin': 5, 'alpha': 0.5};
+                                                                      optimizer: adam;
+                                                                      learning_rate: 0.000;
+                                                                      regularizer: 'LP';
+                                                                      regularizer_params;
+                                                                      {'p': 3, 'lambda': 1e-05};
+                                                                      batches_count: 18
+
 ============ =========== ======== ========== ========== ============ =========================
 
 .. note:: WN18RR validation and test sets include triples with entities that do not occur
@@ -222,6 +248,20 @@ HolE        6941       0.47     0.39       0.52       0.62        k: 350;
                                                                   seed: 0;
                                                                   batches_count: 100
 
+RotatE      6941       0.47     0.39       0.52       0.62        k: 350;
+                                                                  epochs: 4000;
+                                                                  eta: 20;
+                                                                  loss: self_adversarial;
+                                                                  loss_params:
+                                                                  {alpha: 1, margin: 20};
+                                                                  optimizer: adam;
+                                                                  lr: 0.0001;
+                                                                  regularizer: LP;
+                                                                  regularizer_params:
+                                                                  {'p': 3, 'lambda': 0.001};
+                                                                  seed: 0;
+                                                                  batches_count: 216
+
 ========== ========== ======== ========== ========== =========== ===========================
 
 
@@ -287,7 +327,7 @@ FB15K
                                                          seed: 0;
                                                          batches_count: 100;
 
-   HolE     238      0.73    0.67     0.77      0.82     k: 200;
+ HolE       238      0.73    0.67     0.77      0.82     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: self_adversarial;
@@ -299,6 +339,18 @@ FB15K
                                                          seed: 0;
                                                          batches_count: 20;
 
+ RotatE     222      0.70    0.59     0.80     0.88      k: 200;
+                                                         batch_size: 97,
+                                                         epochs: 1425,
+                                                         eta: 20,
+                                                         loss: self_adversarial,
+                                                         loss_params:
+                                                         {'margin': 5, 'alpha': 1.0},
+                                                         regularizer_params:
+                                                         {'p': 3, 'lambda': 0.001},
+                                                         optimizer: adam,
+                                                         learning_rate: 1e-05
+
 ========== ======== ====== ======== ======== ========== ========================
 
 WN18
@@ -309,24 +361,24 @@ WN18
     Use WN18RR instead.
 
 
-========== ======== ====== ======== ======== ========== ========================
+========== ======== ====== ======== ======== ========== ==============================
   Model       MR     MRR    Hits@1   Hits@3   Hits\@10      Hyperparameters
-========== ======== ====== ======== ======== ========== ========================
-TransE     278      0.66    0.42     0.88      0.95     k: 150;
-                                                        epochs: 4000;
-                                                        eta: 10;
-                                                        loss: multiclass_nll;
-                                                        optimizer: adam;
-                                                        optimizer_params:
-                                                        lr: 5e-5;
-                                                        regularizer: LP;
-                                                        regularizer_params:
-                                                        lambda: 0.0001;
-                                                        p: 3;
-                                                        embedding_model_params:
-                                                        norm: 1;
-                                                        seed: 0;
-                                                        batches_count: 100;
+========== ======== ====== ======== ======== ========== ==============================
+ TransE     278      0.66    0.42     0.88      0.95     k: 150;
+                                                         epochs: 4000;
+                                                         eta: 10;
+                                                         loss: multiclass_nll;
+                                                         optimizer: adam;
+                                                         optimizer_params:
+                                                         lr: 5e-5;
+                                                         regularizer: LP;
+                                                         regularizer_params:
+                                                         lambda: 0.0001;
+                                                         p: 3;
+                                                         embedding_model_params:
+                                                         norm: 1;
+                                                         seed: 0;
+                                                         batches_count: 100;
 
  DistMult   699      0.82    0.71     0.92      0.95     k: 200;
                                                          epochs: 4000;
@@ -352,7 +404,7 @@ TransE     278      0.66    0.42     0.88      0.95     k: 150;
                                                          seed: 0;
                                                          batches_count: 20;
 
-  HolE     676      0.94    0.93     0.94       0.95     k: 200;
+ HolE       676      0.94    0.93     0.94      0.95     k: 200;
                                                          epochs: 4000;
                                                          eta: 20;
                                                          loss: self_adversarial;
@@ -364,7 +416,21 @@ TransE     278      0.66    0.42     0.88      0.95     k: 150;
                                                          seed: 0;
                                                          batches_count: 50;
 
-========== ======== ====== ======== ======== ========== ========================
+ RotatE     222      0.95    0.94     0.96      0.97     k: 200;
+                                                         epochs: 1425;
+                                                         k: 200;
+                                                         eta: 20;
+                                                         loss: self_adversarial
+                                                         loss_params:
+                                                         {'margin': 5, 'alpha': 1.0};
+                                                         optimizer: 'adam';
+                                                         learning_rate: 1e-05;
+                                                         regularizer: LP;
+                                                         regularizer_params:
+                                                         {'p': 3, 'lambda': 0.001};
+                                                         batches_count: 29
+
+========== ======== ====== ======== ======== ========== ==============================
 
 
 To reproduce the above results: ::
@@ -416,6 +482,7 @@ Gold 6226R, 256 GB, equipped with Tesla A100 40GB GPUs and Ubuntu 20.04 gives th
 model     seconds/epoch
 ======== ==============
 ComplEx     0.18
+RotatE      0.18
 TransE      0.09
 DistMult    0.10
 HolE        0.18
