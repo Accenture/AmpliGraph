@@ -158,6 +158,9 @@ ScoringBasedEmbeddingModel
       ~ScoringBasedEmbeddingModel.partition_change_updates
       
       
+      ~ScoringBasedEmbeddingModel.perform_validation
+      
+      
       ~ScoringBasedEmbeddingModel.predict
       
       
@@ -274,6 +277,8 @@ ScoringBasedEmbeddingModel
    .. automethod:: ScoringBasedEmbeddingModel.make_train_function
       
    .. automethod:: ScoringBasedEmbeddingModel.partition_change_updates
+      
+   .. automethod:: ScoringBasedEmbeddingModel.perform_validation
       
    .. automethod:: ScoringBasedEmbeddingModel.predict
       
