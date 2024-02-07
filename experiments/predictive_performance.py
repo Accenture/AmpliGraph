@@ -14,10 +14,10 @@ Usage:
   predictive_performance.py --version
 
 Options:
-  -m --model <model>     Specify which model/s to train, for multiple models list them separated by comma. e.g.: -m transe,complex  [default: complex,transe,distmult,hole,convkb,conve].
+  -m --model <model>     Specify which model/s to train, for multiple models list them separated by comma. e.g.: -m transe,complex  [default: complex,transe,distmult,hole,rotate].
   -d --dataset <dataset> Specify which dataset to train on, for multiple datasets list them  separated by comma. e.g.: -d fb15k-237,wn18rr  [default: fb15k,fb15k-237,wn18,wn18rr,yago310].
   --gpu <gpu>            Specify which GPU to use for training models. e.g. --gpu 0, [default: 0].
-  --cfg <config>         Specify file with hyper parameters configuration for the models, [default: ./config.json].
+  --cfg <config>         Specify file with hyperparameters configuration for the models, [default: ./config.json].
   -s --save <root>       Specify whether and where to save the models and results.
   -h --help              Show this screen.
   --version              Show version.
@@ -26,7 +26,7 @@ Options:
 import os
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+
 import argparse
 import datetime
 import itertools
