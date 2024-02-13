@@ -584,8 +584,7 @@ class SQLiteAdapter:
 
         """
         query = "SELECT count(*) from {} {};".format(table, condition)
-        count = self._execute_query(query)
-        if count is None:
+        if (count := self._execute_query(query)) is None:
             logger.debug("Table is empty or not such table exists.")
             return count
         elif not isinstance(count, list) or not isinstance(count[0], tuple):
@@ -804,9 +803,8 @@ class SQLiteAdapter:
                 dataset_type, index, i * batch_size, batch_size
             )
             # logger.debug(query)
-            out = self._execute_query(query)
             # logger.debug(out)
-            if out:
+            if out := self._execute_query(query):
                 triples = np.array(out)[:, :3].astype(np.int32)
                 # focusE
                 if self.data_shape > 3:

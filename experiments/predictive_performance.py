@@ -113,8 +113,7 @@ def run_single_exp(config, dataset, model, root=None):
     start_time = time.time()
     print("Started: ",start_time)
 
-    hyperparams = config["hyperparams"][dataset][model]
-    if hyperparams is None:
+    if (hyperparams := config["hyperparams"][dataset][model]) is None:
         print("dataset {0}...model {1} \
                       experiment is not conducted yet..." \
                      .format(dataset, config["model_name_map"][model]))

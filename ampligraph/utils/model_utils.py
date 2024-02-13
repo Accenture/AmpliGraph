@@ -380,8 +380,7 @@ def preprocess_focusE_weights(data, weights, normalize=True):
     for reln in unique_relations:
         for col_idx in range(weights.shape[1]):
             # here nans signify unknown numeric values
-            suma = np.sum(pd.isna(weights[data[:, 1] == reln, col_idx]))
-            if suma != weights[data[:, 1] == reln, col_idx].shape[0]:
+            if (suma := np.sum(pd.isna(weights[data[:, 1] == reln, col_idx]))) != weights[data[:, 1] == reln, col_idx].shape[0]:
                 min_val = np.nanmin(
                     weights[data[:, 1] == reln, col_idx].astype(np.float32)
                 )

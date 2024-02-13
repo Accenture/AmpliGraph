@@ -358,10 +358,9 @@ class BucketGraphPartitioner(AbstractGraphPartitioner):
             # condition that excludes duplicated partitions
             # from k x k possibilities, partition 0-1 and 1-0 is the same - not
             # needed
-            status_not_ok = self.create_single_partition(
+            if status_not_ok := self.create_single_partition(
                 i, i, timestamp, partition_nb, batch_size=batch_size
-            )
-            if status_not_ok:
+            ):
                 continue
             partition_nb += 1
 
