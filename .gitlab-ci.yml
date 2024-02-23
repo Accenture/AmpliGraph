@@ -49,7 +49,6 @@ run:
 
 pages:
   script:
-    - pip install sphinx sphinx-rtd-theme
     - cd docs
     - make clean autogen html
     - mkdir ../public/

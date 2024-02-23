@@ -1345,9 +1345,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         """
         if number_of_parts == 1:
             if self.entities_subset.shape[0] != 0:
-                out = tf.nn.embedding_lookup(
-                    self.encoding_layer.ent_emb, self.entities_subset
-                )
+                out = self.encoding_layer(self.entities_subset, type_of="e")
             else:
                 out = self.encoding_layer.ent_emb
             return out, 0, out.shape[0] - 1
@@ -1635,9 +1633,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 tf.int32, tf.int32, -1, -1, -2
             )
             if entities_subset is not None:
-                entities_subset = self.data_indexer.get_indexes(
-                    entities_subset, "e"
-                )
+                entities_subset = self.get_indexes(entities_subset, "e")
                 self.entities_subset = tf.constant(entities_subset, dtype=tf.int32)
                 self.mapping_dict.insert(
                     self.entities_subset, tf.range(self.entities_subset.shape[0])
@@ -2253,7 +2249,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         """
 
         if embedding_type == "e":
-            lookup_concept = self.data_indexer.get_indexes(entities, "e")
+            lookup_concept = self.get_indexes(entities, "e")
             if self.is_partitioned_training:
                 emb_out = []
                 with shelve.open(
@@ -2262,11 +2258,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     for ent_id in lookup_concept:
                         emb_out.append(ent_emb[str(ent_id)])
             else:
-                return tf.nn.embedding_lookup(
-                    self.encoding_layer.ent_emb, lookup_concept
-                ).numpy()
+                return self.encoding_layer(lookup_concept, type_of="e").numpy()
         elif embedding_type == "r":
-            lookup_concept = self.data_indexer.get_indexes(entities, "r")
+            lookup_concept = self.get_indexes(entities, "r")
             if self.is_partitioned_training:
                 emb_out = []
                 with shelve.open(
@@ -2275,9 +2269,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     for rel_id in lookup_concept:
                         emb_out.append(rel_emb[str(rel_id)])
             else:
-                return tf.nn.embedding_lookup(
-                    self.encoding_layer.rel_emb, lookup_concept
-                ).numpy()
+                return self.encoding_layer(lookup_concept, type_of="r").numpy()
         else:
             msg = "Invalid entity type: {}".format(embedding_type)
             raise ValueError(msg)
