@@ -387,10 +387,8 @@ def _sample_parameters(param_grid):
         elif isinstance(v, dict):
             param[k] = _sample_parameters(v)
         elif isinstance(v, Iterable) and not isinstance(v, str):
-            if isinstance(np.random.choice(v), np.int64):
-                param[k] = np.random.choice(v).astype(np.int32)
-            else:
-                param[k] = np.random.choice(v)
+            var = np.random.choice(v)
+            param[k] = var if not isinstance(var, np.int64) else var.astype(np.int32)
         else:
             param[k] = v
     return param

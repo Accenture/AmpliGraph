@@ -6,6 +6,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 import tensorflow as tf
+from numpy import pi
 from .AbstractScoringLayer import register_layer, AbstractScoringLayer
 import warnings
 
@@ -91,7 +92,7 @@ class RotatE(AbstractScoringLayer):
                 "but for optimal results, consider setting it to the correct value"
             )
             self.max_rel_size = 1
-        pi = 3.14159265358979323846
+
         embedding_range = (6 / (self.internal_k * self.max_rel_size)) ** 0.5
         e_p_real = tf.cos(theta_pred / (embedding_range / pi))
         e_p_img = tf.sin(theta_pred / (embedding_range / pi))
@@ -136,7 +137,7 @@ class RotatE(AbstractScoringLayer):
                 "but for optimal results, consider setting it to the correct value"
             )
             self.max_rel_size = 1
-        pi = 3.14159265358979323846
+
         embedding_range = (6 / (self.internal_k * self.max_rel_size)) ** 0.5
         e_p_real = tf.cos(theta_pred / (embedding_range / pi))
         e_p_img = tf.sin(theta_pred / (embedding_range / pi))
@@ -194,7 +195,7 @@ class RotatE(AbstractScoringLayer):
                 "but for optimal results, consider setting it to the correct value"
             )
             self.max_rel_size = 1
-        pi = 3.14159265358979323846
+
         embedding_range = (6 / (self.internal_k * self.max_rel_size)) ** 0.5
         e_p_real = tf.cos(theta_pred / (embedding_range / pi))
         e_p_img = tf.sin(theta_pred / (embedding_range / pi))
