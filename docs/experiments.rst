@@ -248,19 +248,19 @@ HolE        6941       0.47     0.39       0.52       0.62        k: 350;
                                                                   seed: 0;
                                                                   batches_count: 100
 
-RotatE      6941       0.47     0.39       0.52       0.62        k: 350;
-                                                                  epochs: 4000;
-                                                                  eta: 20;
-                                                                  loss: self_adversarial;
+RotatE      1318       0.43     0.33       0.48       0.63        k: 350;
+                                                                  epochs: 2850;
+                                                                  eta: 30;
+                                                                  loss: multiclass_nll;
                                                                   loss_params:
-                                                                  {alpha: 1, margin: 20};
+                                                                  {alpha: 1, margin: 1};
                                                                   optimizer: adam;
                                                                   lr: 0.0001;
                                                                   regularizer: LP;
                                                                   regularizer_params:
-                                                                  {'p': 3, 'lambda': 0.001};
+                                                                  {'p': 3, 'lambda': 0.0};
                                                                   seed: 0;
-                                                                  batches_count: 216
+                                                                  batches_count: 110
 
 ========== ========== ======== ========== ========== =========== ===========================
 
@@ -464,12 +464,12 @@ Experiments can be limited to specific models-dataset combinations as follows: :
 
     $ python predictive_performance.py -h
     usage: predictive_performance.py [-h] [-d {fb15k,fb15k-237,wn18,wn18rr,yago310}]
-                                     [-m {complex,transe,distmult,hole}]
+                                     [-m {complex,transe,distmult,hole,rotate}]
 
     optional arguments:
       -h, --help            show this help message and exit
       -d {fb15k,fb15k-237,wn18,wn18rr,yago310}, --dataset {fb15k,fb15k-237,wn18,wn18rr,yago310}
-      -m {complex,transe,distmult,hole}, --model {complex,transe,distmult,hole}
+      -m {complex,transe,distmult,hole,rotate}, --model {complex,transe,distmult,hole,rotate}
 
 
 Loading Pre-Trained Models
