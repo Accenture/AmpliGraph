@@ -254,7 +254,8 @@ The weights of a trained model can be saved and restored from disk. This is usef
 In order to save and restore the weights of a model, we can use the :meth:`~ScoringBasedEmbeddingModel.save_weights`
 and :meth:`~ScoringBasedEmbeddingModel.load_weights` methods. When the model is saved and loaded with these methods,
 however, it is not possible to restart the training from where it stopped. AmpliGraph gives the possibility of doing
-that saving and loading the model with the functionalities available in the :mod:`.utils` module.
+that using :meth:`~ampligraph.utils.save_model` and :meth:`~ampligraph.utils.restore_model` available in
+the :mod:`.utils` module.
 
 Compatibility Ampligraph 1.x
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
