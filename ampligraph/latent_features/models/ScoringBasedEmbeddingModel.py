@@ -1836,6 +1836,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         Function to perform the validation.
 
         It calls the evaluate function on the validation triples and
+        computes the metrics.
         """
         # FocusE adaptation of validation_data
         if self.data_shape > 3 and validation_data.shape[1] == 3:

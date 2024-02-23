@@ -202,32 +202,12 @@ def get(identifier, hyperparams={}):
     elif isinstance(identifier, OptimizerWrapper):
         return identifier
     elif isinstance(identifier, six.string_types):
-        if hyperparams == {}:
-            optim = tf.keras.optimizers.get(identifier)
-            return OptimizerWrapper(optim)
-
-        if "learning_rate" in hyperparams.keys():
-            learning_rate = hyperparams["learning_rate"]
-            other_hyperparams = {k: v for k, v in hyperparams.items() if k != "learning_rate"}
-        else:
-            learning_rate = 0.001
-
-        if identifier == "adam":
-            optimizer = tf.keras.optimizers.Adam(
-                learning_rate=learning_rate, **other_hyperparams
-            )
-        elif identifier == "adagrad":
-            optimizer = tf.keras.optimizers.Adagrad(
-                learning_rate=learning_rate, **other_hyperparams
-            )
-        elif identifier == "sgd":
-            optimizer = tf.keras.optimizers.SGD(
-                learning_rate=learning_rate, **other_hyperparams
-            )
-        else:
-            optimizer = tf.keras.optimizers.get(identifier)
+        learning_rate = 0.001 if "learning_rate" not in hyperparams else hyperparams.pop("learning_rate")
+        optimizer = tf.keras.optimizers.get(identifier, **hyperparams)
+        optimizer.learning_rate = learning_rate
         return OptimizerWrapper(optimizer)
     else:
         raise ValueError(
             "Could not interpret optimizer identifier: ", identifier
         )
+
