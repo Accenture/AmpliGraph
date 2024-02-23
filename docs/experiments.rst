@@ -472,6 +472,11 @@ Experiments can be limited to specific models-dataset combinations as follows: :
       -m {complex,transe,distmult,hole}, --model {complex,transe,distmult,hole}
 
 
+Loading Pre-Trained Models
+----------------------------
+If you want to load the pre-trained models used to obtain the above performance, have a look at
+:meth:`~ampligraph.pretrained_models.load_pretrained_model`.
+
 Runtime Performance
 -------------------
 
