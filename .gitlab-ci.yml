@@ -20,7 +20,6 @@ variables:
 cache:
   paths:
     - .cache/pip
-    - venv/
 
 before_script:
   - python --version  # For debugging
@@ -29,6 +28,7 @@ before_script:
   - source venv/bin/activate
   - pip install --upgrade pip
   - pip install tensorflow==2.10
+  - pip install ./
 
 codestyle:
   script:

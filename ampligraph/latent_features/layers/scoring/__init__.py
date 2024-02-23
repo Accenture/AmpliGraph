@@ -9,6 +9,7 @@ from .TransE import TransE
 from .DistMult import DistMult
 from .HolE import HolE
 from .ComplEx import ComplEx
+from .RotatE import RotatE
 from .Random import Random
 
-__all__ = ["TransE", "DistMult", "HolE", "ComplEx", "Random"]
+__all__ = ["TransE", "DistMult", "HolE", "ComplEx", "RotatE", "Random"]

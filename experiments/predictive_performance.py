@@ -14,10 +14,10 @@ Usage:
   predictive_performance.py --version
 
 Options:
-  -m --model <model>     Specify which model/s to train, for multiple models list them separated by comma. e.g.: -m transe,complex  [default: complex,transe,distmult,hole,convkb,conve].
+  -m --model <model>     Specify which model/s to train, for multiple models list them separated by comma. e.g.: -m transe,complex  [default: complex,transe,distmult,hole,rotate].
   -d --dataset <dataset> Specify which dataset to train on, for multiple datasets list them  separated by comma. e.g.: -d fb15k-237,wn18rr  [default: fb15k,fb15k-237,wn18,wn18rr,yago310].
   --gpu <gpu>            Specify which GPU to use for training models. e.g. --gpu 0, [default: 0].
-  --cfg <config>         Specify file with hyper parameters configuration for the models, [default: ./config.json].
+  --cfg <config>         Specify file with hyperparameters configuration for the models, [default: ./config.json].
   -s --save <root>       Specify whether and where to save the models and results.
   -h --help              Show this screen.
   --version              Show version.
@@ -45,14 +45,18 @@ from schema import And, Schema, Use
 from tqdm import tqdm
 
 import ampligraph.datasets
+from ampligraph.latent_features import ScoringBasedEmbeddingModel
+from ampligraph.latent_features.optimizers import get as get_optimizer
+from ampligraph.latent_features.loss_functions import get as get_loss
+from ampligraph.latent_features.regularizers import get as get_regularizer
 from ampligraph.compat import evaluate_performance
 from ampligraph.evaluation import hits_at_n_score, mr_score, mrr_score
 from ampligraph.utils import save_model
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-SUPPORT_DATASETS = ["fb15k", "fb15k-237", "wn18", "wn18rr", "yago310", "ppi5k"]                                         # FocusE
-SUPPORT_MODELS = ["complex", "transe", "distmult", "hole", "convkb", "conve"]
+SUPPORT_DATASETS = ["fb15k", "fb15k-237", "wn18", "wn18rr", "yago310", "ppi5k"]
+SUPPORT_MODELS = ["complex", "transe", "distmult", "hole", "rotate"]
 
 
 def display_scores(scores, root=None):
@@ -92,10 +96,10 @@ def display_scores(scores, root=None):
                              ".??"])
 
     if root is not None:
-        fmt='%Y-%m-%d-%H-%M-%S'
+        fmt = '%Y-%m-%d-%H-%M-%S'
         date = datetime.datetime.now().strftime(fmt)
         name = os.path.join(root, f"result_{obj['model']}_{obj['dataset']}_{date}_rst.json")
-        out = {str(x):str(y) for x, y in output_rst.items()}
+        out = {str(x): str(y) for x, y in output_rst.items()}
         with open(os.path.join(root,  f"result_{obj['model']}_{obj['dataset']}_{date}.rst"), "w") as f:
             f.write(str(output_rst))
         with open(name, "w") as f:
@@ -108,38 +112,31 @@ def display_scores(scores, root=None):
         print(value)
 
 
-def run_single_exp(config, dataset, model, root=None):
-    print("Run single experiment for {} and {}".format(dataset, model))
+def run_single_exp(config, dataset, model_name, root=None):
+    print("Run single experiment for {} and {}".format(dataset, model_name))
     start_time = time.time()
-    print("Started: ",start_time)
+    # print("Started: ", start_time)
 
-    hyperparams = config["hyperparams"][dataset][model]
+    hyperparams = config["hyperparams"][dataset][model_name]
     if hyperparams is None:
         print("dataset {0}...model {1} \
                       experiment is not conducted yet..." \
-                     .format(dataset, config["model_name_map"][model]))
+                     .format(dataset, config["model_name_map"][model_name]))
         return {
             "hyperparams": ".??"
         }
-    print("dataset {0}...model {1}...\
-                  hyperparameter:...{2}" \
-                 .format(dataset,
-                         config["model_name_map"][model],
-                         hyperparams))
+    print("dataset: {0} \n"
+          "model: {1} \n"
+          "hyperparameter: {2}".format(dataset,
+                                         config["model_name_map"][model_name],
+                                         hyperparams))
 
-    es_code = "{0}_{1}".format(dataset, model)
+    es_code = "{0}_{1}".format(dataset, model_name)
 
     load_func = getattr(ampligraph.datasets,
                         config["load_function_map"][dataset])
     X = load_func()                                                                                                     # The numeric values are stored in train/valid/test_numeric_values -> separate vector
     # logging.debug("Loaded...{0}...".format(dataset))
-    model_name = model
-    # load model
-    model_class = getattr(ampligraph.compat,
-                          config["model_name_map"][model])
-    model = model_class(**hyperparams)
-    # Fit the model on training and validation set
-
     # focusE
     focusE_weights_train = X.get('train_numeric_values', None)
     focusE_weights_valid = X.get('valid_numeric_values', None)
@@ -152,45 +149,72 @@ def run_single_exp(config, dataset, model, root=None):
     if focusE_weights_test is not None:
         X["test"] = np.concatenate([X["test"], focusE_weights_test], axis=1)
 
+    # Load the model
+    model = ScoringBasedEmbeddingModel(k=hyperparams['k'],
+                                       eta=hyperparams['eta'],
+                                       scoring_type=config["model_name_map"][model_name],
+                                       seed=hyperparams['seed'])
+
+    # Define loss function, optimizer,  regularizer, initializer
+    optimizer = get_optimizer(hyperparams['optimizer'], hyperparams.get('optimizer_params', {}))
+    loss = get_loss(hyperparams['loss'], hyperparams.get('loss_params', {}))
+    regularizer = get_regularizer(hyperparams.get('regularizer'), hyperparams.get('regularizer_params', {}))
+    initializer = hyperparams.get('initializer', 'glorot_uniform')
+
+    # Compile the model
+    model.compile(loss=loss,
+                  optimizer=optimizer,
+                  entity_relation_regularizer=regularizer,
+                  entity_relation_initializer=initializer)
+
     # The entire dataset will be used to filter out false positives statements
-    # created by the corruption procedure:
+    # created during the validation by the corruption procedure:
+    filter = {'train': X['train'], 'valid': X['valid']}
 
-    filter = np.concatenate((X['train'], X['valid'], X['test']))
+    # Define the Early Stopping
+    checkpoint = tf.keras.callbacks.EarlyStopping(
+        monitor='val_{}'.format('mrr'),
+        min_delta=0,
+        patience=4,
+        verbose=1,
+        mode='max',
+        restore_best_weights=True
+    )
 
-    if es_code in config["no_early_stopping"]:
-        logging.debug("Fit without early stopping...")
-        model.fit(X["train"])
-    else:
-        logging.debug("Fit with early stopping...")
-        model.fit(X["train"], True,
-                  {
-                      'x_valid': X['valid'][::2],
-                      'criteria': 'mrr',
-                      'x_filter': filter,
-                      'stop_interval': 4,
-                      'burn_in': 0,
-                      'check_interval': 50
-                  })
+    # Fit the model
+    logging.debug("Fit with early stopping...")
+    history = model.fit(X['train'],
+                        batch_size=int(X['train'].shape[0] / hyperparams['batches_count']),
+                        epochs=hyperparams['epochs'],
+                        validation_data=X['valid'][::2],
+                        validation_freq=50,
+                        validation_batch_size=10,
+                        validation_burn_in=0,
+                        validation_corrupt_side='s,o',
+                        validation_filter=filter,
+                        callbacks=[checkpoint],
+                        verbose=hyperparams['verbose'])
 
-    if not hasattr(model.model, 'early_stopping_epoch') or model.model.early_stopping_epoch is None:
-        early_stopping_epoch = np.nan
-    else:
-        early_stopping_epoch = model.model.early_stopping_epoch
+
+    early_stopping_epoch = np.nan
+    if len(history.history['loss']) > 0:
+        early_stopping_epoch = len(history.history['loss'])
 
     if root is not None: 
         fmt='%Y-%m-%d-%H-%M-%S'
         date = datetime.datetime.now().strftime(fmt)
-        name = "{}/{}-{}-{}".format(root, model_name, dataset, date)
+        name = "{}/{}-{}-{}".format(root, config["model_name_map"][model_name], dataset, date)
         save_model(model, name)
         print("Model saved in {}.".format(name))
 
 
     # Run the evaluation procedure on the test set. Will create filtered rankings.
     # To disable filtering: filter_triples=None
-    ranks = evaluate_performance(X['test'],
-                                 model,
-                                 filter,
-                                 verbose=False)
+    filter = {'train': X['train'], 'valid': X['valid'], 'test': X['test']}
+    ranks = model.evaluate(X['test'],
+                           batch_size=10,
+                           use_filter=filter,
+                           verbose=hyperparams['verbose'])
 
 
     # compute and print metrics:
@@ -211,7 +235,7 @@ def run_single_exp(config, dataset, model, root=None):
         "early_stopping_epoch": early_stopping_epoch
     }
     if root is not None:
-        name = "{}/result_{}_{}_{}.json".format(root, model_name, dataset, date)
+        name = "{}/result_{}_{}_{}.json".format(root, config["model_name_map"][model_name], dataset, date)
         with open(name, "w") as f:
             f.write(json.dumps(result))
         print("Results saved in the file: {}".format(name))
@@ -220,10 +244,10 @@ def run_single_exp(config, dataset, model, root=None):
 
 
 def train_model(dataset, model, config, gpu, root):
-    if gpu is not None:
-        # set GPU id to run
-        os.environ["CUDA_VISIBLE_DEVICES"] = gpu
-        logging.debug("Will use gpu number...{0}".format(gpu))
+    # if gpu is not None:
+    #     # set GPU id to run
+    #     os.environ["CUDA_VISIBLE_DEVICES"] = gpu
+    #     logging.debug("Will use gpu number...{0}".format(gpu))
 
     logging.debug("Input dataset...{0}...input model...{1}..." \
                   .format(dataset, model))
@@ -231,7 +255,7 @@ def train_model(dataset, model, config, gpu, root):
     if dataset is None:
         dataset = 'fb15k,fb15k-237,wn18,wn18rr,yago310'
     if model is None:
-        model = 'complex,transe,distmult,hole,convkb,conve'
+        model = 'complex,transe,distmult,hole,rotate'
 
     models = model.split(',')
     datasets = dataset.split(',')
