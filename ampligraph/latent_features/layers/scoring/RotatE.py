@@ -44,12 +44,12 @@ class RotatE(AbstractScoringLayer):
             Embedding size for the model.
         max_rel_size: int
             This value correspond to the numer of relations present in the processed KG.
-             The goal of this value is to project the values of the embeddings of the
-             relation to a scale comparable to [-pi, pi]. This is necessary in order
-             to avoid having values that are too close to zero, which would lead the
-             model to learn almost null rotations! If set to `None`, when computing the
-             score it will be set to 1 to avoid raising error, but a UserWarning will be
-             raised for awareness.
+            The goal of this value is to project the values of the embeddings of the
+            relation to a scale comparable to [-pi, pi]. This is necessary in order
+            to avoid having values that are too close to zero, which would lead the
+            model to learn almost null rotations! If set to `None`, when computing the
+            score it will be set to 1 to avoid raising error, but a UserWarning will be
+            raised for awareness.
         """
         super(RotatE, self).__init__(k)
         # internally complex uses k embeddings for real part and k embeddings for img part
