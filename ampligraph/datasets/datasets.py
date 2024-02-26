@@ -5,14 +5,10 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-import hashlib
 import json
 import logging
 import os
-import urllib
-import zipfile
 from collections import namedtuple
-from pathlib import Path
 
 from ampligraph.utils.file_utils import _get_data_home, _fetch_file
 

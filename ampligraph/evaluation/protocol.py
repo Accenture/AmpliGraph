@@ -739,7 +739,8 @@ def select_best_model_ranking(
     for model_params in tqdm(
         model_params_combinations, total=max_combinations
     ):
-        print() # Needed not to make progress bars overlap
+        # Needed not to make progress bars overlap
+        print()
 
         current_result = {
             "model_name": model_params["model_name"],

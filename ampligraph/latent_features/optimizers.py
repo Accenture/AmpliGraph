@@ -210,4 +210,3 @@ def get(identifier, hyperparams={}):
         raise ValueError(
             "Could not interpret optimizer identifier: ", identifier
         )
-

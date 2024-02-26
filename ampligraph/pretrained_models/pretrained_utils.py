@@ -35,8 +35,6 @@ def load_pretrained_model(dataset, scoring_type, data_home=None):
     This function allows downloading and loading one of the AmpliGraph pre-trained
     model on benchmark datasets.
 
-
-
     Parameters
     ----------
     dataset: str
@@ -72,11 +70,11 @@ def load_pretrained_model(dataset, scoring_type, data_home=None):
     >>> print(f"hits@10: {hits_at_n_score(ranks, 10)}")
     """
     assert dataset in ["fb15k-237", "wn18rr", "yago310", "fb15k", "wn18rr"], \
-        f"The dataset you specified is not one of the available ones! Try with one of" \
-        f"the following: ['fb15k-237', 'wn18rr', 'yago310', 'fb15k', 'wn18rr']."
+        "The dataset you specified is not one of the available ones! Try with one of " \
+        "the following: ['fb15k-237', 'wn18rr', 'yago310', 'fb15k', 'wn18rr']."
     assert scoring_type in ["TransE", "DistMult", "ComplEx", "HolE", "RotatE"], \
-        f"The scoring type you provided is not one of the available ones! Try with one of" \
-        f"the following: ['TransE', 'DistMult', 'ComplEx', 'HolE', 'RotatE']."
+        "The scoring type you provided is not one of the available ones! Try with one of " \
+        "the following: ['TransE', 'DistMult', 'ComplEx', 'HolE', 'RotatE']."
 
     model_name = scoring_type.upper()
     dataset_name = dataset.upper()
@@ -96,8 +94,3 @@ def load_pretrained_model(dataset, scoring_type, data_home=None):
     model_path = _fetch_file(metadata, data_home, file_type='models')
 
     return restore_model(model_path)
-
-
-
-
-
