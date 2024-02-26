@@ -29,6 +29,8 @@ import sqlite3
 import tempfile
 import uuid
 from datetime import datetime
+from typing import Literal
+import numpy.typing as npt
 
 import numpy as np
 import pandas as pd
@@ -120,6 +122,33 @@ class DataIndexer:
              of indexes.
         """
         return self.backend.get_indexes(X, type_of=type_of, order=order)
+    
+    def get_invalid_keys(self, X: npt.NDArray, data_type: Literal["raw", "ind"] = "raw", **kwargs):
+        """Get the invalid keys in a collection of triples.
+
+        Parameters
+        ----------
+        X: array
+            Array with raw or indexed triples.
+        data_type: str
+            It specifies whether the triples contain raw data (e.g. URIs) (``data_type="raw"``) or indexes (``data_type="ind"``)
+
+        Example
+        -------
+        >>>X = np.array([['subj_a','foo','subj_c'],['rel_a','rel_b','bar'],['baz','obj_b','obj_c']])
+        >>>data_indexer.get_invalid_keys(X, data_type="raw")
+        (array(['foo'], dtype=str), array(['bar'], dtype=str), array(['baz'], dtype=str))
+
+        Returns
+        -------
+        invalid_subjects: array
+            Array of size between 0 and the size of `X`, containing invalid subjects, if any.
+        invalid_predicates: array
+            Array of size between 0 and the size of `X`, containing invalid predicates, if any.
+        invalid_objects: array
+            Array of size between 0 and the size of `X`, containing invalid objects, if any.
+        """
+        return self.backend.get_invalid_keys(X=X, data_type=data_type, **kwargs)
 
     def get_relations_count(self):
         """Get number of unique relations."""
@@ -507,9 +536,9 @@ class InMemory:
 
         if invalid_keys > 0:
             print(
-                "\n{} triples containing invalid keys skipped!".format(
-                    invalid_keys
-                )
+                f"\n{invalid_keys} triples containing invalid keys skipped! "
+                f"You can use `ScoringBasedEmbeddingModel.get_invalid_keys` or"
+                f"`DataIndexer.get_invalid_keys` to find out which keys are invalid. \n"
             )
 
         subjects = np.array(subjects, dtype=dtype)
@@ -518,6 +547,63 @@ class InMemory:
 
         merged = np.stack([subjects, predicates, objects], axis=1)
         return merged
+
+    def get_invalid_keys(self, X: npt.NDArray, data_type: Literal["raw", "ind"] = "raw", **kwargs):
+        """Get the invalid keys in a collection of triples.
+
+        Parameters
+        ----------
+        X: array
+            Array with raw or indexed triples.
+        data_type: str
+            It specifies whether the triples contain raw data (e.g. URIs) (``data_type="raw"``) or indexes (``data_type="ind"``)
+
+        Example
+        -------
+        >>>X = np.array([['subj_a','foo','subj_c'],['rel_a','rel_b','bar'],['baz','obj_b','obj_c']])
+        >>>data_indexer.get_invalid_keys(X, data_type="raw")
+        (array(['foo'], dtype=str), array(['bar'], dtype=str), array(['baz'], dtype=str))
+
+        Returns
+        -------
+        invalid_subjects: array
+            Array of size between 0 and the size of `X`, containing invalid subjects, if any.
+        invalid_predicates: array
+            Array of size between 0 and the size of `X`, containing invalid predicates, if any.
+        invalid_objects: array
+            Array of size between 0 and the size of `X`, containing invalid objects, if any.
+        """
+        if data_type == "raw":
+            entities = self.reversed_entities_dict
+            relations = self.reversed_relations_dict
+        elif data_type == "ind":
+            entities = self.entities_dict
+            relations = self.relations_dict
+        else:
+            msg = "No such order available options: ind, raw, instead got {}.".format(
+                data_type
+            )
+            logger.error(msg)
+            raise Exception(msg)
+        if entities is None and relations is None:
+            msg = "Requested entities and relation mappings are empty."
+            logger.error(msg)
+            raise Exception(msg)
+
+        # Faster to use lists and then convert to numpy arrays - source: https://stackoverflow.com/a/29840311
+        invalid_subjects = []
+        invalid_predicates = []
+        invalid_objects = []
+        for row in X:
+            # Check if the keys are in the dictionary's keys
+            if row[0] not in entities.keys():
+                invalid_subjects.append(row[0])
+            if row[1] not in relations.keys():
+                invalid_predicates.append(row[1])
+            if row[2] not in entities.keys():
+                invalid_objects.append(row[2])
+
+        return invalid_subjects, invalid_predicates, invalid_objects
 
     def get_indexes_from_a_dictionary_single(
         self, sample, type_of="e", order="raw2ind"
@@ -577,7 +663,9 @@ class InMemory:
         invalid_keys = len(sample) - len(elements)
         if invalid_keys > 0:
             print(
-                "\n{} entities with invalid keys skipped!".format(invalid_keys)
+                f"\n{invalid_keys} triples containing invalid keys skipped! "
+                f"You can use `ScoringBasedEmbeddingModel.get_invalid_keys` or"
+                f"`DataIndexer.get_invalid_keys` to find out which keys are invalid.\n"
             )
         return elements
 
@@ -1150,13 +1238,70 @@ class Shelves:
 
                 if invalid_keys > 0:
                     print(
-                        "\n{} triples containing invalid keys skipped!".format(
-                            invalid_keys
-                        )
+                        f"\n{invalid_keys} triples containing invalid keys skipped! "
+                        f"You can use `ScoringBasedEmbeddingModel.get_invalid_keys` or"
+                        f"`DataIndexer.get_invalid_keys` to find out which keys are invalid.\n"
                     )
 
                 out = np.array((subjects, predicates, objects), dtype=dtype).T
                 return out
+
+    def get_invalid_keys(self, X: npt.NDArray, data_type: Literal["raw", "ind"] = "raw", **kwargs):
+        """Get the invalid keys in a collection of triples.
+
+        Parameters
+        ----------
+        X: array
+            Array with raw or indexed triples.
+        data_type: str
+            It specifies whether the triples contain raw data (e.g. URIs) (``data_type="raw"``) or indexes (``data_type="ind"``)
+
+        Example
+        -------
+        >>>X = np.array([['subj_a','foo','subj_c'],['rel_a','rel_b','bar'],['baz','obj_b','obj_c']])
+        >>>data_indexer.get_invalid_keys(X, data_type="raw")
+        (array(['foo'], dtype=str), array(['bar'], dtype=str), array(['baz'], dtype=str))
+
+        Returns
+        -------
+        invalid_subjects: array
+            Array of size between 0 and the size of `X`, containing invalid subjects, if any.
+        invalid_predicates: array
+            Array of size between 0 and the size of `X`, containing invalid predicates, if any.
+        invalid_objects: array
+            Array of size between 0 and the size of `X`, containing invalid objects, if any.
+        """
+        if data_type == "raw":
+            entities = self.reversed_entities_dict
+            relations = self.reversed_relations_dict
+        elif data_type == "ind":
+            entities = self.entities_dict
+            relations = self.relations_dict
+        else:
+            msg = "No such order available options: ind, raw, instead got {}.".format(
+                data_type
+            )
+            logger.error(msg)
+            raise Exception(msg)
+        if entities is None and relations is None:
+            msg = "Requested entities and relation mappings are empty."
+            logger.error(msg)
+            raise Exception(msg)
+
+        # Faster to use lists and then convert to numpy arrays - source: https://stackoverflow.com/a/29840311
+        invalid_subjects = []
+        invalid_predicates = []
+        invalid_objects = []
+        for row in X:
+            # Check if the keys are in the dictionary's keys
+            if row[0] not in entities.keys():
+                invalid_subjects.append(row[0])
+            if row[1] not in relations.keys():
+                invalid_predicates.append(row[1])
+            if row[2] not in entities.keys():
+                invalid_objects.append(row[2])
+
+        return invalid_subjects, invalid_predicates, invalid_objects
 
     def get_indexes_from_shelves_single(
         self, sample, type_of="e", order="raw2ind"
@@ -1562,12 +1707,59 @@ class SQLite:
 
         if before - after > 0:
             print(
-                "\n{} triples containing invalid keys skipped!".format(
+                "\n{} triples containing invalid keys skipped !"
+                "You can use `ScoringBasedEmbeddingModel.get_invalid_keys` "
+                "or `DataIndexer.get_invalid_keys` to find out which keys are invalid.\n".format(
                     before - after
                 )
             )
 
         return out
+
+    def get_invalid_keys(self, X: npt.NDArray, data_type: Literal["raw", "ind"] = "raw", **kwargs):
+        """Get the invalid keys in a collection of triples.
+
+        Parameters
+        ----------
+        X: array
+            Array with raw or indexed triples.
+        data_type: str
+            It specifies whether the triples contain raw data (e.g. URIs) (``data_type="raw"``) or indexes (``data_type="ind"``)
+
+        Example
+        -------
+        >>>X = np.array([['subj_a','foo','subj_c'],['rel_a','rel_b','bar'],['baz','obj_b','obj_c']])
+        >>>data_indexer.get_invalid_keys(X, data_type="raw")
+        (array(['foo'], dtype=str), array(['bar'], dtype=str), array(['baz'], dtype=str))
+
+        Returns
+        -------
+        invalid_subjects: array
+            Array of size between 0 and the size of `X`, containing invalid subjects, if any.
+        invalid_predicates: array
+            Array of size between 0 and the size of `X`, containing invalid predicates, if any.
+        invalid_objects: array
+            Array of size between 0 and the size of `X`, containing invalid objects, if any.
+        """
+        if data_type not in ["raw", "ind"]:
+            msg = f"Type (data_type) should be one of the following: raw, ind, instead got {data_type}"
+            raise ValueError(msg)
+
+        subjects, subject_present = self.get_indexes_from_db_single(
+            X[:, 0], type_of="e", order="raw2ind" if data_type == "raw" else "ind2raw"
+        )
+        objects, objects_present = self.get_indexes_from_db_single(
+            X[:, 2], type_of="e", order="raw2ind" if data_type == "raw" else "ind2raw"
+        )
+        predicates, predicates_present = self.get_indexes_from_db_single(
+            X[:, 1], type_of="r", order="raw2ind" if data_type == "raw" else "ind2raw"
+        )
+        
+        invalid_subjects = X[:, 0][~subject_present]
+        invalid_predicates = X[:, 1][~predicates_present]
+        invalid_objects = X[:, 2][~objects_present]
+
+        return invalid_subjects, invalid_predicates, invalid_objects
 
     def get_indexes_from_db_single(self, sample, type_of="e", order="raw2ind"):
         """Get indexes or raw data from entities or relations.
