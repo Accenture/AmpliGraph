@@ -126,6 +126,9 @@ ScoringBasedEmbeddingModel
       
       
       
+      ~ScoringBasedEmbeddingModel.get_invalid_keys
+      
+      
       
       
       
@@ -254,6 +257,8 @@ ScoringBasedEmbeddingModel
       
       
       
+      
+   .. automethod:: ScoringBasedEmbeddingModel.get_invalid_keys
       
       
       
