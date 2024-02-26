@@ -536,9 +536,9 @@ class InMemory:
 
         if invalid_keys > 0:
             print(
-                "\n{} triples containing invalid keys skipped! You can use `get_invalid_keys` in `ScoringBasedEmbeddingModel` or `DataIndexer` to find out which keys are invalid.".format(
-                    invalid_keys
-                )
+                f"\n{invalid_keys} triples containing invalid keys skipped! "
+                f"You can use `ScoringBasedEmbeddingModel.get_invalid_keys` or"
+                f"`DataIndexer.get_invalid_keys` to find out which keys are invalid. \n"
             )
 
         subjects = np.array(subjects, dtype=dtype)
@@ -663,7 +663,9 @@ class InMemory:
         invalid_keys = len(sample) - len(elements)
         if invalid_keys > 0:
             print(
-                "\n{} triples containing invalid keys skipped! You can use `get_invalid_keys` in `ScoringBasedEmbeddingModel` or `DataIndexer` to find out which keys are invalid.".format(invalid_keys)
+                f"\n{invalid_keys} triples containing invalid keys skipped! "
+                f"You can use `ScoringBasedEmbeddingModel.get_invalid_keys` or"
+                f"`DataIndexer.get_invalid_keys` to find out which keys are invalid.\n"
             )
         return elements
 
@@ -1236,9 +1238,9 @@ class Shelves:
 
                 if invalid_keys > 0:
                     print(
-                        "\n{} triples containing invalid keys skipped! You can use `get_invalid_keys` in `ScoringBasedEmbeddingModel` or `DataIndexer` to find out which keys are invalid.".format(
-                            invalid_keys
-                        )
+                        f"\n{invalid_keys} triples containing invalid keys skipped! "
+                        f"You can use `ScoringBasedEmbeddingModel.get_invalid_keys` or"
+                        f"`DataIndexer.get_invalid_keys` to find out which keys are invalid.\n"
                     )
 
                 out = np.array((subjects, predicates, objects), dtype=dtype).T
@@ -1705,7 +1707,9 @@ class SQLite:
 
         if before - after > 0:
             print(
-                "\n{} triples containing invalid keys skipped! You can use `get_invalid_keys` in `ScoringBasedEmbeddingModel` or `DataIndexer` to find out which keys are invalid.".format(
+                "\n{} triples containing invalid keys skipped !"
+                "You can use `ScoringBasedEmbeddingModel.get_invalid_keys` "
+                "or `DataIndexer.get_invalid_keys` to find out which keys are invalid.\n".format(
                     before - after
                 )
             )
