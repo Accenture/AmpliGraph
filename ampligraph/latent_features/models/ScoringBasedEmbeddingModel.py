@@ -854,9 +854,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 # store the logs of the last batch of the epoch
                 epoch_logs = copy.copy(logs)
                 # if validation is enabled
-                validate = epoch >= (validation_burn_in - 1) and \
-                           validation_data is not None and \
-                           self._should_eval(epoch, validation_freq)
+                validate = (
+                        epoch >= (validation_burn_in - 1)
+                        and validation_data is not None
+                        and self._should_eval(epoch, validation_freq)
+                )
                 if validate:
                     val_logs = self.perform_validation(
                         validation_data,
