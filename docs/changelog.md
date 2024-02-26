@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.0
+**26 February 2024**
+- Addition of RotatE to the available scoring functions.
+- Addition of a module to load models (TransE, DistMult, ComplEx, RotatE, HolE) pre-trained on benchmark datasets (fb15k-237,
+wn18rr, yago3-10, fb15k, wn18).
+- Improved efficiency of the validation.
+- Other minor efficiency improvements, fixes and code clean-up.
+
+
 ## 2.0.1
 **12 July 2023**
 - Fixed bug preventing the saving of calibrated models.
@@ -19,6 +28,7 @@
 - Codex-M Knowledge Graph included in the APIs for automatic download.
 - ConvKB, ConvE, ConvE(1-N) not supported anymore as they are computationally expensive and thus not commonly used.
 - Support AmpliGraph 1.4 API within ampligraph.compat module.
+
 
 ## 1.4.0
 **26 May 2021**

@@ -487,7 +487,7 @@ Gold 6226R, 256 GB, equipped with Tesla A100 40GB GPUs and Ubuntu 20.04 gives th
 model     seconds/epoch
 ======== ==============
 ComplEx     0.18
-RotatE      0.18
+RotatE      0.19
 TransE      0.09
 DistMult    0.10
 HolE        0.18
