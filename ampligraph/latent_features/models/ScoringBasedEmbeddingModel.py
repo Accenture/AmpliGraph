@@ -13,6 +13,8 @@ import numpy as np
 import os
 import tempfile
 import logging
+from typing import Literal
+import numpy.typing as npt
 
 from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
 from ampligraph.datasets import data_adapter
@@ -2273,3 +2275,30 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         else:
             msg = "Invalid entity type: {}".format(embedding_type)
             raise ValueError(msg)
+
+    def get_invalid_keys(self, X: npt.NDArray, data_type: Literal["raw", "ind"] = "raw", **kwargs):
+        """Get the invalid keys in a collection of triples.
+
+        Parameters
+        ----------
+        X: array
+            Array with raw or indexed triples.
+        data_type: str
+            It specifies whether the triples contain raw data (e.g. URIs) (``data_type="raw"``) or indexes (``data_type="ind"``)
+
+        Example
+        -------
+        >>>X = np.array([['subj_a','foo','subj_c'],['rel_a','rel_b','bar'],['baz','obj_b','obj_c']])
+        >>>data_indexer.get_invalid_keys(X, data_type="raw")
+        (array(['foo'], dtype=str), array(['bar'], dtype=str), array(['baz'], dtype=str))
+
+        Returns
+        -------
+        invalid_subjects: array
+            Array of size between 0 and the size of `X`, containing invalid subjects, if any.
+        invalid_predicates: array
+            Array of size between 0 and the size of `X`, containing invalid predicates, if any.
+        invalid_objects: array
+            Array of size between 0 and the size of `X`, containing invalid objects, if any.
+        """
+        return self.data_indexer.get_invalid_keys(X, data_type, **kwargs)
