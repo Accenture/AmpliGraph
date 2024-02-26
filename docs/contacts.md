@@ -47,7 +47,7 @@ Active contributors (in alphabetical order)
 
 + [Alberto Bernardi](http://github.com/albernar)
 + [Luca Costabello](http://github.com/lukostaz)
-+ + [Aldan Creo](http://github.com/acmcmc)
++ [Aldan Creo](http://github.com/acmcmc)
 + [Adrianna Janik](https://github.com/adrijanik)
 
 Past contributors
