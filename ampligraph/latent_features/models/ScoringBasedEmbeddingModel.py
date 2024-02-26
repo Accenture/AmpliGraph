@@ -2284,13 +2284,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         X: array
             Array with raw or indexed triples.
         data_type: str
-            It specifies whether the triples contain raw data (e.g. URIs) (``data_type="raw"``) or indexes (``data_type="ind"``)
-
-        Example
-        -------
-        >>>X = np.array([['subj_a','foo','subj_c'],['rel_a','rel_b','bar'],['baz','obj_b','obj_c']])
-        >>>data_indexer.get_invalid_keys(X, data_type="raw")
-        (array(['foo'], dtype=str), array(['bar'], dtype=str), array(['baz'], dtype=str))
+            It specifies whether the triples contain raw data (e.g. URIs) (``data_type="raw"``)
+            or indexes (``data_type="ind"``).
 
         Returns
         -------
@@ -2300,5 +2295,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             Array of size between 0 and the size of `X`, containing invalid predicates, if any.
         invalid_objects: array
             Array of size between 0 and the size of `X`, containing invalid objects, if any.
+
+        Example
+        -------
+        >>> X = np.array([['subj_a','foo','subj_c'],['rel_a','rel_b','bar'],['baz','obj_b','obj_c']])
+        >>> data_indexer.get_invalid_keys(X, data_type="raw")
+        (array(['foo'], dtype=str), array(['bar'], dtype=str), array(['baz'], dtype=str))
+
         """
         return self.data_indexer.get_invalid_keys(X, data_type, **kwargs)
