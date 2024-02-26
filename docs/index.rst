@@ -86,6 +86,7 @@ If you instead use AmpliGraph in an academic publication, cite as:
          author= {Luca Costabello and
                   Alberto Bernardi and
                   Adrianna Janik and
+                  Aldan Creo and
                   Sumit Pai and
                   Chan Le Van and
                   Rory McGrath and
