@@ -24,6 +24,7 @@ AMPLIGRAPH_ENV_NAME = "AMPLIGRAPH_DATA_HOME"
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+
 def _get_data_home(file_home=None, file_type='datasets'):
     """
     Get the location of the data folder to use.
@@ -58,6 +59,7 @@ def _get_data_home(file_home=None, file_type='datasets'):
         os.makedirs(file_home)
     logger.debug("model_home is set to {}".format(file_home))
     return file_home
+
 
 def _unzip_file(remote, source, destination, check_md5hash=False):
     """Unzip a file from a source location to a destination folder.
@@ -102,6 +104,7 @@ def _unzip_file(remote, source, destination, check_md5hash=False):
                 logger.error(msg)
                 raise IOError(msg)
     os.remove(source)
+
 
 def _md5(file_path):
     md5hash = hashlib.md5()
@@ -173,5 +176,3 @@ def _fetch_file(remote, data_home=None, check_md5hash=False, file_type='datasets
 
         _fetch_remote_data(remote, file_dir, data_home, check_md5hash)
     return file_dir
-
-

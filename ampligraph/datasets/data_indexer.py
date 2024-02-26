@@ -122,7 +122,7 @@ class DataIndexer:
              of indexes.
         """
         return self.backend.get_indexes(X, type_of=type_of, order=order)
-    
+
     def get_invalid_keys(self, X: npt.NDArray, data_type: Literal["raw", "ind"] = "raw", **kwargs):
         """Get the invalid keys in a collection of triples.
 
@@ -1754,7 +1754,7 @@ class SQLite:
         predicates, predicates_present = self.get_indexes_from_db_single(
             X[:, 1], type_of="r", order="raw2ind" if data_type == "raw" else "ind2raw"
         )
-        
+
         invalid_subjects = X[:, 0][~subject_present]
         invalid_predicates = X[:, 1][~predicates_present]
         invalid_objects = X[:, 2][~objects_present]
