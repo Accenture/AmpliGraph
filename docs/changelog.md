@@ -1,7 +1,7 @@
 # Changelog
 
 ## 2.1.0
-**26 February 2024**
+**27 February 2024**
 - Addition of RotatE to the available scoring functions.
 - Addition of a module to load models (TransE, DistMult, ComplEx, RotatE, HolE) pre-trained on benchmark datasets (fb15k-237,
 wn18rr, yago3-10, fb15k, wn18).
