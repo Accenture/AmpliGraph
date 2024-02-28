@@ -86,7 +86,7 @@ class OptimizerWrapper(abc.ABC):
         # Compute gradient of loss wrt trainable vars
         gradients = gradient_tape.gradient(loss, all_trainable_vars)
         # update the trainable params
-        self.optimizer.apply_gradients(zip(gradients, all_trainable_vars))
+        self.apply_gradients(zip(gradients, all_trainable_vars))
 
         # Compute the number of hyperparameters related to the optimizer
         # if self.is_partitioned_training and self.number_hyperparams == -1:
@@ -112,7 +112,7 @@ class OptimizerWrapper(abc.ABC):
         rel_hyperparams: np.array
             Relation embedding related optimizer hyperparameters.
         """
-        optim_weights = self.optimizer.get_weights()
+        optim_weights = self.get_weights()
         ent_hyperparams = []
         rel_hyperparams = []
         for i in range(1, len(optim_weights), self.num_optimized_vars):
@@ -133,14 +133,14 @@ class OptimizerWrapper(abc.ABC):
         rel_hyperparams: np.array
             Relation embedding related optimizer hyperparameters.
         """
-        optim_weights = self.optimizer.get_weights()
+        optim_weights = self.get_weights()
         for i, j in zip(
             range(1, len(optim_weights), self.num_optimized_vars),
             range(len(ent_hyperparams)),
         ):
             optim_weights[i] = ent_hyperparams[j]
             optim_weights[i + 1] = rel_hyperparams[j]
-        self.optimizer.set_weights(optim_weights)
+        self.set_weights(optim_weights)
 
     def get_weights(self):
         """Wrapper around get weights.
