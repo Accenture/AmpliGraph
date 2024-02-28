@@ -13,7 +13,7 @@ import tensorflow as tf
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-__version__ = '2.1.0'
+__version__ = '2.1-dev'
 __all__ = ['datasets', 'latent_features', 'discovery', 'evaluation', 'utils', 'pretrained_models']
 
 logging.config.fileConfig(
