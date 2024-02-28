@@ -16,13 +16,6 @@ AmpliGraph
    .. _ImageLink2: https://join.slack.com/t/ampligraph/shared_invite/enQtNTc2NTI0MzUxMTM5LTRkODk0MjI2OWRlZjdjYmExY2Q3M2M3NGY0MGYyMmI4NWYyMWVhYTRjZDhkZjA1YTEyMzBkMGE4N2RmNTRiZDg>
 
 
-.. note::
-    **AmpliGraph 2.0.0 is now available!**
-
-    The new version features TensorFlow 2 back-end and Keras style APIs that makes it faster, easier to use and
-    extend the support for multiple features. Further, the data input/output pipeline has changed, and the support for
-    some obsolete models was discontinued. See the Changelog for a more thorough list of changes.
-
 AmpliGraph is a suite of neural machine learning models for relational Learning, a branch of machine learning
 that deals with supervised learning on knowledge graphs.
 
@@ -51,8 +44,9 @@ It then combines embeddings with model-specific scoring functions to predict uns
 Key Features
 ------------
 
-* **Intuitive APIs**: AmpliGraph APIs are designed to reduce the code amount required to learn models that predict links in knowledge graphs. The new version AmpliGraph 2 APIs are in Keras style, making the user experience even smoother.
-* **GPU-Ready**: AmpliGraph 2 is based on TensorFlow 2, and it is designed to run seamlessly on CPU and GPU devices - to speed-up training.
+* **Intuitive APIs**: AmpliGraph APIs are designed to reduce the code amount required to learn models that predict links
+in knowledge graphs. The new version AmpliGraph 2 APIs are in Keras style, making the user experience even smoother.
+* **GPU-Ready**: AmpliGraph is built on top of TensorFlow 2, and it is designed to run seamlessly on CPU and GPU devices - to speed-up training.
 * **Extensible**: Roll your own knowledge graph embeddings model by extending AmpliGraph base estimators.
 
 .. The library includes Relational Learning models, i.e. supervised learning models designed to predict
@@ -68,10 +62,10 @@ Modules
 AmpliGraph includes the following submodules:
 
 * **Datasets**: helper functions to load datasets (knowledge graphs).
-* **Models**: knowledge graph embedding models. AmpliGraph 2 contains **TransE**, **DistMult**, **ComplEx**, **HolE** (More to come!)
+* **Models**: knowledge graph embedding models. AmpliGraph offers **TransE**, **DistMult**, **ComplEx**, **HolE**, **RotatE** (More to come!)
 * **Evaluation**: metrics and evaluation protocols to assess the predictive power of the models.
 * **Discovery**: High-level convenience APIs for knowledge discovery (discover new facts, cluster entities, predict near duplicates).
-* **Compat**: submodule that extends the compatibility of AmpliGraph 2 APIs to those of AmpliGraph 1.x for the user already familiar with them.
+* **Compat**: submodule that extends the compatibility of AmpliGraph APIs to those of AmpliGraph 1.x for the user already familiar with them.
 
 
 How to Cite
@@ -89,18 +83,21 @@ If you instead use AmpliGraph in an academic publication, cite as:
 .. code-block:: bibtex
 
    @misc{ampligraph,
-     author= {Luca Costabello and
-              Sumit Pai and
-              Chan Le Van and
-              Rory McGrath and
-              Nick McCarthy and
-              Pedro Tabacof},
-     title = {{AmpliGraph: a Library for Representation Learning on Knowledge Graphs}},
-     month = mar,
-     year  = 2019,
-     doi   = {10.5281/zenodo.2595043},
-     url   = {https://doi.org/10.5281/zenodo.2595043}
-   }
+         author= {Luca Costabello and
+                  Alberto Bernardi and
+                  Adrianna Janik and
+                  Aldan Creo and
+                  Sumit Pai and
+                  Chan Le Van and
+                  Rory McGrath and
+                  Nicholas McCarthy and
+                  Pedro Tabacof},
+         title = {{AmpliGraph: a Library for Representation Learning on Knowledge Graphs}},
+         month = mar,
+         year  = 2019,
+         doi   = {10.5281/zenodo.2595043},
+         url   = {https://doi.org/10.5281/zenodo.2595043 }
+    }
 
 .. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.2595043.svg
    :target: https://doi.org/10.5281/zenodo.2595043

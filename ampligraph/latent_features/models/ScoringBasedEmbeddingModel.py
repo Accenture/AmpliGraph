@@ -13,6 +13,8 @@ import numpy as np
 import os
 import tempfile
 import logging
+from typing import Literal
+import numpy.typing as npt
 
 from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score, mr_score
 from ampligraph.datasets import data_adapter
@@ -120,6 +122,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             - ``DistMult`` DistMult embedding scoring function will be used
             - ``ComplEx`` ComplEx embedding scoring function will be used
             - ``HolE`` Holograph embedding scoring function will be used
+            - ``RotatE`` RotatE embedding scoring function will be used
 
         seed: int
             Random seed.
@@ -307,19 +310,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             Ranking against subject corruptions and object corruptions
             (corruptions defined by `ent_embs` matrix).
         """
-        if not self.is_partitioned_training:
-            inputs = [
-                tf.nn.embedding_lookup(
-                    self.encoding_layer.ent_emb, inputs[:, 0]
-                ),
-                tf.nn.embedding_lookup(
-                    self.encoding_layer.rel_emb, inputs[:, 1]
-                ),
-                tf.nn.embedding_lookup(
-                    self.encoding_layer.ent_emb, inputs[:, 2]
-                ),
-            ]
-
         return self.scoring_layer.get_ranks(
             inputs,
             ent_embs,
@@ -344,6 +334,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.encoding_layer.max_ent_size = self.max_ent_size
         # set the max number of relations being trained just like above
         self.encoding_layer.max_rel_size = self.max_rel_size
+        # set the max number of relations also for the scoring_function. This is uniquely useful for RotatE
+        self.scoring_layer.max_rel_size = self.max_rel_size
         self.num_ents = self.max_ent_size
         self.built = True
 
@@ -552,18 +544,18 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def fit(
         self,
         x=None,
-        batch_size=1,
-        epochs=1,
+        batch_size=1000,
+        epochs=100,
         verbose=True,
         callbacks=None,
         validation_split=0.0,
         validation_data=None,
         shuffle=True,
         initial_epoch=0,
-        validation_batch_size=100,
+        validation_batch_size=10,
         validation_corrupt_side="s,o",
-        validation_freq=50,
-        validation_burn_in=100,
+        validation_freq=10,
+        validation_burn_in=0,
         validation_filter=False,
         validation_entities_subset=None,
         partitioning_k=1,
@@ -577,10 +569,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         x: np.array, shape (n, 3), or str or GraphDataLoader or AbstractGraphPartitioner
             Data OR Filename of the data file OR Data Handle to be used for training.
         batch_size: int
-            Batch size to use during training.
+            Batch size to use during training (default: 1000).
             May be overridden if **x** is a GraphDataLoader or AbstractGraphPartitioner instance.
         epochs: int
-            Number of epochs to train (default: 1).
+            Number of epochs to train (default: 100).
         verbose: bool
             Verbosity (default: `True`).
         callbacks: list of tf.keras.callbacks.Callback
@@ -592,14 +584,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         shuffle: bool
             Indicates whether to shuffle the data after every epoch during training (default: `True`).
         initial epoch: int
-            Initial epoch number (default: 1).
+            Initial epoch number (default: 0).
         validation_batch_size: int
-            Batch size to use during validation (default: 100).
+            Batch size to use during validation (default: 10).
             May be overridden if ``validation_data`` is `GraphDataLoader` or `AbstractGraphPartitioner` instance.
         validation_freq: int
-            Indicates how often to validate (default: 50).
+            Indicates how often to validate (default: 10).
         validation_burn_in: int
-            The burn-in time after which the validation kicks in.
+            The burn-in time after which the validation kicks in (default: 0).
         validation_filter: bool or dict
             Validation filter to be used.
         validation_entities_subset: list or np.array
@@ -862,34 +854,19 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 # store the logs of the last batch of the epoch
                 epoch_logs = copy.copy(logs)
                 # if validation is enabled
-                if (
-                    epoch >= (validation_burn_in - 1)
-                    and validation_data is not None
+                validate = \
+                    epoch >= (validation_burn_in - 1)\
+                    and validation_data is not None\
                     and self._should_eval(epoch, validation_freq)
-                ):
-                    if self.data_shape > 3 and validation_data.shape[1] == 3:
-                        nan_weights = np.empty(validation_data.shape[0])
-                        nan_weights.fill(np.nan)
-                        validation_data = np.concatenate(
-                            [validation_data, nan_weights], axis=1
-                        )
-                    # evaluate on the validation
-                    ranks = self.evaluate(
+                if validate:
+                    val_logs = self.perform_validation(
                         validation_data,
                         batch_size=validation_batch_size or batch_size,
                         use_filter=validation_filter,
                         dataset_type="valid",
                         corrupt_side=validation_corrupt_side,
-                        entities_subset=validation_entities_subset,
+                        entities_subset=validation_entities_subset
                     )
-                    # compute all the metrics
-                    val_logs = {
-                        "val_mrr": mrr_score(ranks),
-                        "val_mr": mr_score(ranks),
-                        "val_hits@1": hits_at_n_score(ranks, 1),
-                        "val_hits@10": hits_at_n_score(ranks, 10),
-                        "val_hits@100": hits_at_n_score(ranks, 100),
-                    }
                     # update the epoch logs with validation details
                     epoch_logs.update(val_logs)
 
@@ -1332,6 +1309,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # set the initializer and regularizer of the embedding matrices in the
         # encoding layer
         self.encoding_layer.set_initializer(entity_relation_initializer)
+        if self.scoring_type == "RotatE":
+            assert isinstance(self.encoding_layer.rel_init, tf.keras.initializers.GlorotUniform),\
+                "The relation initializer provided to a RotatE model must be " \
+                "a tf.keras.initializers.GlorotUniform!\nPlease change to that."
+
         self.encoding_layer.set_regularizer(entity_relation_regularizer)
         self._is_compiled = True
 
@@ -1366,9 +1348,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         """
         if number_of_parts == 1:
             if self.entities_subset.shape[0] != 0:
-                out = tf.nn.embedding_lookup(
-                    self.encoding_layer.ent_emb, self.entities_subset
-                )
+                out = self.encoding_layer(self.entities_subset, type_of="e")
             else:
                 out = self.encoding_layer.ent_emb
             return out, 0, out.shape[0] - 1
@@ -1443,6 +1423,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
             if self.is_partitioned_training:
                 inputs = self.process_model_inputs_for_test(inputs)
+            else:
+                inputs = self.encoding_layer(inputs, training=False)
 
             # run the loop based on number of parts in which the original emb
             # matrix was generated
@@ -1534,7 +1516,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
     def evaluate(
         self,
         x=None,
-        batch_size=32,
+        batch_size=10,
         verbose=True,
         use_filter=False,
         corrupt_side="s,o",
@@ -1551,8 +1533,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         x: np.array, shape (n,3) or str or GraphDataLoader or AbstractGraphPartitioner
             Data OR Filename of the data file OR Data Handle to be used for training.
         batch_size: int
-            Batch size to use during training.
-            May be overridden if ``x`` is `GraphDataLoader` or `AbstractGraphPartitioner` instance
+            Batch size to use during evaluation.
+            May be overridden if ``x`` is `GraphDataLoader` or `AbstractGraphPartitioner` instance.
+
+            .. warning::
+                Evaluation batch size can often be the reason for Out-Of-Memory (OOM) Errors. Beware of it!
+
         verbose: bool
             Verbosity mode.
         use_filter: bool or dict
@@ -1616,16 +1602,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
          0.391965945787259,
          20438)
         """
-        # get the test set handler
-        self.data_handler_test = data_adapter.DataHandler(
-            x,
-            batch_size=batch_size,
-            dataset_type=dataset_type,
-            epochs=1,
-            use_filter=use_filter,
-            use_indexer=self.data_indexer,
-        )
-
         assert corrupt_side in [
             "s",
             "o",
@@ -1638,29 +1614,40 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             "worst",
         ], "Invalid value for ranking_strategy"
 
-        self.corrupt_side = corrupt_side
-        self.ranking_strategy = ranking_strategy
-
-        self.entities_subset = tf.constant([])
-        self.mapping_dict = tf.lookup.experimental.DenseHashTable(
-            tf.int32, tf.int32, -1, -1, -2
-        )
-        if entities_subset is not None:
-            entities_subset = self.data_indexer.get_indexes(
-                entities_subset, "e"
-            )
-            self.entities_subset = tf.constant(entities_subset, dtype=tf.int32)
-            self.mapping_dict.insert(
-                self.entities_subset, tf.range(self.entities_subset.shape[0])
+        # get the evaluation set handler. Notice that, if we are performing validation
+        # we don't need to redefine the data_handler and the other attributes every time
+        # we evaluate, but we just need to define them the first time
+        if dataset_type == 'test' or \
+                (dataset_type == 'valid' and not hasattr(self, "data_handler_test")):
+            self.data_handler_test = data_adapter.DataHandler(
+                x,
+                batch_size=batch_size,
+                dataset_type=dataset_type,
+                epochs=1,
+                use_filter=use_filter,
+                use_indexer=self.data_indexer,
             )
 
-        # flag to indicate if we are using filter or not
-        self.use_filter = (
-            self.data_handler_test._parent_adapter.backend.use_filter
-            or isinstance(
-                self.data_handler_test._parent_adapter.backend.use_filter, dict
+            self.corrupt_side = corrupt_side
+            self.ranking_strategy = ranking_strategy
+
+            self.entities_subset = tf.constant([])
+            self.mapping_dict = tf.lookup.experimental.DenseHashTable(
+                tf.int32, tf.int32, -1, -1, -2
             )
-        )
+            if entities_subset is not None:
+                entities_subset = self.get_indexes(entities_subset, "e")
+                self.entities_subset = tf.constant(entities_subset, dtype=tf.int32)
+                self.mapping_dict.insert(
+                    self.entities_subset, tf.range(self.entities_subset.shape[0])
+                )
+            # flag to indicate if we are using filter or not
+            self.use_filter = (
+                self.data_handler_test._parent_adapter.backend.use_filter
+                or isinstance(
+                    self.data_handler_test._parent_adapter.backend.use_filter, dict
+                )
+            )
 
         # Container that configures and calls `tf.keras.Callback`s.
         if not isinstance(callbacks, callbacks_module.CallbackList):
@@ -1834,6 +1821,47 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     )
         callbacks.on_predict_end()
         return np.concatenate(outputs)
+
+    def perform_validation(
+            self,
+            validation_data,
+            batch_size,
+            use_filter,
+            dataset_type,
+            corrupt_side,
+            entities_subset
+    ):
+        """
+        Function to perform the validation.
+
+        It calls the evaluate function on the validation triples and
+        computes the metrics.
+        """
+        # FocusE adaptation of validation_data
+        if self.data_shape > 3 and validation_data.shape[1] == 3:
+            nan_weights = np.empty(validation_data.shape[0])
+            nan_weights.fill(np.nan)
+            validation_data = np.concatenate(
+                [validation_data, nan_weights], axis=1
+            )
+        # evaluate on the validation
+        ranks = self.evaluate(
+            validation_data,
+            batch_size=batch_size,
+            use_filter=use_filter,
+            dataset_type=dataset_type,
+            corrupt_side=corrupt_side,
+            entities_subset=entities_subset,
+        )
+        # compute all the metrics
+        val_logs = {
+            "val_mrr": mrr_score(ranks),
+            "val_mr": mr_score(ranks),
+            "val_hits@1": hits_at_n_score(ranks, 1),
+            "val_hits@10": hits_at_n_score(ranks, 10),
+            "val_hits@100": hits_at_n_score(ranks, 100),
+        }
+        return val_logs
 
     def make_calibrate_function(self):
         """Similar to keras lib, this function returns the handle to the calibrate step function.
@@ -2223,7 +2251,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         """
 
         if embedding_type == "e":
-            lookup_concept = self.data_indexer.get_indexes(entities, "e")
+            lookup_concept = self.get_indexes(entities, "e")
             if self.is_partitioned_training:
                 emb_out = []
                 with shelve.open(
@@ -2232,11 +2260,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     for ent_id in lookup_concept:
                         emb_out.append(ent_emb[str(ent_id)])
             else:
-                return tf.nn.embedding_lookup(
-                    self.encoding_layer.ent_emb, lookup_concept
-                ).numpy()
+                return self.encoding_layer(lookup_concept, type_of="e").numpy()
         elif embedding_type == "r":
-            lookup_concept = self.data_indexer.get_indexes(entities, "r")
+            lookup_concept = self.get_indexes(entities, "r")
             if self.is_partitioned_training:
                 emb_out = []
                 with shelve.open(
@@ -2245,9 +2271,36 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     for rel_id in lookup_concept:
                         emb_out.append(rel_emb[str(rel_id)])
             else:
-                return tf.nn.embedding_lookup(
-                    self.encoding_layer.rel_emb, lookup_concept
-                ).numpy()
+                return self.encoding_layer(lookup_concept, type_of="r").numpy()
         else:
             msg = "Invalid entity type: {}".format(embedding_type)
             raise ValueError(msg)
+
+    def get_invalid_keys(self, X: npt.NDArray, data_type: Literal["raw", "ind"] = "raw", **kwargs):
+        """Get the invalid keys in a collection of triples.
+
+        Parameters
+        ----------
+        X: array
+            Array with raw or indexed triples.
+        data_type: str
+            It specifies whether the triples contain raw data (e.g. URIs) (``data_type="raw"``)
+            or indexes (``data_type="ind"``).
+
+        Returns
+        -------
+        invalid_subjects: array
+            Array of size between 0 and the size of `X`, containing invalid subjects, if any.
+        invalid_predicates: array
+            Array of size between 0 and the size of `X`, containing invalid predicates, if any.
+        invalid_objects: array
+            Array of size between 0 and the size of `X`, containing invalid objects, if any.
+
+        Example
+        -------
+        >>> X = np.array([['subj_a','foo','subj_c'],['rel_a','rel_b','bar'],['baz','obj_b','obj_c']])
+        >>> data_indexer.get_invalid_keys(X, data_type="raw")
+        (array(['foo'], dtype=str), array(['bar'], dtype=str), array(['baz'], dtype=str))
+
+        """
+        return self.data_indexer.get_invalid_keys(X, data_type, **kwargs)

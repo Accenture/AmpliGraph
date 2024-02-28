@@ -25,6 +25,7 @@ If you instead use AmpliGraph in an academic publication, cite as:
  author= {Luca Costabello and
           Alberto Bernardi and
           Adrianna Janik and
+          Aldan Creo and
           Sumit Pai and
           Chan Le Van and
           Rory McGrath and
@@ -46,6 +47,7 @@ Active contributors (in alphabetical order)
 
 + [Alberto Bernardi](http://github.com/albernar)
 + [Luca Costabello](http://github.com/lukostaz)
++ [Aldan Creo](http://github.com/acmcmc)
 + [Adrianna Janik](https://github.com/adrijanik)
 
 Past contributors

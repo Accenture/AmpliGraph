@@ -34,16 +34,24 @@ def test_build():
     
 def test_set_initializer():
     model = ScoringBasedEmbeddingModel(k=3, eta=1)
-    model.compile(optimizer='adam', loss='pairwise', entity_relation_initializer=[tf.constant_initializer([[0, 1, 2], [0, 1, 2], [0, 1, 2]]),
-                                                                  tf.constant_initializer([[10, 11, 12], [10, 11, 12]])])
+    model.compile(
+        optimizer='adam',
+        loss='pairwise',
+        entity_relation_initializer=[
+            tf.constant_initializer([[0, 1, 2], [0, 1, 2], [0, 1, 2]]),
+            tf.constant_initializer([[10, 11, 12], [10, 11, 12]])
+        ]
+    )
     
     model.encoding_layer.max_ent_size = 3
     model.encoding_layer.max_rel_size = 2
     model.encoding_layer.build((10, 10))
-    assert (model.encoding_layer.ent_emb.numpy() == np.array([[0, 1, 2], [0, 1, 2], [0, 1, 2]], dtype=np.float32)).all(), \
+    assert (model.encoding_layer.ent_emb.numpy() == np.array(
+        [[0, 1, 2], [0, 1, 2], [0, 1, 2]], dtype=np.float32)).all(), \
         'EmbeddingLookupLayer (initializer): Entity embeddings dont match!'
         
-    assert (model.encoding_layer.rel_emb.numpy() == np.array([[10, 11, 12], [10, 11, 12]], dtype=np.float32)).all(), \
+    assert (model.encoding_layer.rel_emb.numpy() == np.array(
+        [[10, 11, 12], [10, 11, 12]], dtype=np.float32)).all(), \
         'EmbeddingLookupLayer (initializer): Relation embeddings dont match!'
     
     model = ScoringBasedEmbeddingModel(k=3, eta=1)
@@ -54,18 +62,24 @@ def test_set_initializer():
     model.encoding_layer.max_rel_size = 3
     model.encoding_layer.build((10, 10))
     
-    assert (model.encoding_layer.ent_emb.numpy() == np.array([[0, 1, 2], [0, 1, 2], [0, 1, 2]], dtype=np.float32)).all(), \
+    assert (model.encoding_layer.ent_emb.numpy() == np.array(
+        [[0, 1, 2], [0, 1, 2], [0, 1, 2]], dtype=np.float32)).all(), \
         'EmbeddingLookupLayer (initializer): Entity embeddings dont match!'
     
-    assert (model.encoding_layer.rel_emb.numpy() == np.array([[0, 1, 2], [0, 1, 2], [0, 1, 2]], dtype=np.float32)).all(), \
+    assert (model.encoding_layer.rel_emb.numpy() == np.array(
+        [[0, 1, 2], [0, 1, 2], [0, 1, 2]], dtype=np.float32)).all(), \
         'EmbeddingLookupLayer (initializer): Relation embeddings dont match!'
     
     with pytest.raises(AssertionError, match='Incorrect length for initializer. Assumed 2 got 3'):
         model = ScoringBasedEmbeddingModel(k=3, eta=1)
-        model.compile(optimizer='adam', loss='pairwise', 
-                      entity_relation_initializer=[tf.constant_initializer([[0, 1, 2], [0, 1, 2], [0, 1, 2]]),
-                                                   tf.constant_initializer([[10, 11, 12], [10, 11, 12]]), 
-                                                   tf.constant_initializer([[10, 11, 12], [10, 11, 12]])])
+        model.compile(
+            optimizer='adam', loss='pairwise',
+            entity_relation_initializer=[
+                tf.constant_initializer([[0, 1, 2], [0, 1, 2], [0, 1, 2]]),
+                tf.constant_initializer([[10, 11, 12], [10, 11, 12]]),
+                tf.constant_initializer([[10, 11, 12], [10, 11, 12]])
+            ]
+        )
 
         model.encoding_layer.max_ent_size = 3
         model.encoding_layer.max_rel_size = 2
@@ -73,16 +87,22 @@ def test_set_initializer():
 
 def test_call():
     model = ScoringBasedEmbeddingModel(k=3, eta=1)
-    model.compile(optimizer='adam', loss='pairwise', entity_relation_initializer=[tf.constant_initializer([[0,0,0], [1,1,1], [2,2,2]]),
-                                                                  tf.constant_initializer([[10, 10, 10], [11, 11, 11]])])
+    model.compile(
+        optimizer='adam',
+        loss='pairwise',
+        entity_relation_initializer=[
+            tf.constant_initializer([[0, 0, 0], [1, 1, 1], [2, 2, 2]]),
+            tf.constant_initializer([[10, 10, 10], [11, 11, 11]])
+        ]
+    )
     
     model.encoding_layer.max_ent_size = 3
     model.encoding_layer.max_rel_size = 2
     model.encoding_layer.build((10, 10))
     
-    out = model.encoding_layer.call(tf.constant([[0, 0, 1], [0, 1, 2]]))
+    out = model.encoding_layer.call(sample=tf.constant([[0, 0, 1], [0, 1, 2]]))
     
-    assert (out[0].numpy() == np.array([[0,0,0], [0,0,0]])).all(), \
+    assert (out[0].numpy() == np.array([[0, 0, 0], [0, 0, 0]])).all(), \
         'EmbeddingLookupLayer (call): subject embeddings are incorrect'
     assert (out[1].numpy() == np.array([[10, 10, 10], [11, 11, 11]])).all(), \
         'EmbeddingLookupLayer (call): predicate embeddings are incorrect'
@@ -91,48 +111,64 @@ def test_call():
     
 def test_set_ent_rel_initial_value():
     model = ScoringBasedEmbeddingModel(k=3, eta=1)
-    model.compile(optimizer='adam', loss='pairwise', 
-                  entity_relation_initializer=[tf.constant_initializer([[10,10,10], [10,10,10], [10,10,10], 
-                                                                        [10,10,10], [10,10,10]]),
-                                               tf.constant_initializer([[10, 10, 10], [11, 11, 11]])])
+    model.compile(
+        optimizer='adam', loss='pairwise',
+        entity_relation_initializer=[
+            tf.constant_initializer(
+                [[10, 10, 10], [10, 10, 10], [10, 10, 10], [10, 10, 10], [10, 10, 10]]),
+            tf.constant_initializer([[10, 10, 10], [11, 11, 11]])
+        ]
+    )
     
     model.encoding_layer.max_ent_size = 5
     model.encoding_layer.max_rel_size = 2
     
-    model.encoding_layer.set_ent_rel_initial_value(np.array([[0,0,0],[1,1,1],[2,2,2]]),
-                                                   np.array([[5,5,5]]))
+    model.encoding_layer.set_ent_rel_initial_value(
+        np.array([[0, 0, 0], [1, 1, 1], [2, 2, 2]]),
+        np.array([[5, 5, 5]])
+    )
     model.encoding_layer.build((10, 10))
     
-    assert (model.encoding_layer.ent_emb.numpy() == np.array([[0,0,0], [1,1,1], [2,2,2], [0,0,0], [0,0,0]])).all(), \
-        'EmbeddingLookupLayer (set_ent_rel_initial_value): Entity matrix not correctly initialized'
+    assert (model.encoding_layer.ent_emb.numpy() == np.array(
+        [[0, 0, 0], [1, 1, 1], [2, 2, 2], [0, 0, 0], [0, 0, 0]]
+    )).all(), 'EmbeddingLookupLayer (set_ent_rel_initial_value): ' \
+              'Entity matrix not correctly initialized'
     
-    assert (model.encoding_layer.rel_emb.numpy() == np.array([[5,5,5], [0,0,0]])).all(), \
-        'EmbeddingLookupLayer (set_ent_rel_initial_value): Relation matrix not correctly initialized'
+    assert (model.encoding_layer.rel_emb.numpy() == np.array([[5, 5, 5], [0, 0, 0]])).all(), \
+        'EmbeddingLookupLayer (set_ent_rel_initial_value): ' \
+        'Relation matrix not correctly initialized'
     
 def test_partition_change_updates():
     model = ScoringBasedEmbeddingModel(k=3, eta=1)
-    model.compile(optimizer='adam', loss='pairwise', 
-                  entity_relation_initializer=[tf.constant_initializer([[10,10,10], [10,10,10], [10,10,10], 
-                                                                        [10,10,10], [10,10,10]]),
-                                               tf.constant_initializer([[10, 10, 10], [11, 11, 11]])])
+    model.compile(
+        optimizer='adam', loss='pairwise',
+        entity_relation_initializer=[
+            tf.constant_initializer(
+                [[10, 10, 10], [10, 10, 10], [10, 10, 10], [10, 10, 10], [10, 10, 10]]),
+            tf.constant_initializer([[10, 10, 10], [11, 11, 11]])
+        ]
+    )
     
     model.encoding_layer.max_ent_size = 5
     model.encoding_layer.max_rel_size = 2
     model.encoding_layer.build((10, 10))
     
-    assert (model.encoding_layer.ent_emb.numpy() == np.array([[10,10,10], [10,10,10], [10,10,10], 
-                                                                        [10,10,10], [10,10,10]])).all(), \
-        'EmbeddingLookupLayer (partition_change_updates): Entity matrix not correctly initialized'
+    assert (model.encoding_layer.ent_emb.numpy() == np.array(
+        [[10, 10, 10], [10, 10, 10], [10, 10, 10], [10, 10, 10], [10, 10, 10]]
+    )).all(), 'EmbeddingLookupLayer (partition_change_updates): ' \
+              'Entity matrix not correctly initialized'
     
     assert (model.encoding_layer.rel_emb.numpy() == np.array([[10, 10, 10], [11, 11, 11]])).all(), \
         'EmbeddingLookupLayer (partition_change_updates): Relation matrix not correctly initialized'
     
-    model.encoding_layer.partition_change_updates(np.array([[0,0,0],[1,1,1],[2,2,2]], dtype=np.float32),
-                                                   np.array([[5,5,5]], dtype=np.float32))
+    model.encoding_layer.partition_change_updates(np.array([[0, 0, 0], [1, 1, 1], [2, 2, 2]], dtype=np.float32),
+                                                   np.array([[5, 5, 5]], dtype=np.float32))
     
-    assert (model.encoding_layer.ent_emb.numpy() == np.array([[0,0,0], [1,1,1], [2,2,2], [0,0,0], [0,0,0]])).all(), \
-        'EmbeddingLookupLayer (partition_change_updates): Entity matrix not correctly changed'
+    assert (model.encoding_layer.ent_emb.numpy() == np.array(
+        [[0, 0, 0], [1, 1, 1], [2, 2, 2], [0, 0, 0], [0, 0, 0]]
+    )).all(), 'EmbeddingLookupLayer (partition_change_updates): ' \
+              'Entity matrix not correctly changed'
     
-    assert (model.encoding_layer.rel_emb.numpy() == np.array([[5,5,5], [0,0,0]])).all(), \
+    assert (model.encoding_layer.rel_emb.numpy() == np.array([[5, 5, 5], [0, 0, 0]])).all(), \
         'EmbeddingLookupLayer (partition_change_updates): Relation matrix not correctly changed'
     

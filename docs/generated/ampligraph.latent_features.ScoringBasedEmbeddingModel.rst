@@ -25,6 +25,7 @@ ScoringBasedEmbeddingModel
       
       
       
+      
       ~ScoringBasedEmbeddingModel.metrics
       
       
@@ -126,11 +127,16 @@ ScoringBasedEmbeddingModel
       
       
       
+      ~ScoringBasedEmbeddingModel.get_invalid_keys
+      
+      
+      
       
       
       
       
       ~ScoringBasedEmbeddingModel.get_train_embedding_matrix_size
+      
       
       
       
@@ -156,6 +162,9 @@ ScoringBasedEmbeddingModel
       
       
       ~ScoringBasedEmbeddingModel.partition_change_updates
+      
+      
+      ~ScoringBasedEmbeddingModel.perform_validation
       
       
       ~ScoringBasedEmbeddingModel.predict
@@ -252,11 +261,15 @@ ScoringBasedEmbeddingModel
       
       
       
+   .. automethod:: ScoringBasedEmbeddingModel.get_invalid_keys
+      
+      
       
       
       
       
    .. automethod:: ScoringBasedEmbeddingModel.get_train_embedding_matrix_size
+      
       
       
    .. automethod:: ScoringBasedEmbeddingModel.is_fit
@@ -274,6 +287,8 @@ ScoringBasedEmbeddingModel
    .. automethod:: ScoringBasedEmbeddingModel.make_train_function
       
    .. automethod:: ScoringBasedEmbeddingModel.partition_change_updates
+      
+   .. automethod:: ScoringBasedEmbeddingModel.perform_validation
       
    .. automethod:: ScoringBasedEmbeddingModel.predict
       

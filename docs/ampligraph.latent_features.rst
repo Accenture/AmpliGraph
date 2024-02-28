@@ -103,6 +103,7 @@ and object of :math:`t` into a score representing the plausibility of the triple
     ~ampligraph.latent_features.layers.scoring.TransE
     ~ampligraph.latent_features.layers.scoring.DistMult
     ~ampligraph.latent_features.layers.scoring.ComplEx
+    ~ampligraph.latent_features.layers.scoring.RotatE
     ~ampligraph.latent_features.layers.scoring.HolE
 
 Different scoring functions are designed according to different intuitions:
@@ -120,6 +121,10 @@ the embedding of the subject translated by the embedding of the predicate  and t
 + :class:`~layers.scoring.ComplEx` :cite:`trouillon2016complex` extends DistMult with the Hermitian dot product:
     .. math::
         f_{ComplEx}=Re(\langle \mathbf{r}_p, \mathbf{e}_s, \overline{\mathbf{e}_o}  \rangle)
+
++ :class:`~layers.scoring.RotatE` :cite:`sun2018rotate` models relations as rotations in the Complex space:
+    .. math::
+        f_{RotatE}=||\mathbf{e}_{s} \circ \mathbf{r}_{p} - \mathbf{e}_{o}||
 
 + :class:`~layers.scoring.HolE` :cite:`nickel2016holographic` uses circular correlation (denoted by :math:`\otimes`):
     .. math::
@@ -231,7 +236,7 @@ Numeric Values on Edges
 
 Numeric values associated to edges of a knowledge graph have been used to represent uncertainty, edge importance, and
 even out-of-band knowledge in a growing number of scenarios, ranging from genetic data to social networks.
-Nevertheless, traditional KGE models (TransE, DistMult, ComplEx, HolE) are not designed to capture such
+Nevertheless, traditional KGE models (TransE, DistMult, ComplEx, RotatE, HolE) are not designed to capture such
 information, to the detriment of predictive power.
 
 AmpliGraph includes FocusE :cite:`pai2021learning`, a method to inject numeric edge attributes into the scoring
@@ -249,7 +254,8 @@ The weights of a trained model can be saved and restored from disk. This is usef
 In order to save and restore the weights of a model, we can use the :meth:`~ScoringBasedEmbeddingModel.save_weights`
 and :meth:`~ScoringBasedEmbeddingModel.load_weights` methods. When the model is saved and loaded with these methods,
 however, it is not possible to restart the training from where it stopped. AmpliGraph gives the possibility of doing
-that saving and loading the model with the functionalities available in the :mod:`.utils` module.
+that using :meth:`~ampligraph.utils.save_model` and :meth:`~ampligraph.utils.restore_model` available in
+the :mod:`.utils` module.
 
 Compatibility Ampligraph 1.x
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

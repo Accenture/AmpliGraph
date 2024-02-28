@@ -91,7 +91,7 @@ To sanity check the installation, run the following:
 ```python
 >>> import ampligraph
 >>> ampligraph.__version__
-'2.0.1'
+'2.1.0'
 ```
 
 If instead you want the most recent development version, you can clone the repository from
@@ -111,7 +111,7 @@ To sanity check the installation run the following:
 ```python
 >>> import ampligraph
 >>> ampligraph.__version__
-'2.0-dev'
+'2.1-dev'
 ```
 
 
@@ -121,5 +121,5 @@ available cloning the [repository](https://github.com/Accenture/AmpliGraph.git) 
 *ampligraph1/develop* branch. However, notice that the support for this version has been discontinued.
 
 Finally, if you want to use AmpliGraph 1.x APIs on top of Tensorflow 2, refer to the backward compatibility APIs
-provided on Ampligraph 2 [compat](https://docs.ampligraph.org/en/2.0.0/ampligraph.latent_features.html#module-ampligraph.compat)
+provided on Ampligraph [compat](https://docs.ampligraph.org/en/2.0.0/ampligraph.latent_features.html#module-ampligraph.compat)
 module.
