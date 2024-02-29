@@ -295,13 +295,11 @@ class ScoringModelBase:
             )
             callbacks.append(tensorboard_callback)
 
-        regularizer = self.regularizer
-        if regularizer is not None:
+        if (regularizer := self.regularizer) is not None:
             regularizer = get_regularizer(regularizer,
                                           self.regularizer_params)
 
-        initializer = self.initializer
-        if initializer is not None:
+        if (initializer := self.initializer) is not None:
             initializer = self._get_initializer(
                 initializer, self.initializer_params
             )

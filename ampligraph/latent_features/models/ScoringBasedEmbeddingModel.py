@@ -497,8 +497,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         """
         # Get the non-linearity function
-        non_linearity = dict_params.get("non_linearity", "linear")
-        if non_linearity == "linear":
+        if (non_linearity := dict_params.get("non_linearity", "linear")) == "linear":
             non_linearity = tf.identity
         elif non_linearity == "tanh":
             non_linearity = tf.tanh
