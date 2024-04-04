@@ -20,7 +20,13 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         config.update({"seed": self.seed})
         return config
 
-    def __init__(self, seed=0, **kwargs):
+    def __init__(
+            self,
+            seed=0,
+            ontology_sampling=None,
+            ontology_sampling_config=None,
+            **kwargs
+    ):
         """
         Initializes the corruption generation layer.
 
@@ -30,6 +36,14 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
             Number of corruptions to generate.
         """
         self.seed = seed
+        self.ontology_sampling = ontology_sampling
+        self.idx_class_domain_start = None
+        self.idx_class_domain_end = None
+        self.idx_class_range_start = None
+        self.idx_class_range_end = None
+        self.relation_to_domain = None
+        self.relation_to_range = None
+
         super(CorruptionGenerationLayerTrain, self).__init__(**kwargs)
 
     def call(self, pos, ent_size, eta):
@@ -49,16 +63,19 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
             Corruptions of the triples.
         """
         # size and reshape the dataset to sample corruptions
+        # if not self.ontology_sampling:
+        #     dataset = tf.tile(pos, [eta, 1])
+        # else:
+        #     number_good_negatives = int(eta * self.ontology_sampling)
+        #     dataset = tf.tile(pos, [number_good_negatives, 1])
         dataset = tf.tile(pos, [eta, 1])
         # generate a mask which will tell which subject needs to be corrupted
         # (random uniform sampling)
         keep_subj_mask = tf.cast(
             tf.random.uniform(
                 [tf.shape(input=dataset)[0]],
-                0,
-                2,
-                dtype=tf.int32,
-                seed=self.seed,
+                0, 2,
+                dtype=tf.int32, seed=self.seed,
             ),
             tf.bool,
         )
@@ -69,9 +86,48 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         keep_subj_mask = tf.cast(keep_subj_mask, tf.int32)
         keep_obj_mask = tf.cast(keep_obj_mask, tf.int32)
         # generate the n * eta replacements (uniformly randomly)
-        replacements = tf.random.uniform(
-            [tf.shape(dataset)[0]], 0, ent_size, dtype=tf.int32, seed=self.seed
-        )
+        if not self.ontology_sampling:
+            replacements = tf.random.uniform(
+                [tf.shape(dataset)[0]], 0, ent_size, dtype=tf.int32, seed=self.seed
+            )
+        else:
+            # number of pertinent negatives to generate
+            number_good_negatives = int(eta * self.ontology_sampling)
+            # we extract the start and end index of classes in self.relation_to_domain
+            start_idx_domain = tf.gather(self.idx_class_domain_start, dataset[:, 1])
+            end_idx_domain = tf.gather(self.idx_class_domain_end, dataset[:, 1])
+            # we now sample the indices to slice the vector of entities divided by class
+            idx_domain_replacements = tf.cast(
+                tf.floor(
+                    tf.random.uniform(
+                        [tf.shape(pos)[0] * number_good_negatives], start_idx_domain, end_idx_domain,
+                        seed=self.seed)
+                ), dtype=tf.int32
+            )
+            # we use the index to obtain the corruptions we are looking for
+            subj_replacements = tf.gather(
+                self.relation_to_domain,
+                idx_domain_replacements
+            )
+
+            # we repeat the same process as above for the objects
+            start_idx_range = tf.gather(self.idx_class_range_start, dataset[:, 1])
+            end_idx_range = tf.gather(self.idx_class_range_end, dataset[:, 1])
+            idx_range_replacements = tf.cast(
+                tf.floor(
+                    tf.random.uniform(
+                        [tf.shape(pos)[0] * number_good_negatives], start_idx_range, end_idx_range,
+                        seed=self.seed)
+                ), dtype=tf.int32
+            )
+            obj_replacements = tf.gather(
+                self.relation_to_range,
+                idx_range_replacements
+            )
+
+            # we put in one unique vector the replacements for subject and object
+            replacements = subj_replacements * keep_obj_mask + obj_replacements * keep_subj_mask
+
         # keep subjects of dataset where keep_subject is 1 and zero it where keep_subject is 0
         # now add replacements where keep_subject is 0 (i.e. keep_object is 1)
         subjects = tf.math.add(

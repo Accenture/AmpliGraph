@@ -186,6 +186,15 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.base_dir = tempfile.gettempdir()
         self.partitioner_metadata = {}
 
+        # Ontology Sampling
+        self.ontology_sampling = None
+        self.idx_class_domain_start = None
+        self.idx_class_domain_end = None
+        self.idx_class_range_start = None
+        self.idx_class_range_end = None
+        self.relation_to_domain = None
+        self.relation_to_range = None
+
     def is_fit(self):
         """Check whether the model has been fitted already."""
         return self.is_fitted
@@ -267,6 +276,63 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         else:
             return inp_score
+
+    def generate_better_negatives(self, inputs, eta, good_precentage=0.8):
+        """
+        Function that generates negatives leveraging the ontology
+        information so to higher quality negatives.
+        """
+        # since domain and range are determined by the relation, leverage
+        # a dictionary where the keys are the relations and the values are
+        # tuples (subj_type, obj_type) and use that key from another dict
+        # that stores for each type a tensor of the elements belonging to
+        # that class.
+        self.relation_to_domain_range = tf.RaggedTensor.from_row_lengths(
+
+        )
+        # generate the good negatives
+        number_good_negatives = int(eta * good_precentage)
+        dataset = tf.tile(inputs, [number_good_negatives, 1])
+
+        # generate a mask which will tell which subject needs to be corrupted
+        # (random uniform sampling)
+        keep_subj_mask = tf.cast(
+            tf.random.uniform(
+                [tf.shape(input=dataset)[0]],
+                0,
+                2,
+                dtype=tf.int32,
+                seed=self.seed,
+            ),
+            tf.bool,
+        )
+        # If we are not corrupting the subject then corrupt the object
+        keep_obj_mask = tf.logical_not(keep_subj_mask)
+
+        # cast it to integer (0/1)
+        keep_subj_mask = tf.cast(keep_subj_mask, tf.int32)
+        keep_obj_mask = tf.cast(keep_obj_mask, tf.int32)
+
+        # return the shape of the ragged tensor
+        shape_subj = tf.gather(
+            self.relation_to_domain,
+            dataset[1]
+        )
+        shape_obj = tf.gather(
+            self.relation_to_range,
+            dataset[1]
+        )
+        corruptions_limit = tf.concat(
+            [shape_subj, shape_obj],
+            axis=1
+        )
+        # generate the n * eta replacements (uniformly randomly)
+        # consider whether to split the vector of replacements in two distinct ones.
+        replacements = tf.random.uniform(
+            [tf.shape(dataset)[0], 2],
+            0, corruptions_limit,
+            dtype=tf.int32, seed=self.seed
+        )
 
     @tf.function(experimental_relax_shapes=True)
     def _get_ranks(
@@ -561,6 +627,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         partitioning_k=1,
         focusE=False,
         focusE_params={},
+        ontology_sampling=None,
+        ontology_classes=None,
+        ontology_domain_range=None
     ):
         """Fit the model on the provided data.
 
@@ -869,6 +938,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     )
                     # update the epoch logs with validation details
                     epoch_logs.update(val_logs)
+                # Ontology Sampling
+                if epoch == 0 and ontology_sampling:
+                    self.ontology_sampling = ontology_sampling
+                    self.initialize_ontology_sampling(ontology_classes, ontology_domain_range)
 
                 # after an epoch is completed, call this callback function
                 callbacks.on_epoch_end(epoch, epoch_logs)
@@ -881,6 +954,60 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # all the training and validation logs are stored in the history
             # object by keras.Model
             return self.history
+
+    def initialize_ontology_sampling(self, ontology_classes, ontology_domain_range):
+        """
+        Parameters
+        ----------
+        ontology_classes: dict
+            Dictionary where to each class (key) there is associated the list of entities
+            for that class (value)
+        ontology_domain_range: dict
+            Dictionary where each relation (key) is associated to a tuple storing the
+            corresponding (domain, range)for that relation (value).
+        """
+        assert ontology_classes is not None and ontology_domain_range is not None, \
+            "You need to provide a dictionary of the classes and the domain and range for" \
+            "the relations in order to use ontology_sampling!"
+        assert len(ontology_domain_range) == self.max_rel_size,\
+            "The number of relations seen by the model is different from that of the ontology!"
+        raw_relations = self.get_indexes(
+            list(range(self.max_rel_size)), type_of="r", order="ind2raw"
+        )
+        ontology_classes = {
+            class_type: self.get_indexes(entities, type_of="e") for class_type, entities in \
+            ontology_classes.items()
+        }
+        length_classes_domain =\
+            np.cumsum(
+                [0] + [len(ontology_classes[ontology_domain_range[relation][0]]) for relation in raw_relations]
+            )
+        self.idx_class_domain_start = tf.constant(length_classes_domain[:-1], dtype=tf.float32)
+        self.idx_class_domain_end = tf.constant(length_classes_domain[1:], dtype=tf.float32)
+
+        self.relation_to_domain = tf.concat(
+            [ontology_classes[ontology_domain_range[relation][0]] for relation in raw_relations],
+            axis=0
+        )
+
+        length_classes_range = \
+            np.cumsum(
+                [0] + [len(ontology_classes[ontology_domain_range[relation][1]]) for relation in raw_relations]
+            )
+        self.idx_class_range_start = tf.constant(length_classes_range[:-1], dtype=tf.float32)
+        self.idx_class_range_end = tf.constant(length_classes_range[1:], dtype=tf.float32)
+        self.relation_to_range = tf.concat(
+            [ontology_classes[ontology_domain_range[relation][1]] for relation in raw_relations],
+            axis=0
+        )
+
+        self.corruption_layer.ontology_sampling = self.ontology_sampling
+        self.corruption_layer.idx_class_domain_start = self.idx_class_domain_start
+        self.corruption_layer.idx_class_domain_end = self.idx_class_domain_end
+        self.corruption_layer.idx_class_range_start = self.idx_class_range_start
+        self.corruption_layer.idx_class_range_end = self.idx_class_range_end
+        self.corruption_layer.relation_to_domain = self.relation_to_domain
+        self.corruption_layer.relation_to_range = self.relation_to_range
 
     def get_indexes(self, X, type_of="t", order="raw2ind"):
         """Converts given data to indexes or to raw data (according to ``order``).
