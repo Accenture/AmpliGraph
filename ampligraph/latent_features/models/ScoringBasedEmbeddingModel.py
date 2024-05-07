@@ -188,12 +188,13 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         # Ontology Sampling
         self.ontology_sampling = None
+        self.ontology_classes = None
+        self.idx_class_start = None
+        self.idx_class_end = None
         self.idx_class_domain_start = None
         self.idx_class_domain_end = None
         self.idx_class_range_start = None
         self.idx_class_range_end = None
-        self.relation_to_domain = None
-        self.relation_to_range = None
 
     def is_fit(self):
         """Check whether the model has been fitted already."""
@@ -272,6 +273,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             corr_emb = self.encoding_layer(corruptions)
             corr_score = self.scoring_layer(corr_emb)
 
+            # import pandas as pd
+            # prop_false_negatives = (pd.DataFrame(corruptions.numpy(), columns=['s', 'p', 'o']).merge(pd.DataFrame(self.ind_triples, columns=['s', 'p', 'o']))).shape[0] / (corruptions.numpy().shape[0])
+            # self.shipshar_list.append(prop_false_negatives)
+            # # per relation
+            # for i in range(self.max_rel_size):
+            #     if inputs[inputs[:, 1] == i].shape[0] > 0:
+            #         prop_false_negatives = (pd.DataFrame(corruptions[corruptions[:, 1] == i].numpy(), columns=['s', 'p', 'o']).merge(pd.DataFrame(self.ind_triples, columns=['s', 'p', 'o']))).shape[0] / (inputs[inputs[:, 1] == i].numpy().shape[0] * self.eta)
+            #         self.shipshar_dict[i].append(prop_false_negatives)
             return inp_score, corr_score
 
         else:
@@ -857,7 +866,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                             self.data_shape
                         )
                     )
-
+            # Ontology Sampling
+            if ontology_sampling is not None:
+                self.ontology_sampling = ontology_sampling
+                self.initialize_ontology_sampling(ontology_classes, ontology_domain_range)
             # Container that configures and calls `tf.keras.Callback`s.
             if not isinstance(callbacks, callbacks_module.CallbackList):
                 callbacks = callbacks_module.CallbackList(
@@ -868,6 +880,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     verbose=verbose,
                     epochs=epochs,
                 )
+
+            # self.shipshar_list = []
+            # self.shipshar_dict = {i: [] for i in range(self.max_rel_size)}
+            # self.shipshar_epoch_list = []
+            # self.shipshar_epoch_dict = {i: [] for i in range(self.max_rel_size)}
+            # self.ind_triples = self.get_indexes(x)
 
             # This variable is used by callbacks to stop training in case of
             # any error
@@ -906,10 +924,27 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 # Update focusE parameter
                 if self.use_focusE:
                     self.update_focusE_params()
+
                 # handle the stop iteration of data iterator in this scope
                 with self.data_handler.catch_stop_iteration():
                     # iterate over the dataset
                     for step in self.data_handler.steps():
+                        # In case we want to avoid generating synthetic GDAs
+                        if ontology_sampling is not None and '<urn:loreal:geneIsRelatedToCondition>' in ontology_domain_range:
+                            class_size_no_gene = [len(entities) for class_type, entities in ontology_classes.items() if \
+                                          class_type != "<urn:loreal:Gene>"]
+                            class_size_no_condition = [len(entities) for class_type, entities in ontology_classes.items() if \
+                                                  class_type != "<urn:loreal:Condition>"]
+                            class_prob_no_gene = np.array(class_size_no_gene) / sum(class_size_no_gene)
+                            class_prob_no_condition = np.array(class_size_no_condition) / sum(class_size_no_condition)
+                            ontology_domain_range['<urn:loreal:geneIsRelatedToCondition>'] = (
+                                np.random.choice(
+                                    [key for key in ontology_classes.keys() if key != "<urn:loreal:Gene>"],
+                                    p=class_prob_no_gene),
+                                np.random.choice(
+                                    [key for key in ontology_classes.keys() if key != "<urn:loreal:Condition>"],
+                                    p=class_prob_no_condition),
+                            )
                         # before a batch is processed call this callback
                         # function
                         callbacks.on_train_batch_begin(step)
@@ -938,10 +973,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     )
                     # update the epoch logs with validation details
                     epoch_logs.update(val_logs)
-                # Ontology Sampling
-                if epoch == 0 and ontology_sampling:
-                    self.ontology_sampling = ontology_sampling
-                    self.initialize_ontology_sampling(ontology_classes, ontology_domain_range)
+                #
+                # self.shipshar_epoch_list.append(np.mean(self.shipshar_list))
+                # for i in range(self.max_rel_size):
+                #     self.shipshar_epoch_dict[i].append(np.sum(self.shipshar_dict[i]))
+                # self.shipshar_list = []
+                # self.shipshar_dict = {i: [] for i in range(self.max_rel_size)}
 
                 # after an epoch is completed, call this callback function
                 callbacks.on_epoch_end(epoch, epoch_logs)
@@ -978,36 +1015,46 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             class_type: self.get_indexes(entities, type_of="e") for class_type, entities in \
             ontology_classes.items()
         }
-        length_classes_domain =\
-            np.cumsum(
-                [0] + [len(ontology_classes[ontology_domain_range[relation][0]]) for relation in raw_relations]
-            )
-        self.idx_class_domain_start = tf.constant(length_classes_domain[:-1], dtype=tf.float32)
-        self.idx_class_domain_end = tf.constant(length_classes_domain[1:], dtype=tf.float32)
+        self.ontology_classes = tf.concat(list(ontology_classes.values()), axis=0)
 
-        self.relation_to_domain = tf.concat(
-            [ontology_classes[ontology_domain_range[relation][0]] for relation in raw_relations],
-            axis=0
+        ontology_classes_order = [ent_type for ent_type in ontology_classes.keys()]
+        ontology_classes_length = np.cumsum(
+            [len(entities) for entities in ontology_classes.values()]
+        )
+        ontology_classes_start = dict(zip(ontology_classes_order, [0] + ontology_classes_length[:-1].tolist()))
+        ontology_classes_end = dict(zip(ontology_classes_order, ontology_classes_length.tolist()))
+
+        self.idx_class_start = tf.constant([0] + ontology_classes_length[:-1].tolist(), dtype=tf.float32)
+        self.idx_class_end = tf.constant(ontology_classes_length.tolist(), dtype=tf.float32)
+
+        self.idx_class_domain_start = tf.constant(
+            [ontology_classes_start[ontology_domain_range[relation][0]] for relation in raw_relations],
+            dtype=tf.float32
+        )
+        self.idx_class_domain_end = tf.constant(
+            [ontology_classes_end[ontology_domain_range[relation][0]] for relation in raw_relations],
+            dtype=tf.float32
+        )
+        # We now do the same for the range of the classes
+        self.idx_class_range_start = tf.constant(
+            [ontology_classes_start[ontology_domain_range[relation][1]] for relation in raw_relations],
+            dtype=tf.float32
+        )
+        self.idx_class_range_end = tf.constant(
+            [ontology_classes_end[ontology_domain_range[relation][1]] for relation in raw_relations],
+            dtype=tf.float32
         )
 
-        length_classes_range = \
-            np.cumsum(
-                [0] + [len(ontology_classes[ontology_domain_range[relation][1]]) for relation in raw_relations]
-            )
-        self.idx_class_range_start = tf.constant(length_classes_range[:-1], dtype=tf.float32)
-        self.idx_class_range_end = tf.constant(length_classes_range[1:], dtype=tf.float32)
-        self.relation_to_range = tf.concat(
-            [ontology_classes[ontology_domain_range[relation][1]] for relation in raw_relations],
-            axis=0
-        )
-
+        # We set the same attributes for the corruption layer
         self.corruption_layer.ontology_sampling = self.ontology_sampling
+        self.corruption_layer.ontology_classes = self.ontology_classes
+        self.corruption_layer.idx_class_start = self.idx_class_start
+        self.corruption_layer.idx_class_end = self.idx_class_end
         self.corruption_layer.idx_class_domain_start = self.idx_class_domain_start
         self.corruption_layer.idx_class_domain_end = self.idx_class_domain_end
         self.corruption_layer.idx_class_range_start = self.idx_class_range_start
         self.corruption_layer.idx_class_range_end = self.idx_class_range_end
-        self.corruption_layer.relation_to_domain = self.relation_to_domain
-        self.corruption_layer.relation_to_range = self.relation_to_range
+
 
     def get_indexes(self, X, type_of="t", order="raw2ind"):
         """Converts given data to indexes or to raw data (according to ``order``).

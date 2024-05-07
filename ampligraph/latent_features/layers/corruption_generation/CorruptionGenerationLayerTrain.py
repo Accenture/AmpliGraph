@@ -37,12 +37,13 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         """
         self.seed = seed
         self.ontology_sampling = ontology_sampling
+        self.ontology_classes = None
+        self.idx_class_start = None
+        self.idx_class_end = None
         self.idx_class_domain_start = None
         self.idx_class_domain_end = None
         self.idx_class_range_start = None
         self.idx_class_range_end = None
-        self.relation_to_domain = None
-        self.relation_to_range = None
 
         super(CorruptionGenerationLayerTrain, self).__init__(**kwargs)
 
@@ -86,44 +87,71 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         keep_subj_mask = tf.cast(keep_subj_mask, tf.int32)
         keep_obj_mask = tf.cast(keep_obj_mask, tf.int32)
         # generate the n * eta replacements (uniformly randomly)
-        if not self.ontology_sampling:
+        if self.ontology_sampling is None:
             replacements = tf.random.uniform(
                 [tf.shape(dataset)[0]], 0, ent_size, dtype=tf.int32, seed=self.seed
             )
         else:
             # number of pertinent negatives to generate
             number_good_negatives = int(eta * self.ontology_sampling)
+            size_to_corrupt_well = tf.shape(pos)[0] * number_good_negatives
             # we extract the start and end index of classes in self.relation_to_domain
-            start_idx_domain = tf.gather(self.idx_class_domain_start, dataset[:, 1])
-            end_idx_domain = tf.gather(self.idx_class_domain_end, dataset[:, 1])
+            start_idx_domain = tf.gather(
+                self.idx_class_domain_start,
+                dataset[:size_to_corrupt_well, 1]
+            )
+            end_idx_domain = tf.gather(
+                self.idx_class_domain_end,
+                dataset[:size_to_corrupt_well, 1]
+            )
             # we now sample the indices to slice the vector of entities divided by class
             idx_domain_replacements = tf.cast(
                 tf.floor(
                     tf.random.uniform(
-                        [tf.shape(pos)[0] * number_good_negatives], start_idx_domain, end_idx_domain,
+                        [size_to_corrupt_well], start_idx_domain, end_idx_domain,
                         seed=self.seed)
                 ), dtype=tf.int32
             )
             # we use the index to obtain the corruptions we are looking for
             subj_replacements = tf.gather(
-                self.relation_to_domain,
+                self.ontology_classes,
                 idx_domain_replacements
             )
 
             # we repeat the same process as above for the objects
-            start_idx_range = tf.gather(self.idx_class_range_start, dataset[:, 1])
-            end_idx_range = tf.gather(self.idx_class_range_end, dataset[:, 1])
+            start_idx_range = tf.gather(
+                self.idx_class_range_start,
+                dataset[:size_to_corrupt_well, 1]
+            )
+            end_idx_range = tf.gather(
+                self.idx_class_range_end,
+                dataset[:size_to_corrupt_well, 1]
+            )
             idx_range_replacements = tf.cast(
                 tf.floor(
                     tf.random.uniform(
-                        [tf.shape(pos)[0] * number_good_negatives], start_idx_range, end_idx_range,
+                        [size_to_corrupt_well], start_idx_range, end_idx_range,
                         seed=self.seed)
                 ), dtype=tf.int32
             )
             obj_replacements = tf.gather(
-                self.relation_to_range,
+                self.ontology_classes,
                 idx_range_replacements
             )
+
+            # We now generate the random negatives
+            random_negatives = eta - number_good_negatives
+            if random_negatives > 0:
+                size_to_corrupt_random = tf.shape(pos)[0] * random_negatives
+                # random_replacements = self.uniform_class_sampling(size_to_corrupt_random)
+                random_replacements = tf.random.uniform(
+                    [size_to_corrupt_random], 0, ent_size, dtype=tf.int32, seed=self.seed
+                )
+            else:
+                random_replacements = []
+            # Let's concatenate the pertinent corruptions and the random ones
+            subj_replacements = tf.concat([subj_replacements, random_replacements], axis=0)
+            obj_replacements = tf.concat([obj_replacements, random_replacements], axis=0)
 
             # we put in one unique vector the replacements for subject and object
             replacements = subj_replacements * keep_obj_mask + obj_replacements * keep_subj_mask
@@ -148,3 +176,36 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
             a=tf.stack([subjects, relationships, objects])
         )
         return corruptions
+
+    def uniform_class_sampling(self, size_corruptions):
+        """
+        Extract at uniformly at random the classes to sample negatives from
+        and then sample the corruption. In this way we get, on average, we
+        corrupt triples with the same number of entities for each class.
+        """
+        # extract the class to sample from at random
+        classes_idx = tf.random.uniform(
+            [size_corruptions], 0, self.idx_class_start.shape[0],
+            seed=self.seed, dtype=tf.int32
+        )
+        start_idx_random = tf.gather(
+            self.idx_class_start, classes_idx
+        )
+        end_idx_random = tf.gather(
+            self.idx_class_end, classes_idx
+        )
+        # we now sample the indices to slice the vector of entities divided by class
+        idx_random_replacements = tf.cast(
+            tf.floor(
+                tf.random.uniform(
+                    [size_corruptions], start_idx_random, end_idx_random,
+                    seed=self.seed)
+            ), dtype=tf.int32
+        )
+        # we use the index to obtain the corruptions we are looking for
+        random_replacements = tf.gather(
+            self.ontology_classes,
+            idx_random_replacements
+        )
+
+        return random_replacements
