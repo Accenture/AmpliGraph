@@ -929,22 +929,23 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 with self.data_handler.catch_stop_iteration():
                     # iterate over the dataset
                     for step in self.data_handler.steps():
-                        # In case we want to avoid generating synthetic GDAs
-                        if ontology_sampling is not None and '<urn:loreal:geneIsRelatedToCondition>' in ontology_domain_range:
-                            class_size_no_gene = [len(entities) for class_type, entities in ontology_classes.items() if \
-                                          class_type != "<urn:loreal:Gene>"]
-                            class_size_no_condition = [len(entities) for class_type, entities in ontology_classes.items() if \
-                                                  class_type != "<urn:loreal:Condition>"]
-                            class_prob_no_gene = np.array(class_size_no_gene) / sum(class_size_no_gene)
-                            class_prob_no_condition = np.array(class_size_no_condition) / sum(class_size_no_condition)
-                            ontology_domain_range['<urn:loreal:geneIsRelatedToCondition>'] = (
-                                np.random.choice(
-                                    [key for key in ontology_classes.keys() if key != "<urn:loreal:Gene>"],
-                                    p=class_prob_no_gene),
-                                np.random.choice(
-                                    [key for key in ontology_classes.keys() if key != "<urn:loreal:Condition>"],
-                                    p=class_prob_no_condition),
-                            )
+                        # # In case we want to avoid generating synthetic GDAs
+                        # if ontology_sampling is not None and '<urn:loreal:geneIsRelatedToCondition>' in ontology_domain_range:
+                        #     class_size_no_gene = [len(entities) for class_type, entities in ontology_classes.items() if \
+                        #                   class_type != "<urn:loreal:Gene>"]
+                        #     class_size_no_condition = [len(entities) for class_type, entities in ontology_classes.items() if \
+                        #                           class_type != "<urn:loreal:Condition>"]
+                        #     class_prob_no_gene = np.array(class_size_no_gene) / sum(class_size_no_gene)
+                        #     class_prob_no_condition = np.array(class_size_no_condition) / sum(class_size_no_condition)
+                        #     ontology_domain_range['<urn:loreal:geneIsRelatedToCondition>'] = (
+                        #         np.random.choice(
+                        #             [key for key in ontology_classes.keys() if key != "<urn:loreal:Gene>"],
+                        #             p=class_prob_no_gene),
+                        #         np.random.choice(
+                        #             [key for key in ontology_classes.keys() if key != "<urn:loreal:Condition>"],
+                        #             p=class_prob_no_condition),
+                        #     )
+
                         # before a batch is processed call this callback
                         # function
                         callbacks.on_train_batch_begin(step)
