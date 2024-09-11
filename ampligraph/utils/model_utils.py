@@ -402,3 +402,29 @@ def preprocess_focusE_weights(data, weights, normalize=True):
                 pass  # all the weights are nans
     weights = np.mean(weights, axis=1).reshape(-1, 1)
     return weights
+
+def tf_is_in(tensor1, tensor2):
+    """Compute a boolean tensor with elements equal to True where the element
+    of tensor1 are in tensor2, while it returns False otherwise.
+
+    .. warning::
+        The function currently supports only 1-dimensional tensors.
+
+    Parameters
+    ----------
+    tensor1: tf.tensor
+        Tensor whose elements are checked if present in `tensor2` or not.
+    tensor2: tf.tensor
+        Tensor with the elements we want to check against.
+
+    Return
+    ------
+    output: tf.tensor
+        Boolean tensor with the same shape as tensor1 and such that ``output[i]=True``
+        if ``tensor[i] in list(tensor2)``.
+    """
+    print(tensor2)
+    return tf.reduce_any(
+        tf.equal(tensor1, tf.expand_dims(tensor2, axis=-1)),
+        axis=0
+    )
