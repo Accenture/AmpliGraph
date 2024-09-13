@@ -132,9 +132,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             Maximum number of relations that can occur in any partition (default: `None`).
         """
         super(ScoringBasedEmbeddingModel, self).__init__()
-        # set the random seed
-        tf.random.set_seed(seed)
-        np.random.seed(seed)
+
+        # set the random seed (random, numpy and TF)
+        tf.keras.utils.set_random_seed(seed=seed)
 
         self.max_ent_size = max_ent_size
         self.max_rel_size = max_rel_size
