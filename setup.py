@@ -19,7 +19,7 @@ setup_params = dict(name='ampligraph',
                     include_package_data=True,
                     zip_safe=False,
                     install_requires=[
-                        'numpy>=1.14.3',
+                        'numpy>=1.14.3,<2.0',
                         'pytest>=3.5.1',
                         'scikit-learn>=0.19.1',
                         'tqdm>=4.23.4',
