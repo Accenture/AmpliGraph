@@ -40,7 +40,6 @@ setup_params = dict(name='ampligraph',
                         'docopt==0.6.2',
                         'schema==0.7.5'
                     ],
-                    setup_requires=['pytest-runner'],
                     extras_require={
                         'test': [
                             'pytest',

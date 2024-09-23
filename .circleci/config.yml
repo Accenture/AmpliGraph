@@ -64,7 +64,9 @@ jobs:
           name: Unit tests with Pytest
           command: |
             . venv/bin/activate
-            venv/bin/python3 setup.py test
+            venv/bin/python3 -m pip install .[test]
+            venv/bin/python3 pytest
+
   lint:
     docker:
       - image: *docker-image

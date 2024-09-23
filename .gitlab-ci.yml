@@ -37,7 +37,8 @@ codestyle:
 
 test:
   script:
-    - python setup.py test
+    - pip install .[test]
+    - pytest
 
 run:
   script:
