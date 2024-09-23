@@ -41,9 +41,14 @@ setup_params = dict(name='ampligraph',
                         'schema==0.7.5'
                     ],
                     setup_requires=['pytest-runner'],
-                    tests_require=['pytest', 
-                                   'pytest_mock>=3.10.0',
-                                   'mock>=5.0.1'])
+                    extras_require={
+                        'test': [
+                            'pytest',
+                            'pytest_mock>=3.10.0',
+                            'mock>=5.0.1'
+                        ]
+                    }
+                    )
 
 if __name__ == '__main__':
     setup(**setup_params)
