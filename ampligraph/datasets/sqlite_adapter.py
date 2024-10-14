@@ -646,9 +646,9 @@ class SQLiteAdapter:
                 filtered.append(tmp_filter)
         # Unpack data into one list per triple no matter what filter
         # it comes from
-        unpacked = list(zip(*filtered))
+        unpacked = zip(*filtered)
         for k in unpacked:
-            lst = [j for i in k for j in i]
+            lst = list(set([j for i in k for j in i]))
             results.append(lst)
 
         return results
@@ -696,9 +696,9 @@ class SQLiteAdapter:
                 filtered.append(tmp_filter)
         # Unpack data into one  list per triple no matter what
         # filter it comes from
-        unpacked = list(zip(*filtered))
+        unpacked = zip(*filtered)
         for k in unpacked:
-            lst = [j for i in k for j in i]
+            lst = list(set([j for i in k for j in i]))
             results.append(lst)
         return results
 

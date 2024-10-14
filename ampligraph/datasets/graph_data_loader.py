@@ -331,10 +331,10 @@ class NoBackend:
             filtered.append(tmp_filter)
         # Unpack data into one list per triple no matter what filter it comes
         # from
-        unpacked = list(zip(*filtered))
+        unpacked = zip(*filtered)
         subjects = []
         for k in unpacked:
-            lst = [j for i in k for j in i]
+            lst = list(set([j for i in k for j in i]))
             subjects.append(np.array(lst, dtype=np.int32))
 
         return subjects
@@ -427,10 +427,10 @@ class NoBackend:
 
         # Unpack data into one  list per triple no matter what filter it comes
         # from
-        unpacked = list(zip(*filtered))
+        unpacked = zip(*filtered)
         objects = []
         for k in unpacked:
-            lst = [j for i in k for j in i]
+            lst = list(set([j for i in k for j in i]))
             objects.append(np.array(lst, dtype=np.int32))
 
         return objects
