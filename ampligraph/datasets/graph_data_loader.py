@@ -494,7 +494,7 @@ class NoBackend:
             # if the last batch is smaller than the batch_size
             if start_index + batch_size >= length:
                 batch_size = length - start_index
-            out = self.data[start_index: start_index + batch_size,:3]
+            out = self.data[start_index: start_index + batch_size, :3]
             if self.use_filter:
                 # get the filter values
                 participating_entities = self._get_complementary_entities(
@@ -651,7 +651,17 @@ class GraphDataLoader:
         if use_filter is None or use_filter is True:
             self.use_filter = {"train": data_source}
         else:
-            if isinstance(use_filter, dict) or use_filter is False:
+            if isinstance(use_filter, dict):
+                for filter_name, filter_split in use_filter.items():
+                        if not isinstance(filter_split, np.ndarray):
+                            try:
+                                use_filter[filter_name] = filter_split.values
+                            except:
+                                filter_type = type(filter_split)
+                                f"When the filter is provided as a dictionary, make sure " \
+                                f"its values are np.ndarrays or pd.DataFrames! Got {filter_type}"
+                self.use_filter = use_filter
+            elif use_filter is False:
                 self.use_filter = use_filter
             else:
                 msg = "use_filter should be a dictionary with keys as names of filters and \
