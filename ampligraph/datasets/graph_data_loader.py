@@ -73,6 +73,8 @@ class NoBackend:
             self.root_directory = root_directory
         self.use_filter = use_filter
         self.sources = {}
+        # To speed up the extraction of filter
+        self.grouped_by_sources = {}
 
     def _add_dataset(self, data_source, dataset_type):
         msg = "Adding datasets to NoBackend not possible."
@@ -178,6 +180,15 @@ class NoBackend:
                 self.mapper = self.use_indexer
                 self.data = self.mapper.get_indexes(raw_data)
         self.data_shape = self.mapper.backend.data_shape
+
+        if self.use_filter:
+            for filter_name, filter_source in self.use_filter.items():
+                source = self.get_source(filter_source, filter_name)
+                df_source = pd.DataFrame(source[:, :3], columns=["s", "p", "o"])
+                sp_obj_groups = df_source.groupby(["s", "p"])["o"].apply(lambda x: list(set(x)))
+                po_subj_groups = df_source.groupby(["p", "o"])["s"].apply(lambda x: list(set(x)))
+                self.grouped_by_sources[filter_name] = (sp_obj_groups, po_subj_groups)
+
 
     def _get_triples(self, subjects=None, objects=None, entities=None):
         """Get triples whose subjects belongs to ``subjects``, objects to ``objects``,
@@ -321,21 +332,21 @@ class NoBackend:
             self.use_filter = {"train-org": self.data}
 
         filtered = []
+        po_index = list(zip(triples[:, 1], triples[:, 2]))
         for filter_name, filter_source in self.use_filter.items():
-            source = self.get_source(filter_source, filter_name)
-
-            tmp_filter = []
-            for triple in triples:
-                tmp = source[source[:, 2] == triple[2]]
-                tmp_filter.append(list(set(tmp[tmp[:, 1] == triple[1]][:, 0])))
-            filtered.append(tmp_filter)
-        # Unpack data into one list per triple no matter what filter it comes
-        # from
-        unpacked = zip(*filtered)
-        subjects = []
-        for k in unpacked:
-            lst = list(set([j for i in k for j in i]))
-            subjects.append(np.array(lst, dtype=np.int32))
+            if filter_name == "train-org":
+                source = self.get_source(self.data, "train-org")
+                df_source = pd.DataFrame(source[:, :3], columns=["s", "p", "o"])
+                po_subj_groups = df_source.groupby(["p", "o"])["s"].apply(lambda x: list(set(x)))
+            else:
+                po_subj_groups = self.grouped_by_sources[filter_name][1]
+            subj_to_filter = po_subj_groups[po_subj_groups.index.intersection(po_index)]
+            filtered.append(
+                subj_to_filter.reindex(po_index, fill_value=[]).tolist()
+            )
+            subjects = [
+                np.array(list(set(sum(lists, []))), dtype=np.int32) for lists in zip(*filtered)
+            ]
 
         return subjects
 
@@ -411,28 +422,21 @@ class NoBackend:
             return objects
         elif self.use_filter is False or self.use_filter is None:
             self.use_filter = {"train-org": self.data}
+
         filtered = []
+        sp_index = list(zip(triples[:, 0], triples[:, 1]))
         for filter_name, filter_source in self.use_filter.items():
-            source = self.get_source(filter_source, filter_name)
-
-            # load source if not loaded
-            source = self.get_source(filter_source, filter_name)
-            # filter
-
-            tmp_filter = []
-            for triple in triples:
-                tmp = source[source[:, 0] == triple[0]]
-                tmp_filter.append(list(set(tmp[tmp[:, 1] == triple[1]][:, 2])))
-            filtered.append(tmp_filter)
-
-        # Unpack data into one  list per triple no matter what filter it comes
-        # from
-        unpacked = zip(*filtered)
-        objects = []
-        for k in unpacked:
-            lst = list(set([j for i in k for j in i]))
-            objects.append(np.array(lst, dtype=np.int32))
-
+            if filter_name == "train-org":
+                source = self.get_source(self.data, "train-org")
+                df_source = pd.DataFrame(source[:, :3], columns=["s", "p", "o"])
+                sp_obj_groups = df_source.groupby(["s", "p"])["o"].apply(lambda x: list(set(x)))
+            else:
+                sp_obj_groups = self.grouped_by_sources[filter_name][0]
+            obj_to_filter = sp_obj_groups[sp_obj_groups.index.intersection(sp_index)]
+            filtered.append(obj_to_filter.reindex(sp_index, fill_value=[]))
+            objects = [
+                np.array(list(set(sum(lists, []))), dtype=np.int32) for lists in zip(*filtered)
+            ]
         return objects
 
     def _intersect(self, dataloader):
@@ -504,8 +508,6 @@ class NoBackend:
             # focusE
             if self.data_shape > 3:
                 weights = self.data[start_index: start_index + batch_size, 3:]
-                # weights = preprocess_focusE_weights(data=out,
-                #                                     weights=weights)
                 if self.use_filter:
                     yield out, tf.ragged.constant(
                         participating_entities, dtype=tf.int32
