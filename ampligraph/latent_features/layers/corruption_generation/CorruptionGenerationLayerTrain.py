@@ -123,7 +123,7 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
             end_idx_range = tf.gather(
                 self.idx_class_range_end,
                 dataset[:size_to_corrupt_well, 1]
-            )
+            ) # - 0.01 # Needed to subtract 0.01 in order to avoid a numerical issue with TensorFlow on CPU
             idx_range_replacements = tf.cast(
                 tf.floor(
                     tf.random.uniform(
