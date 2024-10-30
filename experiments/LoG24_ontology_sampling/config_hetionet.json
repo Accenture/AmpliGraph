@@ -1,0 +1,133 @@
+{
+  "TransE": {
+    "ontology_sampling": {
+      "epochs": 1000,
+      "k": 200,
+      "eta": 10,
+      "batch_size": 100000,
+      "loss": "multiclass_nll",
+      "optimizer_lr": 1e-4,
+      "regularizer_lambda": 1e-5,
+      "ontology_sampling": 0.8,
+      "regularizer": 2
+    },
+    "random": {
+      "epochs": 1000,
+      "k": 200,
+      "eta": 10,
+      "batch_size": 100000,
+      "loss": "multiclass_nll",
+      "optimizer_lr": 1e-2,
+      "regularizer_lambda": 1e-5,
+      "ontology_sampling": 0.0,
+      "regularizer": 2
+    },
+    "type_based": {
+      "epochs": 1000,
+      "k": 200,
+      "eta": 10,
+      "batch_size": 100000,
+      "loss": "multiclass_nll",
+      "optimizer_lr": 1e-4,
+      "regularizer_lambda": 1e-3,
+      "ontology_sampling": 1.0,
+      "regularizer": 2
+    }
+  },
+  "DistMult": {
+    "ontology_sampling": {
+      "epochs": 1000,
+      "k": 200,
+      "eta": 10,
+      "batch_size": 100000,
+      "loss": "multiclass_nll",
+      "optimizer_lr": 1e-4,
+      "regularizer_lambda": 1e-5,
+      "ontology_sampling": 0.8
+    },
+    "random": {
+      "epochs": 1000,
+      "k": 200,
+      "eta": 10,
+      "batch_size": 100000,
+      "loss": "multiclass_nll",
+      "optimizer_lr": 1e-4,
+      "regularizer_lambda": 1e-5,
+      "ontology_sampling": 0.0
+    },
+    "type_based": {
+      "epochs": 1000,
+      "k": 200,
+      "eta": 10,
+      "batch_size": 100000,
+      "loss": "multiclass_nll",
+      "optimizer_lr": 1e-4,
+      "regularizer_lambda": 1e-3,
+      "ontology_sampling": 1.0
+    }
+  },
+  "ComplEx": {
+    "ontology_sampling": {
+      "epochs": 1000,
+      "k": 200,
+      "eta": 10,
+      "batch_size": 100000,
+      "loss": "multiclass_nll",
+      "optimizer_lr": 1e-4,
+      "regularizer_lambda": 1e-3,
+      "ontology_sampling": 0.8
+    },
+    "random": {
+      "epochs": 1000,
+      "k": 200,
+      "eta": 10,
+      "batch_size": 100000,
+      "loss": "multiclass_nll",
+      "optimizer_lr": 1e-4,
+      "regularizer_lambda": 1e-5,
+      "ontology_sampling": 0.0
+    },
+    "type_based": {
+      "epochs": 1000,
+      "k": 200,
+      "eta": 10,
+      "batch_size": 100000,
+      "loss": "multiclass_nll",
+      "optimizer_lr": 1e-4,
+      "regularizer_lambda": 1e-3,
+      "ontology_sampling": 1.0
+    }
+  },
+  "RotatE": {
+    "ontology_sampling": {
+      "epochs": 1000,
+      "k": 200,
+      "eta": 10,
+      "batch_size": 100000,
+      "loss": "multiclass_nll",
+      "optimizer_lr": 1e-4,
+      "regularizer_lambda": 1e-5,
+      "ontology_sampling": 0.3
+    },
+    "random": {
+      "epochs": 1000,
+      "k": 200,
+      "eta": 10,
+      "batch_size": 100000,
+      "loss": "multiclass_nll",
+      "optimizer_lr": 1e-3,
+      "regularizer_lambda": 1e-5,
+      "ontology_sampling": 0.0
+    },
+    "type_based": {
+      "epochs": 1000,
+      "k": 200,
+      "eta": 10,
+      "batch_size": 100000,
+      "loss": "multiclass_nll",
+      "optimizer_lr": 1e-4,
+      "regularizer_lambda": 1e-3,
+      "ontology_sampling": 1.0
+    }
+  }
+}
