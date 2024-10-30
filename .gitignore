@@ -127,3 +127,6 @@ playground
 
 
 .vscode/settings.json
+
+# data files ontology_sampling
+experiments/LoG24_ontology_sampling/config*
