@@ -9,7 +9,8 @@ import tensorflow as tf
 
 
 class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
-    """Generates corruptions during training.
+    """
+    Generates corruptions during training.
 
     The corruption might involve either subject or object using
     entities sampled uniformly at random from the loaded graph.
@@ -24,7 +25,6 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
             self,
             seed=0,
             ontology_sampling=None,
-            ontology_sampling_config=None,
             **kwargs
     ):
         """
@@ -57,6 +57,8 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
             Batch of input triples (positives).
         ent_size: int
             Number of unique entities present in the partition.
+        eta: int
+            Number of negatives to generate per each ground truth triple.
 
         Returns
         -------
@@ -64,11 +66,6 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
             Corruptions of the triples.
         """
         # size and reshape the dataset to sample corruptions
-        # if not self.ontology_sampling:
-        #     dataset = tf.tile(pos, [eta, 1])
-        # else:
-        #     number_good_negatives = int(eta * self.ontology_sampling)
-        #     dataset = tf.tile(pos, [number_good_negatives, 1])
         dataset = tf.tile(pos, [eta, 1])
         # generate a mask which will tell which subject needs to be corrupted
         # (random uniform sampling)
@@ -86,13 +83,13 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         # cast it to integer (0/1)
         keep_subj_mask = tf.cast(keep_subj_mask, tf.int32)
         keep_obj_mask = tf.cast(keep_obj_mask, tf.int32)
-        # generate the n * eta replacements (uniformly randomly)
         if self.ontology_sampling is None:
+            # generate the n * eta replacements (uniformly randomly)
             replacements = tf.random.uniform(
                 [tf.shape(dataset)[0]], 0, ent_size, dtype=tf.int32, seed=self.seed
             )
         else:
-            # number of pertinent negatives to generate
+            # number of in-class negatives to generate
             number_good_negatives = int(eta * self.ontology_sampling)
             size_to_corrupt_well = tf.shape(pos)[0] * number_good_negatives
             # we extract the start and end index of classes in self.relation_to_domain
@@ -179,9 +176,9 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
 
     def uniform_class_sampling(self, size_corruptions):
         """
-        Extract at uniformly at random the classes to sample negatives from
-        and then sample the corruption. In this way we get, on average, we
-        corrupt triples with the same number of entities for each class.
+        Extract uniformly at random the classes to sample negatives from
+        and then sample the corruptions. In this way we corrupt triples,
+        on average, with the same number of entities from each class.
         """
         # extract the class to sample from at random
         classes_idx = tf.random.uniform(

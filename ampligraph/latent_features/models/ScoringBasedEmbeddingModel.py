@@ -273,75 +273,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             corr_emb = self.encoding_layer(corruptions)
             corr_score = self.scoring_layer(corr_emb)
 
-            # import pandas as pd
-            # prop_false_negatives = (pd.DataFrame(corruptions.numpy(), columns=['s', 'p', 'o']).merge(pd.DataFrame(self.ind_triples, columns=['s', 'p', 'o']))).shape[0] / (corruptions.numpy().shape[0])
-            # self.shipshar_list.append(prop_false_negatives)
-            # # per relation
-            # for i in range(self.max_rel_size):
-            #     if inputs[inputs[:, 1] == i].shape[0] > 0:
-            #         prop_false_negatives = (pd.DataFrame(corruptions[corruptions[:, 1] == i].numpy(), columns=['s', 'p', 'o']).merge(pd.DataFrame(self.ind_triples, columns=['s', 'p', 'o']))).shape[0] / (inputs[inputs[:, 1] == i].numpy().shape[0] * self.eta)
-            #         self.shipshar_dict[i].append(prop_false_negatives)
             return inp_score, corr_score
 
         else:
             return inp_score
-
-    def generate_better_negatives(self, inputs, eta, good_precentage=0.8):
-        """
-        Function that generates negatives leveraging the ontology
-        information so to higher quality negatives.
-        """
-        # since domain and range are determined by the relation, leverage
-        # a dictionary where the keys are the relations and the values are
-        # tuples (subj_type, obj_type) and use that key from another dict
-        # that stores for each type a tensor of the elements belonging to
-        # that class.
-        self.relation_to_domain_range = tf.RaggedTensor.from_row_lengths(
-
-        )
-        # generate the good negatives
-        number_good_negatives = int(eta * good_precentage)
-        dataset = tf.tile(inputs, [number_good_negatives, 1])
-
-        # generate a mask which will tell which subject needs to be corrupted
-        # (random uniform sampling)
-        keep_subj_mask = tf.cast(
-            tf.random.uniform(
-                [tf.shape(input=dataset)[0]],
-                0,
-                2,
-                dtype=tf.int32,
-                seed=self.seed,
-            ),
-            tf.bool,
-        )
-        # If we are not corrupting the subject then corrupt the object
-        keep_obj_mask = tf.logical_not(keep_subj_mask)
-
-        # cast it to integer (0/1)
-        keep_subj_mask = tf.cast(keep_subj_mask, tf.int32)
-        keep_obj_mask = tf.cast(keep_obj_mask, tf.int32)
-
-        # return the shape of the ragged tensor
-        shape_subj = tf.gather(
-            self.relation_to_domain,
-            dataset[1]
-        )
-        shape_obj = tf.gather(
-            self.relation_to_range,
-            dataset[1]
-        )
-        corruptions_limit = tf.concat(
-            [shape_subj, shape_obj],
-            axis=1
-        )
-        # generate the n * eta replacements (uniformly randomly)
-        # consider whether to split the vector of replacements in two distinct ones.
-        replacements = tf.random.uniform(
-            [tf.shape(dataset)[0], 2],
-            0, corruptions_limit,
-            dtype=tf.int32, seed=self.seed
-        )
 
     @tf.function(experimental_relax_shapes=True)
     def _get_ranks(
@@ -866,7 +801,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                             self.data_shape
                         )
                     )
-            # Ontology Sampling
+            # Ontology Sampling - Initialise the relevant attributes
             if ontology_sampling is not None:
                 self.ontology_sampling = ontology_sampling
                 self.initialize_ontology_sampling(ontology_classes, ontology_domain_range)
@@ -880,12 +815,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     verbose=verbose,
                     epochs=epochs,
                 )
-
-            # self.shipshar_list = []
-            # self.shipshar_dict = {i: [] for i in range(self.max_rel_size)}
-            # self.shipshar_epoch_list = []
-            # self.shipshar_epoch_dict = {i: [] for i in range(self.max_rel_size)}
-            # self.ind_triples = self.get_indexes(x)
 
             # This variable is used by callbacks to stop training in case of
             # any error
@@ -929,23 +858,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 with self.data_handler.catch_stop_iteration():
                     # iterate over the dataset
                     for step in self.data_handler.steps():
-                        # # In case we want to avoid generating synthetic GDAs
-                        # if ontology_sampling is not None and '<urn:loreal:geneIsRelatedToCondition>' in ontology_domain_range:
-                        #     class_size_no_gene = [len(entities) for class_type, entities in ontology_classes.items() if \
-                        #                   class_type != "<urn:loreal:Gene>"]
-                        #     class_size_no_condition = [len(entities) for class_type, entities in ontology_classes.items() if \
-                        #                           class_type != "<urn:loreal:Condition>"]
-                        #     class_prob_no_gene = np.array(class_size_no_gene) / sum(class_size_no_gene)
-                        #     class_prob_no_condition = np.array(class_size_no_condition) / sum(class_size_no_condition)
-                        #     ontology_domain_range['<urn:loreal:geneIsRelatedToCondition>'] = (
-                        #         np.random.choice(
-                        #             [key for key in ontology_classes.keys() if key != "<urn:loreal:Gene>"],
-                        #             p=class_prob_no_gene),
-                        #         np.random.choice(
-                        #             [key for key in ontology_classes.keys() if key != "<urn:loreal:Condition>"],
-                        #             p=class_prob_no_condition),
-                        #     )
-
                         # before a batch is processed call this callback
                         # function
                         callbacks.on_train_batch_begin(step)
@@ -974,12 +886,6 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     )
                     # update the epoch logs with validation details
                     epoch_logs.update(val_logs)
-                #
-                # self.shipshar_epoch_list.append(np.mean(self.shipshar_list))
-                # for i in range(self.max_rel_size):
-                #     self.shipshar_epoch_dict[i].append(np.sum(self.shipshar_dict[i]))
-                # self.shipshar_list = []
-                # self.shipshar_dict = {i: [] for i in range(self.max_rel_size)}
 
                 # after an epoch is completed, call this callback function
                 callbacks.on_epoch_end(epoch, epoch_logs)
@@ -995,6 +901,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
     def initialize_ontology_sampling(self, ontology_classes, ontology_domain_range):
         """
+        This method initialises the attributes relevant for generating negatives
+        respecting the ontology.
+
         Parameters
         ----------
         ontology_classes: dict
