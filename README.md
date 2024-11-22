@@ -1,3 +1,10 @@
+
+**IMPORTANT**: this branch is meant to set up the experiments to reproduce the results reported on the extended 
+abstract *Domain and Range Aware Synthetic Negatives Generation for Knowledge Graph Embedding Models* submitted to the
+Learning on Graph Conference 2024.
+Move to `./experiments/LoG24_ontology_sampling` to find the instructions to execute the code. 
+
+
 # ![AmpliGraph](docs/img/ampligraph_logo_transparent_300.png)
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2595043.svg)](https://doi.org/10.5281/zenodo.2595043)
