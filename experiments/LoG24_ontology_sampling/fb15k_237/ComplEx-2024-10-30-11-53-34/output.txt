@@ -1,3 +1,0 @@
-Experiment Folder: ./fb15k_237/ComplEx-2024-10-30-11-53-34
-Experiment Configuration: Namespace(dataset='fb15k_237', output_folder='./', regularizer=3, save_model=None, scoring_type='ComplEx')
-Experiment Hyperparams: {'epochs': 2000, 'k': 350, 'eta': 10, 'batch_size': 100000, 'loss': 'multiclass_nll', 'optimizer_lr': 0.0001, 'regularizer_lambda': 0.001, 'ontology_sampling': 0.2}
