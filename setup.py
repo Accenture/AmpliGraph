@@ -19,7 +19,7 @@ setup_params = dict(name='ampligraph',
                     include_package_data=True,
                     zip_safe=False,
                     install_requires=[
-                        'numpy>=1.14.3',
+                        'numpy>=1.14.3,<2.0',
                         'pytest>=3.5.1',
                         'scikit-learn>=0.19.1',
                         'tqdm>=4.23.4',
@@ -40,10 +40,15 @@ setup_params = dict(name='ampligraph',
                         'docopt==0.6.2',
                         'schema==0.7.5'
                     ],
-                    setup_requires=['pytest-runner'],
-                    tests_require=['pytest', 
-                                   'pytest_mock>=3.10.0',
-                                   'mock>=5.0.1'])
+                    extras_require={
+                        'test': [
+                            'pytest',
+                            'pytest_mock>=3.10.0',
+                            'mock>=5.0.1'
+                        ]
+                    }
+                    )
 
 if __name__ == '__main__':
     setup(**setup_params)
+

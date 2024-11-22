@@ -27,7 +27,7 @@ before_script:
   - virtualenv venv
   - source venv/bin/activate
   - pip install --upgrade pip
-  - pip install tensorflow==2.10
+  - pip install tensorflow==2.10 "numpy<2.0"
   - pip install ./
 
 codestyle:
@@ -37,7 +37,8 @@ codestyle:
 
 test:
   script:
-    - python setup.py test
+    - pip install .[test]
+    - pytest
 
 run:
   script:
@@ -61,3 +62,4 @@ deploy:
   stage: deploy
   script: echo "Define your deployment script!"
   environment: production
+

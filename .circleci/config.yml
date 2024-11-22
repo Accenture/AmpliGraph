@@ -19,7 +19,7 @@
     name: Install package
     command: |
       . venv/bin/activate
-      venv/bin/python3 -m pip install tensorflow==2.10
+      venv/bin/python3 -m pip install tensorflow==2.10 "numpy<2.0"
       venv/bin/python3 -m pip install .
 
 version: 2
@@ -64,7 +64,9 @@ jobs:
           name: Unit tests with Pytest
           command: |
             . venv/bin/activate
-            venv/bin/python3 setup.py test
+            venv/bin/python3 -m pip install .[test]
+            venv/bin/python3 pytest
+
   lint:
     docker:
       - image: *docker-image
