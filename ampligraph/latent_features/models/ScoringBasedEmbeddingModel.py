@@ -105,6 +105,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         seed=0,
         max_ent_size=None,
         max_rel_size=None,
+        ht_strategy="uniform", #TODO: add it to save model
+        ent_strategy="uniform" #TODO: add it to save model
     ):
         """
         Initializes the scoring based embedding model using the user specified scoring function.
@@ -130,6 +132,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             Maximum number of entities that can occur in any partition (default: `None`).
         max_rel_size: int
             Maximum number of relations that can occur in any partition (default: `None`).
+        ht_strategy: str
+            Specifies the strategy to apply in order to pick whether to corrupt the subject (head)
+            or the object (tail) when generating negatives. When set to "uniform", head and
+            tail have the same probability of being corrupted (default: `"uniform"`).
+        ent_strategy: str
+            Specifies the strategy to apply in order to randomly sample the entities to use to
+            corrupt true triples to generate negatives. When set to "uniform", all the
+            entities have the same probability of being picked as corruptions (default: `"uniform"`).
         """
         super(ScoringBasedEmbeddingModel, self).__init__()
 
@@ -152,7 +162,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         # create the corruption generation layer - generates eta corruptions
         # during training
-        self.corruption_layer = CorruptionGenerationLayerTrain()
+        self.ht_strategy = ht_strategy
+        self.ent_strategy = ent_strategy
+        self.corruption_layer = CorruptionGenerationLayerTrain(
+            eta=self.eta,
+            ht_strategy=self.ht_strategy,
+            ent_strategy=self.ent_strategy,
+            seed=seed
+        )
 
         # If it is single partition, assume that you have max_ent_size unique entities
         # This would change if we use partitions: based on which partition is in memory
@@ -185,6 +202,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.seed = seed
         self.base_dir = tempfile.gettempdir()
         self.partitioner_metadata = {}
+
+        self.current_epoch = 0
 
     def is_fit(self):
         """Check whether the model has been fitted already."""
@@ -234,7 +253,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # batch)
             self.encoding_layer.set_ent_rel_initial_value(ent_emb, rel_emb)
 
-    def call(self, inputs, training=False):
+    def call(self, inputs, ht_probs=None, training=False):
         """
         Computes the scores of the triples and returns the corruption scores as well.
 
@@ -257,7 +276,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         if training:
             # generate the corruptions for the input triples
             corruptions = self.corruption_layer(
-                inputs, self.num_ents, self.eta
+                inputs, self.num_ents, ht_probs=ht_probs
             )
             # lookup embeddings of the inputs
             corr_emb = self.encoding_layer(corruptions)
@@ -391,7 +410,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             triples = data
         with tf.GradientTape() as tape:
             # get the model predictions
-            score_pos, score_neg = self(tf.cast(triples, tf.int32), training=1)
+            if self.ht_strategy != "uniform":
+                score_pos, score_neg = self(
+                    tf.cast(triples, tf.int32), training=1, ht_probs=weights
+                )
+            else:
+                score_pos, score_neg = self(tf.cast(triples, tf.int32), training=1)
             # focusE layer
             if self.use_focusE:
                 logger.debug("Using FocusE")
@@ -561,6 +585,9 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         partitioning_k=1,
         focusE=False,
         focusE_params={},
+        save_embeddings_every=None,
+        save_path=None,
+        degree_dict=None
     ):
         """Fit the model on the provided data.
 
@@ -637,6 +664,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 ``BucketGraphPartitioner``.
                 Kindly checkout the tutorials for usage in Advanced mode.
 
+        degree_dict: dict
+            Dictionary where each raw entity name is associated with its degree in the training set.
         Returns
         -------
         history: History object
@@ -755,6 +784,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # (useful during partitioning)
             self.max_ent_size = self.data_handler._adapter.max_entities
             self.max_rel_size = self.data_handler._adapter.max_relations
+
             # Number of columns (i.e., only triples or also weights?)
             if isinstance(self.data_handler._adapter, PartitionDataManager):
                 self.data_shape = (
@@ -766,6 +796,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             # FocusE
             if self.data_shape < 4:
                 self.use_focusE = False
+                assert self.ht_strategy == "uniform", "You specified ht_strategy, but no values for it were provided!"
             else:
                 if self.use_focusE:
                     assert isinstance(
@@ -782,6 +813,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         "stop_epoch": stop_epoch,
                         "structural_wt": structure_weight,
                     }
+                elif self.ht_strategy != "uniform":
+                    print(f"Head-tail corruption strategy was set to {self.ht_strategy}.")
                 else:
                     print(
                         "Data shape is {}: not only triples were given, but focusE is not active!".format(
@@ -813,6 +846,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 self.partitioner_k = self.data_handler._adapter.partitioner_k
                 self.encoding_layer.max_ent_size = self.max_ent_size
                 self.encoding_layer.max_rel_size = self.max_rel_size
+
+            # build the corruption layer in case different negative sampling strategies are needed
+            if self.ent_strategy:
+                assert degree_dict is not None, "You need to provide a dict of entity degree!"
+                degree_lst = [degree_dict[key] for key in self.data_indexer.backend.entities_dict.values()]
+                self.corruption_layer.set_properties(degree_lst)
 
             # make the train function that will be used to process each batch
             # of data
@@ -865,11 +904,25 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                         use_filter=validation_filter,
                         dataset_type="valid",
                         corrupt_side=validation_corrupt_side,
-                        entities_subset=validation_entities_subset
+                        entities_subset=validation_entities_subset,
+                        save_path=save_path
                     )
                     # update the epoch logs with validation details
                     epoch_logs.update(val_logs)
+                if save_embeddings_every is not None and (epoch + 1) % save_embeddings_every == 0:
+                    ent_filename = os.path.join(save_path, f"ent_emb_epoch{epoch}.npy")
+                    ent_embs = self.get_embeddings(
+                        list(range(self.max_ent_size)), embedding_type="e", from_idx=True
+                    )
+                    np.save(ent_filename, ent_embs)
+                    rel_filename = os.path.join(save_path, f"rel_emb_epoch{epoch}.npy")
+                    rel_embs = self.get_embeddings(
+                        list(range(self.max_rel_size)), embedding_type="r", from_idx=True
+                    )
+                    np.save(rel_filename, rel_embs)
 
+                # Bump up epoch number
+                self.current_epoch += 1
                 # after an epoch is completed, call this callback function
                 callbacks.on_epoch_end(epoch, epoch_logs)
                 if self.stop_training:
@@ -1829,7 +1882,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             use_filter,
             dataset_type,
             corrupt_side,
-            entities_subset
+            entities_subset,
+            save_path=None
     ):
         """
         Function to perform the validation.
@@ -1838,12 +1892,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         computes the metrics.
         """
         # FocusE adaptation of validation_data
-        if self.data_shape > 3 and validation_data.shape[1] == 3:
-            nan_weights = np.empty(validation_data.shape[0])
-            nan_weights.fill(np.nan)
-            validation_data = np.concatenate(
-                [validation_data, nan_weights], axis=1
-            )
+        # if self.data_shape > 3 and validation_data.shape[1] == 3:
+        #     nan_weights = np.empty(validation_data.shape[0])
+        #     nan_weights.fill(np.nan)
+        #     validation_data = np.concatenate(
+        #         [validation_data, nan_weights], axis=1
+        #     )
         # evaluate on the validation
         ranks = self.evaluate(
             validation_data,
@@ -1853,6 +1907,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             corrupt_side=corrupt_side,
             entities_subset=entities_subset,
         )
+        if save_path:
+            np.save(os.path.join(save_path, f"valid_ranks_epoch{self.current_epoch}"), ranks)
         # compute all the metrics
         val_logs = {
             "val_mrr": mrr_score(ranks),
@@ -2211,7 +2267,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         callbacks.on_predict_end()
         return np.concatenate(outputs)
 
-    def get_embeddings(self, entities, embedding_type="e"):
+    def get_embeddings(self, entities, embedding_type="e", from_idx=False):
         """Get the embeddings of entities or relations.
 
         .. Note ::
@@ -2251,22 +2307,22 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         """
 
         if embedding_type == "e":
-            lookup_concept = self.get_indexes(entities, "e")
+            lookup_concept = self.get_indexes(entities, "e") if not from_idx else entities
             if self.is_partitioned_training:
                 emb_out = []
                 with shelve.open(
-                    self.partitioner_metadata["ent_map_fname"]
+                        self.partitioner_metadata["ent_map_fname"]
                 ) as ent_emb:
                     for ent_id in lookup_concept:
                         emb_out.append(ent_emb[str(ent_id)])
             else:
                 return self.encoding_layer(lookup_concept, type_of="e").numpy()
         elif embedding_type == "r":
-            lookup_concept = self.get_indexes(entities, "r")
+            lookup_concept = self.get_indexes(entities, "r") if not from_idx else entities
             if self.is_partitioned_training:
                 emb_out = []
                 with shelve.open(
-                    self.partitioner_metadata["rel_map_fname"]
+                        self.partitioner_metadata["rel_map_fname"]
                 ) as rel_emb:
                     for rel_id in lookup_concept:
                         emb_out.append(rel_emb[str(rel_id)])
