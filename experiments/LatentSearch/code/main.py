@@ -157,7 +157,7 @@ def main(args):
     # We build the training, validation and test sets
     train_ds, valid_ds, test_ds = build_datasets(
         train, valid, test, batch_size=hyperparams["batch_size"],
-        quantile=hyperparams["quantile"]
+        quantile=hyperparams["quantile"], evaluate=args.evaluate
     )
 
     # Dimension of the pretrained embeddings
@@ -336,6 +336,8 @@ if __name__ == "__main__":
     parser.add_argument('--load-model', default=None, type=str,
                         help="Path to model checkpoint.")
 
+    parser.add_argument('--seed', default=0, type=int, help="Random seed for the experiment.")
+
     parser.add_argument('--batch-size', '-batch', default=1, type=int)
     parser.add_argument('--scoring-type', '-score', default="ComplEx", type=str,
                         help="KGE Scoring function to use for the experiment.")
@@ -350,4 +352,7 @@ if __name__ == "__main__":
                              "of the triples do we want to cover the entirety of their neighbourhood)")
 
     args = parser.parse_args()
+
+    tf.keras.utils.set_random_seed(seed=args.seed)
+
     main(args)

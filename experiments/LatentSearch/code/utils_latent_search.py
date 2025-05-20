@@ -90,7 +90,7 @@ def truncate_triples(triples, target, pad_shape):
     triples = tf.random.shuffle(triples)
     return triples[:pad_shape], target
 
-def build_datasets(df_train, df_valid, df_test, batch_size=1, quantile=0.9):
+def build_datasets(df_train, df_valid, df_test, batch_size=1, quantile=0.9, evaluate=True):
     """
     Build the training set for the latent search feature.
 
@@ -126,27 +126,32 @@ def build_datasets(df_train, df_valid, df_test, batch_size=1, quantile=0.9):
             tf.TensorSpec(shape=(None, 3), dtype=tf.int32),  # triples
             tf.TensorSpec(shape=(), dtype=tf.int32)  # target idx
         )
-    ).map(lambda x, y: truncate_triples(x, y, pad_shape)).padded_batch(
+    ).shuffle(
+        buffer_size=10000
+    ).map(
+        lambda x, y: truncate_triples(x, y, pad_shape)
+    ).padded_batch(
         batch_size=batch_size, padded_shapes=([pad_shape, 3], []),
         padding_values=-1
     )
 
-    valid_ds_sp = build_tf_dataset(
-        build_test_set(df_valid, df_train, corrupt="o")
-    )
-    valid_ds_po = build_tf_dataset(
-        build_test_set(df_valid, df_train, corrupt="s")
-    )
+    if evaluate:
+        valid_ds_sp = build_tf_dataset(
+            build_test_set(df_valid, df_train, corrupt="o")
+        )
+        valid_ds_po = build_tf_dataset(
+            build_test_set(df_valid, df_train, corrupt="s")
+        )
 
-    test_ds_sp = build_tf_dataset(
-        build_test_set(df_test, df_train, corrupt="o")
-    )
-    test_ds_po = build_tf_dataset(
-        build_test_set(df_test, df_train, corrupt="s")
-    )
+        test_ds_sp = build_tf_dataset(
+            build_test_set(df_test, df_train, corrupt="o")
+        )
+        test_ds_po = build_tf_dataset(
+            build_test_set(df_test, df_train, corrupt="s")
+        )
+        return train_ds, (valid_ds_sp, valid_ds_po), (test_ds_sp, test_ds_po)
 
-    return train_ds, (valid_ds_sp, valid_ds_po), (test_ds_sp, test_ds_po)
-
+    return train_ds, None, None
 def map_raw2index(df_train, df_valid, df_test, dict_raw2idx_ents, dict_raw2idx_rels):
     """
     Function to map the raw entities and relations in the dataset to the indexing of the model.
