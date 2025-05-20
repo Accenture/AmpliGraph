@@ -75,7 +75,7 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
             # probability = (1 / self.degree) / tf.reduce_sum(1 / self.degree)
             self.ent_log_probability = - tf.math.log(self.degree) + tf.math.log(tf.reduce_sum(self.degree))
 
-    def call(self, pos, ent_size, eta=None, ht_probs=None):
+    def call(self, pos, ent_size, eta=None, ht_probs=None, return_mask=False):
         """
         Generates corruption for the positives supplied.
 
@@ -162,4 +162,6 @@ class CorruptionGenerationLayerTrain(tf.keras.layers.Layer):
         corruptions = tf.transpose(
             a=tf.stack([subjects, relationships, objects])
         )
+        if return_mask:
+            return corruptions, tf.cast(keep_subj_mask, tf.float32)
         return corruptions

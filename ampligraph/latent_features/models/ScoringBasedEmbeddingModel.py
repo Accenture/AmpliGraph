@@ -203,6 +203,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.base_dir = tempfile.gettempdir()
         self.partitioner_metadata = {}
 
+        # To use in case we want to investigate what's the maring between different negatives
+        # generated for a triple
+        self.margin_negs = None
+        self.margin_tracker = None
+        self.batch_size = None
+
         self.current_epoch = 0
 
     def is_fit(self):
@@ -275,13 +281,21 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         if training:
             # generate the corruptions for the input triples
-            corruptions = self.corruption_layer(
-                inputs, self.num_ents, ht_probs=ht_probs
-            )
+            if not self.margin_negs:
+                corruptions = self.corruption_layer(
+                    inputs, self.num_ents, ht_probs=ht_probs
+                )
+            else:
+                corruptions, keep_subj_mask = self.corruption_layer(
+                    inputs, self.num_ents, ht_probs=ht_probs,
+                    return_mask=True
+                )
             # lookup embeddings of the inputs
             corr_emb = self.encoding_layer(corruptions)
             corr_score = self.scoring_layer(corr_emb)
 
+            if self.margin_negs:
+                return inp_score, corr_score, keep_subj_mask
             return inp_score, corr_score
 
         else:
@@ -358,6 +372,40 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.num_ents = self.max_ent_size
         self.built = True
 
+    def compute_margin_negs(self, score_pos, score_neg, keep_subj_mask):
+        """
+        This method is used to compute the margin between the scores assigned
+        by the model to the positives and negatives during training splitting
+        the predictions of the negatives based on the corrupted side.
+        """
+        reshaped_mask = tf.cast(
+            tf.stack(
+                tf.dynamic_partition(
+                    keep_subj_mask,
+                    tf.tile(tf.range(tf.shape(score_pos)[0]), [self.eta]),
+                    num_partitions=tf.shape(score_pos)[0]
+                )
+            ), tf.bool
+        )
+        reshaped_neg_scores = tf.stack(
+            tf.dynamic_partition(
+                score_neg,
+                tf.tile(tf.range(tf.shape(score_pos)[0]), [self.eta]),
+                num_partitions=tf.shape(score_pos)[0]
+            )
+        )
+        obj_corr_avg = tf.reduce_mean(
+            tf.ragged.boolean_mask(reshaped_neg_scores, reshaped_mask),
+            axis=1
+        )
+        subj_corr_avg = tf.reduce_mean(
+            tf.ragged.boolean_mask(reshaped_neg_scores, ~reshaped_mask),
+            axis=1
+        )
+        self.margin_tracker.append(
+            (score_pos - subj_corr_avg, score_pos - obj_corr_avg)
+        )
+
     def compute_focusE_weights(self, weights, structure_weight):
         """Compute positive and negative weights to scale scores if ``use_focusE=True``.
 
@@ -411,11 +459,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         with tf.GradientTape() as tape:
             # get the model predictions
             if self.ht_strategy != "uniform":
-                score_pos, score_neg = self(
+                output = self(
                     tf.cast(triples, tf.int32), training=1, ht_probs=weights
                 )
             else:
-                score_pos, score_neg = self(tf.cast(triples, tf.int32), training=1)
+                output = self(tf.cast(triples, tf.int32), training=1)
+
+            score_pos, score_neg = output[0], output[1]
+
             # focusE layer
             if self.use_focusE:
                 logger.debug("Using FocusE")
@@ -450,6 +501,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             else:
                 raise e
 
+        # Let's compute the average margin between the positive and negative scores
+        # split based on the corrupted side
+        if self.margin_negs:
+            self.compute_margin_negs(score_pos, score_neg, output[2])
         return {m.name: m.result() for m in self.metrics}
 
     def make_train_function(self):
@@ -587,7 +642,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         focusE_params={},
         save_embeddings_every=None,
         save_path=None,
-        degree_dict=None
+        degree_dict=None,
+        margin_negs=None
     ):
         """Fit the model on the provided data.
 
@@ -853,6 +909,11 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 degree_lst = [degree_dict[key] for key in self.data_indexer.backend.entities_dict.values()]
                 self.corruption_layer.set_properties(degree_lst)
 
+            # Whether to look into the margin between positives and negatives
+            if margin_negs:
+                self.batch_size = batch_size
+                self.margin_negs = margin_negs
+
             # make the train function that will be used to process each batch
             # of data
             train_function = self.make_train_function()
@@ -873,6 +934,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 self.current_epoch = epoch
                 # before epoch begins call this callback function
                 callbacks.on_epoch_begin(epoch)
+                if self.margin_negs:
+                    self.margin_tracker = []
                 # Update focusE parameter
                 if self.use_focusE:
                     self.update_focusE_params()
@@ -921,6 +984,12 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     )
                     np.save(rel_filename, rel_embs)
 
+                if self.margin_negs:
+                    margins = tf.concat(
+                        self.margin_tracker, axis=1
+                    )
+                    margins_filename = os.path.join(save_path, f"margin_negs_epoch{epoch}.npy")
+                    np.save(margins_filename, margins.numpy())
                 # Bump up epoch number
                 self.current_epoch += 1
                 # after an epoch is completed, call this callback function
