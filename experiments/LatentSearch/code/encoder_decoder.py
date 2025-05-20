@@ -51,17 +51,30 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
 class TripleEncoder(tf.keras.layers.Layer):
     def __init__(self, d_model, num_heads, ff_dim, latent_dim, dropout=0.1):
         super().__init__()
-        self.pos_encoder = PositionalEncoding(max_len=3, d_model=d_model)
+        self.pos_encoder = PositionalEncoding(max_len=4, d_model=d_model)
         self.encoder_block = TransformerEncoderBlock(d_model, num_heads, ff_dim, dropout)
-        self.pool = tf.keras.layers.GlobalAveragePooling1D()
         self.projection = tf.keras.layers.Dense(latent_dim)  # project to latent space
 
+        # v0.2: we try to prepend a CLS to the triple and use it to extract the latent representation
+        self.cls_token = self.add_weight(
+            shape=(1, 1, d_model),  # (batch_size=1, token=1, embedding_dim)
+            initializer='random_normal',
+            trainable=True,
+            name='cls_token'
+        )
+
     def call(self, x, training=False, mask=None):
+        batch_size = tf.shape(x)[0]
+        cls_tokens = tf.tile(self.cls_token, [batch_size, 1, 1])  # (batch_size, 1, d_model)
+
+        # Prepend CLS token to the sequence
+        x = tf.concat([cls_tokens, x], axis=1)  # (batch_size, 4, d_model)
+
         x = self.pos_encoder(x)              # Add position info
         x = self.encoder_block(x, training=training, mask=mask)
-        # Aggregates the encoded representation of the three elements of the triple
-        x = self.pool(x)    # (batch_size * num_triples, d_model)
-        latent = self.projection(x) # (batch_size * num_triples, latent_dim)
+
+        cls_output = x[:, 0, :]
+        latent = self.projection(cls_output) # (batch_size * num_triples, latent_dim)
         return latent
 
 
