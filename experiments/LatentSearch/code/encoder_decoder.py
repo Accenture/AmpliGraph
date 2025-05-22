@@ -91,7 +91,11 @@ class FFNNDecoder(tf.keras.layers.Layer):
 
 
 class TripleModel(tf.keras.Model):
-    def __init__(self, d_model, num_heads, ff_dim, latent_dim, decoder_hidden_dim, embedding_dim, ent_emb, rel_emb):
+    def __init__(
+            self, d_model, num_heads, ff_dim,
+            latent_dim, decoder_hidden_dim,
+            embedding_dim, ent_emb, rel_emb,
+            loss="cosine"):
         super().__init__()
         self.latent_dim = latent_dim
         self.encoder = TripleEncoder(d_model, num_heads, ff_dim, latent_dim)
@@ -101,6 +105,7 @@ class TripleModel(tf.keras.Model):
         self.rel_emb = rel_emb
 
         self.loss_tracker = tf.keras.metrics.Mean()
+        self.loss_fn = loss
 
     def call(self, x, training=False):
         """
@@ -132,18 +137,6 @@ class TripleModel(tf.keras.Model):
             tf.boolean_mask(encoded_emb, tf.reshape(mask, [-1])),
             segment_ids=self.extract_segment_ids(tf.squeeze(mask, axis=-1))
         )
-
-        # # We reshape to keep the group of triples separated.
-        # encoded_emb = tf.reshape(
-        #     encoded_emb, (batch_size, num_triples, encoded_emb.shape[-1])
-        # )
-        # mask = tf.reshape(
-        #     mask, (batch_size, num_triples)
-        # )
-        # # We average the triples to get the unique latent representation of the target entity
-        # latent = tf.reduce_mean(
-        #     tf.ragged.boolean_mask(encoded_emb, mask), axis=1
-        # )
 
         # We decode the latent representation
         output = self.decoder(latent, training=training)
@@ -199,8 +192,11 @@ class TripleModel(tf.keras.Model):
             target_emb_norm = tf.math.l2_normalize(target_emb, axis=-1)
 
             # Cosine similarity loss = 1 - cosine_sim
-            cos_sim = tf.reduce_mean(output_emb_norm * target_emb_norm, axis=-1)
-            loss = 1.0 - cos_sim
+            if self.loss_fn == "cosine":
+                cos_sim = tf.reduce_mean(output_emb_norm * target_emb_norm, axis=-1)
+                loss = 1.0 - cos_sim
+            elif self.loss_fn == "euclidean":
+                loss = tf.norm(output_emb_norm - target_emb_norm, axis=-1)
 
             # Apply gradients
             grads = tape.gradient(loss, self.trainable_variables)
