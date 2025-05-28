@@ -21,8 +21,10 @@ def build_training_set(train_df):
 
         for i in range(len(objects)):
             label = objects[i]
-            input_triples = [(s, p, o) for j, o in enumerate(objects) if j != i]
-            training_data.append((np.array(input_triples, dtype=np.int32), label))
+            input_triples = np.array(
+                [(s, p, o) for j, o in enumerate(objects) if j != i], dtype=np.int32
+            )
+            training_data.append((input_triples, label, input_triples[:, 2]))
 
     for (o, p), subjects in grouped_po.items():
         if len(subjects) < 2:
@@ -30,8 +32,11 @@ def build_training_set(train_df):
 
         for i in range(len(subjects)):
             label = subjects[i]
-            input_triples = [(s, p, o) for j, o in enumerate(subjects) if j != i]
-            training_data.append((np.array(input_triples, dtype=np.int32), label))
+            input_triples = np.array(
+                [(s, p, o) for j, o in enumerate(subjects) if j != i],
+                dtype=np.int32
+            )
+            training_data.append((input_triples, label, input_triples[:, 0]))
 
     return training_data
 
@@ -53,16 +58,20 @@ def build_test_set(test_df, train_df, corrupt="o"):
         if corrupt == "o":
             try:
                 objects = grouped.loc[(s, p), "o"]
-                input_triples = [(s, p, obj) for obj in objects]
-                testing_data.append((np.array(input_triples, np.int32), o))
+                input_triples = np.array(
+                    [(s, p, obj) for obj in objects], dtype=np.int32
+                )
+                testing_data.append((input_triples, o, input_triples[:, 2]))
             except:
                 # print(f"No examples of (subject, predicate) = {(s, p)} in the provided test set!")
                 missing_triples += 1
         elif corrupt == "s":
             try:
                 subjects = grouped.loc[(o, p), "s"]
-                input_triples = [(subj, p, o) for subj in subjects]
-                testing_data.append((np.array(input_triples, np.int32), s))
+                input_triples = np.array(
+                    [(subj, p, o) for subj in subjects], dtype=np.int32
+                )
+                testing_data.append((input_triples, s, input_triples[:, 0]))
             except:
                 # print(f"No examples of (predicate, object) = {(p, o)} in the provided test set!")
                 missing_triples += 1
@@ -79,16 +88,21 @@ def build_tf_dataset(dataset):
         lambda: iter(dataset),
         output_signature=(
             tf.TensorSpec(shape=(None, 3), dtype=tf.int32),  # triples
-            tf.TensorSpec(shape=(), dtype=tf.int32)  # target idx
+            tf.TensorSpec(shape=(), dtype=tf.int32),  # target idx
+            tf.TensorSpec(shape=(None), dtype=tf.int32)
         )
     )
 
-def truncate_triples(triples, target, pad_shape):
+def truncate_triples(triples, target, aux_target, pad_shape):
     """
     Function to truncate triples as `padded_batch` does not support truncation.
     """
-    triples = tf.random.shuffle(triples)
-    return triples[:pad_shape], target
+    shuffled_idx = tf.random.shuffle(tf.range(tf.shape(triples)[0]))
+
+    triples = tf.gather(triples, shuffled_idx)
+    aux_target = tf.gather(aux_target, shuffled_idx)
+
+    return triples[:pad_shape], target, aux_target[:pad_shape]
 
 def build_datasets(df_train, df_valid, df_test, batch_size=1, quantile=0.9, evaluate=True):
     """
@@ -120,18 +134,12 @@ def build_datasets(df_train, df_valid, df_test, batch_size=1, quantile=0.9, eval
     train = build_training_set(df_train)
     pad_shape = int(np.quantile([el[0].shape[0] for el in train], quantile))
 
-    train_ds = tf.data.Dataset.from_generator(
-        lambda: iter(train),
-        output_signature=(
-            tf.TensorSpec(shape=(None, 3), dtype=tf.int32),  # triples
-            tf.TensorSpec(shape=(), dtype=tf.int32)  # target idx
-        )
-    ).shuffle(
+    train_ds = build_tf_dataset(train).shuffle(
         buffer_size=10000
     ).map(
-        lambda x, y: truncate_triples(x, y, pad_shape)
+        lambda x, y, z: truncate_triples(x, y, z, pad_shape)
     ).padded_batch(
-        batch_size=batch_size, padded_shapes=([pad_shape, 3], []),
+        batch_size=batch_size, padded_shapes=([pad_shape, 3], [], [pad_shape]),
         padding_values=-1
     )
 
