@@ -43,7 +43,51 @@ def load_model_and_data(dataset="fb15k_237", scoring_type="RotatE"):
     ent_emb = pretrained_kge.encoding_layer.ent_emb
     rel_emb = pretrained_kge.encoding_layer.rel_emb
 
-    return train, valid, test, ent_emb, rel_emb
+    return train, valid, test, ent_emb, rel_emb, reverse_ent_dict, reverse_rel_dict
+
+def load_llm_embeddings(path_ent_emb, reverse_ent_dict, reverse_rel_dict):
+    """
+    Function to load the LLM embeddings pre-computed and saved in `path_ent_emb`.
+
+    One of the key part of this function is sorting the embeddings so to reflect the
+    indexing of the entities used in the KG.
+    """
+    parent_folder = os.path.dirname(path_ent_emb)
+    path_rel_emb = os.path.join(parent_folder, f"relation2{path_ent_emb.split(str(2))[-1]}")
+
+    unsorted_ent_emb, unsorted_rel_emb = np.load(path_ent_emb), np.load(path_rel_emb)
+
+    # As sometimes keys have no label, we create an additional
+    # random embedding to represent such entities
+    random_embedding = np.random.uniform(low=0.0, high=1.0, size=(1, 768))
+    unsorted_ent_emb = np.vstack([unsorted_ent_emb, random_embedding])
+    rand_emb_idx = unsorted_ent_emb.shape[0] - 1
+
+    with open(os.path.join(parent_folder, "entity2label.json"), "r") as f:
+        ent_labels = json.load(f)
+
+    with open(os.path.join(parent_folder, "relation2label.json"), "r") as f:
+        rel_labels = json.load(f)
+
+    # We extract the indices to sort ent_labels.keys() as reverse_ent_dict.keys().
+    ent_sorted_indices = [
+        list(ent_labels).index(ent) if ent in ent_labels else rand_emb_idx for ent in reverse_ent_dict
+    ]
+    # Same for relations
+    rel_index_map = {item: i for i, item in enumerate(rel_labels)}
+    rel_sorted_indices = [rel_index_map[item] for item in reverse_rel_dict]
+
+    # Now we sort ent_emb and rel_emb accordingly
+    ent_emb = tf.gather(
+        tf.constant(unsorted_ent_emb, dtype=tf.float32),
+        ent_sorted_indices
+    )
+    rel_emb = tf.gather(
+        tf.constant(unsorted_rel_emb, dtype=tf.float32),
+        rel_sorted_indices
+    )
+
+    return ent_emb, rel_emb
 
 def drop_ranks(test_triples, ranks_cosine, ranks_euclidean, name):
     """
@@ -134,12 +178,13 @@ def main(args):
     if stdout != sys.stdout:
         stdout = open(stdout, 'w')
 
-    hyperparams = {'batch_size': args.batch_size, 'seed': 0,
+    hyperparams = {'batch_size': args.batch_size, 'seed': args.seed,
                    'epochs': 10, 'num_heads': 3,
                    'encoder_hidden_dim': 400, 'encoder_latent_dim': 200,
                    'decoder_hidden_dim': 1000,
                    'learning_rate': args.learning_rate,
-                   'quantile': args.quantile}
+                   'quantile': args.quantile,
+                   'latent_search': args.latent_search}
 
     print(f"Experiment started. Find output at {name}")
     print(f"Experiment Folder: {name}", file=stdout, flush=True)
@@ -150,9 +195,17 @@ def main(args):
     start_time = time.time()
 
     # Load the indexed dataset and the embeddings for entities and relations.
-    train, valid, test, ent_emb, rel_emb = load_model_and_data(
+    train, valid, test, ent_emb, rel_emb, reverse_ent_dict, reverse_rel_dict = load_model_and_data(
         dataset=dataset_name, scoring_type=scoring_type
     )
+    if args.train_embeddings:
+        # Glorot Uniform initialization
+        max_val = tf.sqrt(6 / (2 * ent_emb.shape[1]))
+        ent_emb = tf.random.uniform(shape=ent_emb.shape, minval=-max_val, maxval=max_val)
+        rel_emb = tf.random.uniform(shape=rel_emb.shape, minval=-max_val, maxval=max_val)
+
+    if args.llm_embeddings:
+        ent_emb, rel_emb = load_llm_embeddings(args.llm_embeddings, reverse_ent_dict, reverse_rel_dict)
 
     # We build the training, validation and test sets
     train_ds, valid_ds, test_ds = build_datasets(
@@ -165,10 +218,12 @@ def main(args):
 
     if args.load_model is None:
         model = TripleModel(
-            d_model=k, num_heads=hyperparams["num_heads"],
+            input_dim=k, num_heads=hyperparams["num_heads"],
             ff_dim=hyperparams["encoder_hidden_dim"], latent_dim=hyperparams["encoder_latent_dim"],
             decoder_hidden_dim=hyperparams['decoder_hidden_dim'], embedding_dim=k,
-            ent_emb=ent_emb, rel_emb=rel_emb
+            ent_emb=ent_emb, rel_emb=rel_emb, loss=args.loss,
+            latent_search=hyperparams["latent_search"],
+            train_embeddings=args.train_embeddings
         )
     else:
         model = tf.keras.models.load_model(args.load_model)
@@ -184,7 +239,7 @@ def main(args):
         model.compile(optimizer=optimizer, run_eagerly=False)
 
         print("Training...")
-        model.fit(train_ds, epochs=10)
+        model.fit(train_ds, epochs=5)
 
         if args.save_model:
             model.save(os.path.join(name, "model_checkpoint_epoch5"))
@@ -193,7 +248,7 @@ def main(args):
                 file=stdout, flush=True
             )
 
-        model.fit(train_ds, epochs=10)
+        model.fit(train_ds, epochs=5)
 
         if args.save_model:
             model.save(os.path.join(name, "model_checkpoint_epoch10"))
@@ -205,9 +260,18 @@ def main(args):
         model.fit(train_ds, epochs=10)
 
         if args.save_model:
-            model.save(os.path.join(name, "model_checkpoint_epoch15"))
+            model.save(os.path.join(name, "model_checkpoint_epoch20"))
             print(
-                f"Model saved in {os.path.join(name, 'model_checkpoint_epoch15')} after 15 epochs.",
+                f"Model saved in {os.path.join(name, 'model_checkpoint_epoch20')} after 20 epochs.",
+                file=stdout, flush=True
+            )
+
+        model.fit(train_ds, epochs=10)
+
+        if args.save_model:
+            model.save(os.path.join(name, "model_checkpoint_epoch30"))
+            print(
+                f"Model saved in {os.path.join(name, 'model_checkpoint_epoch30')} after 30 epochs.",
                 file=stdout, flush=True
             )
 
@@ -229,7 +293,7 @@ def main(args):
         labels_sp = []
         ranks_sp_cosine = []
         ranks_sp_euclidean = []
-        for triples, label in tqdm(test_sp.batch(1), desc="Evaluating"):
+        for triples, label, aux in tqdm(test_sp.batch(1), desc="Evaluating"):
             s, p, _ = tf.squeeze(triples, axis=0)[0, :].numpy()
             o = label.numpy().item()
             test_triples_sp.append([s, p, o])
@@ -258,7 +322,7 @@ def main(args):
         labels_po = []
         ranks_po_cosine = []
         ranks_po_euclidean = []
-        for triples, label in tqdm(test_po.batch(1), desc="Evaluating"):
+        for triples, label, aux in tqdm(test_po.batch(1), desc="Evaluating"):
             _, p, o = tf.squeeze(triples, axis=0)[0, :].numpy()
             s = label.numpy().item()
             test_triples_po.append([s, p, o])
@@ -321,13 +385,15 @@ def main(args):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-        description='Pipeline to control the experiments for the evaluation of ontology-based negative sampling.')
+        description='Pipeline to control the experiments for the latent search feature.')
 
     parser.add_argument('--dataset', default='fb15k_237', type=str, help='Dataset to process')
-    parser.add_argument('--output-folder', default="/data/alberto/ampligraph_results/latent_search/v0.1",
+    parser.add_argument('--output-folder', default="/data/alberto/ampligraph_results/latent_search/v0.3.0",
                         type=str, help='Base folder for the output of the experiment.')
     parser.add_argument('--save-model', default=None, action="store_true",
                         help="Whether to save or not the model trained.")
+    parser.add_argument('--grid-search', '--grid', action="store_true",
+                        help="Whether to carry out a grid search or not.")
 
     parser.add_argument('--no-train', action="store_false", dest='train',
                         help="Whether to train a model or not.")
@@ -345,11 +411,23 @@ if __name__ == "__main__":
     parser.add_argument('--learning-rate', '-lr', default=1e-3, type=float,
                         help="Learning rate of the optimizer.")
     parser.add_argument('-reg', '--regularization', default=1e-4, type=float)
-    parser.add_argument('--loss-function', default="multiclass_nll", type=str,
+    parser.add_argument('--loss-function', '-loss', dest='loss', default="cosine", type=str,
                         help="Loss function to be used during training.")
     parser.add_argument('--padding-quantile', default=0.9, type=float, dest='quantile',
                         help="Quantile to compute the padding shape (i.e., for what proportion"
                              "of the triples do we want to cover the entirety of their neighbourhood)")
+
+    parser.add_argument('--latent-search', action='store_true', default=None,
+                        help="Whether to perform a latent search before decoding the latent.")
+    parser.add_argument('--train-embeddings', action='store_true', default=False,
+                        help="Whether to use as the entity and relation embeddings some trainable "
+                             "weights initialized with a random uniform distribution.")
+    parser.add_argument('--llm-embeddings', default=None, type=str,
+                        help="Path to the file storing the npy files with the embeddings of "
+                             "entities pre-computed with an LLM. The path to the same file "
+                             "for relations and to the dictionaries used to extract the labels"
+                             "for entities and relations are inferred from it, so make sure to keep "
+                             "everything in the same folder.")
 
     args = parser.parse_args()
 
