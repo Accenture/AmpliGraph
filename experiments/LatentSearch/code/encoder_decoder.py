@@ -92,20 +92,36 @@ class FFNNDecoder(tf.keras.layers.Layer):
 
 class TripleModel(tf.keras.Model):
     def __init__(
-            self, d_model, num_heads, ff_dim,
+            self, input_dim, num_heads, ff_dim,
             latent_dim, decoder_hidden_dim,
             embedding_dim, ent_emb, rel_emb,
-            loss="cosine"):
+            train_embeddings=False,
+            loss="cosine",
+            latent_search=False):
         super().__init__()
         self.latent_dim = latent_dim
-        self.encoder = TripleEncoder(d_model, num_heads, ff_dim, latent_dim)
+        self.encoder = TripleEncoder(input_dim, num_heads, ff_dim, latent_dim)
         self.decoder = FFNNDecoder(decoder_hidden_dim, embedding_dim)
 
-        self.ent_emb = ent_emb
-        self.rel_emb = rel_emb
+        self.train_emb = train_embeddings
+
+        self.k = input_dim # dimensionality of the input embeddings
+
+        self.ent_emb = tf.Variable(
+            initial_value=ent_emb,
+            trainable=self.train_emb,
+            name="entity_embeddings"
+        )
+        self.rel_emb = tf.Variable(
+            initial_value=rel_emb,
+            trainable=self.train_emb,
+            name="relation_embeddings"
+        )
 
         self.loss_tracker = tf.keras.metrics.Mean()
         self.loss_fn = loss
+
+        self.latent_search = latent_search
 
     def call(self, x, training=False):
         """
@@ -179,44 +195,102 @@ class TripleModel(tf.keras.Model):
 
     def train_step(self, data):
 
-        triples, target = data
-        # We extract the KGE embeddings of the triples and target
+        triples, target, _, target_triples = data
+        # We extract the KGE embeddings of the target
         target_emb = tf.gather(self.ent_emb, target)
 
-        with tf.GradientTape() as tape:
-            # We encode and decode the triples to get a unique representation for each of batches.
-            output_emb = self(triples, training=True)
+        if not self.latent_search:
+            with tf.GradientTape() as tape:
+                # We encode and decode the triples to get a unique representation for each of batches.
+                output_emb = self(triples, training=True)
 
-            # Normalize both for cosine similarity
-            output_emb_norm = tf.math.l2_normalize(output_emb, axis=-1)
-            target_emb_norm = tf.math.l2_normalize(target_emb, axis=-1)
+                # Cosine similarity loss = 1 - cosine_sim
+                if self.loss_fn in ["euclidean", "cosine"]:
+                    loss = self.loss(target_emb, output_emb)
+                if self.loss_fn == "structure_and_latent":
+                    target_triple_emb = [
+                        tf.gather(self.ent_emb, target_triples[:, 0]),
+                        tf.gather(self.rel_emb, target_triples[:, 1]),
+                        tf.gather(self.ent_emb, target_triples[:, 2])
+                    ]
+                    loss = self.loss(target_emb, (output_emb, target_triple_emb))
 
-            # Cosine similarity loss = 1 - cosine_sim
+                # Apply gradients
+                grads = tape.gradient(loss, self.trainable_variables)
+                self.optimizer.apply_gradients(zip(grads, self.trainable_variables))
+
+                self.loss_tracker.update_state(loss)
+        else:
+            self.train_step_w_latent_search(data)
+
+        metrics = {"loss": self.loss_tracker.result()}
+        for metric in self.loss.get_metrics():
+            metrics[metric.name] = metric.result()
+
+        return metrics
+
+    def train_step_w_latent_search(self, data):
+        """
+        Perform the train step including the latent search.
+        """
+        triples, target, aux_target, target_triples = data
+
+        # Get embeddings for main and auxiliary targets
+        target_emb = tf.gather(self.ent_emb, target)
+
+        with tf.GradientTape(persistent=True) as tape:
+            # ----- Forward Pass -----
+            # Extract mask and input embeddings
+            mask = tf.reduce_all(triples != -1, axis=-1, keepdims=True)
+            x = self.get_input_embeddings(triples, mask=mask)
+
+            # Set to zero the padded entries to avoid issues with tf.gather
+            filtered_aux_target = aux_target * tf.cast(tf.squeeze(mask, axis=-1), tf.int32)
+            aux_target_emb = tf.gather(
+                self.ent_emb, filtered_aux_target
+            )
+            batch_size, num_triples, _, emb_dim = tf.shape(x)
+            x = tf.reshape(x, (-1, 3, emb_dim))
+            encoded_emb = self.encoder(x, training=True, mask=tf.reshape(mask, (-1, 1, 1)))
+            latent = tf.math.segment_mean(
+                tf.boolean_mask(encoded_emb, tf.reshape(mask, [-1])),
+                segment_ids=self.extract_segment_ids(tf.squeeze(mask, axis=-1))
+            )
+
+            # ----- First loss (auxiliary loss, gradient ascent on latent only) -----
+            tape.watch(latent)
+            latent_aux_decoded = self.decoder(latent, training=True)
             if self.loss_fn == "cosine":
-                cos_sim = tf.reduce_mean(output_emb_norm * target_emb_norm, axis=-1)
-                loss = 1.0 - cos_sim
+                latent_aux_norm = tf.math.l2_normalize(latent_aux_decoded, axis=-1)
+                aux_target_emb_norm = tf.math.l2_normalize(aux_target_emb, axis=-1)
+                aux_loss = (1.0 - tf.reduce_mean(
+                    tf.expand_dims(latent_aux_norm, axis=1) * aux_target_emb_norm,
+                    axis=-1
+                )) * tf.cast(tf.squeeze(mask, axis=-1), tf.float32)
             elif self.loss_fn == "euclidean":
-                loss = tf.norm(output_emb_norm - target_emb_norm, axis=-1)
+                aux_loss = tf.norm(
+                    tf.expand_dims(latent_aux_decoded, axis=1) - aux_target_emb,
+                    axis=-1
+                ) * tf.cast(tf.squeeze(mask, axis=-1), tf.float32)
 
-            # Apply gradients
-            grads = tape.gradient(loss, self.trainable_variables)
-            self.optimizer.apply_gradients(zip(grads, self.trainable_variables))
+        # Compute gradient of aux loss w.r.t latent
+        latent_grads = tape.gradient(aux_loss, latent)
 
-            self.loss_tracker.update_state(loss)
+        # Gradient ascent step on latent
+        latent_updated = latent + 0.1 * latent_grads  # learning rate for latent update (tune this!)
 
-        return {"loss": self.loss_tracker.result()}
+        # ----- Second loss (main loss, update model) -----
+        with tf.GradientTape() as tape2:
+            decoded = self.decoder(latent_updated, training=True)
+            decoded_norm = tf.math.l2_normalize(decoded, axis=-1)
+            target_emb_norm = tf.math.l2_normalize(target_emb, axis=-1)
+            main_loss = 1.0 - tf.reduce_mean(decoded_norm * target_emb_norm, axis=-1)  # cosine loss
 
-    # @tf.function(
-    #     input_signature=[
-    #         tf.TensorSpec(shape=(None, None, 3), dtype=tf.int32)]
-    # )
-    # def evaluate(self, test_set):
-    #     """
-    #     Function to perform inference.
-    #     """
-    #     for el in test_set:
-    #         self(el, training=False)
+        # Apply gradients to model parameters
+        grads = tape2.gradient(main_loss, self.trainable_variables)
+        self.optimizer.apply_gradients(zip(grads, self.trainable_variables))
 
+        self.loss_tracker.update_state(main_loss)
 
     def extract_segment_ids(self, mask):
         """
