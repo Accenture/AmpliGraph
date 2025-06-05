@@ -97,11 +97,15 @@ class TripleModel(tf.keras.Model):
             embedding_dim, ent_emb, rel_emb,
             train_embeddings=False,
             loss="cosine",
+            latent_aggregator="average",
             latent_search=False):
         super().__init__()
         self.latent_dim = latent_dim
         self.encoder = TripleEncoder(input_dim, num_heads, ff_dim, latent_dim)
         self.decoder = FFNNDecoder(decoder_hidden_dim, embedding_dim)
+
+        self.latent_aggregator = tf.keras.layers.Dense(1, use_bias=False) \
+            if latent_aggregator == "ffnn" else latent_aggregator
 
         self.train_emb = train_embeddings
 
@@ -148,10 +152,8 @@ class TripleModel(tf.keras.Model):
 
         # encoded_emb shape: (batch_size * num_triples, latent_dim)
         # mask shape: (batch_size * num_triples, 1)
-        # We average the triples to get the unique latent representation of the target entity
-        latent = tf.math.segment_mean(
-            tf.boolean_mask(encoded_emb, tf.reshape(mask, [-1])),
-            segment_ids=self.extract_segment_ids(tf.squeeze(mask, axis=-1))
+        latent = self.aggregate_latents(
+            encoded_emb, mask, num_triples=num_triples
         )
 
         # We decode the latent representation
@@ -229,6 +231,50 @@ class TripleModel(tf.keras.Model):
 
         return metrics
 
+    def aggregate_latents(self, encoded_embeddings, mask, num_triples):
+        """
+        This function aggregates the latent representations of the input triples into
+        a unique representation. The aggregation can be carried out with an average or
+        with a Feed Forward Neural Network.
+        """
+        if self.latent_aggregator == "average":
+            # We average the triples to get the unique latent representation of the target entity
+            latent = tf.math.segment_mean(
+                tf.boolean_mask(encoded_embeddings, tf.reshape(mask, [-1])),
+                segment_ids=self.extract_segment_ids(tf.squeeze(mask, axis=-1))
+            )
+        else:
+            # As an alternative to the average, we may want to weigh differently the different
+            # contribution of entities that might be more or less relevant than others
+            latent = tf.reshape(tf.squeeze(
+                self.latent_aggregator(
+                    tf.transpose(
+                        tf.reshape(encoded_embeddings, [-1, num_triples, self.latent_dim])
+                        * tf.cast(mask, tf.float32), (0, 2, 1)
+                    )
+                )
+            ), [-1, self.latent_dim])
+        return latent
+
+    def extract_segment_ids(self, mask):
+        """
+        Given the mask used to select the triples to consider when computing the
+        latent representation, this function assigns the index of each batch to the
+        values to keep in the batch and then flatten the arrays.
+
+        This function is needed to compute the masked average of embeddings through
+        tf.math.segment_mean.
+        """
+        batch_size = tf.shape(mask)[0]
+
+        # Create a tensor of shape (batch_size, 1) with row indices
+        row_indices = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis]
+
+        # Broadcast to same shape as mask
+        broadcasted = tf.broadcast_to(row_indices, tf.shape(mask))
+
+        return tf.ragged.boolean_mask(broadcasted, mask).flat_values
+
     def train_step_w_latent_search(self, data):
         """
         Perform the train step including the latent search.
@@ -291,22 +337,3 @@ class TripleModel(tf.keras.Model):
         self.optimizer.apply_gradients(zip(grads, self.trainable_variables))
 
         self.loss_tracker.update_state(main_loss)
-
-    def extract_segment_ids(self, mask):
-        """
-        Given the mask used to select the triples to consider when computing the
-        latent representation, this function assigns the index of each batch to the
-        values to keep in the batch and then flatten the arrays.
-
-        This function is needed to compute the masked average of embeddings through
-        tf.math.segment_mean.
-        """
-        batch_size = tf.shape(mask)[0]
-
-        # Create a tensor of shape (batch_size, 1) with row indices
-        row_indices = tf.range(batch_size, dtype=tf.int32)[:, tf.newaxis]
-
-        # Broadcast to same shape as mask
-        broadcasted = tf.broadcast_to(row_indices, tf.shape(mask))
-
-        return tf.ragged.boolean_mask(broadcasted, mask).flat_values
