@@ -333,6 +333,7 @@ def main(args, hyperparams):
             ff_dim=hyperparams["encoder_hidden_dim"], latent_dim=hyperparams["encoder_latent_dim"],
             decoder_hidden_dim=hyperparams['decoder_hidden_dim'], embedding_dim=k,
             ent_emb=ent_emb, rel_emb=rel_emb, loss=args.loss,
+            latent_aggregator=hyperparams["latent_aggregator"],
             latent_search=args.latent_search,
             train_embeddings=args.train_embeddings
         )
@@ -367,7 +368,7 @@ def main(args, hyperparams):
         #     ]
 
         print("Training...")
-        for i in range(1, 10):
+        for i in range(1, 7):
             model.fit(
                 train_ds, epochs=10 if not args.debug else 1
             )
@@ -543,6 +544,9 @@ if __name__ == "__main__":
     parser.add_argument('--neighbourhood', action='store_true', default=None,
                         help="Whether to use the neighbourhood of a triple, instead of only triples "
                              "sharing (s,p) or (p,o) in our triple.")
+    parser.add_argument('--latent-aggregator', default="average", type=str,
+                        help="Whether to aggregate the input triples using a simple average (`'average') "
+                             "or a Feed Forward Neural Network (`'ffnn'`).")
 
 
     args = parser.parse_args()
@@ -564,6 +568,7 @@ if __name__ == "__main__":
             'learning_rate': args.learning_rate,
             'quantile': args.quantile,
             'latent_search': args.latent_search,
-            'alpha_loss': args.alpha_loss
+            'alpha_loss': args.alpha_loss,
+            'latent_aggregator': args.latent_aggregator
         }
         main(args, hyperparams)
