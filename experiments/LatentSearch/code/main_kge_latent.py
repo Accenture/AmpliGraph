@@ -24,8 +24,8 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
     idx_to_raw_ents = pd.DataFrame.from_dict(
         ent_dict, orient="index", columns=["raw"]
     )
-    if args.dataset == "loreal":
-        gene_indices = get_loreal_gene_indices(train_df, idx_to_raw_ents)
+    if args.dataset in ["loreal", "1910"]:
+        gene_indices = get_gene_indices(train_df, idx_to_raw_ents, dataset=args.dataset)
         # We redefine the mapper to only account for genes as we are going to
         # corrupt only using them.
         idx_to_raw_ents = idx_to_raw_ents.loc[gene_indices].reset_index()
@@ -47,15 +47,25 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
             valid_targets = valid_grouped.get_group(pair)["o" if group == 'sp' else 's'].values
         except KeyError:
             valid_targets = []
+
+        if not args.entire_neighborhood:
+            observed_targets = np.concatenate([train_targets, valid_targets])
+            update_mask = None
+        else:
+            # We select as relevant triples all those including the entity of the pair
+            observed_targets = pd.concat([
+                train_df[train_df.s == pair[0]], train_df[train_df.o == pair[0]]
+            ]).values
+            # We create a mask to know where the anchor entity and relation to be trained appears
+            s_mask, p_mask, o_mask = \
+                observed_targets[:, 0] == pair[0], observed_targets[:, 1] == pair[1], observed_targets[:, 2] == pair[0]
+            update_mask = np.vstack([s_mask, p_mask, o_mask]).transpose()
+
         test_targets = test_grouped.get_group(pair)["o" if group == 'sp' else 's'].values
 
         all_ents_to_filter = set(train_targets).union(valid_targets).union(test_targets)
 
-        subjects, predicates, objects = extract_kge_embeddings(
-            kge_model, pair, train_targets, valid_targets, group
-        )
-
-        if args.dataset != "loreal":
+        if args.dataset not in ["loreal", "1910"]:
             all_corruption_entities = kge_model.encoding_layer.ent_emb
         else:
             all_corruption_entities = tf.gather(
@@ -65,9 +75,18 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
 
         # Let's compute the scores before applying the latent search
         if group == 'sp':
-            pre_scores = - kge_model.scoring_layer([subjects, predicates, all_corruption_entities])
+            pre_scores = - kge_model.scoring_layer([
+                kge_model.get_embeddings([pair[0]], embedding_type="e"),
+                kge_model.get_embeddings([pair[1]], embedding_type="r"),
+                all_corruption_entities
+            ])
         else:
-            pre_scores = - kge_model.scoring_layer([all_corruption_entities, predicates, objects])
+            pre_scores = - kge_model.scoring_layer([
+                all_corruption_entities,
+                kge_model.get_embeddings([pair[1]], embedding_type="r"),
+                kge_model.get_embeddings([pair[0]], embedding_type="e")
+            ])
+
         filtered_pre_ranks = compute_filtered_ranking(
             pre_scores, idx_to_raw_ents, test_targets, all_ents_to_filter
         )
@@ -77,37 +96,45 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
         ranks[pair]["new_ranks"] = dict() # key: epoch; value: new_ranks for the target objects
 
         #### Actual latent search
-        if len(train_targets) + len(valid_targets) > 0:
+        if len(observed_targets) > 0:
             optimizer = tf.keras.optimizers.Adam(learning_rate=args.learning_rate)
 
-            # Let's make predicates and objects/subjects trainable
-            updated_pred = tf.Variable(predicates)
-            if group == 'sp':
-                updated_subj = tf.Variable(subjects)
-                input_triples = [updated_subj, updated_pred, objects]
-                trainable_params = [updated_subj, updated_pred] if not args.freeze_relations else [updated_subj]
-            else:
-                updated_obj = tf.Variable(objects)
-                input_triples = [subjects, updated_pred, updated_obj]
-                trainable_params = [updated_pred, updated_obj] if not args.freeze_relations else [updated_obj]
+            input_triples, trainable_params, pair_idx = set_trainable_variables(
+                kge_model, pair, observed_targets,
+                group=group, freeze_rels=args.freeze_relations,
+                neighborhood=args.entire_neighborhood
+            )
 
             for i in range(0, args.epochs):
                 with tf.GradientTape() as tape:
-                    inp_score = - kge_model.scoring_layer(input_triples)
+                    if args.entire_neighborhood:
+                        inp_score = - kge_model.scoring_layer([
+                            tf.gather(trainable_params[0], input_triples[0]),
+                            tf.gather(trainable_params[1], input_triples[1]),
+                            tf.gather(trainable_params[0], input_triples[2])
+                        ])
+                    else:
+                        inp_score = - kge_model.scoring_layer(input_triples)
 
                 grads = tape.gradient(inp_score, trainable_params)
-                optimizer.apply_gradients(zip(grads, trainable_params))
-
-                if group == 'sp':
-                    # Evaluate the updated subj and pred against all the possible object corruptions
-                    scores = - kge_model.scoring_layer(
-                        [updated_subj, updated_pred, kge_model.encoding_layer.ent_emb]
-                    )
+                if args.entire_neighborhood:
+                    # We mask gradients to only update the anchor entity and relation
+                    masked_grad_ents = mask_indexed_slices(grads[0], pair_idx[0])
+                    if not args.freeze_relations:
+                        masked_grad_rels = mask_indexed_slices(grads[1], pair_idx[1])
+                    optimizer.apply_gradients(zip([masked_grad_ents, masked_grad_rels], trainable_params))
                 else:
-                    # Evaluate the updated obj and pred against all the possible subject corruptions
-                    scores = - kge_model.scoring_layer(
-                        [kge_model.encoding_layer.ent_emb, updated_pred, updated_obj]
-                    )
+                    optimizer.apply_gradients(zip(grads, trainable_params))
+
+                updated_ent, updated_pred = get_updated_embeddings(
+                    trainable_params, pair, pair_idx, kge_model,
+                    neighborhood=args.entire_neighborhood
+                )
+                # Evaluate the updated subj and pred against all the possible object corruptions
+                scores = - kge_model.scoring_layer(
+                    [updated_ent, updated_pred, all_corruption_entities] if group == 'sp' \
+                    else [all_corruption_entities, updated_pred, updated_ent]
+                )
 
                 filtered_new_ranks = compute_filtered_ranking(
                     scores, idx_to_raw_ents, test_targets, all_ents_to_filter
@@ -127,26 +154,29 @@ def group_by_pair(train, valid, test, group='sp'):
 
     return train.groupby(group_by), valid.groupby(group_by), test.groupby(group_by)
 
-def extract_kge_embeddings(kge_model, pair, train_targets, valid_targets, group='sp'):
+def extract_kge_embeddings(kge_model, pair, observed_targets, group='sp', neighborhood=None):
     """
     Extract the subject, predicate and object embeddings from the pretrained KGE. Importantly,
     depending on whether we group by 'sp' or 'po' we are going to retrieve target embeddings
     for the subject or the object.
     """
-    if group == 'sp':
-        subjects = kge_model.get_embeddings([pair[0]], embedding_type="e")
-        objects = kge_model.get_embeddings(
-            np.concatenate([train_targets, valid_targets]),
-            embedding_type="e"
-        )
-    else:
-        subjects = kge_model.get_embeddings(
-            np.concatenate([train_targets, valid_targets]),
-            embedding_type="e"
-        )
-        objects = kge_model.get_embeddings([pair[0]], embedding_type="e")
+    if not neighborhood:
+        if group == 'sp':
+            subjects = kge_model.get_embeddings([pair[0]], embedding_type="e")
+            objects = kge_model.get_embeddings(
+                observed_targets, embedding_type="e"
+            )
+        else:
+            subjects = kge_model.get_embeddings(
+                observed_targets, embedding_type="e"
+            )
+            objects = kge_model.get_embeddings([pair[0]], embedding_type="e")
 
-    predicates = kge_model.get_embeddings([pair[1]], embedding_type="r")
+        predicates = kge_model.get_embeddings([pair[1]], embedding_type="r")
+    else:
+        subjects = kge_model.get_embeddings(observed_targets[:, 0], embedding_type="e")
+        predicates = kge_model.get_embeddings(observed_targets[:, 1], embedding_type="r")
+        objects = kge_model.get_embeddings(observed_targets[:, 2], embedding_type="e")
 
     return tf.constant(subjects), tf.constant(predicates), tf.constant(objects)
 
@@ -170,15 +200,105 @@ def compute_filtered_ranking(scores, df_idx_to_raw_ents, test_targets, all_ents_
 
     return np.array(filtered_ranks)
 
-def get_loreal_gene_indices(train, idx_to_raw):
+def set_trainable_variables(model, pair, targets, group='sp', freeze_rels=None, neighborhood=None):
+    """
+    Extract the input triples and the trainable parameters after setting the state
+    of the correct variables to trainable.
+    """
+    if neighborhood is None:
+        subjects, predicates, objects = extract_kge_embeddings(model, pair, targets, group)
+        updated_pred = tf.Variable(predicates) if freeze_rels else predicates
+        if group == 'sp':
+            updated_subj = tf.Variable(subjects)
+            input_triples = [updated_subj, updated_pred, objects]
+            trainable_params = [updated_subj, updated_pred] if not freeze_rels else [updated_subj]
+        else:
+            updated_obj = tf.Variable(objects)
+            input_triples = [subjects, updated_pred, updated_obj]
+            trainable_params = [updated_pred, updated_obj] if not freeze_rels else [updated_obj]
+        pair_idx = None
+    else:
+        unique_ents, unique_rels = np.unique(targets[:, [0, 2]]).tolist(), np.unique(targets[:, 1]).tolist()
+        embeddings_ents = tf.Variable(model.get_embeddings(unique_ents, embedding_type="e"))
+        embeddings_rels = tf.Variable(model.get_embeddings(unique_rels, embedding_type="r"))
+
+        # subj_pos = tf.constant([unique_ents.index(subj) for subj in targets[:, 0]], dtype=tf.int32)
+        # rel_pos = tf.constant([unique_rels.index(obj) for obj in targets[:, 1]], dtype=tf.int32)
+        # obj_pos = tf.constant([unique_ents.index(obj) for obj in targets[:, 2]], dtype=tf.int32)
+
+        ent_table = tf.lookup.StaticHashTable(
+            initializer=tf.lookup.KeyValueTensorInitializer(
+                keys=tf.constant(unique_ents),
+                values=tf.constant(list(range(len(unique_ents))), dtype=tf.int32)
+            ), default_value=-1
+        )
+
+        rel_table = tf.lookup.StaticHashTable(
+            initializer=tf.lookup.KeyValueTensorInitializer(
+                keys=tf.constant(unique_rels),
+                values=tf.constant(list(range(len(unique_rels))), dtype=tf.int32)
+            ), default_value=-1
+        )
+
+        input_triples = [
+            ent_table.lookup(tf.constant(targets[:, 0])),
+            rel_table.lookup(tf.constant(targets[:, 1])),
+            ent_table.lookup(tf.constant(targets[:, 2]))
+        ]
+        trainable_params = [embeddings_ents, embeddings_rels]
+        pair_idx = (ent_table.lookup(tf.constant(pair[0])), rel_table.lookup(tf.constant(pair[1])))
+
+    return input_triples, trainable_params, pair_idx
+
+
+def mask_indexed_slices(grad: tf.IndexedSlices, allowed_indices: tf.Tensor):
+    """
+    Filters an IndexedSlices gradient to only retain rows whose indices appear in allowed_indices.
+    """
+    # Create a boolean mask for which indices to keep
+    mask = tf.reduce_any(tf.equal(tf.expand_dims(grad.indices, 1), tf.expand_dims(allowed_indices, 0)), axis=1)
+
+    # Apply the mask
+    filtered_indices = tf.boolean_mask(grad.indices, mask)
+    filtered_values = tf.boolean_mask(grad.values, mask)
+
+    # Reconstruct the IndexedSlices
+    return tf.IndexedSlices(filtered_values, filtered_indices, grad.dense_shape)
+
+def get_updated_embeddings(
+        trainable_params, pair, pair_idx, model, neighborhood=None
+):
+    """
+    Extract, from all the trainable variables, just those for the anchor embeddings that we
+    want to update. Typically, when group=='sp', the anchor embeddings are that of the subject
+    and that of the relation.
+    """
+    freeze_rels = len(trainable_params) == 2
+    if neighborhood is not None:
+        updated_ent = tf.expand_dims(trainable_params[0][pair_idx[0]], axis=0)
+        updated_pred = tf.expand_dims(trainable_params[1][pair_idx[1]], axis=0) \
+            if pair_idx[1] != -1 and not freeze_rels else model.get_embeddings([pair[1]], embedding_type="r")
+    else:
+        updated_ent = trainable_params[0]
+        updated_pred = trainable_params[1] if not freeze_rels \
+            else model.get_embeddings([pair[1]], embedding_type="r")
+
+    return updated_ent, updated_pred
+
+def get_gene_indices(train, idx_to_raw, dataset="loreal"):
     """
     Extract the embeddings of all the genes in the dataset, so
     to extract the subset of entities we want to use to corrupt
     the subject of our triples in the test set.
     """
-    gene_raw = pd.DataFrame(
-        {"raw": train.loc[train.p == '<urn:loreal:isExpressedBy>', "o"].unique()}
-    )
+    if dataset == "loreal":
+        gene_raw = pd.DataFrame(
+            {"raw": train.loc[train.p == '<urn:loreal:isExpressedBy>', "o"].unique()}
+        )
+    elif dataset == "1910":
+        gene_raw = pd.DataFrame(
+            {"raw": train.loc[train.p == '<urn:1910:encodes>', "s"].unique()}
+        )
 
     gene_indices = gene_raw.merge(idx_to_raw.reset_index(), how="left", on="raw")[["index"]]
     return gene_indices.values.reshape(-1)
@@ -202,6 +322,8 @@ if __name__ == "__main__":
 
     parser.add_argument('--freeze-relations', action='store_true', default=None,
                         help="Whether to fine-tune the relations as well as the entities or just the entities")
+    parser.add_argument('--entire-neighborhood', action='store_true', default=None,
+                        help="Whether to use the entire neighborhood to perform the latent search.")
 
     args = parser.parse_args()
 
@@ -212,15 +334,21 @@ if __name__ == "__main__":
     elif args.dataset == "wn18rr":
         X = load_wn18rr()
     elif args.dataset == "loreal":
-        # path_to_experiment = "/data/alberto/loreal/output/2.0.0+dev18.82c30fb/background_ontology_sampling_uniform/experiment_1"
-        path_to_experiment = "/Users/alberto.bernardi/Documents/Projects/Data L'Oreal/2.0.0+dev18.82c30fb/best_experiment_background/experiment_1"
+        path_to_experiment = "/data/alberto/loreal/output/2.0.0+dev18.82c30fb/background_ontology_sampling_uniform/experiment_1"
+        # path_to_experiment = "/Users/alberto.bernardi/Documents/Projects/Data L'Oreal/2.0.0+dev18.82c30fb/best_experiment_background/experiment_1"
         X = {
             "train": pd.read_csv(os.path.join(path_to_experiment, "eval_data", "train.csv"), index_col=0).values,
             "valid": pd.DataFrame({'s': [], 'p': [], 'o': []}).values,
             "test": pd.read_csv(os.path.join(path_to_experiment, "eval_data", "test.csv"), index_col=0).values
         }
-
-        kge_model = restore_model(os.path.join(path_to_experiment, "model"))
+    elif args.dataset == "1910":
+        path_to_experiment = "/data/alberto/1910/output/1.1.2+dev0.2d4ece8/background_alz/experiment_14"
+        path_to_experiment = "/Users/alberto.bernardi/Documents/Projects/1910/ml-output/1.1.2+dev0.2d4ece8/background_alz_14"
+        X = {
+            "train": pd.read_csv(os.path.join(path_to_experiment, "eval_data", "train.csv"), index_col=0).values,
+            "valid": pd.DataFrame({'s': [], 'p': [], 'o': []}).values,
+            "test": pd.read_csv(os.path.join(path_to_experiment, "eval_data", "test.csv"), index_col=0).values
+        }
 
     train, valid, test = X["train"], X["valid"], X["test"]
 
@@ -228,9 +356,10 @@ if __name__ == "__main__":
     valid_df = pd.DataFrame(valid, columns=['s', 'p', 'o'])
     test_df = pd.DataFrame(test, columns=['s', 'p', 'o'])
 
-    if args.dataset != "loreal":
+    if args.dataset not in ["loreal", "1910"]:
         kge_model = load_pretrained_model(dataset=args.dataset, scoring_type=args.scoring_type)
-
+    else:
+        kge_model = restore_model(os.path.join(path_to_experiment, "model"))
 
     ent_dict = kge_model.data_indexer.backend.entities_dict
     rel_dict = kge_model.data_indexer.backend.relations_dict
@@ -241,7 +370,7 @@ if __name__ == "__main__":
 
     print(f"Saving output at {output_path}")
 
-    if args.dataset != "loreal":
+    if args.dataset not in ["loreal", "1910"]:
         ranks_sp = kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='sp', args=args)
         with open(os.path.join(output_path, "ranks_sp.pkl"), "wb") as f:
             pickle.dump(ranks_sp, f)
