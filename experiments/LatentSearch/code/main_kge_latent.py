@@ -1,6 +1,7 @@
 import os
 import argparse
 import pickle
+import json
 from tqdm import tqdm
 
 import numpy as np
@@ -50,16 +51,21 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
 
         if not args.entire_neighborhood:
             observed_targets = np.concatenate([train_targets, valid_targets])
-            update_mask = None
+            if args.subset_targets in ["closest", "furthest"]:
+                observed_targets = extract_subset_target_distance(
+                    observed_targets, kge_model, pair, group=group,
+                    criterion=args.subset_targets, quantile=args.subset_quantile
+                )
+            if args.subset_targets in ["high", "low"]:
+                observed_targets = extract_subset_target_degrees(
+                    observed_targets, degrees=pd.concat([train_df.s, train_df.o]).value_counts(),
+                    criterion=args.subset_targets, quantile=args.subset_quantile
+                )
         else:
             # We select as relevant triples all those including the entity of the pair
             observed_targets = pd.concat([
                 train_df[train_df.s == pair[0]], train_df[train_df.o == pair[0]]
             ]).values
-            # We create a mask to know where the anchor entity and relation to be trained appears
-            s_mask, p_mask, o_mask = \
-                observed_targets[:, 0] == pair[0], observed_targets[:, 1] == pair[1], observed_targets[:, 2] == pair[0]
-            update_mask = np.vstack([s_mask, p_mask, o_mask]).transpose()
 
         test_targets = test_grouped.get_group(pair)["o" if group == 'sp' else 's'].values
 
@@ -128,6 +134,7 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
 
                 updated_ent, updated_pred = get_updated_embeddings(
                     trainable_params, pair, pair_idx, kge_model,
+                    freeze_rels=args.freeze_relations,
                     neighborhood=args.entire_neighborhood
                 )
                 # Evaluate the updated subj and pred against all the possible object corruptions
@@ -207,7 +214,7 @@ def set_trainable_variables(model, pair, targets, group='sp', freeze_rels=None, 
     """
     if neighborhood is None:
         subjects, predicates, objects = extract_kge_embeddings(model, pair, targets, group)
-        updated_pred = tf.Variable(predicates) if freeze_rels else predicates
+        updated_pred = tf.Variable(predicates) if not freeze_rels else predicates
         if group == 'sp':
             updated_subj = tf.Variable(subjects)
             input_triples = [updated_subj, updated_pred, objects]
@@ -245,7 +252,7 @@ def set_trainable_variables(model, pair, targets, group='sp', freeze_rels=None, 
             rel_table.lookup(tf.constant(targets[:, 1])),
             ent_table.lookup(tf.constant(targets[:, 2]))
         ]
-        trainable_params = [embeddings_ents, embeddings_rels]
+        trainable_params = [embeddings_ents, embeddings_rels] # we keep rels even if we freeze them. We take care of that later.
         pair_idx = (ent_table.lookup(tf.constant(pair[0])), rel_table.lookup(tf.constant(pair[1])))
 
     return input_triples, trainable_params, pair_idx
@@ -266,14 +273,13 @@ def mask_indexed_slices(grad: tf.IndexedSlices, allowed_indices: tf.Tensor):
     return tf.IndexedSlices(filtered_values, filtered_indices, grad.dense_shape)
 
 def get_updated_embeddings(
-        trainable_params, pair, pair_idx, model, neighborhood=None
+        trainable_params, pair, pair_idx, model, neighborhood=None, freeze_rels=None
 ):
     """
     Extract, from all the trainable variables, just those for the anchor embeddings that we
     want to update. Typically, when group=='sp', the anchor embeddings are that of the subject
     and that of the relation.
     """
-    freeze_rels = len(trainable_params) == 2
     if neighborhood is not None:
         updated_ent = tf.expand_dims(trainable_params[0][pair_idx[0]], axis=0)
         updated_pred = tf.expand_dims(trainable_params[1][pair_idx[1]], axis=0) \
@@ -303,6 +309,55 @@ def get_gene_indices(train, idx_to_raw, dataset="loreal"):
     gene_indices = gene_raw.merge(idx_to_raw.reset_index(), how="left", on="raw")[["index"]]
     return gene_indices.values.reshape(-1)
 
+def extract_subset_target_distance(targets, kge_model, pair, group='sp', criterion='closest', quantile=0.5):
+    """
+    Function to extract, from the observed targets, a subset of them according
+    to a certain criterion distance-based.
+
+    - `criterion == 'closest'`: consider only the targets with the best representation
+    - `criterion == 'furthest'`: consider only the targets with the worst representation
+    """
+    if len(targets) == 0:
+        return targets
+
+    length_subset = int(np.ceil(len(targets) * quantile))
+
+    target_embeddings = kge_model.get_embeddings(targets, embedding_type="e")
+    anchor_embedding = kge_model.get_embeddings([pair[0]], embedding_type="e")
+    rel_embedding = kge_model.get_embeddings([pair[1]], embedding_type="r")
+
+    if group == 'sp':
+        scores = kge_model.scoring_layer([anchor_embedding, rel_embedding, target_embeddings])
+    else:
+        scores = kge_model.scoring_layer([target_embeddings, rel_embedding, anchor_embedding])
+
+    if criterion == "closest":
+        sorted_idx = np.argsort(scores)[:length_subset]
+    if criterion == "furthest":
+        sorted_idx = np.argsort(scores)[-length_subset:]
+
+    return targets[sorted_idx]
+
+def extract_subset_target_degrees(targets, degrees, criterion='low', quantile=0.5):
+    """
+    Function to extract, from the observed targets, a subset of them according
+    to a certain criterion degree-based.
+
+    - `criterion == 'max-degree'`: consider only the targets with the highest degree
+    - `criterion == 'min-degree'`: consider only the targets with the lowest degree
+    """
+    if len(targets) == 0:
+        return targets
+
+    length_subset = int(np.ceil(len(targets) * quantile))
+
+    sorted_idx = degrees.loc[targets].argsort()
+    if criterion == "low":
+        return targets[sorted_idx[:length_subset]]
+    if criterion == "high":
+        return targets[sorted_idx[-length_subset:]]
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -324,8 +379,17 @@ if __name__ == "__main__":
                         help="Whether to fine-tune the relations as well as the entities or just the entities")
     parser.add_argument('--entire-neighborhood', action='store_true', default=None,
                         help="Whether to use the entire neighborhood to perform the latent search.")
+    parser.add_argument('--subset-targets', type=str, default=None,
+                        help="Criterion to extract a subset of the target entities for the latent search. "
+                             "To be specified in conjunction with '--subset-quantile'.")
+    parser.add_argument('--subset-quantile', type=float, default=None,
+                        help="Quantile to consider in order to extract the subset of target entities.")
 
     args = parser.parse_args()
+
+    if args.subset_targets is not None:
+        assert args.subset_quantile is not None,\
+            "You need to specify `--subset-quantile` if you want to extract a subset of targets."
 
     tf.keras.utils.set_random_seed(seed=args.seed)
 
@@ -333,17 +397,14 @@ if __name__ == "__main__":
         X = load_fb15k_237()
     elif args.dataset == "wn18rr":
         X = load_wn18rr()
-    elif args.dataset == "loreal":
-        path_to_experiment = "/data/alberto/loreal/output/2.0.0+dev18.82c30fb/background_ontology_sampling_uniform/experiment_1"
-        # path_to_experiment = "/Users/alberto.bernardi/Documents/Projects/Data L'Oreal/2.0.0+dev18.82c30fb/best_experiment_background/experiment_1"
-        X = {
-            "train": pd.read_csv(os.path.join(path_to_experiment, "eval_data", "train.csv"), index_col=0).values,
-            "valid": pd.DataFrame({'s': [], 'p': [], 'o': []}).values,
-            "test": pd.read_csv(os.path.join(path_to_experiment, "eval_data", "test.csv"), index_col=0).values
-        }
-    elif args.dataset == "1910":
-        path_to_experiment = "/data/alberto/1910/output/1.1.2+dev0.2d4ece8/background_alz/experiment_14"
-        path_to_experiment = "/Users/alberto.bernardi/Documents/Projects/1910/ml-output/1.1.2+dev0.2d4ece8/background_alz_14"
+    elif args.dataset in ["loreal", "1910"]:
+        if args.dataset == "loreal":
+            path_to_experiment = "/data/alberto/loreal/output/2.0.0+dev18.82c30fb/background_ontology_sampling_uniform/experiment_1"
+            # path_to_experiment = "/Users/alberto.bernardi/Documents/Projects/Data L'Oreal/2.0.0+dev18.82c30fb/best_experiment_background/experiment_1"
+        elif args.dataset == "1910":
+            path_to_experiment = "/data/alberto/1910/output/1.1.2+dev0.2d4ece8/background_alz/experiment_14"
+            # path_to_experiment = "/Users/alberto.bernardi/Documents/Projects/1910/ml-output/1.1.2+dev0.2d4ece8/background_alz_14"
+
         X = {
             "train": pd.read_csv(os.path.join(path_to_experiment, "eval_data", "train.csv"), index_col=0).values,
             "valid": pd.DataFrame({'s': [], 'p': [], 'o': []}).values,
@@ -364,11 +425,17 @@ if __name__ == "__main__":
     ent_dict = kge_model.data_indexer.backend.entities_dict
     rel_dict = kge_model.data_indexer.backend.relations_dict
 
-    output_path = os.path.join(args.output_folder, args.dataset, f"{args.scoring_type}_lr{args.learning_rate}")
+    output_path = os.path.join(
+        args.output_folder, args.dataset,
+        f"{args.scoring_type}_lr{args.learning_rate}_quantile{args.subset_quantile}"
+    )
     if not os.path.exists(output_path):
         os.makedirs(output_path, exist_ok=True)
-
     print(f"Saving output at {output_path}")
+
+    with open(os.path.join(output_path, "config.json"), "w") as f:
+        json.dump(vars(args), f)
+
 
     if args.dataset not in ["loreal", "1910"]:
         ranks_sp = kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='sp', args=args)
