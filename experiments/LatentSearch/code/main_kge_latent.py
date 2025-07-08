@@ -49,6 +49,8 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
         except KeyError:
             valid_targets = []
 
+        test_targets = test_grouped.get_group(pair)["o" if group == 'sp' else 's'].values
+
         if not args.entire_neighborhood:
             observed_targets = np.concatenate([train_targets, valid_targets])
             if args.subset_targets in ["closest", "furthest"]:
@@ -56,18 +58,17 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
                     observed_targets, kge_model, pair, group=group,
                     criterion=args.subset_targets, quantile=args.subset_quantile
                 )
-            if args.subset_targets in ["high", "low"]:
+            if args.subset_targets in ["high", "low", "mixed", 'mixed-leakage']:
                 observed_targets = extract_subset_target_degrees(
                     observed_targets, degrees=pd.concat([train_df.s, train_df.o]).value_counts(),
-                    criterion=args.subset_targets, quantile=args.subset_quantile
+                    criterion=args.subset_targets, quantile=args.subset_quantile,
+                    test_targets=test_targets, version=args.version
                 )
         else:
             # We select as relevant triples all those including the entity of the pair
             observed_targets = pd.concat([
                 train_df[train_df.s == pair[0]], train_df[train_df.o == pair[0]]
             ]).values
-
-        test_targets = test_grouped.get_group(pair)["o" if group == 'sp' else 's'].values
 
         all_ents_to_filter = set(train_targets).union(valid_targets).union(test_targets)
 
@@ -110,6 +111,11 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
                 group=group, freeze_rels=args.freeze_relations,
                 neighborhood=args.entire_neighborhood
             )
+            if args.weigh_scores:
+                degrees = pd.concat([train_df.s, train_df.o]).value_counts()
+                weights = compute_score_weights(
+                    observed_targets, degrees, args.loss_quantile, args.version, pair=pair
+                )
 
             for i in range(0, args.epochs):
                 with tf.GradientTape() as tape:
@@ -121,6 +127,14 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
                         ])
                     else:
                         inp_score = - kge_model.scoring_layer(input_triples)
+                    if args.weigh_scores:
+                        inp_score = weights * inp_score
+                    if args.regularization:
+                        reg_term = compute_regularization_term(
+                            input_triples, neighborhood=args.entire_neighborhood
+                        )
+                        inp_score += args.regularization * reg_term
+
 
                 grads = tape.gradient(inp_score, trainable_params)
                 if args.entire_neighborhood:
@@ -222,7 +236,7 @@ def set_trainable_variables(model, pair, targets, group='sp', freeze_rels=None, 
         else:
             updated_obj = tf.Variable(objects)
             input_triples = [subjects, updated_pred, updated_obj]
-            trainable_params = [updated_pred, updated_obj] if not freeze_rels else [updated_obj]
+            trainable_params = [updated_obj, updated_pred] if not freeze_rels else [updated_obj]
         pair_idx = None
     else:
         unique_ents, unique_rels = np.unique(targets[:, [0, 2]]).tolist(), np.unique(targets[:, 1]).tolist()
@@ -338,14 +352,26 @@ def extract_subset_target_distance(targets, kge_model, pair, group='sp', criteri
 
     return targets[sorted_idx]
 
-def extract_subset_target_degrees(targets, degrees, criterion='low', quantile=0.5):
+def compute_regularization_term(triples, neighborhood):
+    """
+    Function to compute the regularization term given the embeddings of the input triples.
+    """
+    if not neighborhood:
+        subj_reg = tf.reduce_sum(tf.pow(tf.abs(triples[0]), 3), axis=-1)
+        pred_reg = tf.reduce_sum(tf.pow(tf.abs(triples[1]), 3), axis=-1)
+        obj_reg = tf.reduce_sum(tf.pow(tf.abs(triples[2]), 3), axis=-1)
+
+    return subj_reg + pred_reg + obj_reg
+
+def extract_subset_target_degrees(targets, degrees, criterion='low', quantile=0.5, test_targets=None, version=None):
     """
     Function to extract, from the observed targets, a subset of them according
     to a certain criterion degree-based.
 
-    - `criterion == 'max-degree'`: consider only the targets with the highest degree
-    - `criterion == 'min-degree'`: consider only the targets with the lowest degree
+    - `criterion == 'max'`: consider only the targets with the highest degree
+    - `criterion == 'min'`: consider only the targets with the lowest degree
     """
+    assert criterion in ['low', 'high', 'mixed', 'mixed-leakage'], "Criterion is not one of the possible ones!"
     if len(targets) == 0:
         return targets
 
@@ -356,6 +382,51 @@ def extract_subset_target_degrees(targets, degrees, criterion='low', quantile=0.
         return targets[sorted_idx[:length_subset]]
     if criterion == "high":
         return targets[sorted_idx[-length_subset:]]
+    if criterion == "mixed":
+        estimated_target_degree = np.quantile(degrees[targets], 0.75)
+        if estimated_target_degree > np.quantile(degrees, 0.75 if version == "v0.1.7" else 0.5):
+            return targets[sorted_idx[-length_subset:]]
+        else:
+            return targets[sorted_idx[:length_subset]]
+    if criterion == 'mixed-leakage':
+        if np.quantile(degrees[test_targets], 0.75) > np.quantile(degrees, 0.5):
+            return targets[sorted_idx[-length_subset:]]
+        else:
+            return targets[sorted_idx[:length_subset]]
+
+def compute_score_weights(targets, degrees, quantile=0.5, version="0.3.1", pair=None):
+    """
+    Function to compute the weights to use for weighing the contribution of
+    each triple in the scoring function of the latent search.
+
+    We would like to assign a higher score (i.e., more penalty paid) when we
+    expect the target node to have a degree more different from the observed
+    target degree. Indeed, if we want to predict a low degree node, than we'll
+    try to weigh more in the loss the contribution of triples involving low degree
+    targets rather than high degree ones. Viceversa when the target node has high
+    degree.
+    """
+    target_degrees = degrees[targets].values
+    if version not in ['0.3.3']:
+        expected_degree = np.quantile(target_degrees, quantile)
+
+    if version == '0.3.0':
+        log_expected = np.log(expected_degree)
+        log_targets = np.log(target_degrees)
+        weights = 1 - (
+                np.abs(log_expected - log_targets) / (np.maximum(log_targets, log_expected) + 0.0001)
+        )
+    elif version == '0.3.1':
+        weights = 1 / (1 + (np.log10(np.abs(expected_degree - target_degrees + 0.0001))))
+
+    elif version == '0.3.2':
+        weights = 1 / (1 + (np.log10(np.abs(expected_degree - target_degrees + 0.0001))) ** 2)
+
+    elif version == '0.3.3':
+        anchor_degree = degrees[pair[0]].item()
+        weights = 1 + np.tanh(np.log10(anchor_degree) - np.log10(target_degrees))
+
+    return weights
 
 
 if __name__ == "__main__":
@@ -374,6 +445,8 @@ if __name__ == "__main__":
     parser.add_argument('--learning-rate', '-lr', default=1e-3, type=float,
                         help="Learning rate of the optimizer of the latent search.")
     parser.add_argument('--epochs', default=10, type=int, help="Number of epochs for the latent search.")
+    parser.add_argument('--regularization', default=None, type=float,
+                        help="L3 Regularization coefficient to apply. Defaults to `None` (no regularization).")
 
     parser.add_argument('--freeze-relations', action='store_true', default=None,
                         help="Whether to fine-tune the relations as well as the entities or just the entities")
@@ -384,6 +457,16 @@ if __name__ == "__main__":
                              "To be specified in conjunction with '--subset-quantile'.")
     parser.add_argument('--subset-quantile', type=float, default=None,
                         help="Quantile to consider in order to extract the subset of target entities.")
+
+    parser.add_argument('--run-on-validation', '-valid', action='store_true',
+                        help="Whether to run run the experiment on the test set instead of the test.")
+
+    parser.add_argument('--weigh-scores', action='store_true', default=None,
+                        help="Whether to weigh the loss function components.")
+    parser.add_argument('--loss-quantile', type=float, default=None,
+                        help="Quantile to consider in order to compute the expected degree of the target node.")
+    parser.add_argument('--version', type=str, default=None)
+
 
     args = parser.parse_args()
 
@@ -427,21 +510,33 @@ if __name__ == "__main__":
 
     output_path = os.path.join(
         args.output_folder, args.dataset,
-        f"{args.scoring_type}_lr{args.learning_rate}_quantile{args.subset_quantile}"
+        f"{args.scoring_type}_lr{args.learning_rate}"
     )
+    if args.subset_quantile or args.loss_quantile:
+        output_path += f"_quantile{args.subset_quantile or args.loss_quantile}"
+    if args.seed != 0:
+        output_path += f"_seed{args.seed}"
+    if args.regularization is not None:
+        output_path += f"_reg{args.regularization}"
+
     if not os.path.exists(output_path):
         os.makedirs(output_path, exist_ok=True)
     print(f"Saving output at {output_path}")
 
-    with open(os.path.join(output_path, "config.json"), "w") as f:
-        json.dump(vars(args), f)
-
+    if not args.run_on_validation:
+        with open(os.path.join(output_path, "config.json"), "w") as f:
+            json.dump(vars(args), f)
+        sp_filename, po_filename = "ranks_sp.pkl", "ranks_po.pkl"
+    else:
+        test_df = valid_df
+        valid_df = pd.DataFrame([], columns=['s', 'p', 'o'])
+        sp_filename, po_filename = "valid_ranks_sp.pkl", "valid_ranks_po.pkl"
 
     if args.dataset not in ["loreal", "1910"]:
         ranks_sp = kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='sp', args=args)
-        with open(os.path.join(output_path, "ranks_sp.pkl"), "wb") as f:
+        with open(os.path.join(output_path, sp_filename), "wb") as f:
             pickle.dump(ranks_sp, f)
 
     ranks_po = kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='po', args=args)
-    with open(os.path.join(output_path, "ranks_po.pkl"), "wb") as f:
+    with open(os.path.join(output_path, po_filename), "wb") as f:
         pickle.dump(ranks_po, f)
