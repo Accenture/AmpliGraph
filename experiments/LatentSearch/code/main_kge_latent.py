@@ -12,8 +12,7 @@ from ampligraph.datasets import load_fb15k_237, load_wn18rr, load_yago3_10
 from ampligraph.pretrained_models import load_pretrained_model
 from ampligraph.utils import restore_model
 
-from experiments.TrackEmbeddings.analysis_utils import split_triples_by_degree_4way
-from .utils_KGE_latent_search import compute_metrics_across_epochs, ranks_to_triples
+from experiments.LatentSearch.code.utils_KGE_latent_search import compute_metrics_across_epochs, ranks_to_triples
 
 
 def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='sp', args=None, early_stop=None):
@@ -431,47 +430,6 @@ def compute_score_weights(targets, degrees, quantile=0.5, version="0.3.1", pair=
 
     return weights
 
-# def create_early_stopping_epochs_old(sp_ranks, po_ranks, valid, thresholds, degrees):
-#     """
-#     Function to create a dictionary that splits validation triples based on the degree
-#     of the subject and object and it associates, to each of these group the optimal
-#     number of epochs for which to carry out the latent search.
-#     This information is going to be leveraged at test time in order to early stop the
-#     latent search and get the best results.
-#     """
-#     from experiments.TrackEmbeddings.analysis_utils import split_triples_by_degree_4way
-#
-#     dict_splits = split_triples_by_degree_4way(valid, degrees, thresholds=thresholds)
-#     valid["triple_type"] = None
-#     for split, indices in dict_splits.items():
-#         valid.loc[indices, "triple_type"] = split
-#
-#     all_triples_sp = ranks_to_triples(sp_ranks, 'sp')
-#     all_triples_po = ranks_to_triples(po_ranks, 'po')
-#
-#     relevant_columns = ['pre'] + [el for el in all_triples_sp.columns if el.startswith("epoch")]
-#     all_triples_sp["best_epoch"] = all_triples_sp.loc[~all_triples_sp.epoch1.isna(), relevant_columns].idxmin(axis=1).apply(
-#         lambda x: int(x.replace('epoch', '').replace("pre", "0")))
-#     all_triples_po["best_epoch"] = all_triples_po.loc[~all_triples_po.epoch1.isna(), relevant_columns].idxmin(axis=1).apply(
-#         lambda x: int(x.replace('epoch', '').replace("pre", "0")))
-#
-#     all_triples_sp.drop(relevant_columns, axis=1, inplace=True)
-#     all_triples_po.drop(relevant_columns, axis=1, inplace=True)
-#
-#     all_triples_sp = all_triples_sp.merge(valid, on=['s', 'p', 'o'])
-#     all_triples_po = all_triples_po.merge(valid, on=['s', 'p', 'o'])
-#
-#     early_stopping_epochs = {'sp': dict(), 'po': dict()}
-#     for split in dict_splits:
-#         sp_mask = (~all_triples_sp.best_epoch.isna()) & (all_triples_sp.triple_type == split)
-#         po_mask = (~all_triples_po.best_epoch.isna()) & (all_triples_po.triple_type == split)
-#
-#         early_stopping_epochs['sp'][split] = int(all_triples_sp.loc[sp_mask, "best_epoch"].median())
-#         early_stopping_epochs['po'][split] = int(all_triples_po.loc[po_mask, "best_epoch"].median())
-#
-#     return early_stopping_epochs
-
-
 def create_early_stopping_epochs(sp_ranks, po_ranks, valid, thresholds, degrees, metric="Hits@10"):
     """
     Function to create a dictionary that splits validation triples based on the degree
@@ -562,13 +520,13 @@ if __name__ == "__main__":
 
     if args.dataset == "fb15k-237":
         X = load_fb15k_237()
-        thresholds = [10, 30, 100]
+        # thresholds = [10, 30, 100]
     elif args.dataset == "wn18rr":
         X = load_wn18rr()
-        thresholds = [5, 10, 20]
+        # thresholds = [5, 10, 20]
     elif args.dataset == "yago310":
         X = load_yago3_10()
-        thresholds = [5, 20, 50]
+        # thresholds = [5, 20, 50]
     elif args.dataset in ["loreal", "1910"]:
         if args.dataset == "loreal":
             path_to_experiment = "/data/alberto/loreal/output/2.0.0+dev18.82c30fb/background_ontology_sampling_uniform/experiment_1"
@@ -588,6 +546,8 @@ if __name__ == "__main__":
     train_df = pd.DataFrame(train, columns=['s', 'p', 'o'])
     valid_df = pd.DataFrame(valid, columns=['s', 'p', 'o'])
     test_df = pd.DataFrame(test, columns=['s', 'p', 'o'])
+
+    thresholds = np.quantile(pd.concat([train_df.s, train_df.o]).value_counts(), q=[0.25, 0.5, 0.75]).tolist()
 
     if args.dataset not in ["loreal", "1910"]:
         kge_model = load_pretrained_model(dataset=args.dataset, scoring_type=args.scoring_type)
