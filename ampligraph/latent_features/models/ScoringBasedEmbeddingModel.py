@@ -904,7 +904,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 self.encoding_layer.max_rel_size = self.max_rel_size
 
             # build the corruption layer in case different negative sampling strategies are needed
-            if self.ent_strategy:
+            if self.ent_strategy != "uniform":
                 assert degree_dict is not None, "You need to provide a dict of entity degree!"
                 degree_lst = [degree_dict[key] for key in self.data_indexer.backend.entities_dict.values()]
                 self.corruption_layer.set_properties(degree_lst)
