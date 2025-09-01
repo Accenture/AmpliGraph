@@ -2,6 +2,8 @@ import os
 import argparse
 import pickle
 import json
+
+from tensorflow_estimator.python.estimator import early_stopping
 from tqdm import tqdm
 
 import numpy as np
@@ -37,10 +39,17 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
         train_df, valid_df, test_df, group=group
     )
 
+    degrees = pd.concat([train_df.s, train_df.o]).value_counts()
+
     ranks = dict()
 
     for pair in tqdm(test_grouped.groups, total=len(test_grouped)):
         ranks[pair] = dict()
+
+        if early_stop:
+            early_stopping_scores = {} # in case we use early stopping
+            anchor_degree = degrees[pair[0]]
+            anchor_bins = early_stop.extract_anchor_bins(anchor_degree, group=group)
 
         try:
             train_targets = train_grouped.get_group(pair)["o" if group == 'sp' else 's'].values
@@ -153,16 +162,33 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
                     freeze_rels=args.freeze_relations,
                     neighborhood=args.entire_neighborhood
                 )
+
                 # Evaluate the updated subj and pred against all the possible object corruptions
                 scores = - kge_model.scoring_layer(
                     [updated_ent, updated_pred, all_corruption_entities] if group == 'sp' \
                     else [all_corruption_entities, updated_pred, updated_ent]
                 )
 
+                if early_stop:
+                    for split in anchor_bins:
+                        if i == early_stop.epochs[group][split]:
+                            early_stopping_scores[split] = scores
+
                 filtered_new_ranks = compute_filtered_ranking(
                     scores, idx_to_raw_ents, test_targets, all_ents_to_filter
                 )
                 ranks[pair]["new_ranks"][i] = filtered_new_ranks
+
+            if early_stop:
+                scores = tf.transpose(
+                    tf.stack(list(early_stopping_scores.values()))
+                )
+                early_stop_scores = tf.gather_nd(scores, early_stop.idx_to_bins)
+
+                early_stop_filtered_new_ranks = compute_filtered_ranking(
+                    early_stop_scores, idx_to_raw_ents, test_targets, all_ents_to_filter
+                )
+                ranks[pair]["early_stop_new_ranks"] = early_stop_filtered_new_ranks
 
     return ranks
 
@@ -467,6 +493,61 @@ def create_early_stopping_epochs(sp_ranks, po_ranks, valid, thresholds, degrees,
 
     return early_stopping_epochs
 
+class EarlyStopper():
+    """
+    Class to model our Early Stopper.
+    """
+    def __init__(
+            self, valid_ranks_sp, valid_ranks_po,
+            valid_df, thresholds, ent_mapper, degrees
+    ):
+        self.thresholds = sorted(thresholds)
+        self.epochs = create_early_stopping_epochs(
+            valid_ranks_sp, valid_ranks_po, valid_df, thresholds=thresholds,
+            degrees=degrees
+        )
+        self.idx_to_bins = self.map_nodes_to_bins(degrees, ent_mapper)
+
+    def map_nodes_to_bins(self, degrees, ent_mapper):
+        """
+        This function takes all the input entities and outputs the indices
+        that are going to be used to subset the vector of scores so that, given
+        the scores for 4 anchor bins, we map low degree targets to the score in the
+        first bin, mid1 to the second bin, mid2 to the third bin, and high to the fourth.
+        """
+        # We sort the degree by the idx of the ents
+        idx_sorted_deg = degrees[ent_mapper.values()]
+
+        thresholds = [-float('inf')] + self.thresholds + [float('inf')]
+
+        col = pd.cut(idx_sorted_deg, thresholds, labels=list([0, 1, 2, 3]), right=True).astype(int).values
+
+        return tf.transpose(tf.stack([tf.range(len(degrees)), col]))
+
+
+    def extract_anchor_bins(self, anchor_deg, group='sp'):
+        """
+        Given the anchor entity degree, it returns the bin to which the target
+        object/subject could belong to.
+        """
+        if group == 'sp':
+            possible_bins = {
+                0: ["low-low", "low-mid1", "low-mid2", "low-high"],
+                1: ["mid1-low", "mid1-mid1", "mid1-mid2", "mid1-high"],
+                2: ["mid2-low", "mid2-mid1", "mid2-mid2", "mid2-high"],
+                3: ["high-low", "high-mid1", "high-mid2", "high-high"],
+            }
+        elif group == 'po':
+            possible_bins = {
+                0: ["low-low", "mid1-low", "mid2-low", "high-low"],
+                1: ["low-mid1", "mid1-mid1", "mid2-mid1", "high-mid1"],
+                2: ["low-mid2", "mid1-mid2", "mid2-mid2", "high-mid2"],
+                3: ["low-high", "mid1-high", "mid2-high", "high-high"]
+            }
+        for j in range(len(self.thresholds)):
+            if anchor_deg <= self.thresholds[j]:
+                return possible_bins[j]
+            return possible_bins[j + 1]
 
 
 if __name__ == "__main__":
@@ -509,6 +590,8 @@ if __name__ == "__main__":
                         help="Quantile to consider in order to compute the expected degree of the target node.")
     parser.add_argument('--version', type=str, default=None)
 
+    parser.add_argument('--debug-valid', action='store_true', default=False)
+
 
     args = parser.parse_args()
 
@@ -520,13 +603,32 @@ if __name__ == "__main__":
 
     if args.dataset == "fb15k-237":
         X = load_fb15k_237()
-        # thresholds = [10, 30, 100]
+        thresholds = [10, 30, 100]
     elif args.dataset == "wn18rr":
         X = load_wn18rr()
         # thresholds = [5, 10, 20]
     elif args.dataset == "yago310":
         X = load_yago3_10()
         # thresholds = [5, 20, 50]
+    elif args.dataset == "biokg":
+        X = dict()
+        X["train"] = pd.read_csv(
+            "/home/alberto/ampligraph_datasets/biokg/train.csv",
+            sep="\t", header=None, names=['s', 'p', 'o']
+        ).values
+        X["valid"] = pd.read_csv(
+            "/home/alberto/ampligraph_datasets/biokg/valid_protein_disease_associations.csv"
+        ).values
+        X["test"] = pd.read_csv(
+            "/home/alberto/ampligraph_datasets/biokg/test_protein_disease_associations.csv"
+        ).values
+
+        if args.scoring_type == "ComplEx":
+            path_to_experiment = "/data/alberto/ampligraph_results/results_grid_search/biokg/ComplEx-2025-07-29-21-36-53"
+        elif args.scoring_type == "RotatE":
+            path_to_experiment = "/data/alberto/ampligraph_results/results_grid_search/biokg/RotatE-2025-08-01-15-57-17"
+
+        # thresholds =
     elif args.dataset in ["loreal", "1910"]:
         if args.dataset == "loreal":
             path_to_experiment = "/data/alberto/loreal/output/2.0.0+dev18.82c30fb/background_ontology_sampling_uniform/experiment_1"
@@ -547,9 +649,9 @@ if __name__ == "__main__":
     valid_df = pd.DataFrame(valid, columns=['s', 'p', 'o'])
     test_df = pd.DataFrame(test, columns=['s', 'p', 'o'])
 
-    thresholds = np.quantile(pd.concat([train_df.s, train_df.o]).value_counts(), q=[0.25, 0.5, 0.75]).tolist()
+    # thresholds = np.quantile(pd.concat([train_df.s, train_df.o]).value_counts(), q=[0.25, 0.5, 0.75]).tolist()
 
-    if args.dataset not in ["loreal", "1910"]:
+    if args.dataset not in ["loreal", "1910", "biokg"]:
         kge_model = load_pretrained_model(dataset=args.dataset, scoring_type=args.scoring_type)
     else:
         kge_model = restore_model(os.path.join(path_to_experiment, "model"))
@@ -575,7 +677,7 @@ if __name__ == "__main__":
     with open(os.path.join(output_path, "config.json"), "w") as f:
         json.dump(vars(args), f)
 
-    early_stopping_epochs = None
+    early_stopper = None
     if args.run_on_validation and args.dataset not in ["loreal", "1910"]:
         # We use an empty df as a placeholder for the missing validation set as we are using it as test here.
         valid_ranks_sp = kge_latent_search(
@@ -593,8 +695,22 @@ if __name__ == "__main__":
         with open(os.path.join(output_path, "valid_ranks_po.pkl"), "wb") as f:
             pickle.dump(valid_ranks_po, f)
 
-        early_stopping_epochs = create_early_stopping_epochs(
-            valid_ranks_sp, valid_ranks_po, valid_df, thresholds=thresholds,
+        early_stopper = EarlyStopper(
+            valid_ranks_sp, valid_ranks_po, valid_df,
+            thresholds=thresholds, ent_mapper=ent_dict,
+            degrees=pd.concat([train_df.s, train_df.o]).value_counts()
+        )
+
+    if args.debug_valid:
+        with open(os.path.join(output_path, "valid_ranks_po.pkl"), "rb") as f:
+            valid_ranks_po = pickle.load(f)
+
+        with open(os.path.join(output_path, "valid_ranks_sp.pkl"), "rb") as f:
+            valid_ranks_sp = pickle.load(f)
+
+        early_stopper = EarlyStopper(
+            valid_ranks_sp, valid_ranks_po, valid_df,
+            thresholds=thresholds, ent_mapper=ent_dict,
             degrees=pd.concat([train_df.s, train_df.o]).value_counts()
         )
 
@@ -602,14 +718,14 @@ if __name__ == "__main__":
         if args.dataset not in ["loreal", "1910"]:
             ranks_sp = kge_latent_search(
                 kge_model, train_df, valid_df, test_df, ent_dict, group='sp', args=args,
-                early_stop=early_stopping_epochs
+                early_stop=early_stopper
             )
             with open(os.path.join(output_path, "ranks_sp.pkl"), "wb") as f:
                 pickle.dump(ranks_sp, f)
 
         ranks_po = kge_latent_search(
             kge_model, train_df, valid_df, test_df, ent_dict, group='po', args=args,
-            early_stop=early_stopping_epochs
+            early_stop=early_stopper
         )
         with open(os.path.join(output_path, "ranks_po.pkl"), "wb") as f:
             pickle.dump(ranks_po, f)
