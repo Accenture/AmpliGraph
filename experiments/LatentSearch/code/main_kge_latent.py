@@ -13,7 +13,6 @@ import tensorflow as tf
 from ampligraph.datasets import load_fb15k_237, load_wn18rr, load_yago3_10
 from ampligraph.pretrained_models import load_pretrained_model
 from ampligraph.utils import restore_model
-import ampligraph.latent_features.loss_functions as ag_loss
 
 from experiments.LatentSearch.code.utils_KGE_latent_search import compute_metrics_across_epochs, ranks_to_triples
 
@@ -118,18 +117,11 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
         if len(observed_targets) > 0:
             optimizer = tf.keras.optimizers.Adam(learning_rate=args.learning_rate)
 
-            input_and_trainable = set_trainable_variables(
+            input_triples, trainable_params, pair_idx = set_trainable_variables(
                 kge_model, pair, observed_targets,
                 group=group, freeze_rels=args.freeze_relations,
-                neighborhood=args.entire_neighborhood,
-                negatives=args.negatives
+                neighborhood=args.entire_neighborhood
             )
-
-            input_triples, trainable_params, pair_idx = input_and_trainable[:3]
-            if args.negatives:
-                negative_triples = input_and_trainable[3]
-                latent_loss = ag_loss.get('multiclass_nll')
-
             if args.weigh_scores:
                 degrees = pd.concat([train_df.s, train_df.o]).value_counts()
                 weights = compute_score_weights(
@@ -154,13 +146,8 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
                         )
                         inp_score += args.regularization * reg_term
 
-                    if args.negatives:
-                        neg_score = - kge_model.scoring_layer(negative_triples)
-                        total_loss = latent_loss(inp_score, neg_score, eta=len(neg_score))
-                    else:
-                        total_loss = inp_score
 
-                grads = tape.gradient(total_loss, trainable_params)
+                grads = tape.gradient(inp_score, trainable_params)
                 if args.entire_neighborhood:
                     # We mask gradients to only update the anchor entity and relation
                     masked_grad_ents = mask_indexed_slices(grads[0], pair_idx[0])
@@ -242,20 +229,6 @@ def extract_kge_embeddings(kge_model, pair, observed_targets, group='sp', neighb
 
     return tf.constant(subjects), tf.constant(predicates), tf.constant(objects)
 
-def extract_negative_embeddings(kge_model, observed_targets):
-    """
-    Function that, given the raw identifiers of the entities, returns the
-    embeddings of all the other entities seen during training by the KGE
-    during training. Negatives are then used to latent search the embedding
-    space adding them to the loss function.
-    """
-    corruptions_idx = np.setdiff1d(
-        np.arange(kge_model.num_ents, dtype=np.int32),
-        kge_model.get_indexes(observed_targets, "e")
-    ).tolist()
-
-    return kge_model.get_embeddings(corruptions_idx, embedding_type="e", from_idx=True)
-
 def compute_filtered_ranking(scores, df_idx_to_raw_ents, test_targets, all_ents_to_filter):
     """
     Function that, given the scores for the triples, extracts the ranking filtering
@@ -276,7 +249,7 @@ def compute_filtered_ranking(scores, df_idx_to_raw_ents, test_targets, all_ents_
 
     return np.array(filtered_ranks)
 
-def set_trainable_variables(model, pair, targets, group='sp', freeze_rels=None, neighborhood=None, negatives=None):
+def set_trainable_variables(model, pair, targets, group='sp', freeze_rels=None, neighborhood=None):
     """
     Extract the input triples and the trainable parameters after setting the state
     of the correct variables to trainable.
@@ -284,19 +257,13 @@ def set_trainable_variables(model, pair, targets, group='sp', freeze_rels=None, 
     if neighborhood is None:
         subjects, predicates, objects = extract_kge_embeddings(model, pair, targets, group)
         updated_pred = tf.Variable(predicates) if not freeze_rels else predicates
-        if negatives:
-            corruptions = extract_negative_embeddings(model, targets)
         if group == 'sp':
             updated_subj = tf.Variable(subjects)
             input_triples = [updated_subj, updated_pred, objects]
-            if negatives:
-                negative_triples = [updated_subj, updated_pred, corruptions]
             trainable_params = [updated_subj, updated_pred] if not freeze_rels else [updated_subj]
         else:
             updated_obj = tf.Variable(objects)
             input_triples = [subjects, updated_pred, updated_obj]
-            if negatives:
-                negative_triples = [corruptions, updated_pred, updated_obj]
             trainable_params = [updated_obj, updated_pred] if not freeze_rels else [updated_obj]
         pair_idx = None
     else:
@@ -330,8 +297,6 @@ def set_trainable_variables(model, pair, targets, group='sp', freeze_rels=None, 
         trainable_params = [embeddings_ents, embeddings_rels] # we keep rels even if we freeze them. We take care of that later.
         pair_idx = (ent_table.lookup(tf.constant(pair[0])), rel_table.lookup(tf.constant(pair[1])))
 
-    if negatives:
-        return input_triples, trainable_params, pair_idx, negative_triples
     return input_triples, trainable_params, pair_idx
 
 
@@ -619,8 +584,6 @@ if __name__ == "__main__":
     parser.add_argument('--no-run-on-test', action='store_false', default=True, dest='run_on_test',
                         help='No execution on the test set.')
 
-    parser.add_argument('--negatives', action='store_true', default=None,
-                        help='Whether to include also negatives in the latent search.')
     parser.add_argument('--weigh-scores', action='store_true', default=None,
                         help="Whether to weigh the loss function components.")
     parser.add_argument('--loss-quantile', type=float, default=None,
