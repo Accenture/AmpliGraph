@@ -41,6 +41,21 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
 
     degrees = pd.concat([train_df.s, train_df.o]).value_counts()
 
+    if args.llm_integration:
+        if len(valid_df) > 0:
+            path_closest = args.llm_integration
+        else:
+            # If we are considering the validation set, we need to select the file
+            # that contains the neighbours for the pairs extracted from the validation set.
+            folder_neighbors = os.path.dirname(args.llm_integration)
+            file_neighbors = os.path.basename(args.llm_integration)
+            path_closest = os.path.join(
+                folder_neighbors, "validation_" + file_neighbors
+            )
+
+        with open(path_closest, "rb") as f:
+            closest_ents = pickle.load(f)[group]
+
     ranks = dict()
 
     for pair in tqdm(test_grouped.groups, total=len(test_grouped)):
@@ -115,13 +130,27 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
 
         #### Actual latent search
         if len(observed_targets) > 0:
+
+            # In case we are enabling early stopping, we need to set the scores of triples
+            # involving entities in splits where latent search is not used to the pretrained scores.
+            if early_stop:
+                for split in anchor_bins:
+                    if early_stop.epochs[group][split] == 0:
+                        early_stopping_scores[split] = pre_scores
+
             optimizer = tf.keras.optimizers.Adam(learning_rate=args.learning_rate)
 
-            input_triples, trainable_params, pair_idx = set_trainable_variables(
+            all_inputs = set_trainable_variables(
                 kge_model, pair, observed_targets,
                 group=group, freeze_rels=args.freeze_relations,
-                neighborhood=args.entire_neighborhood
+                neighborhood=args.entire_neighborhood,
+                additional_ents=closest_ents[pair],
+                train_additional_ents=args.tune_llm_ents
             )
+            input_triples, trainable_params, pair_idx = all_inputs[0], all_inputs[1], all_inputs[2]
+            if args.tune_llm_ents:
+                additional_triples = all_inputs[3]
+
             if args.weigh_scores:
                 degrees = pd.concat([train_df.s, train_df.o]).value_counts()
                 weights = compute_score_weights(
@@ -138,6 +167,10 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
                         ])
                     else:
                         inp_score = - kge_model.scoring_layer(input_triples)
+
+                    if args.tune_llm_ents:
+                        inp_score = tf.concat([inp_score, - kge_model.scoring_layer(additional_triples)], axis=0)
+
                     if args.weigh_scores:
                         inp_score = weights * inp_score
                     if args.regularization:
@@ -163,6 +196,21 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
                     neighborhood=args.entire_neighborhood
                 )
 
+
+                all_corruption_entities = tf.tensor_scatter_nd_update(
+                    all_corruption_entities,
+                    kge_model.get_indexes([pair[0]], 'e', 'raw2ind').reshape(-1, 1),
+                    updated_ent
+                )
+                if args.tune_llm_ents:
+                    # As we updated the embedding of some entities, we need to update them.
+                    idx_additional_ents = kge_model.get_indexes(closest_ents[pair], 'e', 'raw2ind')
+                    all_corruption_entities = tf.tensor_scatter_nd_update(
+                        all_corruption_entities,
+                        idx_additional_ents.reshape(-1, 1),
+                        trainable_params[1] if args.freeze_relations else trainable_params[2]
+                    )
+
                 # Evaluate the updated subj and pred against all the possible object corruptions
                 scores = - kge_model.scoring_layer(
                     [updated_ent, updated_pred, all_corruption_entities] if group == 'sp' \
@@ -171,7 +219,7 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
 
                 if early_stop:
                     for split in anchor_bins:
-                        if i == early_stop.epochs[group][split]:
+                        if (i + 1) == early_stop.epochs[group][split]:
                             early_stopping_scores[split] = scores
 
                 filtered_new_ranks = compute_filtered_ranking(
@@ -249,11 +297,16 @@ def compute_filtered_ranking(scores, df_idx_to_raw_ents, test_targets, all_ents_
 
     return np.array(filtered_ranks)
 
-def set_trainable_variables(model, pair, targets, group='sp', freeze_rels=None, neighborhood=None):
+def set_trainable_variables(
+        model, pair, targets, group='sp', freeze_rels=None, neighborhood=None,
+        additional_ents=None, train_additional_ents=None):
     """
     Extract the input triples and the trainable parameters after setting the state
     of the correct variables to trainable.
     """
+    if additional_ents is not None and not train_additional_ents:
+        targets = np.concatenate([targets, additional_ents])
+
     if neighborhood is None:
         subjects, predicates, objects = extract_kge_embeddings(model, pair, targets, group)
         updated_pred = tf.Variable(predicates) if not freeze_rels else predicates
@@ -265,6 +318,21 @@ def set_trainable_variables(model, pair, targets, group='sp', freeze_rels=None, 
             updated_obj = tf.Variable(objects)
             input_triples = [subjects, updated_pred, updated_obj]
             trainable_params = [updated_obj, updated_pred] if not freeze_rels else [updated_obj]
+
+        # v0.7 - If we want to train the additional entities added with the LLM integration
+        if train_additional_ents:
+            assert additional_ents is not None, "additional_ents must be provided if you want to optimize them!"
+            updated_additional_ents = tf.Variable(
+                model.get_embeddings(additional_ents, embedding_type="e")
+            )
+
+            additional_triples = [
+                updated_subj if group == 'sp' else updated_additional_ents,
+                updated_pred,
+                updated_obj if group == 'po' else updated_additional_ents
+            ]
+            trainable_params += [updated_additional_ents]
+
         pair_idx = None
     else:
         unique_ents, unique_rels = np.unique(targets[:, [0, 2]]).tolist(), np.unique(targets[:, 1]).tolist()
@@ -296,6 +364,9 @@ def set_trainable_variables(model, pair, targets, group='sp', freeze_rels=None, 
         ]
         trainable_params = [embeddings_ents, embeddings_rels] # we keep rels even if we freeze them. We take care of that later.
         pair_idx = (ent_table.lookup(tf.constant(pair[0])), rel_table.lookup(tf.constant(pair[1])))
+
+    if train_additional_ents:
+        return input_triples, trainable_params, pair_idx, additional_triples
 
     return input_triples, trainable_params, pair_idx
 
@@ -510,7 +581,7 @@ class EarlyStopper():
 
     def map_nodes_to_bins(self, degrees, ent_mapper):
         """
-        This function takes all the input entities and outputs the indices
+        This function takes all the KG entities and outputs the indices
         that are going to be used to subset the vector of scores so that, given
         the scores for 4 anchor bins, we map low degree targets to the score in the
         first bin, mid1 to the second bin, mid2 to the third bin, and high to the fourth.
@@ -547,7 +618,7 @@ class EarlyStopper():
         for j in range(len(self.thresholds)):
             if anchor_deg <= self.thresholds[j]:
                 return possible_bins[j]
-            return possible_bins[j + 1]
+        return possible_bins[j + 1]
 
 
 if __name__ == "__main__":
@@ -588,6 +659,11 @@ if __name__ == "__main__":
                         help="Whether to weigh the loss function components.")
     parser.add_argument('--loss-quantile', type=float, default=None,
                         help="Quantile to consider in order to compute the expected degree of the target node.")
+    parser.add_argument('--llm-integration', type=str, default=None,
+                        help="Path to the file with the closest entities for each pair as determined with an LLM."
+                             "This new feature will be identified as v0.6.")
+    parser.add_argument('--tune-llm-ents', action='store_true', default=None,
+                        help='Whether to optimize also the target entity we include with LLM integration - v0.7')
     parser.add_argument('--version', type=str, default=None)
 
     parser.add_argument('--debug-valid', action='store_true', default=False)
@@ -614,7 +690,6 @@ if __name__ == "__main__":
         X = dict()
         X["train"] = pd.read_csv(
             "/home/alberto/ampligraph_datasets/biokg/train.csv",
-            sep="\t", header=None, names=['s', 'p', 'o']
         ).values
         X["valid"] = pd.read_csv(
             "/home/alberto/ampligraph_datasets/biokg/valid_protein_disease_associations.csv"
@@ -649,7 +724,8 @@ if __name__ == "__main__":
     valid_df = pd.DataFrame(valid, columns=['s', 'p', 'o'])
     test_df = pd.DataFrame(test, columns=['s', 'p', 'o'])
 
-    # thresholds = np.quantile(pd.concat([train_df.s, train_df.o]).value_counts(), q=[0.25, 0.5, 0.75]).tolist()
+    if args.dataset != "fb15k-237":
+        thresholds = np.quantile(pd.concat([train_df.s, train_df.o]).value_counts(), q=[0.25, 0.5, 0.75]).tolist()
 
     if args.dataset not in ["loreal", "1910", "biokg"]:
         kge_model = load_pretrained_model(dataset=args.dataset, scoring_type=args.scoring_type)
@@ -701,18 +777,18 @@ if __name__ == "__main__":
             degrees=pd.concat([train_df.s, train_df.o]).value_counts()
         )
 
-    if args.debug_valid:
-        with open(os.path.join(output_path, "valid_ranks_po.pkl"), "rb") as f:
-            valid_ranks_po = pickle.load(f)
-
-        with open(os.path.join(output_path, "valid_ranks_sp.pkl"), "rb") as f:
-            valid_ranks_sp = pickle.load(f)
-
-        early_stopper = EarlyStopper(
-            valid_ranks_sp, valid_ranks_po, valid_df,
-            thresholds=thresholds, ent_mapper=ent_dict,
-            degrees=pd.concat([train_df.s, train_df.o]).value_counts()
-        )
+    # if args.debug_valid:
+    #     with open(os.path.join(output_path, "valid_ranks_po.pkl"), "rb") as f:
+    #         valid_ranks_po = pickle.load(f)
+    #
+    #     with open(os.path.join(output_path, "valid_ranks_sp.pkl"), "rb") as f:
+    #         valid_ranks_sp = pickle.load(f)
+    #
+    #     early_stopper = EarlyStopper(
+    #         valid_ranks_sp, valid_ranks_po, valid_df,
+    #         thresholds=thresholds, ent_mapper=ent_dict,
+    #         degrees=pd.concat([train_df.s, train_df.o]).value_counts()
+    #     )
 
     if args.run_on_test:
         if args.dataset not in ["loreal", "1910"]:
