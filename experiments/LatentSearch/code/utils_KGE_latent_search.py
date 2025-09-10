@@ -47,21 +47,32 @@ def ranks_to_triples(ranks, group='sp'):
 
     return pd.concat(all_triples, axis=0)
 
-def map_degree_to_bin(subj_degree, obj_degree, threshold=[10, 30, 100]):
+def map_degree_to_bin(subj_degree, obj_degree, thresholds=[10, 30, 100]):
     """
     Function that, given the degree of the subject and the object, returns the bin in which the triple should be placed.
     """
     def degree_to_bin(deg):
-        if deg <= threshold[0]:
+        if deg <= thresholds[0]:
             return "low"
-        elif deg <= threshold[1]:
+        elif deg <= thresholds[1]:
             return "mid1"
-        elif deg <= threshold[2]:
+        elif deg <= thresholds[2]:
             return "mid2"
         else:
             return "high"
 
     return f"{degree_to_bin(subj_degree)}-{degree_to_bin(obj_degree)}"
+
+def group_by_pair(train, valid, test, group='sp'):
+    """
+    Function to group train, valid, and test based on (subject, predicate) or (predicate, object).
+    """
+    if group == 'sp':
+        group_by = ['s', 'p']
+    else:
+        group_by = ['o', 'p']
+
+    return train.groupby(group_by), valid.groupby(group_by), test.groupby(group_by)
 
 def compute_metrics_across_epochs(
         all_triples_sp, all_triples_po, dict_splits=None,
@@ -79,7 +90,7 @@ def compute_metrics_across_epochs(
         the latent search could actually be performed (i.e., those triples
         for which we had examples in the training and validation set). In
         this way we can filter out those triples for which we have a lot of
-        zero difference ranks.
+        zero-difference ranks.
     """
     joined_ranks = all_triples_sp.merge(all_triples_po, how='inner', on=['s', 'p', 'o'])
 

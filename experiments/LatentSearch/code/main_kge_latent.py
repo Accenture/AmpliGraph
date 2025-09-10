@@ -14,7 +14,7 @@ from ampligraph.datasets import load_fb15k_237, load_wn18rr, load_yago3_10
 from ampligraph.pretrained_models import load_pretrained_model
 from ampligraph.utils import restore_model
 
-from experiments.LatentSearch.code.utils_KGE_latent_search import compute_metrics_across_epochs, ranks_to_triples
+from experiments.LatentSearch.code.utils_KGE_latent_search import *
 
 
 def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='sp', args=None, early_stop=None):
@@ -60,11 +60,6 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
 
     for pair in tqdm(test_grouped.groups, total=len(test_grouped)):
         ranks[pair] = dict()
-
-        if early_stop:
-            early_stopping_scores = {} # in case we use early stopping
-            anchor_degree = degrees[pair[0]]
-            anchor_bins = early_stop.extract_anchor_bins(anchor_degree, group=group)
 
         try:
             train_targets = train_grouped.get_group(pair)["o" if group == 'sp' else 's'].values
@@ -131,12 +126,22 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
         #### Actual latent search
         if len(observed_targets) > 0:
 
-            # In case we are enabling early stopping, we need to set the scores of triples
-            # involving entities in splits where latent search is not used to the pretrained scores.
             if early_stop:
-                for split in anchor_bins:
-                    if early_stop.epochs[group][split] == 0:
-                        early_stopping_scores[split] = pre_scores
+                anchor_degree = degrees[pair[0]]
+                estimated_target_degree = np.quantile(
+                    degrees[train_targets].tolist() + degrees[valid_targets].tolist(),
+                    0.2
+                )
+                estimated_type = map_degree_to_bin(
+                    anchor_degree if group == 'sp' else estimated_target_degree,
+                    anchor_degree if group == 'po' else estimated_target_degree,
+                    thresholds=early_stop.thresholds
+                )
+                early_stop_epoch = early_stop.epochs[estimated_type]
+                ranks[pair]["early_stop_epoch"] = early_stop_epoch
+
+                if early_stop_epoch == 0:
+                    ranks[pair]["early_stop_new_ranks"] = filtered_pre_ranks
 
             optimizer = tf.keras.optimizers.Adam(learning_rate=args.learning_rate)
 
@@ -217,39 +222,15 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, ent_dict, group='s
                     else [all_corruption_entities, updated_pred, updated_ent]
                 )
 
-                if early_stop:
-                    for split in anchor_bins:
-                        if (i + 1) == early_stop.epochs[group][split]:
-                            early_stopping_scores[split] = scores
-
                 filtered_new_ranks = compute_filtered_ranking(
                     scores, idx_to_raw_ents, test_targets, all_ents_to_filter
                 )
                 ranks[pair]["new_ranks"][i] = filtered_new_ranks
 
-            if early_stop:
-                scores = tf.transpose(
-                    tf.stack(list(early_stopping_scores.values()))
-                )
-                early_stop_scores = tf.gather_nd(scores, early_stop.idx_to_bins)
-
-                early_stop_filtered_new_ranks = compute_filtered_ranking(
-                    early_stop_scores, idx_to_raw_ents, test_targets, all_ents_to_filter
-                )
-                ranks[pair]["early_stop_new_ranks"] = early_stop_filtered_new_ranks
+            if early_stop and (i + 1) == early_stop_epoch:
+                ranks[pair]["early_stop_new_ranks"] = filtered_new_ranks
 
     return ranks
-
-def group_by_pair(train, valid, test, group='sp'):
-    """
-    Function to group train, valid, and test based on (subject, predicate) or (predicate, object).
-    """
-    if group == 'sp':
-        group_by = ['s', 'p']
-    else:
-        group_by = ['o', 'p']
-
-    return train.groupby(group_by), valid.groupby(group_by), test.groupby(group_by)
 
 def extract_kge_embeddings(kge_model, pair, observed_targets, group='sp', neighborhood=None):
     """
@@ -570,31 +551,13 @@ class EarlyStopper():
     """
     def __init__(
             self, valid_ranks_sp, valid_ranks_po,
-            valid_df, thresholds, ent_mapper, degrees
+            valid_df, thresholds, degrees
     ):
         self.thresholds = sorted(thresholds)
         self.epochs = create_early_stopping_epochs(
             valid_ranks_sp, valid_ranks_po, valid_df, thresholds=thresholds,
             degrees=degrees
         )
-        self.idx_to_bins = self.map_nodes_to_bins(degrees, ent_mapper)
-
-    def map_nodes_to_bins(self, degrees, ent_mapper):
-        """
-        This function takes all the KG entities and outputs the indices
-        that are going to be used to subset the vector of scores so that, given
-        the scores for 4 anchor bins, we map low degree targets to the score in the
-        first bin, mid1 to the second bin, mid2 to the third bin, and high to the fourth.
-        """
-        # We sort the degree by the idx of the ents
-        idx_sorted_deg = degrees[ent_mapper.values()]
-
-        thresholds = [-float('inf')] + self.thresholds + [float('inf')]
-
-        col = pd.cut(idx_sorted_deg, thresholds, labels=list([0, 1, 2, 3]), right=True).astype(int).values
-
-        return tf.transpose(tf.stack([tf.range(len(degrees)), col]))
-
 
     def extract_anchor_bins(self, anchor_deg, group='sp'):
         """
@@ -772,8 +735,7 @@ if __name__ == "__main__":
             pickle.dump(valid_ranks_po, f)
 
         early_stopper = EarlyStopper(
-            valid_ranks_sp, valid_ranks_po, valid_df,
-            thresholds=thresholds, ent_mapper=ent_dict,
+            valid_ranks_sp, valid_ranks_po, valid_df, thresholds=thresholds,
             degrees=pd.concat([train_df.s, train_df.o]).value_counts()
         )
 
@@ -785,8 +747,7 @@ if __name__ == "__main__":
     #         valid_ranks_sp = pickle.load(f)
     #
     #     early_stopper = EarlyStopper(
-    #         valid_ranks_sp, valid_ranks_po, valid_df,
-    #         thresholds=thresholds, ent_mapper=ent_dict,
+    #         valid_ranks_sp, valid_ranks_po, valid_df, thresholds=thresholds,
     #         degrees=pd.concat([train_df.s, train_df.o]).value_counts()
     #     )
 
