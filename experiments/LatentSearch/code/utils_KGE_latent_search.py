@@ -7,6 +7,36 @@ from matplotlib.backends.backend_pdf import PdfPages
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score
+from ampligraph.datasets import load_fb15k_237, load_wn18rr, load_yago3_10
+
+
+def load_dataset(dataset):
+    """
+    Function to load the datasets.
+    """
+    if dataset == "fb15k-237":
+        X = load_fb15k_237()
+    elif dataset == "wn18rr":
+        X = load_wn18rr()
+    elif dataset == "yago310":
+        X = load_yago3_10()
+    elif dataset == "biokg":
+        X = dict()
+        X["train"] = pd.read_csv(
+            "/home/alberto/ampligraph_datasets/biokg/train.csv",
+        ).values
+        X["valid"] = pd.read_csv(
+            "/home/alberto/ampligraph_datasets/biokg/valid_protein_disease_associations.csv"
+        ).values
+        X["test"] = pd.read_csv(
+            "/home/alberto/ampligraph_datasets/biokg/test_protein_disease_associations.csv"
+        ).values
+
+    train = pd.DataFrame(X["train"], columns=['s', 'p', 'o'])
+    valid = pd.DataFrame(X["valid"], columns=['s', 'p', 'o'])
+    test = pd.DataFrame(X["test"], columns=['s', 'p', 'o'])
+
+    return train, valid, test
 
 def ranks_to_triples(ranks, group='sp'):
     """
