@@ -45,7 +45,7 @@ class DistMult(AbstractScoringLayer):
             Tensor of scores of inputs.
         """
         # compute scores as sum(s * p * o)
-        scores = tf.reduce_sum(triples[0] * triples[1] * triples[2], 1)
+        scores = tf.reduce_sum(triples[0] * triples[1] * triples[2], -1)
         return scores
 
     def _get_subject_corruption_scores(self, triples, ent_matrix):
@@ -69,7 +69,7 @@ class DistMult(AbstractScoringLayer):
         # compute the score by broadcasting the corruption embeddings(ent_matrix) and using the scoring function
         # compute scores as sum(s_corr * p * o)
         sub_corr_score = tf.reduce_sum(
-            ent_matrix * tf.expand_dims(rel_emb * obj_emb, 1), 2
+            ent_matrix * tf.expand_dims(rel_emb * obj_emb, 1), -1
         )
         return sub_corr_score
 
@@ -94,6 +94,6 @@ class DistMult(AbstractScoringLayer):
         # compute the score by broadcasting the corruption embeddings(ent_matrix) and using the scoring function
         # compute scores as sum(s * p * o_corr)
         obj_corr_score = tf.reduce_sum(
-            tf.expand_dims(sub_emb * rel_emb, 1) * ent_matrix, 2
+            tf.expand_dims(sub_emb * rel_emb, 1) * ent_matrix, -1
         )
         return obj_corr_score

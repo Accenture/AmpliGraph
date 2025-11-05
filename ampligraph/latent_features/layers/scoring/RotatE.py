@@ -73,10 +73,10 @@ class RotatE(AbstractScoringLayer):
             Tensor with scores of the inputs.
         """
         # split the embeddings of s, and o into 2 parts (real and img part)
-        e_s_real, e_s_img = tf.split(triples[0], 2, axis=1)
-        e_o_real, e_o_img = tf.split(triples[2], 2, axis=1)
+        e_s_real, e_s_img = tf.split(triples[0], 2, axis=-1)
+        e_o_real, e_o_img = tf.split(triples[2], 2, axis=-1)
         # Construct the complex embedding of the relation using only k parameters
-        theta_pred, _ = tf.split(triples[1], 2, axis=1)
+        theta_pred, _ = tf.split(triples[1], 2, axis=-1)
 
         # Project the values of the embeddings of the relation to a scale comparable
         # to [-pi, pi]. This is necessary in order to avoid having values that are too
@@ -100,7 +100,7 @@ class RotatE(AbstractScoringLayer):
         scores_real = e_s_real * e_p_real - e_s_img * e_p_img - e_o_real
         scores_img = e_s_real * e_p_img + e_s_img * e_p_real - e_o_img
         scores = tf.negative(
-            tf.norm(tf.sqrt(scores_real ** 2 + scores_img ** 2), axis=1, ord=1)
+            tf.norm(tf.sqrt(scores_real ** 2 + scores_img ** 2), axis=-1, ord=1)
         )
         return scores
 
@@ -122,11 +122,11 @@ class RotatE(AbstractScoringLayer):
             Scores of subject corruptions (corruptions defined by `ent_embs` matrix).
         """
         # split the embeddings of s, p, o into 2 parts (real and img part)
-        e_s_real, e_s_img = tf.split(triples[0], 2, axis=1)
-        e_o_real, e_o_img = tf.split(triples[2], 2, axis=1)
+        e_s_real, e_s_img = tf.split(triples[0], 2, axis=-1)
+        e_o_real, e_o_img = tf.split(triples[2], 2, axis=-1)
 
         # Construct the complex embedding of the relation using only k parameters
-        theta_pred, _ = tf.split(triples[1], 2, axis=1)
+        theta_pred, _ = tf.split(triples[1], 2, axis=-1)
         # Project the values of the embeddings of the relation to a scale
         # comparable to [-pi, pi].
         if self.max_rel_size is None:
@@ -159,7 +159,7 @@ class RotatE(AbstractScoringLayer):
 
         sub_corr_scores = tf.negative(
             tf.norm(tf.sqrt(sub_corr_scores_real ** 2 + sub_corr_scores_img ** 2),
-                    axis=2, ord=1)
+                    axis=-1, ord=1)
         )
         return sub_corr_scores
 
@@ -181,10 +181,10 @@ class RotatE(AbstractScoringLayer):
             Scores of object corruptions (corruptions defined by `ent_embs` matrix).
         """
         # split the embeddings of s, p, o into 2 parts (real and img part)
-        e_s_real, e_s_img = tf.split(triples[0], 2, axis=1)
-        e_o_real, e_o_img = tf.split(triples[2], 2, axis=1)
+        e_s_real, e_s_img = tf.split(triples[0], 2, axis=-1)
+        e_o_real, e_o_img = tf.split(triples[2], 2, axis=-1)
         # Construct the complex embedding of the relation using only k parameters
-        theta_pred, _ = tf.split(triples[1], 2, axis=1)
+        theta_pred, _ = tf.split(triples[1], 2, axis=-1)
         # Project the values of the embeddings of the relation to a scale
         # comparable to [-pi, pi]
         if self.max_rel_size is None:
@@ -202,7 +202,7 @@ class RotatE(AbstractScoringLayer):
 
         # split the corruption entity embeddings into 2 parts (real and img
         # part)
-        ent_real, ent_img = tf.split(ent_matrix, 2, axis=1)
+        ent_real, ent_img = tf.split(ent_matrix, 2, axis=-1)
 
         # compute the subject corruption score using ent_real, ent_img
         # (corruption embeddings) as subject embeddings
@@ -212,6 +212,6 @@ class RotatE(AbstractScoringLayer):
             tf.expand_dims(e_s_real * e_p_img + e_s_img * e_p_real, 1) - ent_img
         obj_corr_scores = tf.negative(
             tf.norm(tf.sqrt(obj_corr_scores_real ** 2 + obj_corr_scores_img ** 2),
-                    axis=2, ord=1)
+                    axis=-1, ord=1)
         )
         return obj_corr_scores

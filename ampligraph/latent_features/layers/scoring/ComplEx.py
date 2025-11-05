@@ -50,15 +50,15 @@ class ComplEx(AbstractScoringLayer):
             Tensor with scores of the inputs.
         """
         # split the embeddings of s, p, o into 2 parts (real and img part)
-        e_s_real, e_s_img = tf.split(triples[0], 2, axis=1)
-        e_p_real, e_p_img = tf.split(triples[1], 2, axis=1)
-        e_o_real, e_o_img = tf.split(triples[2], 2, axis=1)
+        e_s_real, e_s_img = tf.split(triples[0], 2, axis=-1)
+        e_p_real, e_p_img = tf.split(triples[1], 2, axis=-1)
+        e_o_real, e_o_img = tf.split(triples[2], 2, axis=-1)
 
         # apply the complex scoring function
         scores = tf.reduce_sum(
             (e_s_real * (e_p_real * e_o_real + e_p_img * e_o_img))
             + (e_s_img * (e_p_real * e_o_img - e_p_img * e_o_real)),
-            axis=1,
+            axis=-1,
         )
         return scores
 
@@ -80,13 +80,13 @@ class ComplEx(AbstractScoringLayer):
             Scores of subject corruptions (corruptions defined by `ent_embs` matrix).
         """
         # split the embeddings of s, p, o into 2 parts (real and img part)
-        e_s_real, e_s_img = tf.split(triples[0], 2, axis=1)
-        e_p_real, e_p_img = tf.split(triples[1], 2, axis=1)
-        e_o_real, e_o_img = tf.split(triples[2], 2, axis=1)
+        e_s_real, e_s_img = tf.split(triples[0], 2, axis=-1)
+        e_p_real, e_p_img = tf.split(triples[1], 2, axis=-1)
+        e_o_real, e_o_img = tf.split(triples[2], 2, axis=-1)
 
         # split the corruption entity embeddings into 2 parts (real and img
         # part)
-        ent_real, ent_img = tf.split(ent_matrix, 2, axis=1)
+        ent_real, ent_img = tf.split(ent_matrix, 2, axis=-1)
 
         # compute the subject corruption score using ent_real, ent_img
         # (corruption embeddings) as subject embeddings
@@ -103,7 +103,7 @@ class ComplEx(AbstractScoringLayer):
                     - tf.expand_dims(e_p_img * e_o_real, 1)
                 )
             ),
-            axis=2,
+            axis=-1,
         )
         return sub_corr_score
 
@@ -125,13 +125,13 @@ class ComplEx(AbstractScoringLayer):
             Scores of object corruptions (corruptions defined by `ent_embs` matrix).
         """
         # split the embeddings of s, p, o into 2 parts (real and img part)
-        e_s_real, e_s_img = tf.split(triples[0], 2, axis=1)
-        e_p_real, e_p_img = tf.split(triples[1], 2, axis=1)
-        e_o_real, e_o_img = tf.split(triples[2], 2, axis=1)
+        e_s_real, e_s_img = tf.split(triples[0], 2, axis=-1)
+        e_p_real, e_p_img = tf.split(triples[1], 2, axis=-1)
+        e_o_real, e_o_img = tf.split(triples[2], 2, axis=-1)
 
         # split the corruption entity embeddings into 2 parts (real and img
         # part)
-        ent_real, ent_img = tf.split(ent_matrix, 2, axis=1)
+        ent_real, ent_img = tf.split(ent_matrix, 2, axis=-1)
 
         # compute the object corruption score using ent_real, ent_img
         # (corruption embeddings) as object embeddings
@@ -146,6 +146,6 @@ class ComplEx(AbstractScoringLayer):
                 + tf.expand_dims(e_s_real * e_p_img, 1)
             )
             * ent_img,
-            axis=2,
+            axis=-1,
         )
         return obj_corr_score

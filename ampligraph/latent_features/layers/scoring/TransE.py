@@ -49,7 +49,7 @@ class TransE(AbstractScoringLayer):
         """
         # compute scores as -|| s + p - o||
         scores = tf.negative(
-            tf.norm(triples[0] + triples[1] - triples[2], axis=1, ord=1)
+            tf.norm(triples[0] + triples[1] - triples[2], axis=-1, ord=1)
         )
         return scores
 
@@ -77,7 +77,7 @@ class TransE(AbstractScoringLayer):
         sub_corr_score = tf.negative(
             tf.norm(
                 ent_matrix + tf.expand_dims(rel_emb - obj_emb, 1),
-                axis=2,
+                axis=-1,
                 ord=1,
             )
         )
@@ -107,7 +107,7 @@ class TransE(AbstractScoringLayer):
         obj_corr_score = tf.negative(
             tf.norm(
                 tf.expand_dims(sub_emb + rel_emb, 1) - ent_matrix,
-                axis=2,
+                axis=-1,
                 ord=1,
             )
         )
