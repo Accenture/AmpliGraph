@@ -558,6 +558,13 @@ def make_rank_sankey(all_ranks, dict_splits, savefig=False, group='sp', path=Non
             lambda x: hits_at_n_score(x.values, 10), axis=0
         ).idxmax()
 
+    # all_ranks.loc[all_ranks.epoch1.isna(), "early_stop_new_ranks"] = all_ranks.loc[all_ranks.epoch1.isna(), "pre"]
+    # for split_name in dict_splits:
+    #     subset_all_ranks = all_ranks.loc[all_ranks.triple_type == split_name, "early_stop_new_ranks"]
+    #     best_epochs[split_name] = subset_all_ranks.apply(
+    #         lambda x: hits_at_n_score(x.values, 10), axis=0
+    #     ).idxmax()
+
     # Define intervals
     intervals = [
         (1, 3), (4, 10), (11, 50),
@@ -646,3 +653,94 @@ def make_rank_sankey(all_ranks, dict_splits, savefig=False, group='sp', path=Non
     else:
         fig.show()
 
+
+def new_make_rank_sankey(all_ranks, dict_splits, savefig=False, group='sp', path=None):
+    # Fill NaNs in early_stop_new_ranks with pre values
+    all_ranks["early_stop_new_ranks"] = all_ranks["early_stop_new_ranks"].fillna(all_ranks["pre"])
+
+    # Define intervals
+    intervals = [
+        (1, 3), (4, 10), (11, 50),
+        (51, 100), (101, 500), (501, np.inf)
+    ]
+    interval_labels = [
+        '[1-3]', '[4-10]', '[11-50]',
+        '[51-100]', '[101-500]', '>500'
+    ]
+    colors = [
+        '#0072B2', '#E69F00', '#009E73', '#D55E00', 'lightgreen', 'lightskyblue'
+    ]
+    color_map = {label: color for label, color in zip(interval_labels, colors)}
+
+    # Helper to map a rank to an interval label
+    def map_to_interval(val):
+        for (start, end), label in zip(intervals, interval_labels):
+            if start <= val <= end:
+                return label
+        return 'out-of-range'
+
+    num_rows = int(np.sqrt(len(dict_splits)))
+    fig = make_subplots(
+        rows=num_rows, cols=num_rows, specs=[[{'type': 'sankey'}] * num_rows] * num_rows,
+        subplot_titles=[f"{split_name.upper()} - {int((all_ranks.triple_type == split_name).sum())} Triples"
+                        for split_name in dict_splits],
+        vertical_spacing=0.05
+    )
+
+    for i, split_name in enumerate(dict_splits):
+        # Defining the mask to select the values of interest
+        array1 = all_ranks.loc[all_ranks.triple_type == split_name, "pre"]
+        array2 = all_ranks.loc[all_ranks.triple_type == split_name, "early_stop_new_ranks"]
+
+        # Map both arrays to interval labels
+        group1 = np.array([map_to_interval(x) for x in array1])
+        group2 = np.array([map_to_interval(x) for x in array2])
+
+        # Count transitions between interval labels
+        df = pd.DataFrame({'from': group1, 'to': group2})
+        flow_counts = df.value_counts().reset_index(name='count')
+
+        not_represented_labels = set(interval_labels).difference(flow_counts['from'].unique())
+        for label in not_represented_labels:
+            flow_counts = pd.concat([flow_counts, pd.DataFrame({'from': [label], 'to': [label], 'count': [0]})])
+
+        # Create mapping from labels to node indices
+        label_index = {label: i for i, label in enumerate(interval_labels)}
+
+        # Create Sankey diagram components
+        source = [label_index[f] for f in flow_counts['from']]
+        target = [label_index[t] + len(interval_labels) for t in flow_counts['to']]
+        value = flow_counts['count'].tolist()
+        link_colors = [color_map[f] for f in flow_counts['from']]
+
+        # Final labels: from and to
+        node_labels = [f'Before: {lbl}' for lbl in interval_labels] + [f'After: {lbl}' for lbl in interval_labels]
+        node_colors = [color_map[lbl] for lbl in interval_labels] + [color_map[lbl] for lbl in interval_labels]
+
+        # Sankey diagram
+        subfig = go.Sankey(
+            arrangement="snap",
+            node=dict(
+                pad=20,
+                thickness=30,
+                line=dict(color="black", width=0.5),
+                label=node_labels,
+                color=node_colors,
+            ),
+            link=dict(
+                source=source,
+                target=target,
+                value=value,
+                color=link_colors
+            )
+        )
+        fig.add_trace(subfig, row=i // num_rows + 1, col=i % num_rows + 1)
+
+    fig.update_layout(
+        title_text=f"Rank Transition - {'Subject' if group == 'po' else 'Object'} Corruption",
+        font_size=18, width=2000, height=3600
+    )
+    if savefig:
+        fig.write_html(os.path.join(path, f"new_sankey_ranks_{group}.html"), full_html=True, include_plotlyjs='cdn')
+    else:
+        fig.show()
