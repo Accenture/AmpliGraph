@@ -49,33 +49,32 @@ def ranks_to_triples(ranks, group='sp'):
     assert group == 'sp' or group == 'po'
 
     all_triples = []
-    for pair in ranks:
-        targets = ranks[pair]["targets"]
-        if group == 'sp':
-            triples = pd.DataFrame({
-                's': [pair[0]] * len(targets),
-                'p': [pair[1]] * len(targets),
-                'o': targets,
-            })
-        else:
-            triples = pd.DataFrame({
-                's': targets,
-                'p': [pair[1]] * len(targets),
-                'o': [pair[0]] * len(targets),
-            })
 
-        triples["pre"] = ranks[pair]["pre_ranks"]
-        epochs = len(ranks[pair]["new_ranks"])
-        if epochs > 0:
-            for i in range(epochs):
-                triples[f"epoch{i+1}"] = ranks[pair]["new_ranks"][i]
+    for pair, data in ranks.items():
+        targets = data["targets"]
+        base_cols = {
+            "s": [pair[0]] * len(targets) if group == "sp" else targets,
+            "p": [pair[1]] * len(targets),
+            "o": targets if group == "sp" else [pair[0]] * len(targets),
+            "pre": data["pre_ranks"],
+        }
 
-        if "early_stop_new_ranks" in ranks[pair]:
-            triples["early_stop_new_ranks"] = ranks[pair]["early_stop_new_ranks"]
+        # Add epoch columns efficiently
+        epoch_cols = {
+            f"epoch{i + 1}": data["new_ranks"][i]
+            for i in range(len(data["new_ranks"]))
+        }
 
+        # Optional early stop column
+        if "early_stop_new_ranks" in data:
+            epoch_cols["early_stop_new_ranks"] = data["early_stop_new_ranks"]
+
+        # Create DataFrame in a single call
+        triples = pd.DataFrame({**base_cols, **epoch_cols})
         all_triples.append(triples)
 
     return pd.concat(all_triples, axis=0)
+
 
 def map_degree_to_bin(subj_degree, obj_degree, thresholds=[10, 30, 100]):
     """
@@ -492,6 +491,78 @@ def plot_metrics_across_epochs(
         assert path is not None, "Provide a path where to save the plot!"
         name_file = f"{'valid_' if valid else ''}{'only_affected_' if only_affected else ''}metrics_{'aggregated' if not dict_splits else 'by_split'}.png"
         plt.savefig(os.path.join(path, name_file))
+        plt.close()
+    else:
+        plt.show()
+
+def plot_metrics_two_splits(
+    metrics,
+    display_metric=None,
+    savefig=False,
+    path=None,
+    valid=False
+):
+    """
+    Plot only 'high-low' and 'low-high' splits from the metrics dict.
+    """
+
+    REQUIRED_SPLITS = ["high-low", "low-high"]
+
+    # Check required splits exist
+    for split in REQUIRED_SPLITS:
+        if split not in metrics:
+            raise ValueError(f"Split '{split}' not found in metrics.")
+
+    # Default metrics
+    if display_metric is None:
+        display_metric = ["MRR", "Hits@1", "Hits@3", "Hits@10", "Hits@100"]
+
+    # Create two subplots
+    fig, axes = plt.subplots(1, 2, figsize=(15, 8))
+
+    for ax, split in zip(axes, REQUIRED_SPLITS):
+
+        curr_metrics = metrics[split]
+        corr_s = pd.DataFrame(curr_metrics["corr_s"])
+        corr_o = pd.DataFrame(curr_metrics["corr_o"])
+
+        for metric in display_metric:
+
+            if split == "low-high":
+                y_s = corr_s.loc[metric]
+                # Lines
+                ax.plot(corr_s.columns, y_s, label=f"{metric} - Subj. Corr.")
+                # Annotate first and max points
+                ax.text(corr_s.columns[0], y_s.iloc[0] + 0.01, f"{y_s.iloc[0]:.3f}", ha='center')
+                ax.scatter([corr_s.columns[0]], [y_s.iloc[0]], s=50, marker='o', facecolor="red")
+                max_s = y_s.idxmax()
+                ax.text(max_s, y_s[max_s] + 0.01, f"{y_s[max_s]:.3f}", ha='center')
+                ax.scatter([max_s], [y_s[max_s]], s=50, marker='o', facecolor="red")
+            elif split == "high-low":
+                y_o = corr_o.loc[metric]
+                ax.plot(corr_o.columns, y_o, label=f"{metric} - Obj. Corr.")
+                ax.text(corr_o.columns[0], y_o.iloc[0] + 0.01, f"{y_o.iloc[0]:.3f}", ha='center')
+                ax.scatter([corr_o.columns[0]], [y_o.iloc[0]], s=50, marker='o', facecolor="red")
+                max_o = y_o.idxmax()
+                ax.text(max_o, y_o[max_o] + 0.01, f"{y_o[max_o]:.3f}", ha='center')
+                ax.scatter([max_o], [y_o[max_o]], s=50, marker='o', facecolor="red")
+
+        ax.set_title(f"{split}", fontsize=20)
+        ax.grid(True)
+        ax.set_xlabel("Epoch", fontsize=16)
+        ax.set_ylim((0, 0.5))
+        ax.legend(fontsize=16)
+
+    fig.suptitle(
+        f"Evaluation Metrics Over Epochs{' - Validation Set' if valid else ''}",
+        fontsize=24, fontweight="bold"
+    )
+    plt.tight_layout()
+
+    if savefig:
+        assert path is not None, "Provide a path where to save the plot!"
+        filename = f"{'valid_' if valid else ''}metrics_highlow_lowhigh.png"
+        plt.savefig(os.path.join(path, filename))
         plt.close()
     else:
         plt.show()
