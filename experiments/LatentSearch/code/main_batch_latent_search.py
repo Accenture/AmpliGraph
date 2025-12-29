@@ -2,6 +2,7 @@ import argparse
 import pickle
 import json
 from tqdm import tqdm
+import time
 import tensorflow as tf
 from ampligraph.pretrained_models import load_pretrained_model
 from ampligraph.utils import restore_model
@@ -305,6 +306,7 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, group='sp', args=N
     #TODO: put together the content of empty_batches and run one single evaluation for all of them.
 
     for batch in tqdm(batches, total=len(batches)):
+        a = time.time()
         kge_model.encoding_layer.ent_emb = tf.identity(initial_kge_embeddings)
 
         # Define the filter we will use at test time
@@ -375,6 +377,8 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, group='sp', args=N
 
             # if early_stop and (i + 1) == early_stop_epoch:
             #     ranks[pair]["early_stop_new_ranks"] = filtered_new_ranks
+
+        # print("Full fine-tuning time: ", time.time() - a)
 
     ls_test_triples = np.vstack([batch['test_triples'] for batch in batches])
     ls_pre_ranks = np.concatenate([batch['pre_ranks'] for batch in batches])
@@ -752,7 +756,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--dataset', default='fb15k-237', type=str, help='Dataset to process')
     parser.add_argument('--output-folder', type=str,
-                        default="/data/alberto/ampligraph_results/latent_search/KGE_inference_search",
+                        default="/mnt/new_disk/alberto/ampligraph_results/latent_search/KGE_inference_search",
                         help='Base folder for the output of the experiment.')
     parser.add_argument('--seed', default=0, type=int)
 
