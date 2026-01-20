@@ -650,8 +650,8 @@ def select_best_model_ranking(
 
     # Verify missing parameters for the model class (default values will be
     # used)
-    possible_args = set(["batch_size", "seed", "epochs", "k", "eta", "loss",
-                         "loss_params", "regularizer", "regularizer_params",
+    possible_args = set(["batch_size", "seed", "epochs", "k", "eta", "loss", "loss_params",
+                         "regularizer", "regularizer_params", "eval_batch_size",
                          "optimizer", "optimizer_params", "focusE_params", "verbose"])
     undeclared_args = possible_args - set(param_grid.keys())
     if len(undeclared_args) != 0:
@@ -774,10 +774,11 @@ def select_best_model_ranking(
                 epochs=model_params.get('epochs', 100),
                 validation_data=X_valid,
                 validation_freq=early_stopping_params.get('check_interval', 10),
-                validation_batch_size=early_stopping_params.get('validation_batch_size', 10),
+                validation_batch_size=model_params.get('eval_batch_size', 10),
                 validation_burn_in=early_stopping_params.get('burn_in', 0),
-                validation_corrupt_side='s,o',
+                validation_corrupt_side=corrupt_side,
                 validation_filter=X_filter,
+                validation_entities_subset=entities_subset,
                 callbacks=callbacks,
                 focusE=focusE,
                 focusE_params=model_params.get('focusE_params', {}),
@@ -786,6 +787,7 @@ def select_best_model_ranking(
 
             ranks = model.evaluate(
                 selection_dataset,
+                batch_size=model_params.get('eval_batch_size', 10),
                 use_filter=X_filter,
                 entities_subset=entities_subset,
                 corrupt_side=corrupt_side,
@@ -880,6 +882,7 @@ def select_best_model_ranking(
 
         ranks_test = best_model.evaluate(
             X_test,
+            batch_size=model_params.get('eval_batch_size', 10),
             use_filter=X_filter,
             verbose=verbose,
             entities_subset=entities_subset,

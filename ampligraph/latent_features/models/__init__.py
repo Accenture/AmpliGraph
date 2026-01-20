@@ -6,5 +6,6 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 from .ScoringBasedEmbeddingModel import ScoringBasedEmbeddingModel
+from .ImbalancE import ImbalancE, EarlyStopper
 
-__all__ = ["ScoringBasedEmbeddingModel"]
+__all__ = ["ScoringBasedEmbeddingModel", "ImbalancE", "EarlyStopper"]
