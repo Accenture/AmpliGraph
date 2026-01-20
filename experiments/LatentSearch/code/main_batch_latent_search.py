@@ -303,8 +303,6 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, group='sp', args=N
     # We will use this copy to reset the embeddings when switching batch
     initial_kge_embeddings = tf.identity(kge_model.encoding_layer.ent_emb)
 
-    #TODO: put together the content of empty_batches and run one single evaluation for all of them.
-
     for batch in tqdm(batches, total=len(batches)):
         a = time.time()
         kge_model.encoding_layer.ent_emb = tf.identity(initial_kge_embeddings)
@@ -344,6 +342,17 @@ def kge_latent_search(kge_model, train_df, valid_df, test_df, group='sp', args=N
                         inp_score *= 0.0
                     additional_triples = repeat_and_gather(additional_triples, batch, group=group, model="llm")
                     inp_score = tf.concat([inp_score, - kge_model.scoring_layer(additional_triples)], axis=0)
+
+                if i > 0 and args.regularization is not None:
+                    reg_score = compute_regularization_term(
+                        batch, anchor_embs=trainable_params[0],
+                        initial_kge_embeddings=initial_kge_embeddings,
+                        additional_triples=None if not args.tune_llm_ents else additional_triples
+                    )
+                    inp_score = tf.concat(
+                        [inp_score, args.regularization * reg_score], axis=0
+                    )
+
 
             grads = tape.gradient(inp_score, trainable_params)
             optimizer.apply_gradients(zip(grads, trainable_params))
@@ -638,6 +647,29 @@ def repeat_and_gather(triples, batch, group='sp', model="kge"):
     ]
     return triples
 
+def compute_regularization_term(
+        batch, anchor_embs, initial_kge_embeddings, group='sp', additional_triples=None
+):
+    """
+    Function to compute the regularization term.
+    """
+    anchor_initial_embs = tf.gather(
+        initial_kge_embeddings, [pair[0] for pair in batch['pairs']]
+    )
+    reg_score = tf.sqrt(tf.reduce_mean(tf.square(anchor_embs - anchor_initial_embs), axis=1))
+
+    if additional_triples is not None:
+        # We extract the embeddings of the target-variable
+        oracle_embs = additional_triples[2] if group == 'sp' else additional_triples[0]
+        oracle_initial_embs = tf.gather(
+            initial_kge_embeddings, batch['llm_triples'][:, 2 if group=='sp' else 0]
+        )
+
+        oracle_reg = tf.sqrt(tf.reduce_mean(tf.square(oracle_embs - oracle_initial_embs), axis=1))
+
+        reg_score = tf.concat([reg_score, oracle_reg], axis=0)
+
+    return reg_score
 
 def get_updated_embeddings(
         trainable_params, batch, model, freeze_rels=None
@@ -765,10 +797,9 @@ if __name__ == "__main__":
     parser.add_argument('--learning-rate', '-lr', default=1e-3, type=float,
                         help="Learning rate of the optimizer of the latent search.")
     parser.add_argument('--epochs', default=10, type=int, help="Number of epochs for the latent search.")
-    parser.add_argument('--regularization', default=None, type=float,
-                        help="L3 Regularization coefficient to apply. Defaults to `None` (no regularization).")
     parser.add_argument('--batch-size', default=10, type=int)
     parser.add_argument('--only-llm', action='store_true', default=None)
+    parser.add_argument('--regularization', '-reg', type=float, default=None)
 
     parser.add_argument('--freeze-relations', action='store_true', default=None,
                         help="Whether to fine-tune the relations as well as the entities or just the entities")
@@ -793,10 +824,12 @@ if __name__ == "__main__":
 
     train_df, valid_df, test_df = load_dataset(args.dataset)
 
-    if args.dataset == "fb15k-237":
-        thresholds = [10, 30, 100]
-    else:
-        thresholds = np.quantile(pd.concat([train_df.s, train_df.o]).value_counts(), q=[0.25, 0.5, 0.75]).tolist()
+    # degrees = pd.concat([train_df.s, train_df.o]).value_counts()
+    # thresholds = [np.max([5, np.quantile(degrees, 0.25)])]
+    # if thresholds[0] == 5:
+    #     thresholds += np.quantile(degrees[degrees > 5], [0.33, 0.66]).tolist()
+    # else:
+    #     thresholds = np.quantile(degrees, [0.25, 0.5, 0.75]).tolist()
 
     if args.dataset != "biokg":
         kge_model = load_pretrained_model(dataset=args.dataset, scoring_type=args.scoring_type)
@@ -823,6 +856,8 @@ if __name__ == "__main__":
         output_path += f"_seed{args.seed}"
     if args.only_llm:
         output_path += "_only_llm"
+    if args.regularization is not None:
+        output_path += f"_reg{args.regularization}"
 
     if not os.path.exists(output_path):
         os.makedirs(output_path, exist_ok=True)
