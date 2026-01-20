@@ -518,7 +518,7 @@ def plot_metrics_two_splits(
         display_metric = ["MRR", "Hits@1", "Hits@3", "Hits@10", "Hits@100"]
 
     # Create two subplots
-    fig, axes = plt.subplots(1, 2, figsize=(15, 8))
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
     for ax, split in zip(axes, REQUIRED_SPLITS):
 
@@ -530,26 +530,17 @@ def plot_metrics_two_splits(
 
             if split == "low-high":
                 y_s = corr_s.loc[metric]
-                # Lines
-                ax.plot(corr_s.columns, y_s, label=f"{metric} - Subj. Corr.")
-                # Annotate first and max points
-                ax.text(corr_s.columns[0], y_s.iloc[0] + 0.01, f"{y_s.iloc[0]:.3f}", ha='center')
-                ax.scatter([corr_s.columns[0]], [y_s.iloc[0]], s=50, marker='o', facecolor="red")
-                max_s = y_s.idxmax()
-                ax.text(max_s, y_s[max_s] + 0.01, f"{y_s[max_s]:.3f}", ha='center')
-                ax.scatter([max_s], [y_s[max_s]], s=50, marker='o', facecolor="red")
+                ax.plot(corr_s.columns, y_s, label=f"{metric} - Subj. Corr.", linewidth=2)
             elif split == "high-low":
                 y_o = corr_o.loc[metric]
-                ax.plot(corr_o.columns, y_o, label=f"{metric} - Obj. Corr.")
-                ax.text(corr_o.columns[0], y_o.iloc[0] + 0.01, f"{y_o.iloc[0]:.3f}", ha='center')
-                ax.scatter([corr_o.columns[0]], [y_o.iloc[0]], s=50, marker='o', facecolor="red")
-                max_o = y_o.idxmax()
-                ax.text(max_o, y_o[max_o] + 0.01, f"{y_o[max_o]:.3f}", ha='center')
-                ax.scatter([max_o], [y_o[max_o]], s=50, marker='o', facecolor="red")
+                ax.plot(corr_o.columns, y_o, label=f"{metric} - Obj. Corr.", linewidth=2)
+
+            ax.tick_params(axis='both', which='major', labelsize=16)
 
         ax.set_title(f"{split}", fontsize=20)
         ax.grid(True)
-        ax.set_xlabel("Epoch", fontsize=16)
+        ax.set_xlabel("Epoch", fontsize=18)
+        ax.set_xlim((0, 100))
         ax.set_ylim((0, 0.5))
         ax.legend(fontsize=16)
 
