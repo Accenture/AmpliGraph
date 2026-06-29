@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from ampligraph.evaluation.metrics import mrr_score, hits_at_n_score
@@ -20,17 +19,6 @@ def load_dataset(dataset):
         X = load_wn18rr()
     elif dataset == "yago310":
         X = load_yago3_10()
-    elif dataset == "biokg":
-        X = dict()
-        X["train"] = pd.read_csv(
-            "/home/alberto/ampligraph_datasets/biokg/train.csv",
-        ).values
-        X["valid"] = pd.read_csv(
-            "/home/alberto/ampligraph_datasets/biokg/valid_protein_disease_associations.csv"
-        ).values
-        X["test"] = pd.read_csv(
-            "/home/alberto/ampligraph_datasets/biokg/test_protein_disease_associations.csv"
-        ).values
 
     train = pd.DataFrame(X["train"], columns=['s', 'p', 'o'])
     valid = pd.DataFrame(X["valid"], columns=['s', 'p', 'o'])
@@ -248,6 +236,64 @@ def compute_metrics_across_epochs(
 
     return metrics
 
+def split_triples_by_degree_4way(triples, degrees, thresholds=[10, 30, 100]):
+    """
+    Split triples into 16 groups based on subject/object degrees using 4 degree levels:
+    low, mid1, mid2, high.
+
+    Parameters
+    ----------
+    triples : pd.DataFrame
+        Must contain ["s", "p", "o"] columns.
+    degrees : pd.Series or pd.DataFrame
+        Node degrees. Index is node ID, values are degrees.
+    thresholds : list of 3 numbers
+        Degree thresholds to split into 4 groups: [low/mid1, mid1/mid2, mid2/high].
+
+    Returns
+    -------
+    dict_splits : dict
+        Keys are strings like "low-mid1", "high-low", etc.
+        Values are indices of `triples` belonging to that group.
+    """
+    assert len(thresholds) == 3, "`thresholds` must contain exactly 3 values to form 4 degree groups."
+
+    if isinstance(degrees, pd.DataFrame):
+        degrees = degrees.squeeze()  # Convert to Series if needed
+
+    t0, t1, t2 = thresholds
+    low_nodes = degrees[degrees <= t0].index
+    mid1_nodes = degrees[(degrees > t0) & (degrees <= t1)].index
+    mid2_nodes = degrees[(degrees > t1) & (degrees <= t2)].index
+    high_nodes = degrees[degrees > t2].index
+
+    # print(f"Thresholds used: low ≤ {t0}, mid1 ({t0}, {t1}], mid2 ({t1}, {t2}], high > {t2}")
+    # print(f"#low: {len(low_nodes)}, #mid1: {len(mid1_nodes)}, #mid2: {len(mid2_nodes)}, #high: {len(high_nodes)}")
+
+    degree_groups = {
+        "high": high_nodes,
+        "mid2": mid2_nodes,
+        "mid1": mid1_nodes,
+        "low": low_nodes
+    }
+
+    dict_splits = dict()
+    for subj_group, subj_nodes in degree_groups.items():
+        for obj_group, obj_nodes in degree_groups.items():
+            key = f"{subj_group}-{obj_group}"
+            indices = triples[triples.s.isin(subj_nodes) & triples.o.isin(obj_nodes)].index
+            dict_splits[key] = indices
+
+    # # Summary print
+    # print("Percentage of total triples per split:")
+    # total = triples.shape[0]
+    # for key, idxs in dict_splits.items():
+    #     count = len(idxs)
+    #     pct = round(100 * count / total, 2)
+    #     print(f"{key.upper():<10}: {count} ({pct}%)")
+
+    return dict_splits
+
 
 def aggregated_to_tables(data, path):
     """
@@ -258,25 +304,11 @@ def aggregated_to_tables(data, path):
           * one comparing corr_o vs pre_corr_o
     It then saves them to CSV files.
     """
-    # --- Table 1: Aggregated ---
-    agg_rows = []
-    for k, v in data.items():
-        if k.startswith("aggregated"):
-            row = {"split": k}
-            row.update(v)
-            agg_rows.append(row)
-
-    df_aggregated = pd.DataFrame(agg_rows)
-    df_aggregated = df_aggregated.round(3)
-    df_aggregated = df_aggregated.set_index("split")
-
-    # --- Table 2a: corr_s vs pre_corr_s ---
     rows_s = []
-    # --- Table 2b: corr_o vs pre_corr_o ---
     rows_o = []
 
     for split, values in data.items():
-        if split.startswith("aggregated"):
+        if split not in ['high-low', 'low-high']:
             continue
 
         # corr_s
@@ -299,202 +331,11 @@ def aggregated_to_tables(data, path):
     df_corr_o = pd.DataFrame(rows_o).set_index("split").round(3)
 
     # --- Save to files ---
-    df_aggregated.to_csv(os.path.join(path, "aggregated_metrics.csv"))
     df_corr_s.to_csv(os.path.join(path, "split_metrics_corr_s.csv"))
     df_corr_o.to_csv(os.path.join(path, "split_metrics_corr_o.csv"))
 
-    # # --- Convert to Markdown ---
-    # markdown_aggregated = "## Aggregated Metrics\n" + df_aggregated.to_markdown() + "\n"
-    # markdown_splits = "## Split Metrics\n" + df_splits.to_markdown() + "\n"
-    #
-    # # --- Save to files ---
-    # with open(os.path.join(path, "results_aggregated.md"), "w") as f:
-    #     f.write(markdown_aggregated)
-    #     f.write("\n------------------------------------------------\n\n")
-    #     f.write(markdown_splits)
-
-
-
-
 
 ######################## PLOTS
-def plot_ranks_improvement_across_epochs(
-        all_triples,
-        splits,
-        group='sp',
-        path="/users/alberto.bernardi/AmpliGraph-Lab/experiments/LatentSearch/results/KGE_inference_search/v0.1/",
-        savefig=True,
-        four_way=False,
-        colored=False,
-):
-    """
-    This function generates a PDF with as many pages as the number of epochs
-    for which we want to plot the histograms with the distribution of the
-    difference between the original rank (before the latent search) and the
-    new rank (after the latent search).
-    """
-    num_epochs = len([col for col in all_triples.columns if col.startswith("epoch")])
-
-    file_name = f"ranks_improvement_across_epochs_{group}.pdf"
-    if colored:
-        file_name = 'col_' + file_name
-    if four_way:
-        file_name = '4way_' + file_name
-    if not savefig:
-        file_name = 'tmp_' + file_name
-
-    file_path = os.path.join(path, file_name)
-    with PdfPages(file_path) as pdf:
-        for epoch in range(1, num_epochs + 1):
-            if not four_way:
-                fig, axes = plt.subplots(3, 3, figsize=(15, 15))
-            else:
-                fig, axes = plt.subplots(4, 4, figsize=(20, 20))
-            axes = axes.flatten()
-
-            bins = np.array([-10 ** 4, -1000, -100, -10, -0.9, 0.9, 10, 100, 1000, 10 ** 4])
-
-            for idx, split in enumerate(splits):
-                subset = all_triples[all_triples.triple_type == split]
-                diff = subset["pre"] - subset[f"epoch{epoch}"]
-
-                # Histogram manually to avoid bin crossing zero
-                counts, edges = np.histogram(diff, bins=bins)
-                centers = 0.5 * (edges[1:] + edges[:-1])
-
-                axes[idx].bar(centers, counts, width=np.diff(edges), color="skyblue", edgecolor="k")
-                axes[idx].set_title(f"{split} - {int((all_triples.triple_type == split).sum())} Triples")
-                axes[idx].set_xlabel("Rank Improvement")
-                axes[idx].set_ylabel("Count")
-                axes[idx].set_xscale('symlog')
-                axes[idx].set_yscale('log')
-
-                axes[idx].axvline(0, color='b', linestyle='--', linewidth=1)
-                # Count improvements
-                count_le_0 = (diff < 0).sum()
-                count_gt_0 = (diff > 0).sum()
-
-                # Annotate counts to left and right of line
-                axes[idx].text(0.01, 0.98, f"{count_le_0}", color='b', ha='left', va='top',
-                               transform=axes[idx].transAxes, fontsize=10)
-                axes[idx].text(0.99, 0.98, f"{count_gt_0}", color='b', ha='right', va='top',
-                               transform=axes[idx].transAxes, fontsize=10)
-
-                # Optional: Add count labels on top of bars
-                for c, x in zip(counts, centers):
-                    if c > 0:
-                        axes[idx].text(x, c, str(c), ha='center', va='bottom', fontsize=8)
-
-                if colored:
-                    if count_le_0 < count_gt_0:
-                        axes[idx].patch.set_facecolor('green')
-                        axes[idx].patch.set_alpha(count_gt_0 / (count_le_0 + count_gt_0 + 1e-5))
-                    else:
-                        axes[idx].patch.set_facecolor('red')
-                        axes[idx].patch.set_alpha(count_le_0 / (count_le_0 + count_gt_0 + 1e-5))
-
-            plt.suptitle(f"Histogram of Rank Improvements - Before vs Epoch {epoch}", y=0.98, fontsize=16)
-            plt.tight_layout(rect=[0, 0, 1, 0.96])
-            if savefig:
-                pdf.savefig(fig)
-            else:
-                plt.show()
-            plt.close(fig)
-
-
-
-def plot_metrics_across_epochs(
-        metrics, dict_splits=None, display_metric=None,
-        savefig=False, path=None, only_affected=False, valid=False, flat=False
-):
-    """
-    Plot the metrics across epochs. Either aggregate them across all test triples
-    or plot them based on dict splits.
-    """
-    if not dict_splits:
-        df_metrics = pd.DataFrame(metrics)
-        plt.figure(figsize=(20, 10))
-        colors = ["blue", "green", "pink", "orange", "red"]
-        metrics = df_metrics.index
-
-        for i, metric in enumerate(metrics):
-            y = df_metrics.loc[metric]
-            plt.plot(df_metrics.columns, y, label=metric, marker='o', color=colors[i])
-
-            for j, val in enumerate(y):
-                col = df_metrics.columns[j]
-                rounded_val = round(val, 3)
-
-                # Label the first point and the max point only
-                if j == 0 or val == y.max():
-                    plt.text(col, val + 0.01, f"{rounded_val}", ha='center', fontsize=10, color=colors[i])
-
-    else:
-        if flat:
-            fig, axes = plt.subplots(len(dict_splits), figsize=(20, 10), sharey=True)
-        else:
-            fig, axes = plt.subplots(
-                int(len(dict_splits) ** 0.5), int(len(dict_splits) ** 0.5),
-                figsize=(20, 20), sharex=True, sharey=True
-            )
-        axes = axes.flatten()
-
-        for split_idx, split in enumerate(dict_splits):
-            ax = axes[split_idx]
-
-            curr_metrics = metrics[split]
-            corr_s = pd.DataFrame(curr_metrics["corr_s"])
-            corr_o = pd.DataFrame(curr_metrics["corr_o"])
-
-            if display_metric is None:
-                display_metric = ["MRR", "Hits@1", "Hits@3", "Hits@10", "Hits@100"]
-            for metric in display_metric:
-                y_s = corr_s.loc[metric]
-                y_o = corr_o.loc[metric]
-
-                ax.plot(corr_s.columns, y_s, label=f"{metric} - Subj. Corr.", marker='o')
-                ax.plot(corr_o.columns, y_o, label=f"{metric} - Obj. Corr.", marker='o')
-
-                flag_s = True
-                flag_o = True
-                for j, col in enumerate(corr_s.columns):
-                    # Subject annotations
-                    val_s = round(y_s[col], 3)
-                    val_o = round(y_o[col], 3)
-                    if j == 0:
-                        ax.text(col, y_s[col] + 0.02, f"{val_s}", ha='center', fontsize=8)
-                        ax.text(col, y_o[col] + 0.02, f"{val_o}", ha='center', fontsize=8)
-
-                    if y_s[col] == y_s.max() and flag_s:
-                        ax.text(col, y_s[col] + 0.02, f"{val_s}", ha='center', fontsize=8)
-                        flag_s = False
-
-                    if y_o[col] == y_o.max() and flag_o:
-                        ax.text(col, y_o[col] + 0.02, f"{val_o}", ha='center', fontsize=8)
-                        flag_o = False
-
-            ax.legend(fontsize=8)
-            ax.set_title(split)
-            ax.grid(True)
-
-    if not dict_splits:
-        plt.title(f"Evaluation Metrics Over Epochs{' - Validation Set' if valid else ''}", fontsize=20)
-        plt.legend(loc='upper right')
-        plt.grid(True)
-    else:
-        plt.suptitle(f"Evaluation Metrics Over Epochs{' - Validation Set' if valid else ''}", fontsize=20, y=1.0)
-    plt.xlabel("Epoch")
-    plt.ylabel("Score")
-    plt.grid(True)
-    plt.tight_layout()
-    if savefig:
-        assert path is not None, "Provide a path where to save the plot!"
-        name_file = f"{'valid_' if valid else ''}{'only_affected_' if only_affected else ''}metrics_{'aggregated' if not dict_splits else 'by_split'}.png"
-        plt.savefig(os.path.join(path, name_file))
-        plt.close()
-    else:
-        plt.show()
-
 def plot_metrics_two_splits(
     metrics,
     display_metric=None,
@@ -557,163 +398,6 @@ def plot_metrics_two_splits(
         plt.close()
     else:
         plt.show()
-
-def barplot_diff_rank_over_epochs_by_split(all_triples, dict_splits, group='sp', savefig=False, path=None):
-    """
-    This function generates a plot with one subplot for every split and
-    it groups the rank difference into barplots that are clustered by epoch,
-    so that you can right away observe how the bars for each split and rank
-    difference values evolve across the latent search epochs.
-    """
-
-    epochs = [el for el in all_triples if el.startswith("epoch")]
-    num_epochs = len(epochs)
-
-    # Define bins (same for all epochs)
-    bins = np.array([-10 ** 4, -10 ** 2, -10, -0.9, 0.9, 10, 100, 10 ** 4])
-    bin_centers = 0.5 * (bins[:-1] + bins[1:])
-    num_bins = len(bin_centers)
-
-    bar_width = 0.9
-    x_base = np.arange(num_bins) * (num_epochs + 1)
-
-    fig, axes = plt.subplots(len(dict_splits), 1, figsize=(20, 3 * len(dict_splits)), sharex=True, sharey=True)
-
-    if len(dict_splits) == 1:
-        axes = [axes]  # make iterable if only 1 subplot
-
-    for split_idx, split in enumerate(dict_splits):
-        ax = axes[split_idx]
-
-        for epoch_idx, epoch in enumerate(epochs):
-            subset = all_triples[all_triples.triple_type == split]
-            diff = subset["pre"] - subset[f"{epoch}"]
-            counts, _ = np.histogram(diff, bins=bins)
-
-            x_shifted = x_base + epoch_idx * bar_width
-            ax.bar(x_shifted, counts, width=bar_width, label=f"Epoch {epoch_idx + 1}")
-
-        ax.set_ylabel(f"{split}")
-        ax.set_yscale('log')
-        ax.set_xticks(x_base + (num_epochs / 2) * bar_width)
-        ax.set_xticklabels([f"[{int(bins[i])}, {int(bins[i + 1])}]" for i in range(num_bins)],
-                           rotation=45, ha='right')
-
-    axes[-1].set_xlabel("Rank Improvement Bins")
-    corruption = "Subject" if group == 'po' else "Object"
-    plt.suptitle(f"Histogram of Rank Improvements Across Epochs - {corruption} Corruption", fontsize=16, y=0.99)
-    plt.tight_layout(rect=[0, 0, 1, 0.98])
-    if savefig:
-        plt.savefig(os.path.join(path, f"{group}_evolution_over_epochs.png"))
-        plt.close()
-    else:
-        plt.show()
-
-
-def make_rank_sankey(all_ranks, dict_splits, savefig=False, group='sp', path=None):
-    epochs = [col for col in all_ranks.columns if col.startswith('epoch')]
-    all_ranks.loc[all_ranks.epoch1.isna(), epochs] = all_ranks.loc[all_ranks.epoch1.isna(), "pre"]
-    best_epochs = dict()
-    for split_name in dict_splits:
-        subset_all_ranks = all_ranks.loc[all_ranks.triple_type == split_name, epochs]
-        best_epochs[split_name] = subset_all_ranks.apply(
-            lambda x: hits_at_n_score(x.values, 10), axis=0
-        ).idxmax()
-
-    # all_ranks.loc[all_ranks.epoch1.isna(), "early_stop_new_ranks"] = all_ranks.loc[all_ranks.epoch1.isna(), "pre"]
-    # for split_name in dict_splits:
-    #     subset_all_ranks = all_ranks.loc[all_ranks.triple_type == split_name, "early_stop_new_ranks"]
-    #     best_epochs[split_name] = subset_all_ranks.apply(
-    #         lambda x: hits_at_n_score(x.values, 10), axis=0
-    #     ).idxmax()
-
-    # Define intervals
-    intervals = [
-        (1, 3), (4, 10), (11, 50),
-        (51, 100), (101, 500), (501, np.inf)
-    ]
-    interval_labels = [
-        '[1-3]', '[4-10]', '[11-50]',
-        '[51-100]', '[101-500]', '>500'
-    ]
-    colors = [
-        '#0072B2', '#E69F00', '#009E73', '#D55E00', 'lightgreen', 'lightskyblue'
-    ]
-    color_map = {label: color for label, color in zip(interval_labels, colors)}
-
-    # Helper to map a rank to an interval label
-    def map_to_interval(val):
-        for (start, end), label in zip(intervals, interval_labels):
-            if start <= val <= end:
-                return label
-        return 'out-of-range'
-
-    num_rows = int(np.sqrt(len(dict_splits)))
-    fig = make_subplots(
-        rows=num_rows, cols=num_rows, specs=[[{'type': 'sankey'}] * num_rows] * num_rows,
-        subplot_titles=[f"{split_name} - {int((all_ranks.triple_type == split_name).sum())} Triples"
-                        for split_name in dict_splits],
-        vertical_spacing=0.05
-    )
-
-    for i, split_name in enumerate(dict_splits):
-        # Defining the mask to select the values of interest
-        array1 = all_ranks.loc[all_ranks.triple_type == split_name, "pre"]
-        array2 = all_ranks.loc[all_ranks.triple_type == split_name, best_epochs[split_name]]
-
-        # Map both arrays to interval labels
-        group1 = np.array([map_to_interval(x) for x in array1])
-        group2 = np.array([map_to_interval(x) for x in array2])
-
-        # Count transitions between interval labels
-        df = pd.DataFrame({'from': group1, 'to': group2})
-        flow_counts = df.value_counts().reset_index(name='count')
-
-        not_represented_labels = set(interval_labels).difference(flow_counts['from'].unique())
-        for label in not_represented_labels:
-            if label in not_represented_labels:
-                flow_counts = pd.concat([flow_counts, pd.DataFrame({'from': [label], 'to': [label], 'count': [0]})])
-
-        # Create mapping from labels to node indices
-        label_index = {label: i for i, label in enumerate(interval_labels)}
-
-        # Create Sankey diagram components
-        source = [label_index[f] for f in flow_counts['from']]
-        target = [label_index[t] + len(interval_labels) for t in flow_counts['to']]
-        value = flow_counts['count'].tolist()
-        link_colors = [color_map[f] for f in flow_counts['from']]
-
-        # Final labels: from and to
-        node_labels = [f'Before: {lbl}' for lbl in interval_labels] + [f'After: {lbl}' for lbl in interval_labels]
-        node_colors = [color_map[lbl] for lbl in interval_labels] + [color_map[lbl] for lbl in interval_labels]
-
-        # Sankey diagram
-        subfig = go.Sankey(
-            arrangement="snap",
-            node=dict(
-                pad=20,
-                thickness=30,
-                line=dict(color="black", width=0.5),
-                label=node_labels,
-                color=node_colors # optional: match node color to group
-            ),
-            link=dict(
-                source=source,
-                target=target,
-                value=value,
-                color=link_colors
-            )
-        )
-        fig.add_trace(subfig, row=i // num_rows + 1, col=i % num_rows + 1)
-
-    fig.update_layout(
-        title_text=f"Rank Transition - {'Subject' if group == 'po' else 'Object'} Corruption",
-        font_size=12, width=2000, height=3600
-    )
-    if savefig:
-        fig.write_html(os.path.join(path, f"sankey_ranks_{group}.html"), full_html=True, include_plotlyjs='cdn')
-    else:
-        fig.show()
 
 
 def new_make_rank_sankey(all_ranks, dict_splits, savefig=False, group='sp', path=None):
