@@ -1,10 +1,16 @@
 import argparse
 
 import pickle
-from experiments.TrackEmbeddings.analysis_utils import split_triples_by_degree_4way
+
 from experiments.LatentSearch.code.utils_KGE_latent_search import *
 from experiments.LatentSearch.code.main_kge_latent import EarlyStopper
 
+
+def load_pretrained_model(dataset, scoring_type):
+    """Load the pretrained KGE model"""
+    from ampligraph.utils import restore_model
+
+    return restore_model(f"../pretrained_models/{dataset.upper()}_{scoring_type.upper()}")
 
 if __name__ == "__main__":
 
@@ -29,19 +35,6 @@ if __name__ == "__main__":
     elif 'yago310' in path:
         dataset = 'yago310'
         X = load_yago3_10()
-    elif 'biokg' in path:
-        dataset = 'biokg'
-        X = dict()
-        X["train"] = pd.read_csv(
-            "/Users/alberto.bernardi/ampligraph_datasets/biokgb/graph/train.csv",
-        ).values
-        X["valid"] = pd.read_csv(
-            "/Users/alberto.bernardi/ampligraph_datasets/biokgb/graph/valid_protein_disease_associations.csv"
-        ).values
-        X["test"] = pd.read_csv(
-            "/Users/alberto.bernardi/ampligraph_datasets/biokgb/graph/test_protein_disease_associations.csv"
-        ).values
-        # thresholds = [10, 20, 50] #[3, 10, 50]
 
     train, valid, test = X["train"], X["valid"], X["test"]
 
@@ -51,7 +44,6 @@ if __name__ == "__main__":
 
     degrees = pd.concat([train_df.s, train_df.o]).value_counts()
 
-    # if dataset != 'fb15k-237':
     # We set thresholds with a hard constraint on the low degree in case the .25 quantile is below 5.
     # Indeed, we don't want to have a low degree threshold that is too low.
     thresholds = [np.max([5, np.quantile(degrees, 0.25)])]
@@ -60,13 +52,7 @@ if __name__ == "__main__":
     else:
         thresholds = np.quantile(degrees, [0.25, 0.5, 0.75]).tolist()
 
-
-    if dataset in ["fb15k-237", "wn18rr", "yago310"]:
-        kge_model = load_pretrained_model(dataset=dataset, scoring_type=scoring_type)
-    else:
-        kge_model = restore_model(
-            f"/Users/alberto.bernardi/ampligraph_models/{dataset.upper()}_{scoring_type.upper()}/model"
-        )
+    kge_model = load_pretrained_model(dataset=dataset, scoring_type=scoring_type)
 
     ent_dict = kge_model.data_indexer.backend.entities_dict
     rel_dict = kge_model.data_indexer.backend.relations_dict
@@ -78,7 +64,6 @@ if __name__ == "__main__":
     early_stopper = None
 
     if args.valid:
-
         with open(os.path.join(path, "valid_ranks_po.pkl"), "rb") as f:
             valid_ranks_po = pickle.load(f)
 
@@ -101,29 +86,6 @@ if __name__ == "__main__":
         metrics = compute_metrics_across_epochs(all_triples_sp, all_triples_po)
         metrics_by_split = compute_metrics_across_epochs(
             all_triples_sp, all_triples_po, dict_splits=valid_dict_splits
-        )
-        metrics_by_split_affected = compute_metrics_across_epochs(
-            all_triples_sp, all_triples_po,
-            dict_splits=valid_dict_splits, only_affected=True
-        )
-
-        plot_metrics_two_splits(
-            metrics_by_split, display_metric=['MRR', 'Hits@10'],
-            savefig=True, path=path, valid=True
-        )
-
-        # Plot metrics across epochs
-        plot_metrics_across_epochs(
-            metrics, dict_splits=None, savefig=True, path=path, valid=True
-        )
-        plot_metrics_across_epochs(
-            metrics_by_split, dict_splits=valid_dict_splits,
-            display_metric=['MRR', 'Hits@10'], savefig=True, path=path, valid=True
-        )
-        plot_metrics_across_epochs(
-            metrics_by_split_affected, dict_splits=valid_dict_splits,
-            display_metric=['MRR', 'Hits@10'], savefig=True,
-            path=path, only_affected=True, valid=True
         )
 
         early_stopper = EarlyStopper(
@@ -158,42 +120,3 @@ if __name__ == "__main__":
     if args.valid:
         metrics_by_split, aggregated_metrics = metrics_by_split
         aggregated_to_tables(aggregated_metrics, path=path)
-
-    metrics_by_split_affected = compute_metrics_across_epochs(
-        all_triples_sp, all_triples_po,
-        dict_splits=dict_splits, only_affected=True
-    )
-
-    # Plot metrics across epochs
-    plot_metrics_across_epochs(
-        metrics, dict_splits=None, savefig=True, path=path
-    )
-    plot_metrics_across_epochs(
-        metrics_by_split, dict_splits=dict_splits,
-        display_metric=['MRR', 'Hits@10'], savefig=True, path=path
-    )
-    plot_metrics_across_epochs(
-        metrics_by_split_affected, dict_splits=dict_splits,
-        display_metric=['MRR', 'Hits@10'], savefig=True,
-        path=path, only_affected=True
-    )
-
-    # # Plot rank improvement binned by epoch and dict_splits
-    # plot_ranks_improvement_across_epochs(
-    #     all_triples_sp, dict_splits, group='sp',
-    #     savefig=True, path=path, four_way=True, colored=True
-    # )
-    # plot_ranks_improvement_across_epochs(
-    #     all_triples_po, dict_splits, group='po',
-    #     savefig=True, path=path, four_way=True, colored=True
-    # )
-
-    # Plot how ranks move around for certain group types
-    new_make_rank_sankey(
-        all_triples_sp, dict_splits=dict_splits,
-        group='sp', savefig=True, path=path
-    )
-    new_make_rank_sankey(
-        all_triples_po, dict_splits=dict_splits,
-        group='po', savefig=True, path=path
-    )

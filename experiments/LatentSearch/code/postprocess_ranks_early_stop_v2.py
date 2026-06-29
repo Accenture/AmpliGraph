@@ -18,13 +18,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from ampligraph.datasets import load_fb15k_237, load_wn18rr, load_yago3_10
-from ampligraph.pretrained_models import load_pretrained_model
-from ampligraph.utils import restore_model
-
 import pickle
-import json
-from experiments.TrackEmbeddings.analysis_utils import split_triples_by_degree, split_triples_by_degree_4way
 from experiments.LatentSearch.code.utils_KGE_latent_search import *
 from experiments.LatentSearch.code.main_kge_latent import EarlyStopper
 
@@ -98,19 +92,6 @@ if __name__ == "__main__":
     elif 'yago310' in path:
         dataset = 'yago310'
         X = load_yago3_10()
-    elif 'biokg' in path:
-        dataset = 'biokg'
-        X = dict()
-        X["train"] = pd.read_csv(
-            "/Users/alberto.bernardi/ampligraph_datasets/biokgb/graph/train.csv"
-        ).values
-        X["valid"] = pd.read_csv(
-            "/Users/alberto.bernardi/ampligraph_datasets/biokgb/graph/valid_protein_disease_associations.csv"
-        ).values
-        X["test"] = pd.read_csv(
-            "/Users/alberto.bernardi/ampligraph_datasets/biokgb/graph/test_protein_disease_associations.csv"
-        ).values
-        # thresholds = [10, 20, 50] #[3, 10, 50]
 
     train, valid, test = X["train"], X["valid"], X["test"]
 
