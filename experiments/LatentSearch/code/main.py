@@ -1,17 +1,22 @@
 """
 This script can be used to run the experiments found in the paper
 "ImbalancE: Inference-Time Latent Search Against Degree Imbalance in Link Prediction"
-submitted for review at ICLR 2026.
+submitted for review at IJCAI-ECAI 2026.
 """
 
 import argparse
 import pickle
 import json
 import tensorflow as tf
-from ampligraph.pretrained_models import load_pretrained_model
 
 from experiments.LatentSearch.code.utils_KGE_latent_search import *
 from ampligraph.latent_features.models import ImbalancE
+
+def load_pretrained_model(dataset, scoring_type):
+    """Load the pretrained KGE model"""
+    from ampligraph.utils import restore_model
+
+    return restore_model(f"../pretrained_models/{dataset.upper()}_{scoring_type.upper()}")
 
 def map_entities_dataset(train, valid, test, entity_mapper, relation_mapper):
     """
@@ -117,9 +122,8 @@ if __name__ == "__main__":
         description='Pipeline to control the experiments for the KGE inference latent search.')
 
     parser.add_argument('--dataset', default='fb15k-237', type=str, help='Dataset to process')
-    # TODO: change the output folder to something more generic
     parser.add_argument('--output-folder', type=str,
-                        default="/mnt/new_disk/alberto/ampligraph_results/latent_search/KGE_inference_search",
+                        default="../results",
                         help='Base folder for the output of the experiment.')
     parser.add_argument('--seed', default=0, type=int)
 
@@ -172,8 +176,6 @@ if __name__ == "__main__":
     # Save configuration of the experiment
     with open(os.path.join(output_path, "config.json"), "w") as f:
         json.dump(vars(args), f)
-
-
 
     early_stopper = None
 
