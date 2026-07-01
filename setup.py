@@ -18,6 +18,7 @@ setup_params = dict(name='ampligraph',
                     packages=find_packages(exclude=('tests', 'docs')),
                     include_package_data=True,
                     zip_safe=False,
+                    python_requires='>=3.9,<3.12',
                     install_requires=[
                         'numpy>=1.14.3',
                         'pytest>=3.5.1',

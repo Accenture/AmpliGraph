@@ -60,7 +60,7 @@ AmpliGraph includes the following submodules:
 ### Prerequisites
 
 * Linux, macOS, Windows
-* Python ≥ 3.8
+* Python 3.9 – 3.11
 
 ### Provision a Virtual Environment
 
@@ -72,20 +72,20 @@ instruction for using `venv` and `Conda`.
 The first step is to create and activate the virtual environment.
 
 ```
-python3.8 -m venv PATH/TO/NEW/VIRTUAL_ENVIRONMENT
+python3.11 -m venv PATH/TO/NEW/VIRTUAL_ENVIRONMENT
 source PATH/TO/NEW/VIRTUAL_ENVIRONMENT/bin/activate
 ```
 
-Once this is done, we can proceed with the installation of TensorFlow 2:
+Once this is done, we can proceed with the installation of TensorFlow 2 (currently, AmpliGraph supports versions <2.16):
 
 ```
-pip install "tensorflow==2.9.0"
+pip install "tensorflow<2.16"
 ```
 
 If you are installing Tensorflow on MacOS, instead of the following please use:
 
 ```
-pip install "tensorflow-macos==2.9.0"
+pip install "tensorflow<2.16"
 ```
 
 **IMPORTANT**: the installation of TensorFlow can be tricky on Mac OS with the Apple silicon chip. Though `venv` can
@@ -99,18 +99,18 @@ down below and consider using `conda` if some issues persist in alignment with t
 The first step is to create and activate the virtual environment.
 
 ```
-conda create --name ampligraph python=3.8
+conda create --name ampligraph python=3.11
 source activate ampligraph
 ```
 
 Once this is done, we can proceed with the installation of TensorFlow 2, which can be done through `pip` or `conda`.
 
 ```
-pip install "tensorflow==2.9.0"
+pip install "tensorflow<2.16"
 
 or 
 
-conda install "tensorflow==2.9.0"
+conda install "tensorflow<2.16"
 ```
 
 #### Install TensorFlow 2 for Mac OS M1 chip
@@ -118,7 +118,7 @@ conda install "tensorflow==2.9.0"
 When installing TensorFlow 2 for Mac OS with Apple silicon chip we recommend to use a conda environment. 
 
 ```
-conda create --name ampligraph python=3.8
+conda create --name ampligraph python=3.11
 source activate ampligraph
 ```
 
@@ -126,8 +126,8 @@ After having created and activated the virtual environment, run the following to
 
 ```
 conda install -c apple tensorflow-deps
-pip install --user tensorflow-macos==2.9.0
-pip install --user tensorflow-metal==0.6
+pip install --user tensorflow-macos==2.15.1
+pip install --user tensorflow-metal==1.1.0
 ```
 
 In case of problems with the installation or for further details, refer to

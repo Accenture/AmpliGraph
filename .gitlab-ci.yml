@@ -27,7 +27,7 @@ before_script:
   - virtualenv venv
   - source venv/bin/activate
   - pip install --upgrade pip
-  - pip install tensorflow==2.10
+  - pip install tensorflow==2.15.1
   - pip install ./
 
 codestyle:
