@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ampligraph"
+dynamic = ["version"]
+description = "A Python library for relational learning on knowledge graphs."
+readme = "README.md"
+requires-python = ">=3.9,<3.12"
+license = { text = "Apache 2.0" }
+authors = [{ name = "Accenture Dublin Labs", email = "about@ampligraph.org" }]
+keywords = [
+    "machine-learning",
+    "knowledge-graph",
+    "graph-embeddings",
+    "tensorflow",
+    "relational-learning",
+]
+classifiers = [
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "tensorflow>=2.15,<2.16", # TensorFlow 2.15 is the last Keras 2 release
+    "numpy>=1.14.3,<2.0",  # <2.0 required by TensorFlow 2.15 / Keras 2
+    "scikit-learn>=0.19.1",
+    "tqdm>=4.23.4",
+    "pandas>=0.23.1",
+    "beautifultable>=0.7.0",
+    "pyyaml>=3.13",
+    "rdflib>=4.2.2",
+    "scipy>=1.10.0",
+    "networkx>=2.3",
+    "matplotlib>=3.7",
+    "docopt==0.6.2",
+    "schema==0.7.5",
+]
+
+[project.optional-dependencies]
+cuda = ["tensorflow[and-cuda]>=2.15,<2.16"]
+test = ["pytest>=3.5.1"]
+docs = [
+    "sphinx==5.0.2",
+    "myst-parser==0.18.0",
+    "docutils<0.18",
+    "sphinx_rtd_theme==1.0.0",
+    "sphinxcontrib-bibtex==2.4.2",
+]
+lint = ["flake8>=3.7.7"]
+dev = ["ampligraph[test,lint]"]
+
+[project.urls]
+Homepage = "https://github.com/Accenture/AmpliGraph/"
+Documentation = "https://docs.ampligraph.org"
+Repository = "https://github.com/Accenture/AmpliGraph/"
+
+[tool.setuptools.dynamic]
+version = { attr = "ampligraph.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["ampligraph*"]
+
+[tool.setuptools.package-data]
+ampligraph = ["logger.conf"]
