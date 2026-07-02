@@ -6,6 +6,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 import abc
+import inspect
 import logging
 
 import six
@@ -13,6 +14,88 @@ import tensorflow as tf
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+# Since TF 2.11 ``tf.keras.optimizers.Optimizer`` refers to the new (Keras) optimizer.
+# The pre-2.11 optimizers are still available under ``tf.keras.optimizers.legacy``
+# AmpliGraph standardises on these legacy optimizers so that model persistence stays compatible
+# with models saved by older AmpliGraph/TF versions.
+_legacy_optimizers = getattr(tf.keras.optimizers, "legacy", None)
+
+# Base optimizer classes accepted by ``get`` (both new and legacy must be recognised, since a
+# restored model may deserialize its optimizer as either).
+_OPTIMIZER_CLASSES = (tf.keras.optimizers.Optimizer,)
+if _legacy_optimizers is not None:
+    _OPTIMIZER_CLASSES += (_legacy_optimizers.Optimizer,)
+
+
+def _optimizer_classes(name):
+    """Return the (new, legacy) optimizer classes for a given optimizer name.
+
+    Used for ``isinstance`` checks so that they work regardless of whether the wrapped
+    optimizer is a new-style or legacy Keras optimizer.
+    """
+    classes = ()
+    new_cls = getattr(tf.keras.optimizers, name, None)
+    if new_cls is not None:
+        classes += (new_cls,)
+    if _legacy_optimizers is not None:
+        legacy_cls = getattr(_legacy_optimizers, name, None)
+        if legacy_cls is not None:
+            classes += (legacy_cls,)
+    return classes
+
+
+# Pre-computed class tuples for the optimizers that need special handling.
+_ADAM_CLASSES = _optimizer_classes("Adam")
+_GPU_WORKAROUND_CLASSES = (
+    _optimizer_classes("Adadelta")
+    + _optimizer_classes("Adagrad")
+    + _optimizer_classes("Ftrl")
+)
+
+
+def _to_legacy_optimizer(identifier, **hyperparams):
+    """Resolve a string identifier to a *legacy* Keras optimizer instance when possible.
+
+    Falls back to ``tf.keras.optimizers.get`` if the legacy module or the named optimizer is
+    not available (e.g. on TF versions without the ``legacy`` namespace).
+    """
+    if _legacy_optimizers is not None:
+        for attr in dir(_legacy_optimizers):
+            if attr.lower() == identifier.lower():
+                return getattr(_legacy_optimizers, attr)(**hyperparams)
+    return tf.keras.optimizers.get(identifier, **hyperparams)
+
+
+def _ensure_legacy_optimizer(optimizer):
+    """Rebuild a new-style Keras optimizer as its legacy equivalent.
+
+    Since TF 2.11 the default optimizers dropped ``get_weights``/``set_weights``, which AmpliGraph
+    needs for (partitioned) model persistence. If a new-style optimizer instance is passed, we
+    rebuild it as the matching legacy optimizer, preserving the hyperparameters the legacy
+    constructor understands. Legacy instances (and unknown optimizers) are returned unchanged.
+
+    Future releases will remove this function and rely on new optimizers.
+    """
+    if _legacy_optimizers is None or isinstance(
+        optimizer, _legacy_optimizers.Optimizer
+    ):
+        return optimizer
+
+    legacy_cls = getattr(_legacy_optimizers, type(optimizer).__name__, None)
+    if legacy_cls is None:
+        return optimizer
+
+    valid_kwargs = set(
+        inspect.signature(legacy_cls.__init__).parameters
+    )
+    config = {
+        k: v for k, v in optimizer.get_config().items() if k in valid_kwargs
+    }
+    try:
+        return legacy_cls(**config)
+    except (TypeError, ValueError):
+        return optimizer
 
 
 class OptimizerWrapper(abc.ABC):
@@ -34,14 +117,10 @@ class OptimizerWrapper(abc.ABC):
 
         # workaround for Adagrad/Adadelta/Ftrl optimizers to work on gpu
         self.gpu_workaround = False
-        if (
-            isinstance(self.optimizer, tf.keras.optimizers.Adadelta)
-            or isinstance(self.optimizer, tf.keras.optimizers.Adagrad)
-            or isinstance(self.optimizer, tf.keras.optimizers.Ftrl)
-        ):
+        if isinstance(self.optimizer, _GPU_WORKAROUND_CLASSES):
             self.gpu_workaround = True
 
-        if isinstance(self.optimizer, tf.keras.optimizers.Adam):
+        if isinstance(self.optimizer, _ADAM_CLASSES):
             self.number_hyperparams = 2
 
     def apply_gradients(self, grads_and_vars):
@@ -197,13 +276,13 @@ def get(identifier, hyperparams={}):
     >>> optim = get_optimizer('adam', {'learning_rate': 5e-3})
 
     """
-    if isinstance(identifier, tf.optimizers.Optimizer):
-        return OptimizerWrapper(identifier)
+    if isinstance(identifier, _OPTIMIZER_CLASSES):
+        return OptimizerWrapper(_ensure_legacy_optimizer(identifier))
     elif isinstance(identifier, OptimizerWrapper):
         return identifier
     elif isinstance(identifier, six.string_types):
         learning_rate = 0.001 if "learning_rate" not in hyperparams else hyperparams.pop("learning_rate")
-        optimizer = tf.keras.optimizers.get(identifier, **hyperparams)
+        optimizer = _to_legacy_optimizer(identifier, **hyperparams)
         optimizer.learning_rate = learning_rate
         return OptimizerWrapper(optimizer)
     else:

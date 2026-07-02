@@ -24,6 +24,34 @@ ModelMetadata = namedtuple(
     defaults=(None, None, None, None, None),
 )
 
+MODEL_URLS = {
+    "YAGO310_ROTATE": "https://ndownloader.figshare.com/files/66253883",
+    "YAGO310_TRANSE": "https://ndownloader.figshare.com/files/66253871",
+    "YAGO310_HOLE": "https://ndownloader.figshare.com/files/66253889",
+    "YAGO310_COMPLEX": "https://ndownloader.figshare.com/files/66253892",
+    "YAGO310_DISTMULT": "https://ndownloader.figshare.com/files/66253886",
+    "FB15K-237_ROTATE": "https://ndownloader.figshare.com/files/66253835",
+    "FB15K-237_TRANSE": "https://ndownloader.figshare.com/files/66253820",
+    "FB15K-237_HOLE": "https://ndownloader.figshare.com/files/66253847",
+    "FB15K-237_DISTMULT": "https://ndownloader.figshare.com/files/66253850",
+    "FB15K-237_COMPLEX": "https://ndownloader.figshare.com/files/66253865",
+    "WN18_DISTMULT": "https://ndownloader.figshare.com/files/66253841",
+    "WN18_TRANSE": "https://ndownloader.figshare.com/files/66253832",
+    "WN18_ROTATE": "https://ndownloader.figshare.com/files/66253859",
+    "WN18_COMPLEX": "https://ndownloader.figshare.com/files/66253874",
+    "WN18_HOLE": "https://ndownloader.figshare.com/files/66253877",
+    "FB15K_HOLE": "https://ndownloader.figshare.com/files/66253817",
+    "FB15K_COMPLEX": "https://ndownloader.figshare.com/files/66253829",
+    "FB15K_TRANSE": "https://ndownloader.figshare.com/files/66253826",
+    "FB15K_DISTMULT": "https://ndownloader.figshare.com/files/66253838",
+    "FB15K_ROTATE": "https://ndownloader.figshare.com/files/66253856",
+    "WN18RR_TRANSE": "https://ndownloader.figshare.com/files/66253862",
+    "WN18RR_ROTATE": "https://ndownloader.figshare.com/files/66253880",
+    "WN18RR_DISTMULT": "https://ndownloader.figshare.com/files/66253868",
+    "WN18RR_HOLE": "https://ndownloader.figshare.com/files/66253844",
+    "WN18RR_COMPLEX": "https://ndownloader.figshare.com/files/66253853",
+}
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -79,8 +107,8 @@ def load_pretrained_model(dataset, scoring_type, data_home=None):
     model_name = scoring_type.upper()
     dataset_name = dataset.upper()
     pretrained_model_name = dataset_name + "_" + model_name
-    filename = pretrained_model_name + ".zip"
-    url = "https://ampligraph.s3.eu-west-1.amazonaws.com/pretrained-models-v2.0/" + filename
+    filename = pretrained_model_name
+    url = MODEL_URLS[filename]
 
     metadata = ModelMetadata(
         scoring_type=scoring_type,

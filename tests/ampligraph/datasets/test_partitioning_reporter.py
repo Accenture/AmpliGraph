@@ -8,8 +8,7 @@
 from ampligraph.datasets.partitioning_reporter import PartitioningReporter
 from ampligraph.datasets.graph_partitioner import NaiveGraphPartitioner, GraphDataLoader
 import pytest
-import mock
-from pytest_mock import mocker
+from unittest import mock
 import pandas as pd
 import numpy as np
 
@@ -75,18 +74,18 @@ def k(request):
 
 
 @pytest.fixture(scope=SCOPE)
-def partitioning(data_1, data_2, k, mocker):
-    mocker.patch.object(NaiveGraphPartitioner, 'get_partitions_list')
-    mocker.patch.object(NaiveGraphPartitioner, '_split')
-    NaiveGraphPartitioner.get_partitions_list.return_value = [data_1, data_2]
-    NaiveGraphPartitioner._split.return_value = None
-    partitioning = NaiveGraphPartitioner(data_1, k)
-    n = data_1.get_data_size()
-    partitioning = partitioning.get_partitions_list()
-    sizes = [x.get_data_size() for x in partitioning]
-    avg_size = np.mean(sizes)
-    max_size = np.max(sizes)
-    yield partitioning, {'avg_size': avg_size, 'max_size': max_size, 'k': n}
+def partitioning(data_1, data_2, k):
+    with mock.patch.object(NaiveGraphPartitioner, 'get_partitions_list'), \
+         mock.patch.object(NaiveGraphPartitioner, '_split'):
+        NaiveGraphPartitioner.get_partitions_list.return_value = [data_1, data_2]
+        NaiveGraphPartitioner._split.return_value = None
+        partitioning = NaiveGraphPartitioner(data_1, k)
+        n = data_1.get_data_size()
+        partitioning = partitioning.get_partitions_list()
+        sizes = [x.get_data_size() for x in partitioning]
+        avg_size = np.mean(sizes)
+        max_size = np.max(sizes)
+        yield partitioning, {'avg_size': avg_size, 'max_size': max_size, 'k': n}
 
 
 @pytest.fixture(scope=SCOPE)

@@ -27,7 +27,6 @@ before_script:
   - virtualenv venv
   - source venv/bin/activate
   - pip install --upgrade pip
-  - pip install tensorflow==2.10 "numpy<2.0"
   - pip install ./
 
 codestyle:
@@ -37,8 +36,8 @@ codestyle:
 
 test:
   script:
-    - pip install .[test]
-    - pytest
+    - pip install ".[test]"
+    - pytest tests
 
 run:
   script:
@@ -50,6 +49,7 @@ run:
 
 pages:
   script:
+    - pip install ".[docs]"
     - cd docs
     - make clean autogen html
     - mkdir ../public/

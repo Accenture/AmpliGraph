@@ -432,7 +432,7 @@ def load_wn18(check_md5hash=False, add_reciprocal_rels=False):
     wn18 = DatasetMetadata(
         dataset_name="wn18",
         filename="wn18.zip",
-        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wn18.zip",
+        url="https://ndownloader.figshare.com/files/66192227",
         train_name="train.txt",
         valid_name="valid.txt",
         test_name="test.txt",
@@ -508,7 +508,7 @@ def load_wn18rr(
     wn18rr = DatasetMetadata(
         dataset_name="wn18RR",
         filename="wn18RR.zip",
-        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wn18RR.zip",
+        url="https://ndownloader.figshare.com/files/66192221",
         train_name="train.txt",
         valid_name="valid.txt",
         test_name="test.txt",
@@ -596,7 +596,7 @@ def load_fb15k(check_md5hash=False, add_reciprocal_rels=False):
     FB15K = DatasetMetadata(
         dataset_name="fb15k",
         filename="fb15k.zip",
-        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/fb15k.zip",
+        url="https://ndownloader.figshare.com/files/66192239",
         train_name="train.txt",
         valid_name="valid.txt",
         test_name="test.txt",
@@ -686,7 +686,7 @@ def load_fb15k_237(
         fb15k_237 = DatasetMetadata(
             dataset_name="fb15k-237",
             filename="fb15k-237_human_interpretability.zip",
-            url="https://ampgraphenc.s3.eu-west-1.amazonaws.com/datasets/fb15k_237_human_interpretability.zip",
+            url="https://ndownloader.figshare.com/files/66193391",
             train_name="train.txt",
             valid_name="valid.txt",
             test_name="test.txt",
@@ -704,7 +704,7 @@ def load_fb15k_237(
         fb15k_237 = DatasetMetadata(
             dataset_name="fb15k-237",
             filename="fb15k-237.zip",
-            url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/fb15k-237.zip",
+            url="https://ndownloader.figshare.com/files/66193226",
             train_name="train.txt",
             valid_name="valid.txt",
             test_name="test.txt",
@@ -786,7 +786,7 @@ def load_yago3_10(
     yago3_10 = DatasetMetadata(
         dataset_name="YAGO3-10",
         filename="YAGO3-10.zip",
-        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/YAGO3-10.zip",
+        url="https://ndownloader.figshare.com/files/66192236",
         train_name="train.txt",
         valid_name="valid.txt",
         test_name="test.txt",
@@ -882,7 +882,7 @@ def load_wn11(
     wn11 = DatasetMetadata(
         dataset_name="wordnet11",
         filename="wordnet11.zip",
-        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/wordnet11.zip",
+        url="https://ndownloader.figshare.com/files/66192215",
         train_name="train.txt",
         valid_name="dev.txt",
         test_name="test.txt",
@@ -989,7 +989,7 @@ def load_fb13(
     fb13 = DatasetMetadata(
         dataset_name="freebase13",
         filename="freebase13.zip",
-        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/freebase13.zip",
+        url="https://ndownloader.figshare.com/files/66192218",
         train_name="train.txt",
         valid_name="dev.txt",
         test_name="test.txt",
@@ -1318,7 +1318,7 @@ def load_onet20k(
     onet20k = DatasetMetadata(
         dataset_name="onet20k",
         filename="onet20k.zip",
-        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/onet20k.zip",
+        url="https://ndownloader.figshare.com/files/66192209",
         train_name="train.tsv",
         valid_name="valid.tsv",
         test_name="test.tsv",
@@ -1422,7 +1422,7 @@ def load_ppi5k(
     ppi5k = DatasetMetadata(
         dataset_name="ppi5k",
         filename="ppi5k.zip",
-        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/ppi5k.zip",
+        url="https://ndownloader.figshare.com/files/66192224",
         train_name="train.tsv",
         valid_name="valid.tsv",
         test_name="test.tsv",
@@ -1522,7 +1522,7 @@ def load_nl27k(
     nl27k = DatasetMetadata(
         dataset_name="nl27k",
         filename="nl27k.zip",
-        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/nl27k.zip",
+        url="https://ndownloader.figshare.com/files/66192212",
         train_name="train.tsv",
         valid_name="valid.tsv",
         test_name="test.tsv",
@@ -1622,7 +1622,7 @@ def load_cn15k(
     cn15k = DatasetMetadata(
         dataset_name="cn15k",
         filename="cn15k.zip",
-        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/cn15k.zip",
+        url="https://ndownloader.figshare.com/files/66192206",
         train_name="train.tsv",
         valid_name="valid.tsv",
         test_name="test.tsv",
@@ -1880,7 +1880,7 @@ def load_codex(
     codex = DatasetMetadata(
         dataset_name="codex",
         filename="codex.zip",
-        url="https://s3-eu-west-1.amazonaws.com/ampligraph/datasets/codex.zip",
+        url="https://ndownloader.figshare.com/files/66192203",
         train_name="train.txt",
         valid_name="valid.txt",
         test_name="test.txt",

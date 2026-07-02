@@ -7,16 +7,15 @@
 #
 """AmpliGraph is a library for relational learning on knowledge graphs."""
 import logging.config
+import os
 
-import pkg_resources
-import tensorflow as tf
-
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+# Silence TensorFlow's (C++) info/warning logging
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
 __version__ = '2.1-dev'
 __all__ = ['datasets', 'latent_features', 'discovery', 'evaluation', 'utils', 'pretrained_models']
 
 logging.config.fileConfig(
-    pkg_resources.resource_filename(__name__, "logger.conf"),
+    os.path.join(os.path.dirname(__file__), "logger.conf"),
     disable_existing_loggers=False,
 )
