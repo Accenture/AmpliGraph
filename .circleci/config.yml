@@ -4,7 +4,7 @@
 
   restore-cache: &restore-cache
     keys:
-      - v1-dependencies-{{ checksum "setup.py" }}-{{ checksum "requirements.txt" }}
+      - v1-dependencies-{{ checksum "pyproject.toml" }}
 
   create-venv: &create-venv
     name: Create virtualenv
@@ -13,13 +13,12 @@
   save-cache: &save-cache
     paths:
       - ./venv
-    key: v1-dependencies-{{ checksum "setup.py" }}-{{ checksum "requirements.txt" }}
+    key: v1-dependencies-{{ checksum "pyproject.toml" }}
 
   install-package: &install-package
     name: Install package
     command: |
       . venv/bin/activate
-      venv/bin/python3 -m pip install tensorflow==2.15.1
       venv/bin/python3 -m pip install .
 
 version: 2
@@ -64,7 +63,8 @@ jobs:
           name: Unit tests with Pytest
           command: |
             . venv/bin/activate
-            venv/bin/python3 setup.py test
+            venv/bin/python3 -m pip install ".[test]"
+            venv/bin/python3 -m pytest tests
   lint:
     docker:
       - image: *docker-image
@@ -93,6 +93,7 @@ jobs:
           name: Making docs with Sphinx
           command: |
             . venv/bin/activate
+            venv/bin/python3 -m pip install ".[docs]"
             cd docs
             make clean autogen html
 
