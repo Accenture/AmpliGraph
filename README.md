@@ -84,11 +84,10 @@ branch. In this way, your local working copy will be on the latest commit on the
 ```
 git clone https://github.com/Accenture/AmpliGraph.git
 cd AmpliGraph
-uv install -e .
+uv sync
 ```
-Notice that the code snippet above installs the library in editable mode (`-e`).
 
-To sanity check the installation run the following:
+To sanity check the installation, run the following:
 
 ```python
 >>> import ampligraph
