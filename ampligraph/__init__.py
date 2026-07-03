@@ -1,4 +1,4 @@
-# Copyright 2019-2023 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2026 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -12,7 +12,7 @@ import os
 # Silence TensorFlow's (C++) info/warning logging
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
-__version__ = '2.1-dev'
+__version__ = '2.2.0'
 __all__ = ['datasets', 'latent_features', 'discovery', 'evaluation', 'utils', 'pretrained_models']
 
 logging.config.fileConfig(
