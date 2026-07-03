@@ -8,11 +8,12 @@ pool:
 
 variables:
   PYTHON_VERSION: '3.11'
-  CACHE_KEY: 'v1 | "$(Agent.OS)" | pyproject.toml'
+  UV_CACHE_DIR: $(Pipeline.Workspace)/.uv-cache   # uv's global download/build cache
+  CACHE_KEY: 'uv | "$(Agent.OS)" | uv.lock | pyproject.toml'
 
 jobs:
   - job: build
-    displayName: Build (install package)
+    displayName: Build (sync environment)
     steps:
       - script: |
           echo "=== Before cleanup ==="
@@ -39,100 +40,79 @@ jobs:
           echo "=== After cleanup ==="
           df -h /
         displayName: Free up disk space
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: $(PYTHON_VERSION)
       - task: Cache@2
         inputs:
           key: $(CACHE_KEY)
-          path: venv
-      - script: python3 -m venv venv
-        displayName: Create virtualenv
+          path: $(UV_CACHE_DIR)
       - script: |
-          . venv/bin/activate
-          venv/bin/python3 -m pip install .
-        displayName: Install package
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "##vso[task.prependpath]$HOME/.local/bin"
+        displayName: Install uv
+      - script: uv sync --python $(PYTHON_VERSION)
+        displayName: Sync environment (uv)
 
   - job: pip_check
-    displayName: Pip check
+    displayName: Dependency check
     steps:
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: $(PYTHON_VERSION)
       - task: Cache@2
         inputs:
           key: $(CACHE_KEY)
-          path: venv
-      - script: python3 -m venv venv
-        displayName: Create virtualenv
+          path: $(UV_CACHE_DIR)
       - script: |
-          . venv/bin/activate
-          venv/bin/python3 -m pip install .
-        displayName: Install package
-      - script: |
-          . venv/bin/activate
-          venv/bin/python3 -m pip check
-        displayName: Pip check
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "##vso[task.prependpath]$HOME/.local/bin"
+        displayName: Install uv
+      - script: uv sync --python $(PYTHON_VERSION)
+        displayName: Sync environment (uv)
+      - script: uv pip check
+        displayName: Dependency check (uv pip check)
 
   - job: test
     displayName: Unit tests with Pytest
     steps:
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: $(PYTHON_VERSION)
       - task: Cache@2
         inputs:
           key: $(CACHE_KEY)
-          path: venv
-      - script: python3 -m venv venv
-        displayName: Create virtualenv
+          path: $(UV_CACHE_DIR)
       - script: |
-          . venv/bin/activate
-          venv/bin/python3 -m pip install .
-        displayName: Install package
-      - script: |
-          . venv/bin/activate
-          venv/bin/python3 -m pip install ".[test]"
-          venv/bin/python3 -m pytest tests
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "##vso[task.prependpath]$HOME/.local/bin"
+        displayName: Install uv
+      - script: uv sync --python $(PYTHON_VERSION) --extra test
+        displayName: Sync environment (uv)
+      - script: uv run pytest tests
         displayName: Unit tests with Pytest
 
   - job: lint
     displayName: Linting with flake8
     steps:
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: $(PYTHON_VERSION)
       - task: Cache@2
         inputs:
           key: $(CACHE_KEY)
-          path: venv
-      - script: python3 -m venv venv
-        displayName: Create virtualenv
+          path: $(UV_CACHE_DIR)
       - script: |
-          . venv/bin/activate
-          venv/bin/python3 -m pip install flake8
-          venv/bin/python3 -m flake8 ampligraph --max-line-length 200 --ignore=W605,W503,E231
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "##vso[task.prependpath]$HOME/.local/bin"
+        displayName: Install uv
+      - script: uv sync --python $(PYTHON_VERSION) --extra lint
+        displayName: Sync environment (uv)
+      - script: uv run flake8 ampligraph --max-line-length 200 --ignore=W605,W503,E231
         displayName: Linting with flake8
 
   - job: docs
     displayName: Making docs with Sphinx
     steps:
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: $(PYTHON_VERSION)
       - task: Cache@2
         inputs:
           key: $(CACHE_KEY)
-          path: venv
-      - script: python3 -m venv venv
-        displayName: Create virtualenv
+          path: $(UV_CACHE_DIR)
       - script: |
-          . venv/bin/activate
-          venv/bin/python3 -m pip install .
-        displayName: Install package
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "##vso[task.prependpath]$HOME/.local/bin"
+        displayName: Install uv
+      - script: uv sync --python $(PYTHON_VERSION) --extra docs
+        displayName: Sync environment (uv)
       - script: |
-          . venv/bin/activate
-          venv/bin/python3 -m pip install ".[docs]"
           cd docs
-          make clean autogen html
+          uv run make clean autogen html
         displayName: Making docs with Sphinx
