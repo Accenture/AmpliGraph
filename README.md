@@ -62,6 +62,7 @@ AmpliGraph includes the following submodules:
 * Linux, macOS, Windows
 * Python 3.9 – 3.11
 
+## Install AmpliGraph
 
 To install the latest stable release from pip:
 
@@ -84,6 +85,7 @@ branch. In this way, your local working copy will be on the latest commit on the
 ```
 git clone https://github.com/Accenture/AmpliGraph.git
 cd AmpliGraph
+git checkout develop
 uv sync
 ```
 
