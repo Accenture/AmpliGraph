@@ -50,6 +50,7 @@ docs = [
     "docutils<0.18",
     "sphinx_rtd_theme==1.0.0",
     "sphinxcontrib-bibtex==2.4.2",
+    "setuptools",
 ]
 lint = ["flake8>=3.7.7"]
 dev = ["ampligraph[test,lint]"]
