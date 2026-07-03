@@ -50,7 +50,7 @@ docs = [
     "docutils<0.18",
     "sphinx_rtd_theme==1.0.0",
     "sphinxcontrib-bibtex==2.4.2",
-    "setuptools",
+    "setuptools<81",  # provides pkg_resources for sphinxcontrib-bibtex 2.4.2; removed in setuptools 81 (uv venvs don't seed it)
 ]
 lint = ["flake8>=3.7.7"]
 dev = ["ampligraph[test,lint]"]

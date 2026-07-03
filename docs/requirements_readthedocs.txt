@@ -6,5 +6,5 @@ myst-parser==0.18.0
 docutils<0.18
 sphinx_rtd_theme==1.0.0
 sphinxcontrib-bibtex==2.4.2
-setuptools
+setuptools<81
 tensorflow==2.15.1
