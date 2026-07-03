@@ -189,7 +189,6 @@ class NoBackend:
                 po_subj_groups = df_source.groupby(["p", "o"])["s"].apply(lambda x: list(set(x)))
                 self.grouped_by_sources[filter_name] = (sp_obj_groups, po_subj_groups)
 
-
     def _get_triples(self, subjects=None, objects=None, entities=None):
         """Get triples whose subjects belongs to ``subjects``, objects to ``objects``,
         or, if neither object nor subject is provided, triples whose subject or object belong to entities.
@@ -655,13 +654,15 @@ class GraphDataLoader:
         else:
             if isinstance(use_filter, dict):
                 for filter_name, filter_split in use_filter.items():
-                        if not isinstance(filter_split, np.ndarray):
-                            try:
-                                use_filter[filter_name] = filter_split.values
-                            except:
-                                filter_type = type(filter_split)
-                                f"When the filter is provided as a dictionary, make sure " \
+                    if not isinstance(filter_split, np.ndarray):
+                        try:
+                            use_filter[filter_name] = filter_split.values
+                        except AttributeError:
+                            filter_type = type(filter_split)
+                            raise ValueError(
+                                "When the filter is provided as a dictionary, make sure "
                                 f"its values are np.ndarrays or pd.DataFrames! Got {filter_type}"
+                            )
                 self.use_filter = use_filter
             elif use_filter is False:
                 self.use_filter = use_filter
