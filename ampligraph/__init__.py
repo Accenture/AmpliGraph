@@ -12,7 +12,7 @@ import os
 # Silence TensorFlow's (C++) info/warning logging
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
-__version__ = '2.2.0'
+__version__ = '2.2-dev'
 __all__ = ['datasets', 'latent_features', 'discovery', 'evaluation', 'utils', 'pretrained_models']
 
 logging.config.fileConfig(
