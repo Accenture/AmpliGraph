@@ -1,132 +1,103 @@
-.common-values:
+version: 2.1
 
-  docker-image: &docker-image cimg/python:3.11
+executors:
+  uv-python:
+    docker:
+      - image: cimg/python:3.11
 
-  restore-cache: &restore-cache
-    keys:
-      - v2-uv-{{ checksum "pyproject.toml" }}
+commands:
+  setup-uv:
+    description: Install uv and add it to PATH
+    steps:
+      - run:
+          name: Install uv
+          command: |
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$BASH_ENV"
 
-  save-cache: &save-cache
-    paths:
-      - ~/.cache/uv
-    key: v2-uv-{{ checksum "pyproject.toml" }}
+  sync-env:
+    description: Restore the uv cache, sync the environment, then save the cache
+    parameters:
+      extra:
+        type: string
+        default: ""
+    steps:
+      - restore_cache:
+          keys:
+            - v2-uv-{{ checksum "pyproject.toml" }}
+      - setup-uv
+      - run:
+          name: Sync environment (uv)
+          command: uv sync --python 3.11 << parameters.extra >>
+      - save_cache:
+          key: v2-uv-{{ checksum "pyproject.toml" }}
+          paths:
+            - ~/.cache/uv
 
-  install-uv: &install-uv
-    name: Install uv
-    command: |
-      curl -LsSf https://astral.sh/uv/install.sh | sh
-      echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$BASH_ENV"
-
-version: 2
 jobs:
   build:
-    docker:
-      - image: *docker-image
+    executor: uv-python
     resource_class: medium
     steps:
-    - checkout
-    - restore_cache: *restore-cache
-    - run: *install-uv
-    - run:
-        name: Sync environment (uv)
-        command: uv sync --python 3.11
-    - save_cache: *save-cache
+      - checkout
+      - sync-env
 
   pip-check:
-    docker:
-      - image: *docker-image
+    executor: uv-python
     steps:
-    - checkout
-    - restore_cache: *restore-cache
-    - run: *install-uv
-    - run:
-        name: Sync environment (uv)
-        command: uv sync --python 3.11
-    - save_cache: *save-cache
-    - run:
-        name: Dependency check
-        command: uv pip check
+      - checkout
+      - sync-env
+      - run:
+          name: Dependency check
+          command: uv pip check
 
   test:
-    docker:
-      - image: *docker-image
+    executor: uv-python
     resource_class: large
     steps:
-    - checkout
-    - restore_cache: *restore-cache
-    - run: *install-uv
-    - run:
-        name: Sync environment (uv)
-        command: uv sync --python 3.11 --extra test
-    - save_cache: *save-cache
-    - run:
-        name: Unit tests with Pytest
-        command: uv run pytest tests
+      - checkout
+      - sync-env:
+          extra: "--extra test"
+      - run:
+          name: Unit tests with Pytest
+          command: uv run pytest tests
 
   lint:
-    docker:
-      - image: *docker-image
+    executor: uv-python
     steps:
-    - checkout
-    - restore_cache: *restore-cache
-    - run: *install-uv
-    - run:
-        name: Sync environment (uv)
-        command: uv sync --python 3.11 --extra lint
-    - save_cache: *save-cache
-    - run:
-        name: Linting with flake8
-        command: uv run flake8 ampligraph --max-line-length 200 --ignore=W605,W503,E231
+      - checkout
+      - sync-env:
+          extra: "--extra lint"
+      - run:
+          name: Linting with flake8
+          command: uv run flake8 ampligraph --max-line-length 200 --ignore=W605,W503,E231
 
   docs:
-    docker:
-      - image: *docker-image
+    executor: uv-python
     steps:
-    - checkout
-    - restore_cache: *restore-cache
-    - run: *install-uv
-    - run:
-        name: Sync environment (uv)
-        command: uv sync --python 3.11 --extra docs
-    - save_cache: *save-cache
-    - run:
-        name: Making docs with Sphinx
-        command: |
-          cd docs
-          uv run make clean autogen html
-
+      - checkout
+      - sync-env:
+          extra: "--extra docs"
+      - run:
+          name: Making docs with Sphinx
+          command: |
+            cd docs
+            uv run make clean autogen html
 
 workflows:
-  version: 2
   checks:
     jobs:
       - build:
-          filters:
+          filters: &main-develop
             branches:
               only:
                 - main
                 - develop
       - pip-check:
-          filters:
-            branches:
-              only:
-                - main
-                - develop
+          filters: *main-develop
       - lint:
-          filters:
-            branches:
-              only:
-                - main
-                - develop
+          filters: *main-develop
       - docs:
-          filters:
-            branches:
-              only:
-                - main
-                - develop
+          filters: *main-develop
       - test:
-          filters:
-            branches:
-              only:
-                - main
-                - develop
+          filters: *main-develop
