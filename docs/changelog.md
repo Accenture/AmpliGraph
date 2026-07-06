@@ -1,7 +1,7 @@
 # Changelog
 
-## 2.1.1
-**3 July 2026**
+## 2.2.0
+**6 July 2026**
 - Updated tensorflow dependency up to <2.16
 - Streamlined installation and switched to UV
 
