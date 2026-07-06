@@ -1,25 +1,21 @@
 .common-values:
 
-  docker-image: &docker-image circleci/python:3.10
+  docker-image: &docker-image cimg/python:3.11
 
   restore-cache: &restore-cache
     keys:
-      - v1-dependencies-{{ checksum "pyproject.toml" }}
-
-  create-venv: &create-venv
-    name: Create virtualenv
-    command: /usr/local/bin/python3 -m venv venv
+      - v2-uv-{{ checksum "pyproject.toml" }}
 
   save-cache: &save-cache
     paths:
-      - ./venv
-    key: v1-dependencies-{{ checksum "pyproject.toml" }}
+      - ~/.cache/uv
+    key: v2-uv-{{ checksum "pyproject.toml" }}
 
-  install-package: &install-package
-    name: Install package
+  install-uv: &install-uv
+    name: Install uv
     command: |
-      . venv/bin/activate
-      venv/bin/python3 -m pip install .
+      curl -LsSf https://astral.sh/uv/install.sh | sh
+      echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$BASH_ENV"
 
 version: 2
 jobs:
@@ -30,9 +26,11 @@ jobs:
     steps:
     - checkout
     - restore_cache: *restore-cache
-    - run: *create-venv
+    - run: *install-uv
+    - run:
+        name: Sync environment (uv)
+        command: uv sync --python 3.11
     - save_cache: *save-cache
-    - run: *install-package
 
   pip-check:
     docker:
@@ -40,14 +38,14 @@ jobs:
     steps:
     - checkout
     - restore_cache: *restore-cache
-    - run: *create-venv
-    - save_cache: *save-cache
-    - run: *install-package
+    - run: *install-uv
     - run:
-        name: Pip check
-        command: |
-          . venv/bin/activate
-          venv/bin/python3 -m pip check
+        name: Sync environment (uv)
+        command: uv sync --python 3.11
+    - save_cache: *save-cache
+    - run:
+        name: Dependency check
+        command: uv pip check
 
   test:
     docker:
@@ -56,29 +54,29 @@ jobs:
     steps:
     - checkout
     - restore_cache: *restore-cache
-    - run: *create-venv
-    - save_cache: *save-cache
-    - run: *install-package
+    - run: *install-uv
     - run:
-          name: Unit tests with Pytest
-          command: |
-            . venv/bin/activate
-            venv/bin/python3 -m pip install ".[test]"
-            venv/bin/python3 -m pytest tests
+        name: Sync environment (uv)
+        command: uv sync --python 3.11 --extra test
+    - save_cache: *save-cache
+    - run:
+        name: Unit tests with Pytest
+        command: uv run pytest tests
+
   lint:
     docker:
       - image: *docker-image
     steps:
     - checkout
     - restore_cache: *restore-cache
-    - run: *create-venv
+    - run: *install-uv
+    - run:
+        name: Sync environment (uv)
+        command: uv sync --python 3.11 --extra lint
     - save_cache: *save-cache
     - run:
-          name: Linting with flake8
-          command: |
-            . venv/bin/activate
-            venv/bin/python3 -m pip install flake8
-            venv/bin/python3 -m flake8 ampligraph --max-line-length 200 --ignore=W605,W503,E231
+        name: Linting with flake8
+        command: uv run flake8 ampligraph --max-line-length 200 --ignore=W605,W503,E231
 
   docs:
     docker:
@@ -86,16 +84,16 @@ jobs:
     steps:
     - checkout
     - restore_cache: *restore-cache
-    - run: *create-venv
-    - save_cache: *save-cache
-    - run: *install-package
+    - run: *install-uv
     - run:
-          name: Making docs with Sphinx
-          command: |
-            . venv/bin/activate
-            venv/bin/python3 -m pip install ".[docs]"
-            cd docs
-            make clean autogen html
+        name: Sync environment (uv)
+        command: uv sync --python 3.11 --extra docs
+    - save_cache: *save-cache
+    - run:
+        name: Making docs with Sphinx
+        command: |
+          cd docs
+          uv run make clean autogen html
 
 
 workflows:
@@ -105,30 +103,30 @@ workflows:
       - build:
           filters:
             branches:
-              only:  
+              only:
                 - main
                 - develop
       - pip-check:
           filters:
             branches:
-              only:  
+              only:
                 - main
                 - develop
       - lint:
           filters:
             branches:
-              only:  
+              only:
                 - main
                 - develop
       - docs:
           filters:
             branches:
-              only:  
+              only:
                 - main
                 - develop
       - test:
           filters:
             branches:
-              only:  
+              only:
                 - main
                 - develop
