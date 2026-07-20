@@ -1,7 +1,7 @@
 """
 This script can be used to run the experiments found in the paper
 "ImbalancE: Inference-Time Latent Search Against Degree Imbalance in Link Prediction"
-submitted for review at IJCAI-ECAI 2026.
+accepted at ISWC 2026.
 """
 
 import argparse
@@ -16,7 +16,7 @@ def load_pretrained_model(dataset, scoring_type):
     """Load the pretrained KGE model"""
     from ampligraph.utils import restore_model
 
-    return restore_model(f"../pretrained_models/{dataset.upper()}_{scoring_type.upper()}")
+    return restore_model(f"/home/alberto/ampligraph_models/{dataset.upper()}_{scoring_type.upper()}")
 
 def map_entities_dataset(train, valid, test, entity_mapper, relation_mapper):
     """
@@ -140,7 +140,7 @@ if __name__ == "__main__":
                         help="Whether to fine-tune the relations as well as the entities or just the entities")
 
     parser.add_argument('--run-on-validation', '-valid', action='store_true',
-                        help="Whether to run run the experiment on the test set instead of the test.")
+                        help="Whether to run run the experiment on the valid set instead of the test.")
     parser.add_argument('--no-run-on-test', action='store_false', default=True, dest='run_on_test',
                         help='No execution on the test set.')
 

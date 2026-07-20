@@ -384,7 +384,7 @@ class ImbalancE():
             [pair[0] for pair in batch['pairs']], embedding_type="e", from_idx=True
         )
         relation_embs = self.kge_model.get_embeddings(
-            [pair[1] for pair in batch['pairs']], embedding_type="e", from_idx=True
+            [pair[1] for pair in batch['pairs']], embedding_type="r", from_idx=True
         )
 
         ranks = self.batched_evaluation(
@@ -568,7 +568,7 @@ class ImbalancE():
         updated_pred = trainable_params[1] if not freeze_rels \
             else self.kge_model.get_embeddings(
             [pair[1] for pair in batch['pairs']],
-            embedding_type="e", from_idx=True
+            embedding_type="r", from_idx=True
         )
 
         return updated_ent, updated_pred

@@ -10,7 +10,7 @@ def load_pretrained_model(dataset, scoring_type):
     """Load the pretrained KGE model"""
     from ampligraph.utils import restore_model
 
-    return restore_model(f"../pretrained_models/{dataset.upper()}_{scoring_type.upper()}")
+    return restore_model(f"/home/alberto/ampligraph_models/{dataset.upper()}_{scoring_type.upper()}")
 
 if __name__ == "__main__":
 

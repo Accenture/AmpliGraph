@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
     early_stopper = EarlyStopper(
         valid_ranks_sp, valid_ranks_po, valid_df, thresholds=thresholds,
-        degrees=pd.concat([train_df.s, train_df.o]).value_counts()
+        degrees=degrees
     )
 
     with open(os.path.join(path, "ranks_po.pkl"), "rb") as f:
