@@ -11,6 +11,7 @@ import tensorflow as tf
 
 from experiments.LatentSearch.code.utils_KGE_latent_search import *
 from ampligraph.latent_features.models import ImbalancE
+from ampligraph.latent_features.models.ImbalancE import EarlyStopper
 
 def load_pretrained_model(dataset, scoring_type):
     """Load the pretrained KGE model"""
@@ -73,6 +74,11 @@ def from_batches_to_results(batches, no_support_batch, rev_ent_dict, rev_rel_dic
         epoch: np.concatenate([batch['new_ranks'][epoch] for batch in batches])
         for epoch in range(num_epochs)
     }
+    # The batches carry the early-stopping ranks only when a latent search was run with an
+    # early stopper (i.e. on the test set). When present, they are propagated to the dict below.
+    has_early_stop = 'early_stop_ranks' in batches[0]
+    if has_early_stop:
+        ls_early_stop_ranks = np.concatenate([batch['early_stop_ranks'] for batch in batches])
     all_test_triples = np.vstack([
         ls_test_triples, no_support_batch['test_triples']
     ])
@@ -84,9 +90,14 @@ def from_batches_to_results(batches, no_support_batch, rev_ent_dict, rev_rel_dic
         columns=['s', 'p', 'o', 'pre_ranks']
     )
     array_new_ranks = np.vstack(list(ls_new_ranks.values())).transpose()
+    extra_columns = [f'ranks_epoch{i}' for i in range(num_epochs)]
+    extra_values = array_new_ranks
+    if has_early_stop:
+        extra_columns = extra_columns + ['early_stop_new_ranks']
+        extra_values = np.concatenate([array_new_ranks, ls_early_stop_ranks.reshape(-1, 1)], axis=1)
     ls_df_new_ranks = pd.DataFrame(
-        np.concatenate([ls_test_triples, array_new_ranks], axis=1),
-        columns=['s', 'p', 'o'] + [f'ranks_epoch{i}' for i in range(num_epochs)]
+        np.concatenate([ls_test_triples, extra_values], axis=1),
+        columns=['s', 'p', 'o'] + extra_columns
     )
 
     ranks_pair = df_ranks.merge(ls_df_new_ranks, on=['s', 'p', 'o'], how='left')
@@ -112,6 +123,9 @@ def from_batches_to_results(batches, no_support_batch, rev_ent_dict, rev_rel_dic
             ranks_pair_dict[pair]['new_ranks'] = {
                 i: grouped_ranks.get_group(pair)[f'ranks_epoch{i}'].values for i in range(args.epochs)
             }
+            if has_early_stop:
+                ranks_pair_dict[pair]['early_stop_new_ranks'] = \
+                    grouped_ranks.get_group(pair)['early_stop_new_ranks'].values
 
     return ranks_pair_dict
 
@@ -158,6 +172,11 @@ if __name__ == "__main__":
     tf.keras.utils.set_random_seed(seed=args.seed)
 
     train_df, valid_df, test_df = load_dataset(args.dataset)
+
+    # Keep raw (unmapped) copies of train and valid. The early stopper operates on raw entity
+    # ids, since the validation ranks dictionaries are keyed by raw entities (see
+    # from_batches_to_results), whereas the dataframes below get mapped to integer indices.
+    raw_train_df, raw_valid_df = train_df.copy(), valid_df.copy()
 
     kge_model = load_pretrained_model(dataset=args.dataset, scoring_type=args.scoring_type)
 
@@ -223,6 +242,24 @@ if __name__ == "__main__":
         # Save output
         with open(os.path.join(output_path, "valid_ranks_po.pkl"), "wb") as f:
             pickle.dump(valid_ranks_po_dict, f)
+
+        #####################################################
+        # Build the early stopper from the validation ranks #
+        #####################################################
+        degrees = pd.concat([raw_train_df.s, raw_train_df.o]).value_counts()
+
+        # We set thresholds with a hard constraint on the low degree in case the .25 quantile is
+        # below 5. Indeed, we don't want a low degree threshold that is too low.
+        thresholds = [np.max([5, np.quantile(degrees, 0.25)])]
+        if thresholds[0] == 5:
+            thresholds += np.quantile(degrees[degrees > 5], [0.33, 0.66]).tolist()
+        else:
+            thresholds = np.quantile(degrees, [0.25, 0.5, 0.75]).tolist()
+
+        early_stopper = EarlyStopper(
+            valid_ranks_sp_dict, valid_ranks_po_dict, raw_valid_df,
+            thresholds=thresholds, degrees=degrees
+        )
 
     #####################################################
     ### We now run the latent search on the test set. ###

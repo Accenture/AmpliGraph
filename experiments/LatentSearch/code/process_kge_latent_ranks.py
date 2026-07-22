@@ -3,7 +3,7 @@ import argparse
 import pickle
 
 from experiments.LatentSearch.code.utils_KGE_latent_search import *
-from experiments.LatentSearch.code.main_kge_latent import EarlyStopper
+from ampligraph.latent_features.models.ImbalancE import EarlyStopper
 
 
 def load_pretrained_model(dataset, scoring_type):

@@ -39,6 +39,10 @@ class ImbalancE():
         self.epochs = args.epochs
 
         self.early_stop = early_stop
+        # Entity degrees are needed to estimate, at test time, the degree bin in which each
+        # target triple is expected to fall, so the early stopper can pick the epoch at which
+        # to stop the latent search. Only required when an early stopper is provided.
+        self.degrees = pd.concat([train_df.s, train_df.o]).value_counts()
 
         self.regularization = regularization
 
@@ -601,6 +605,52 @@ class ImbalancE():
 
         return reg_score
 
+    def compute_early_stop_ranks(self, batch):
+        """
+        Select, for each pair in the batch, the ranks at the early-stopping epoch estimated
+        by the early stopper.
+
+        The epoch is chosen from the degree bin in which the target triple is expected to fall.
+        That bin is estimated from the degree of the anchor entity and from the 0.2 quantile of
+        the degrees of the targets observed in train + valid. Returns an array of ranks aligned
+        with the per-pair order of ``batch['test_triples']`` (i.e., the same order as
+        ``batch['pre_ranks']`` and ``batch['new_ranks'][epoch]``).
+        """
+        target_col = 'o' if self.group == 'sp' else 's'
+
+        early_stop_ranks = []
+        offset = 0
+        for pair in batch['pairs']:
+            n_targets = batch['test_counts'][pair]
+
+            try:
+                train_targets = self.train_grouped.get_group(pair)[target_col].values
+            except KeyError:
+                train_targets = []
+            try:
+                valid_targets = self.valid_grouped.get_group(pair)[target_col].values
+            except KeyError:
+                valid_targets = []
+            observed_targets = np.concatenate([train_targets, valid_targets])
+
+            anchor_degree = self.degrees[pair[0]]
+            estimated_target_degree = np.quantile(self.degrees[observed_targets.tolist()], 0.2)
+            estimated_type = map_degree_to_bin(
+                anchor_degree if self.group == 'sp' else estimated_target_degree,
+                anchor_degree if self.group == 'po' else estimated_target_degree,
+                thresholds=self.early_stop.thresholds
+            )
+            early_stop_epoch = self.early_stop.epochs[self.group][estimated_type] - 1
+
+            if early_stop_epoch == -1:
+                pair_ranks = batch['pre_ranks'][offset:offset + n_targets]
+            else:
+                pair_ranks = batch['new_ranks'][early_stop_epoch][offset:offset + n_targets]
+            early_stop_ranks.append(pair_ranks)
+            offset += n_targets
+
+        return np.concatenate(early_stop_ranks)
+
     def perform_latent_search(self):
         """
         Method to perform the latent search.
@@ -701,8 +751,10 @@ class ImbalancE():
 
                 batch['new_ranks'][i] = filtered_new_ranks
 
-                # if early_stop and (i + 1) == early_stop_epoch:
-                #     ranks[pair]["early_stop_new_ranks"] = filtered_new_ranks
+            # Once the ranks at every epoch are available, use the early stopper (built from the
+            # validation ranks) to select, per pair, the ranks at the estimated early-stopping epoch
+            if self.early_stop is not None:
+                batch['early_stop_ranks'] = self.compute_early_stop_ranks(batch)
 
         return batches, no_support_batch
 

@@ -20,7 +20,7 @@ from tqdm import tqdm
 
 import pickle
 from experiments.LatentSearch.code.utils_KGE_latent_search import *
-from experiments.LatentSearch.code.main_kge_latent import EarlyStopper
+from ampligraph.latent_features.models.ImbalancE import EarlyStopper
 
 
 def convert_ranks(ranks, train_df, valid_df, test_df, early_stop, group='sp'):
