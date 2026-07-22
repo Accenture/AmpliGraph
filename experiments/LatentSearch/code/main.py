@@ -4,12 +4,30 @@ This script can be used to run the experiments found in the paper
 accepted at ISWC 2026.
 """
 
+import os
+
+# Silence TensorFlow / CUDA startup logging. These MUST be set before `import tensorflow`.
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"      # 0=all, 1=no INFO, 2=no WARNING, 3=no ERROR
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"     # silences the oneDNN notice
+os.environ.setdefault("TF_CPP_MIN_VLOG_LEVEL", "0")
+
 import argparse
 import pickle
 import json
+import logging
+
 import tensorflow as tf
 
-from experiments.LatentSearch.code.utils_KGE_latent_search import *
+# Silence Python-level and absl-level TF warnings (e.g. deprecation notices).
+tf.get_logger().setLevel(logging.ERROR)
+tf.autograph.set_verbosity(0)
+try:
+    from absl import logging as absl_logging
+    absl_logging.set_verbosity(absl_logging.ERROR)
+except ImportError:
+    pass
+
+from ampligraph.utils.imbalancE_utils import *
 from ampligraph.latent_features.models import ImbalancE
 from ampligraph.latent_features.models.ImbalancE import EarlyStopper
 
@@ -205,6 +223,7 @@ if __name__ == "__main__":
     # on (predicate, object) pairs.
     #################################################################################
     if args.run_on_validation:
+        print("Running ImbalancE on the validation set...")
         ############### Validation (subject, predicate) pairs ###############
         # We use an empty df as a placeholder for the missing
         # validation set as we are using it as test here.
@@ -265,6 +284,7 @@ if __name__ == "__main__":
     ### We now run the latent search on the test set. ###
     #####################################################
     if args.run_on_test:
+        print("Running ImbalancE on the test set...")
         ############### Test (object, predicate) pairs ###############
         imbalance_test_sp = ImbalancE(
             kge_model, train_df, valid_df, test_df,
@@ -297,3 +317,5 @@ if __name__ == "__main__":
         # Save output
         with open(os.path.join(output_path, "ranks_po.pkl"), "wb") as f:
             pickle.dump(test_ranks_po_dict, f)
+
+    print(f"Experiment completed. Find output at: {output_path}")

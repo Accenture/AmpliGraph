@@ -2,7 +2,7 @@ import argparse
 
 import pickle
 
-from experiments.LatentSearch.code.utils_KGE_latent_search import *
+from ampligraph.utils.imbalancE_utils import *
 from ampligraph.latent_features.models.ImbalancE import EarlyStopper
 
 

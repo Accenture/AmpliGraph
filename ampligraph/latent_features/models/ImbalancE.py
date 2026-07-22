@@ -6,7 +6,7 @@ import pickle
 from tqdm import tqdm
 import tensorflow as tf
 
-from experiments.LatentSearch.code.utils_KGE_latent_search import *
+from ampligraph.utils.imbalancE_utils import *
 
 class ImbalancE():
 
@@ -806,8 +806,6 @@ class EarlyStopper():
         This information is going to be leveraged at test time in order to early stop the
         latent search and get the best results.
         """
-        from experiments.TrackEmbeddings.analysis_utils import split_triples_by_degree_4way
-
         dict_splits = split_triples_by_degree_4way(
             valid, degrees, thresholds=thresholds
         )
