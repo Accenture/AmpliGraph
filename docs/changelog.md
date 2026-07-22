@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.0
+**6 July 2026**
+- Updated tensorflow dependency up to <2.16
+- Streamlined installation and switched to UV
+
+
 ## 2.1.0
 **28 February 2024**
 - Addition of RotatE to the available scoring functions.

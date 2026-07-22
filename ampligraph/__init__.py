@@ -1,4 +1,4 @@
-# Copyright 2019-2023 The AmpliGraph Authors. All Rights Reserved.
+# Copyright 2019-2026 The AmpliGraph Authors. All Rights Reserved.
 #
 # This file is Licensed under the Apache License, Version 2.0.0.
 # A copy of the Licence is available in LICENCE, or at:
@@ -7,16 +7,15 @@
 #
 """AmpliGraph is a library for relational learning on knowledge graphs."""
 import logging.config
+import os
 
-import pkg_resources
-import tensorflow as tf
+# Silence TensorFlow's (C++) info/warning logging
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-
-__version__ = '2.1-dev'
+__version__ = '2.2.0'
 __all__ = ['datasets', 'latent_features', 'discovery', 'evaluation', 'utils', 'pretrained_models']
 
 logging.config.fileConfig(
-    pkg_resources.resource_filename(__name__, "logger.conf"),
+    os.path.join(os.path.dirname(__file__), "logger.conf"),
     disable_existing_loggers=False,
 )
