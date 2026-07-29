@@ -139,6 +139,7 @@ dependencies = [
     { name = "torch" },
     { name = "tqdm" },
     { name = "transformers" },
+    { name = "xformers" },
 ]
 
 [package.metadata]
@@ -152,6 +153,7 @@ requires-dist = [
     { name = "torch", specifier = "==2.8.0" },
     { name = "tqdm", specifier = "==4.67.1" },
     { name = "transformers", specifier = "==4.56.0" },
+    { name = "xformers", specifier = ">=0.0.32.post2" },
 ]
 
 [[package]]
@@ -718,4 +720,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
+]
+
+[[package]]
+name = "xformers"
+version = "0.0.32.post2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "torch" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/47/99/68d2e7a17b65a08180d6b120d1d293d5855a0c5999cb30a79fb466b49642/xformers-0.0.32.post2.tar.gz", hash = "sha256:9538be803969c6e1ca16a3ece921e472c24f79970b10be1087a389dcb66e412a", size = 12105990, upload-time = "2025-08-15T11:48:56.584Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ce/16/4ed2fbf7c20ba20565d9a1fc544c2bef39d409c8eca1949654c6ff9f8452/xformers-0.0.32.post2-cp39-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:3d1fefe0006eb00a730b3b197ff41aab085f1209b50419baab6152445f09e508", size = 117196673, upload-time = "2025-08-15T11:48:46.726Z" },
+    { url = "https://files.pythonhosted.org/packages/50/19/ea64609a535f87a44cb177dc37c6d6a58f6d540adfff819d565fb0657cf7/xformers-0.0.32.post2-cp39-abi3-win_amd64.whl", hash = "sha256:87fa13f4b406ed640554cea6687d0020b496bd6b446ca17d24f9438a079e6f09", size = 100221079, upload-time = "2025-08-15T11:48:53.234Z" },
 ]

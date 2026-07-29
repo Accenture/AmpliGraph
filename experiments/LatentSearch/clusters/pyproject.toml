@@ -13,6 +13,7 @@ dependencies = [
     "scipy==1.15.3",
     "tqdm==4.67.1",
     "huggingface-hub==0.34.4",
+    "xformers>=0.0.32.post2",
 ]
 
 # NOTE: cache_datasets.py is intentionally NOT covered by this environment. It is the
