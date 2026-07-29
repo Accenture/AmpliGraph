@@ -1,0 +1,17 @@
+# uv virtual environment (recreated with `uv sync`)
+.venv/
+
+# Dataset splits are large (yago3-10/train.txt is ~49 MB) and are regenerated in
+# seconds by cache_datasets.py in the AmpliGraph env. Not versioned. See README.md.
+*/train.txt
+*/valid.txt
+*/test.txt
+
+__pycache__/
+*.pyc
+.DS_Store
+*.log
+
+# The repo-root .gitignore excludes .python-version globally, but here it pins the
+# interpreter for the isolated uv env and must be versioned.
+!.python-version
