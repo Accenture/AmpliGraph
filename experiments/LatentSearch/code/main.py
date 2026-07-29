@@ -30,12 +30,7 @@ except ImportError:
 from ampligraph.utils.imbalancE_utils import *
 from ampligraph.latent_features.models import ImbalancE
 from ampligraph.latent_features.models.ImbalancE import EarlyStopper
-
-def load_pretrained_model(dataset, scoring_type):
-    """Load the pretrained KGE model"""
-    from ampligraph.utils import restore_model
-
-    return restore_model(f"/home/alberto/ampligraph_models/{dataset.upper()}_{scoring_type.upper()}")
+from ampligraph.pretrained_models import load_pretrained_model
 
 def map_entities_dataset(train, valid, test, entity_mapper, relation_mapper):
     """
