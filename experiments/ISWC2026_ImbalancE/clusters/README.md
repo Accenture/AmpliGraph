@@ -27,8 +27,7 @@ to materialise the dataset splits.
 clusters/
 ├── main.py                 # clustering entry point
 ├── cache_datasets.py       # to dump dataset splits (run using the AmpliGraph env)
-├── pyproject.toml          # isolated uv/PyTorch environment definition
-├── uv.lock                 # pinned lockfile
+├── requirements.txt        # Dependencies
 ├── .python-version         # 3.10.8
 ├── fb15k-237/
 │   ├── entity2wikidata.json, mapper.csv              # description inputs
@@ -77,12 +76,39 @@ AmpliGraph/TensorFlow.
 **2. Create the isolated PyTorch environment and run.**
 
 ```
-uv sync
-uv run python main.py --dataset fb15k-237 --k 10 --save
-uv run python main.py --dataset fb15k-237 --k 10 --save --valid
+uv venv --python 3.10
+uv pip sync requirements.txt
+source .venv/bin/activate
+
+python main.py --dataset fb15k-237 --k 10 --save
+python main.py --dataset fb15k-237 --k 10 --save --valid
 ```
 - `--k` to select the number of nearest neighbors to consider.
 - `--valid` produces the `validation_` file (validation pairs) instead of the test file.
 - Default model is `NovaSearch/stella_en_400M_v5`; the seed is fixed to 0.
-- Repeat per dataset (`fb15k-237`, `wn18rr`, `yago3-10`) to reproduce
-  all shipped files.
+
+**3. Files to be generated**
+```bash
+### FB15k-237
+# ComplEx
+python main.py --dataset fb15k-237 --k 5 --save
+python main.py --dataset fb15k-237 --k 5 --save --valid
+
+# RotatE
+python main.py --dataset fb15k-237 --k 10 --save
+python main.py --dataset fb15k-237 --k 10 --save --valid
+
+### WN18RR
+# RotatE
+python main.py --dataset wn18rr --k 5 --save
+python main.py --dataset wn18rr --k 5 --save --valid
+
+# ComplEx
+python main.py --dataset wn18rr --k 30 --save
+python main.py --dataset wn18rr --k 30 --save --valid
+
+### YAGO3-10
+# ComplEx & RotatE
+python main.py --dataset yago310 --k 50 --save
+python main.py --dataset yago310 --k 50 --save --valid
+```

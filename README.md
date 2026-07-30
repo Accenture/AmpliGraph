@@ -1,3 +1,11 @@
+# ImbalancE: Inference-Time Latent Search Against Degree Imbalance in Link Prediction
+
+This branch contains the necessary code to implement and reproduce the experiments for the paper 
+"ImbalancE: Inference-Time Latent Search Against Degree Imbalance in Link Prediction", accepted at ISWC 2026.
+
+The code and details to reproduce results are available at `./experiments/ISWC2026_ImbalancE`.
+
+
 # ![AmpliGraph](docs/img/ampligraph_logo_transparent_300.png)
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2595043.svg)](https://doi.org/10.5281/zenodo.2595043)
