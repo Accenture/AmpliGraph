@@ -66,7 +66,8 @@ def ranks_to_triples(ranks, group='sp'):
 
 def map_degree_to_bin(subj_degree, obj_degree, thresholds=[10, 30, 100]):
     """
-    Function that, given the degree of the subject and the object, returns the bin in which the triple should be placed.
+    Function that, given the degree of the subject and the object,
+    returns the bin in which the triple should be placed.
     """
     def degree_to_bin(deg):
         if deg <= thresholds[0]:
@@ -316,7 +317,6 @@ def aggregated_to_tables(data, path):
             row_s = {"split": split}
             for m in values["corr_s"].keys():
                 row_s[f"{m}"] = values["corr_s"][m]
-                row_s[f"{m} (pre)"] = values["pre_corr_s"][m]
             rows_s.append(row_s)
 
         # corr_o
@@ -324,7 +324,6 @@ def aggregated_to_tables(data, path):
             row_o = {"split": split}
             for m in values["corr_o"].keys():
                 row_o[f"{m}"] = values["corr_o"][m]
-                row_o[f"{m} (pre)"] = values["pre_corr_o"][m]
             rows_o.append(row_o)
 
     df_corr_s = pd.DataFrame(rows_s).set_index("split").round(3)
