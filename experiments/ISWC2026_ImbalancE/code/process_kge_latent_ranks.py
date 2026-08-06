@@ -30,6 +30,8 @@ if __name__ == "__main__":
     elif 'yago310' in path:
         dataset = 'yago310'
         X = load_yago3_10()
+    else:
+        raise ValueError('Unknown dataset')
 
     train, valid, test = X["train"], X["valid"], X["test"]
 
