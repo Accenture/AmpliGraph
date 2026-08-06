@@ -5,6 +5,11 @@ This branch contains the necessary code to implement and reproduce the experimen
 
 The code and details to reproduce results are available at `./experiments/ISWC2026_ImbalancE`.
 
+In order to install the AmpliGraph version necessary to run ImbalancE, run `uv sync` 
+from the folder where this README lives.
+
+**What follows is the standard AmpliGraph repo description - Please ignore**
+
 
 # ![AmpliGraph](docs/img/ampligraph_logo_transparent_300.png)
 

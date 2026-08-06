@@ -53,7 +53,7 @@ Two separate virtual environments are used on purpose:
 
 - **AmpliGraph env** (TensorFlow 2.15 / Keras 2) — used by everything in `code/` and by the
   one-off `clusters/cache_datasets.py`. This is the main project environment; install
-  AmpliGraph-Lab from the repository root in editable mode (using the latest pip wheel does not include ImbalancE).
+  AmpliGraph-Lab from the repository root with `uv sync` (the latest pip wheel does not include ImbalancE).
 - **Isolated PyTorch env** — used only by `clusters/main.py` to run the sentence-embedding
   LLM. It is deliberately kept apart from TensorFlow. Pinned in
   [`clusters/requirements.txt`](clusters/requirements.txt) (Python 3.10).
