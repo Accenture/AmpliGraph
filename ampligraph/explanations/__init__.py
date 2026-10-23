@@ -5,7 +5,7 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-"""The module includes examples-based explanations module."""
+"""The module includes explainers for the predictions of knowledge graph embedding models, and visualizers for their explanations."""
 import logging
 
 logger = logging.getLogger(__name__)

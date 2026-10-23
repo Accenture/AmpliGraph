@@ -247,6 +247,29 @@ def discover_facts(
 
         logger.debug("Generated %d candidate statements." % len(candidates))
 
+        # The model cannot rank statements that contain entities or relations it has not seen during training
+        # (``evaluate`` skips them), so they are discarded to keep candidates and ranks aligned.
+        known_entities = set(model.data_indexer.backend.get_all_entities())
+        known_relations = set(model.data_indexer.backend.get_all_relations())
+        seen = np.array(
+            [
+                s in known_entities and p in known_relations and o in known_entities
+                for s, p, o in candidates
+            ],
+            dtype=bool,
+        )
+        if not seen.all():
+            logger.warning(
+                "Discarded %d candidate statements containing entities or relations unknown to the model."
+                % (~seen).sum()
+            )
+            candidates = candidates[seen]
+        if len(candidates) == 0:
+            logger.warning(
+                "No candidate statements left for relation %s." % relation
+            )
+            continue
+
         # Get ranks of candidate statements
         # ranks = evaluate_performance(candidates, model=model, filter_triples=X, use_default_protocol=True,
         #                             verbose=False)
@@ -267,6 +290,9 @@ def discover_facts(
         discovery_ranks.append(avg_ranks[preds])
 
     logger.info("Discovered %d facts" % len(discoveries))
+
+    if len(discoveries) == 0:
+        return np.empty((0, 3), dtype=X.dtype), np.empty(0)
 
     return np.hstack(discoveries), np.hstack(discovery_ranks)
 

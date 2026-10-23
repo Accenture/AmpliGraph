@@ -359,14 +359,13 @@ class ExamplE(AbstractExplainer):
     def neighbourhood_sampler(self, target_triple, mode="so", m=25, epsilon=None, metric='cosine', score=False):
         """Samples neighbourhood of target triple.
 
-            sets['predicates'] = {target_triple[1]}
            Parameters
            ----------
            target_triple: np.array
                triple for which explanations was requested.
            mode: str
-           signals what neighbours to consider when constructing examples. Has to contain
-                 at least 2 out of "sop" (s - subject, o - object, p - predicate).
+               signals what neighbours to consider when constructing examples. Has to contain
+               at least 2 out of "sop" (s - subject, o - object, p - predicate).
            m: int
                limit for how many neighbours to draw.
            epsilon: float
@@ -378,8 +377,8 @@ class ExamplE(AbstractExplainer):
            -------
            sets: dict
                2 or 3 of neighbours sets for subject, object or predicate in a form
-               {'subjects':{target_triple[0]}, 'objects':{target_triple[2]},
-                'predicates':{target_triple[1]}}.
+               ``{'subjects': {target_triple[0]}, 'objects': {target_triple[2]},
+               'predicates': {target_triple[1]}}``.
         """
         sets = {}
         if "s" in mode or "S" in mode:
@@ -409,11 +408,11 @@ class ExamplE(AbstractExplainer):
            Parameters
            ----------
            sets: dict
-           2 or 3 of neighbours sets coming from neighbourhood_sampler for subject,
-                 object or predicate in a form {'subjects':{target_triple[0]},
-                 'objects':{target_triple[2]}, 'predicates':{target_triple[1]}}.
+               2 or 3 of neighbours sets coming from neighbourhood_sampler for subject,
+               object or predicate in a form {'subjects':{target_triple[0]},
+               'objects':{target_triple[2]}, 'predicates':{target_triple[1]}}.
            target_triple: np.array
-               triple being queried
+               triple being queried.
            Returns
            -------
            examples: list

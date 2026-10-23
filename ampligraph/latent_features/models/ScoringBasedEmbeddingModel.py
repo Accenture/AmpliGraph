@@ -422,7 +422,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 tape,
             )
         except ValueError as e:
-            if self.scoring_layer.name == "Random":
+            if self.scoring_type == "Random":
                 pass
             else:
                 raise e
@@ -980,33 +980,24 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             "r": self.encoding_layer.rel_emb.shape,
         }
 
-    def save(
-        self,
-        filepath,
-        overwrite=True,
-        include_optimizer=True,
-        save_format=None,
-        signatures=None,
-        options=None,
-        save_traces=True,
-    ):
-        """Save the model."""
+    def save(self, filepath, overwrite=True, **kwargs):
+        """Save the model.
+
+        The model is saved with the Keras 3 format, so ``filepath`` must end with ``.keras``. The metadata
+        needed by AmpliGraph is saved next to it, in a ``<filepath>_metadata.ampkl`` file. The model can be
+        restored with :meth:`~ampligraph.utils.restore_model`.
+        This is also the method called by ``tf.keras.callbacks.ModelCheckpoint``.
+        """
         super(ScoringBasedEmbeddingModel, self).save(
-            filepath,
-            overwrite,
-            include_optimizer,
-            save_format,
-            signatures,
-            options,
-            save_traces,
+            filepath, overwrite=overwrite, **kwargs
         )
-        self.save_metadata(filedir=filepath)
+        self.save_metadata(filepath=filepath)
 
     def save_metadata(self, filepath=None, filedir=None):
         """Save metadata."""
         # store ampligraph specific metadata
         if filepath is not None:
-            base_dir = os.path.dirname(filedir)
+            base_dir = os.path.dirname(filepath)
             base_dir = "." if base_dir == "" else base_dir
             filepath = os.path.basename(filepath)
 
@@ -1117,12 +1108,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
             self.is_calibrated = metadata["is_calibrated"]
             if self.is_calibrated:
-                self.calibration_layer = CalibrationLayer(
-                    metadata["pos_size"],
-                    metadata["neg_size"],
-                    metadata["positive_base_rate"],
-                    calib_w=metadata["calib_w"],
-                    calib_b=metadata["calib_b"],
+                self._set_calibration_layer(
+                    CalibrationLayer(
+                        metadata["pos_size"],
+                        metadata["neg_size"],
+                        metadata["positive_base_rate"],
+                        calib_w=metadata["calib_w"],
+                        calib_b=metadata["calib_b"],
+                    )
                 )
 
     def load_weights(self, filepath):
@@ -2076,8 +2069,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 "positive_base_rate must be a value between 0 and 1."
             )
 
-        self.calibration_layer = CalibrationLayer(
-            pos_size, neg_size, positive_base_rate
+        self._set_calibration_layer(
+            CalibrationLayer(pos_size, neg_size, positive_base_rate)
         )
         calibrate_function = self.make_calibrate_function()
 
@@ -2103,19 +2096,35 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                             scores_neg = calibrate_function(neg_handle)
 
                     with tf.GradientTape() as tape:
-                        out = self.calibration_layer(scores_pos, scores_neg, 1)
+                        out = self.calibration_layer(scores_pos, scores_neg, training=1)
 
                     gradients = tape.gradient(
-                        out, self.calibration_layer._trainable_weights
+                        out, self.calibration_layer.trainable_weights
                     )
                     # update the trainable params
                     optimizer.apply_gradients(
                         zip(
                             gradients,
-                            self.calibration_layer._trainable_weights,
+                            self.calibration_layer.trainable_weights,
                         )
                     )
         self.is_calibrated = True
+
+    def _set_calibration_layer(self, calibration_layer):
+        """Attach the calibration layer to the model.
+
+        Keras 3 locks the state of a layer once it is built, and refuses new sub-layers afterwards. The calibration
+        layer is added after the model has been trained (or restored), so the lock is lifted for the assignment only.
+        """
+        tracker = getattr(self, "_tracker", None)
+        was_locked = tracker is not None and tracker.locked
+        if was_locked:
+            tracker.unlock()
+        try:
+            self.calibration_layer = calibration_layer
+        finally:
+            if was_locked:
+                tracker.lock()
 
     def predict_proba(self, x, batch_size=32, verbose=0, callbacks=None):
         """

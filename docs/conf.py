@@ -60,7 +60,7 @@ autosummary_generate = False
 autosummary_generate_overwrite = False
 autosummary_ignore_module_all = False # autosummary documents every member listed in __all__ and no others.
 
-autodoc_mock_imports = ["tensorflow"]
+autodoc_mock_imports = ["tensorflow", "pygraphviz", "graphviz"]
 
 
 # Add any paths that contain templates here, relative to this directory.

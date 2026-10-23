@@ -5,24 +5,27 @@ import networkx as nx
 
 class GraphNavigator():
     """Class responsible for accessing different parts of graph.
-       Methods:
-        - get_neighbours: retrieves neighbours of a given node.
-        - get_n_hop_neighbourhood_subgraph: get n-hop neighbourhood of a given triple.
 
+       Methods:
+
+       - get_neighbours: retrieves neighbours of a given node.
+       - get_n_hop_neighbourhood_subgraph: get n-hop neighbourhood of a given triple.
     """
     def __init__(self, X):
-        """Initializes GraphNavigator
+        """Initializes GraphNavigator.
+
            Parameters
            ----------
            X: dict
-               dataset dicionary
-               (e.g. X = {'train':np.array([[1,2,3],[2,1,3]]), 'test': ..., 'valid':...} )
+               dataset dictionary, e.g.
+               ``{'train': np.array([[1,2,3],[2,1,3]]), 'test': ..., 'valid': ...}``.
 
         """
         self.X = X
 
     def get_neighbours(self, node, subset='train'):
         """Retrieves neighbours of a node.
+
            Parameters
            ----------
            node: str

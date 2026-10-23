@@ -684,7 +684,7 @@ def load_fb15k_237(
 
     if return_mapper:
         fb15k_237 = DatasetMetadata(
-            dataset_name="fb15k-237",
+            dataset_name="fb15k-237-human-interpretability",
             filename="fb15k-237_human_interpretability.zip",
             url="https://ndownloader.figshare.com/files/66193391",
             train_name="train.txt",

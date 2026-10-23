@@ -114,11 +114,21 @@ def restore_model(model_name_path=None):
         custom_objects.update(LOSS_REGISTRY)
 
         keras_path = os.path.join(model_name_path, 'model.keras')
+        keras_file = keras_path if os.path.exists(keras_path) else model_name_path
         model = tf.keras.models.load_model(
-            keras_path if os.path.exists(keras_path) else model_name_path,
-            custom_objects=custom_objects
+            keras_file, custom_objects=custom_objects
         )
-        model.load_metadata(filedir=model_name_path)
+        if os.path.isdir(model_name_path):
+            model.load_metadata(filedir=model_name_path)
+        else:
+            # a single file, e.g. a .keras checkpoint saved by ModelCheckpoint or model.save
+            model.load_metadata(filepath=model_name_path)
+        if not model.is_partitioned_training:
+            # The embeddings are created only once the model knows the number of entities and relations (stored in the
+            # metadata). Keras loads the weights before that, so the layers are skipped and left randomly initialised:
+            # build the layers and load the trained weights now.
+            model.build_full_model()
+            tf.keras.Model.load_weights(model, keras_file)
         if model.is_backward:
             model = BACK_COMPAT_MODELS.get(model.scoring_type)(model)
     except pickle.UnpicklingError as e:

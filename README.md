@@ -53,6 +53,7 @@ AmpliGraph includes the following submodules:
 * **Models**: knowledge graph embedding models. AmpliGraph 2 contains **TransE**, **DistMult**, **ComplEx**, **HolE** (More to come!)
 * **Evaluation**: metrics and evaluation protocols to assess the predictive power of the models.
 * **Discovery**: High-level convenience APIs for knowledge discovery (discover new facts, cluster entities, predict near duplicates).
+* **Explanations**: explainers that justify the predictions of a model, i.e. explain why a triple is predicted (example-based **ExamplE** and a random baseline), plus visualizers for the resulting explanation graphs.
 * **Compat**: submodule that extends the compatibility of AmpliGraph 2 APIs to those of AmpliGraph 1.x for the user already familiar with them.
 
 ## Installation

@@ -1,7 +1,7 @@
 API
 ===
 
-AmpliGraph divides its APIs in the five main submodules listed below:
+AmpliGraph divides its APIs in the main submodules listed below:
 
 
 .. toctree::
@@ -11,6 +11,7 @@ AmpliGraph divides its APIs in the five main submodules listed below:
     ampligraph.latent_features
     ampligraph.evaluation
     ampligraph.discovery
+    ampligraph.explanations
     ampligraph.utils
     ampligraph.pretrained_models
 
