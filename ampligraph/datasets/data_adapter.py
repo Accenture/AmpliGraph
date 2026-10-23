@@ -7,8 +7,8 @@
 #
 import contextlib
 
+import tensorflow as tf
 import tqdm
-from tensorflow.python.framework import errors
 
 from .graph_data_loader import GraphDataLoader, NoBackend
 from .graph_partitioner import AbstractGraphPartitioner
@@ -103,7 +103,7 @@ class DataHandler:
         """Catches errors when an iterator runs out of data."""
         try:
             yield
-        except (StopIteration, errors.OutOfRangeError):
+        except (StopIteration, tf.errors.OutOfRangeError):
             if self._inferred_steps is None:
                 self._inferred_steps = self._current_iter
 

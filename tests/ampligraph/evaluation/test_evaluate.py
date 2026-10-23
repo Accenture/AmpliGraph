@@ -64,7 +64,7 @@ def test_evaluate_without_filter():
     print('hits@10:', hits_at_n_score(ranks_sep, 10))
     
     np.testing.assert_equal(mr_sep, mr_joint)
-    assert mrr_joint is not np.Inf, 'MRR is infinity'
+    assert mrr_joint is not np.inf, 'MRR is infinity'
     
     
 def test_evaluate_with_filter():
@@ -127,4 +127,4 @@ def test_evaluate_with_filter():
     print('hits@10:', hits_at_n_score(ranks_sep, 10))
     
     np.testing.assert_equal(mr_sep, mr_joint)
-    assert mrr_joint is not np.Inf, 'MRR is infinity'
+    assert mrr_joint is not np.inf, 'MRR is infinity'

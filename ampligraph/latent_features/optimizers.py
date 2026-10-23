@@ -9,23 +9,23 @@ import abc
 import inspect
 import logging
 
-import six
 import tensorflow as tf
+import tf_keras
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Since TF 2.11 ``tf.keras.optimizers.Optimizer`` refers to the new (Keras) optimizer.
-# The pre-2.11 optimizers are still available under ``tf.keras.optimizers.legacy``
-# AmpliGraph standardises on these legacy optimizers so that model persistence stays compatible
-# with models saved by older AmpliGraph/TF versions.
-_legacy_optimizers = getattr(tf.keras.optimizers, "legacy", None)
+# TF 2.16+ uses Keras 3 by default; tf.keras.optimizers.legacy is a broken stub there.
+# tf_keras.optimizers.legacy provides the true Keras 2 optimizers with get_weights/set_weights
+# that AmpliGraph needs for partitioned training persistence.
+_legacy_optimizers = tf_keras.optimizers.legacy
 
-# Base optimizer classes accepted by ``get`` (both new and legacy must be recognised, since a
-# restored model may deserialize its optimizer as either).
-_OPTIMIZER_CLASSES = (tf.keras.optimizers.Optimizer,)
-if _legacy_optimizers is not None:
-    _OPTIMIZER_CLASSES += (_legacy_optimizers.Optimizer,)
+# Accept Keras 3, tf_keras new-style, and tf_keras legacy optimizer instances from callers.
+_OPTIMIZER_CLASSES = (
+    tf.keras.optimizers.Optimizer,
+    tf_keras.optimizers.Optimizer,
+    tf_keras.optimizers.legacy.Optimizer,
+)
 
 
 def _optimizer_classes(name):
@@ -60,27 +60,23 @@ def _to_legacy_optimizer(identifier, **hyperparams):
     Falls back to ``tf.keras.optimizers.get`` if the legacy module or the named optimizer is
     not available (e.g. on TF versions without the ``legacy`` namespace).
     """
-    if _legacy_optimizers is not None:
-        for attr in dir(_legacy_optimizers):
-            if attr.lower() == identifier.lower():
-                return getattr(_legacy_optimizers, attr)(**hyperparams)
-    return tf.keras.optimizers.get(identifier, **hyperparams)
+    for attr in dir(_legacy_optimizers):
+        if attr.lower() == identifier.lower():
+            cls = getattr(_legacy_optimizers, attr)
+            if isinstance(cls, type):
+                return cls(**hyperparams)
+    return tf_keras.optimizers.legacy.get(identifier)
 
 
 def _ensure_legacy_optimizer(optimizer):
-    """Rebuild a new-style Keras optimizer as its legacy equivalent.
+    """Rebuild a Keras 3 optimizer as its tf_keras (Keras 2) equivalent.
 
-    Since TF 2.11 the default optimizers dropped ``get_weights``/``set_weights``, which AmpliGraph
-    needs for (partitioned) model persistence. If a new-style optimizer instance is passed, we
-    rebuild it as the matching legacy optimizer, preserving the hyperparameters the legacy
-    constructor understands. Legacy instances (and unknown optimizers) are returned unchanged.
-
-    Future releases will remove this function and rely on new optimizers.
+    AmpliGraph needs ``get_weights``/``set_weights`` for partitioned model persistence.
+    Keras 3 optimizers dropped these, so any Keras 3 instance is converted to the
+    matching tf_keras optimizer. tf_keras instances are returned unchanged.
     """
-    if _legacy_optimizers is None or isinstance(
-        optimizer, _legacy_optimizers.Optimizer
-    ):
-        return optimizer
+    if isinstance(optimizer, tf_keras.optimizers.legacy.Optimizer):
+        return optimizer  # already a Keras 2 legacy optimizer with get_weights/set_weights
 
     legacy_cls = getattr(_legacy_optimizers, type(optimizer).__name__, None)
     if legacy_cls is None:
@@ -128,7 +124,14 @@ class OptimizerWrapper(abc.ABC):
 
         See `tf.keras.optimizers <https://www.tensorflow.org/api_docs/python/tf/keras/optimizers>` for more details.
         """
-        self.optimizer.apply_gradients(grads_and_vars)
+        # tf_keras legacy optimizers expect tf.Variable (ResourceVariable) with _unique_id / device.
+        # Keras 3 layers produce keras.Variable which wraps tf.Variable at ._value.
+        # Unwrap so the legacy optimizer can slot correctly.
+        unwrapped = [
+            (g, v._value if isinstance(getattr(v, "_value", None), tf.Variable) else v)
+            for g, v in grads_and_vars
+        ]
+        self.optimizer.apply_gradients(unwrapped)
 
     def set_partitioned_training(self, value=True):
         self.is_partitioned_training = value
@@ -280,7 +283,7 @@ def get(identifier, hyperparams={}):
         return OptimizerWrapper(_ensure_legacy_optimizer(identifier))
     elif isinstance(identifier, OptimizerWrapper):
         return identifier
-    elif isinstance(identifier, six.string_types):
+    elif isinstance(identifier, str):
         learning_rate = 0.001 if "learning_rate" not in hyperparams else hyperparams.pop("learning_rate")
         optimizer = _to_legacy_optimizer(identifier, **hyperparams)
         optimizer.learning_rate = learning_rate

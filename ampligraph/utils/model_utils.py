@@ -73,7 +73,8 @@ def save_model(model, model_name_path=None, protocol=pickle.HIGHEST_PROTOCOL):
         shutil.rmtree(model_name_path)
     if model.is_backward:
         model = model.model
-    tf.keras.models.save_model(model, model_name_path)
+    os.makedirs(model_name_path, exist_ok=True)
+    tf.keras.models.save_model(model, os.path.join(model_name_path, 'model.keras'))
     model.save_metadata(filedir=model_name_path)
 
 
@@ -112,8 +113,10 @@ def restore_model(model_name_path=None):
         }
         custom_objects.update(LOSS_REGISTRY)
 
+        keras_path = os.path.join(model_name_path, 'model.keras')
         model = tf.keras.models.load_model(
-            model_name_path, custom_objects=custom_objects
+            keras_path if os.path.exists(keras_path) else model_name_path,
+            custom_objects=custom_objects
         )
         model.load_metadata(filedir=model_name_path)
         if model.is_backward:

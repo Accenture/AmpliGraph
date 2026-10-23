@@ -31,11 +31,7 @@ from ampligraph.datasets.data_indexer import DataIndexer
 from ampligraph.latent_features import optimizers
 from ampligraph.latent_features import loss_functions
 from ampligraph.evaluation import train_test_split_no_unseen
-from tensorflow.python.keras import callbacks as callbacks_module
-from tensorflow.python.keras.engine import training_utils
-from tensorflow.python.eager import def_function
-from tensorflow.python.keras import metrics as metrics_mod
-from tensorflow.python.keras.engine import compile_utils
+import contextlib
 
 tf.config.set_soft_device_placement(False)
 tf.debugging.set_log_device_placement(False)
@@ -79,6 +75,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
     @classmethod
     def from_config(cls, config):
+        config = dict(config)
+        config.pop('name', None)
+        config.pop('trainable', None)
+        config.pop('dtype', None)
         return cls(**config)
 
     def get_config(self):
@@ -181,6 +181,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         self.is_backward = False
 
         self.data_shape = None
+        self._train_data = None
 
         self.seed = seed
         self.base_dir = tempfile.gettempdir()
@@ -257,7 +258,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         if training:
             # generate the corruptions for the input triples
             corruptions = self.corruption_layer(
-                inputs, self.num_ents, self.eta
+                inputs, ent_size=self.num_ents, eta=self.eta
             )
             # lookup embeddings of the inputs
             corr_emb = self.encoding_layer(corruptions)
@@ -268,7 +269,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         else:
             return inp_score
 
-    @tf.function(experimental_relax_shapes=True)
+    @tf.function(reduce_retracing=True)
     def _get_ranks(
         self,
         inputs,
@@ -458,9 +459,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             return output
 
         if not self.run_eagerly and not self.is_partitioned_training:
-            train_function = def_function.function(
-                train_function, experimental_relax_shapes=True
-            )
+            train_function = tf.function(train_function, reduce_retracing=True)
 
         self.train_function = train_function
         return self.train_function
@@ -710,7 +709,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         """
         # verifies if compile has been called before calling fit
-        self._assert_compile_was_called()
+        self._assert_compile_called()
         # focusE
         self.current_epoch = 0
         self.use_focusE = focusE
@@ -727,7 +726,10 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 allow_duplication=False,
             )
 
-        with training_utils.RespectCompiledTrainableState(self):
+        if isinstance(x, np.ndarray):
+            self._train_data = x
+
+        with contextlib.nullcontext():
             # create data handler for the data
             self.data_handler = data_adapter.DataHandler(
                 x,
@@ -790,14 +792,15 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                     )
 
             # Container that configures and calls `tf.keras.Callback`s.
-            if not isinstance(callbacks, callbacks_module.CallbackList):
-                callbacks = callbacks_module.CallbackList(
+            if not isinstance(callbacks, tf.keras.callbacks.CallbackList):
+                callbacks = tf.keras.callbacks.CallbackList(
                     callbacks,
                     add_history=True,
                     add_progbar=verbose != 0,
                     model=self,
                     verbose=verbose,
                     epochs=epochs,
+                    steps=self.data_handler.inferred_steps,
                 )
 
             # This variable is used by callbacks to stop training in case of
@@ -1296,15 +1299,13 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         # get the optimizer
         self.optimizer = optimizers.get(optimizer)
         self._run_eagerly = kwargs.pop("run_eagerly", None)
-        # reset the training/evaluate/predict function
-        self._reset_compile_cache()
+        # reset the cached compiled functions (replaces Keras 2's _reset_compile_cache)
+        self.train_function = None
+        self.test_function = None
+        self.predict_function = None
 
         # get the loss
         self.compiled_loss = loss_functions.get(loss)
-        # Only metric supported during the training is mean Loss
-        self.compiled_metrics = compile_utils.MetricsContainer(
-            metrics_mod.Mean(name="loss"), None, None
-        )  # Total loss.
 
         # set the initializer and regularizer of the embedding matrices in the
         # encoding layer
@@ -1316,6 +1317,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
 
         self.encoding_layer.set_regularizer(entity_relation_regularizer)
         self._is_compiled = True
+        self.compiled = True  # Keras 3 checks this plain attribute in _assert_compile_called
 
     @property
     def metrics(self):
@@ -1350,7 +1352,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             if self.entities_subset.shape[0] != 0:
                 out = self.encoding_layer(self.entities_subset, type_of="e")
             else:
-                out = self.encoding_layer.ent_emb
+                out = tf.identity(self.encoding_layer.ent_emb)
             return out, 0, out.shape[0] - 1
         else:
             with shelve.open(
@@ -1465,9 +1467,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             return overall_rank
 
         if not self.run_eagerly and not self.is_partitioned_training:
-            test_function = def_function.function(
-                test_function, experimental_relax_shapes=True
-            )
+            test_function = tf.function(test_function, reduce_retracing=True)
 
         self.test_function = test_function
 
@@ -1650,8 +1650,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             )
 
         # Container that configures and calls `tf.keras.Callback`s.
-        if not isinstance(callbacks, callbacks_module.CallbackList):
-            callbacks = callbacks_module.CallbackList(
+        if not isinstance(callbacks, tf.keras.callbacks.CallbackList):
+            callbacks = tf.keras.callbacks.CallbackList(
                 callbacks,
                 add_history=True,
                 add_progbar=verbose != 0,
@@ -1695,7 +1695,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         """Returns the output of predict step on a batch of data."""
         if self.data_shape > 3 and isinstance(inputs, tuple):
             inputs = inputs[0]
-        score_pos = self(inputs, False)
+        score_pos = self(inputs, training=False)
         return score_pos
 
     def predict_step_partitioning(self, inputs):
@@ -1726,9 +1726,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             return outputs
 
         if not self.run_eagerly and not self.is_partitioned_training:
-            predict_function = def_function.function(
-                predict_function, experimental_relax_shapes=True
-            )
+            predict_function = tf.function(predict_function, reduce_retracing=True)
 
         self.predict_function = predict_function
         return self.predict_function
@@ -1795,8 +1793,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             use_indexer=self.data_indexer,
         )
 
-        if not isinstance(callbacks, callbacks_module.CallbackList):
-            callbacks = callbacks_module.CallbackList(
+        if not isinstance(callbacks, tf.keras.callbacks.CallbackList):
+            callbacks = tf.keras.callbacks.CallbackList(
                 callbacks,
                 add_history=True,
                 add_progbar=verbose != 0,
@@ -1883,14 +1881,14 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
                 inp_emb = self.process_model_inputs_for_test(inputs)
                 inp_score = self.scoring_layer(inp_emb)
 
-                corruptions = self.corruption_layer(inputs, self.num_ents, 1)
+                corruptions = self.corruption_layer(inputs, ent_size=self.num_ents, eta=1)
                 corr_emb = self.encoding_layer(corruptions)
                 corr_score = self.scoring_layer(corr_emb)
             else:
                 inp_emb = self.encoding_layer(inputs)
                 inp_score = self.scoring_layer(inp_emb)
 
-                corruptions = self.corruption_layer(inputs, self.num_ents, 1)
+                corruptions = self.corruption_layer(inputs, ent_size=self.num_ents, eta=1)
                 corr_emb = self.encoding_layer(corruptions)
                 corr_score = self.scoring_layer(corr_emb)
             return inp_score, corr_score
@@ -1913,9 +1911,7 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             calibrate_fn = calibrate_with_negatives
 
         if not self.run_eagerly and not self.is_partitioned_training:
-            calibrate_fn = def_function.function(
-                calibrate_fn, experimental_relax_shapes=True
-            )
+            calibrate_fn = tf.function(calibrate_fn, reduce_retracing=True)
 
         return calibrate_fn
 
@@ -2183,8 +2179,8 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
             use_indexer=self.data_indexer,
         )
 
-        if not isinstance(callbacks, callbacks_module.CallbackList):
-            callbacks = callbacks_module.CallbackList(
+        if not isinstance(callbacks, tf.keras.callbacks.CallbackList):
+            callbacks = tf.keras.callbacks.CallbackList(
                 callbacks,
                 add_history=True,
                 add_progbar=verbose != 0,
@@ -2275,6 +2271,34 @@ class ScoringBasedEmbeddingModel(tf.keras.Model):
         else:
             msg = "Invalid entity type: {}".format(embedding_type)
             raise ValueError(msg)
+
+    def predict_explain(self, data, explainer='example', params={}):
+        """Generate explanations for a batch of triples.
+
+        Parameters
+        ----------
+        data: np.array, shape (n, 3)
+            Triples to explain.
+        explainer: str
+            Name of the registered explainer to use (default: ``'example'``).
+        params: dict
+            Extra keyword arguments forwarded to the explainer's ``predict_explain()``.
+
+        Returns
+        -------
+        explanations: list of dict
+            One explanation dictionary per input triple.
+        """
+        from ampligraph.explanations.explainers import EXPLAINERS_REGISTRY
+        assert self.is_fitted, "Model must be fitted before calling predict_explain."
+        if self._train_data is None:
+            raise ValueError(
+                "Training data is not available on this model instance. "
+                "Re-fit with a numpy array, or instantiate the explainer directly."
+            )
+        X = {'train': self._train_data, 'test': np.array([]), 'valid': np.array([])}
+        explainer_instance = EXPLAINERS_REGISTRY[explainer](X, self)
+        return [explainer_instance.predict_explain(triple, **params) for triple in data]
 
     def get_invalid_keys(self, X: npt.NDArray, data_type: Literal["raw", "ind"] = "raw", **kwargs):
         """Get the invalid keys in a collection of triples.

@@ -8,11 +8,7 @@
 import abc
 import logging
 
-import six
 import tensorflow as tf
-from tensorflow.python.keras import metrics as metrics_mod
-from tensorflow.python.keras.utils import losses_utils
-from tensorflow.python.ops import math_ops
 
 LOSS_REGISTRY = {}
 
@@ -98,7 +94,7 @@ class Loss(abc.ABC):
         self._user_losses = self.name
         self._user_loss_weights = None
 
-        self._loss_metric = metrics_mod.Mean(name="loss")  # Total loss.
+        self._loss_metric = tf.keras.metrics.Mean(name="loss")  # Total loss.
 
         # perform check to see if all the required external hyperparams are
         # passed
@@ -140,7 +136,7 @@ class Loss(abc.ABC):
         logger.error(msg)
         raise NotImplementedError(msg)
 
-    @tf.function(experimental_relax_shapes=True)
+    @tf.function(reduce_retracing=True)
     def _apply_loss(self, scores_pos, scores_neg):
         """Interface to the external world.
 
@@ -213,14 +209,12 @@ class Loss(abc.ABC):
         loss = self._apply_loss(scores_pos, scores_neg)
         loss_values.append(tf.reduce_sum(loss))
         if regularization_losses:
-            regularization_losses = losses_utils.cast_losses_to_common_dtype(
-                regularization_losses
-            )
-            reg_loss = math_ops.add_n(regularization_losses)
+            regularization_losses = [tf.cast(l, tf.float32) for l in regularization_losses]
+            reg_loss = tf.math.add_n(regularization_losses)
             loss_values.append(reg_loss)
 
-        loss_values = losses_utils.cast_losses_to_common_dtype(loss_values)
-        total_loss = math_ops.add_n(loss_values)
+        loss_values = [tf.cast(l, tf.float32) for l in loss_values]
+        total_loss = tf.math.add_n(loss_values)
         self._loss_metric.update_state(total_loss)
         return total_loss
 
@@ -282,7 +276,7 @@ class PairwiseLoss(Loss):
             "margin", DEFAULT_MARGIN
         )
 
-    @tf.function(experimental_relax_shapes=True)
+    @tf.function(reduce_retracing=True)
     def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
 
@@ -356,7 +350,7 @@ class NLLLoss(Loss):
         """
         return
 
-    @tf.function(experimental_relax_shapes=True)
+    @tf.function(reduce_retracing=True)
     def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
 
@@ -438,7 +432,7 @@ class AbsoluteMarginLoss(Loss):
             "margin", DEFAULT_MARGIN
         )
 
-    @tf.function(experimental_relax_shapes=True)
+    @tf.function(reduce_retracing=True)
     def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
 
@@ -536,7 +530,7 @@ class SelfAdversarialLoss(Loss):
             "alpha", DEFAULT_ALPHA_ADVERSARIAL
         )
 
-    @tf.function(experimental_relax_shapes=True)
+    @tf.function(reduce_retracing=True)
     def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
 
@@ -626,7 +620,7 @@ class NLLMulticlass(Loss):
         """
         pass
 
-    @tf.function(experimental_relax_shapes=True)
+    @tf.function(reduce_retracing=True)
     def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
 
@@ -697,7 +691,7 @@ class LossFunctionWrapper(Loss):
         """
         pass
 
-    @tf.function(experimental_relax_shapes=True)
+    @tf.function(reduce_retracing=True)
     def _apply_loss(self, scores_pos, scores_neg):
         """Apply the loss function.
 
@@ -752,7 +746,7 @@ def get(identifier, hyperparams={}):
     """
     if isinstance(identifier, Loss):
         return identifier
-    elif isinstance(identifier, six.string_types):
+    elif isinstance(identifier, str):
         if identifier not in LOSS_REGISTRY.keys():
             raise ValueError(
                 "Could not interpret loss identifier:", identifier

@@ -7,7 +7,7 @@ name = "ampligraph"
 dynamic = ["version"]
 description = "A Python library for relational learning on knowledge graphs."
 readme = "README.md"
-requires-python = ">=3.9,<3.12"
+requires-python = ">=3.9,<3.13"
 license = { text = "Apache 2.0" }
 authors = [{ name = "Accenture Dublin Labs", email = "about@ampligraph.org" }]
 keywords = [
@@ -21,13 +21,15 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "tensorflow>=2.15,<2.16", # TensorFlow 2.15 is the last Keras 2 release
-    "numpy>=1.14.3,<2.0",  # <2.0 required by TensorFlow 2.15 / Keras 2
+    "tensorflow>=2.16,<2.19",  # TF 2.16+ adds Python 3.12 support; use tf-keras for legacy Keras 2 API
+    "tf-keras>=2.16,<2.19",   # Keras 2 compatibility layer for TF 2.16+
+    "numpy>=1.24,<2.1",       # TF 2.16 minimum; TF 2.17+ supports numpy 2.x
     "scikit-learn>=0.19.1",
     "tqdm>=4.23.4",
     "pandas>=0.23.1",
@@ -42,7 +44,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-cuda = ["tensorflow[and-cuda]>=2.15,<2.16"]
+cuda = ["tensorflow[and-cuda]>=2.16,<2.19"]
 test = ["pytest>=3.5.1"]
 docs = [
     "sphinx==5.0.2",

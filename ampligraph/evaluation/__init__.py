@@ -16,6 +16,15 @@ from .protocol import (
     select_best_model_ranking,
     train_test_split_no_unseen,
 )
+from .explainers_evaluation import (
+    remove_triples,
+    get_calibration_set,
+    check_coverage,
+    retrain_model,
+    retraining_experiment,
+    calculate_differences,
+    evaluate_explainer,
+)
 
 __all__ = [
     "mrr_score",
@@ -25,4 +34,11 @@ __all__ = [
     "select_best_model_ranking",
     "train_test_split_no_unseen",
     "filter_unseen_entities",
+    "remove_triples",
+    "get_calibration_set",
+    "check_coverage",
+    "retrain_model",
+    "retraining_experiment",
+    "calculate_differences",
+    "evaluate_explainer",
 ]

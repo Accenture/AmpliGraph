@@ -3,7 +3,7 @@ version: 2.1
 executors:
   uv-python:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.12
 
 commands:
   setup-uv:
@@ -28,7 +28,7 @@ commands:
       - setup-uv
       - run:
           name: Sync environment (uv)
-          command: uv sync --python 3.11 << parameters.extra >>
+          command: uv sync --python 3.12 << parameters.extra >>
       - save_cache:
           key: v2-uv-{{ checksum "pyproject.toml" }}
           paths:

@@ -59,7 +59,7 @@ class CalibrationLayer(tf.keras.layers.Layer):
         Build method.
         """
         self.calib_w = self.add_weight(
-            "calib_w",
+            name="calib_w",
             shape=(),
             initializer=self.w_init,
             dtype=tf.float32,
@@ -67,7 +67,7 @@ class CalibrationLayer(tf.keras.layers.Layer):
         )
 
         self.calib_b = self.add_weight(
-            "calib_b",
+            name="calib_b",
             shape=(),
             initializer=self.b_init,
             dtype=tf.float32,

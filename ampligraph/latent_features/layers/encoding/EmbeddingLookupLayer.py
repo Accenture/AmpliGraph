@@ -192,7 +192,7 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         # create the trainable variables for entity embeddings
         if self._has_enough_args_to_build_ent_emb:
             self.ent_emb = self.add_weight(
-                "ent_emb",
+                name="ent_emb",
                 shape=[self._max_ent_size_internal, self.k],
                 initializer=self.ent_init,
                 regularizer=self.ent_regularizer,
@@ -228,7 +228,7 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         # create the trainable variables for relation embeddings
         if self._has_enough_args_to_build_rel_emb:
             self.rel_emb = self.add_weight(
-                "rel_emb",
+                name="rel_emb",
                 shape=[self._max_rel_size_internal, self.k],
                 initializer=self.rel_init,
                 regularizer=self.rel_regularizer,
